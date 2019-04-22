@@ -1,13 +1,11 @@
 #pragma once
 
 #if defined(_WIN32)
-
     // Windows
     #define AOE_WINDOWS
 
 #elif defined(__APPLE__) && defined(__MACH__)
 
-    // Apple platform, see which one it is
     #include "TargetConditionals.h"
 
     #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
@@ -53,35 +51,45 @@
     #else
 
         // Unsupported UNIX system
-        #error This UNIX operating system is not supported by SFML library
+        #error This UNIX operating system is not supported by AOE library
 
     #endif
 
 #else
 
     // Unsupported system
-    #error This operating system is not supported by SFML library
+    #error This operating system is not supported by AOE library
 
 #endif
 
 #if defined(AOE_WINDOWS)
+
 	#define AOE_API_EXPORT __declspec(dllexport)
 	#define AOE_API_IMPORT __declspec(dllimport)
 	#define AOE_DEPRECATED __declspec(deprecated)
 	#ifdef _MSC_VER
 		#pragma warning(disable: 4251)
 	#endif
+
 #elif __GNUC__ >= 4
+
 	#define AOE_API_EXPORT __attribute__ ((__visibility__ ("default")))
 	#define AOE_API_IMPORT __attribute__ ((__visibility__ ("default")))
 	#define AOE_DEPRECATED __attribute__ ((deprecated))
+
 #else
+
 	#define AOE_API_EXPORT
 	#define AOE_API_IMPORT
+
 #endif
 
 #if defined(AOE_EXPORTS)
+
 	#define AOE_API AOE_API_EXPORT
+
 #else
+
 	#define AOE_API AOE_API_IMPORT
+
 #endif
