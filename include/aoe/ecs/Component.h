@@ -6,7 +6,7 @@
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		class AComponent
 			: public sta::ADynamicType

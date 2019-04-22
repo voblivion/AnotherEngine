@@ -4,7 +4,7 @@
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		class ASystem
 			: public sta::ADynamicType

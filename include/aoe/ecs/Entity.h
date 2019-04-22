@@ -1,12 +1,12 @@
 #pragma once
 
 #include <aoe/Config.h>
-#include <aoe/core/ComponentManager.h>
-#include <aoe/core/EntityId.h>
+#include <aoe/ecs/ComponentManager.h>
+#include <aoe/ecs/EntityId.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		class Entity : public ComponentManager
 		{

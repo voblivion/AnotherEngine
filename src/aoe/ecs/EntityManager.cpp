@@ -1,9 +1,9 @@
-#include <aoe/core/EntityManager.h>
+#include <aoe/ecs/EntityManager.h>
 
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		// Public
 		EntityManager::EntityManager(

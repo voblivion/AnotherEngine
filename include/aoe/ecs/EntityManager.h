@@ -4,16 +4,16 @@
 #include <unordered_map>
 
 #include <aoe/Config.h>
-#include <aoe/core/Entity.h>
-#include <aoe/core/EntityId.h>
-#include <aoe/core/SystemEntity.h>
-#include <aoe/core/SystemSpawnManager.h>
-#include <aoe/core/SystemUnspawnManager.h>
+#include <aoe/ecs/Entity.h>
+#include <aoe/ecs/EntityId.h>
+#include <aoe/ecs/SystemEntity.h>
+#include <aoe/ecs/SystemSpawnManager.h>
+#include <aoe/ecs/SystemUnspawnManager.h>
 #include <aoe/standard/Memory.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		using EntityMap = std::pmr::unordered_map<EntityId, sta::PolymorphicPtr<Entity>>;
 

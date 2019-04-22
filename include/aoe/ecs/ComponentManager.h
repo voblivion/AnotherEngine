@@ -4,14 +4,14 @@
 #include <typeindex>
 
 #include <aoe/Config.h>
-#include <aoe/core/Component.h>
+#include <aoe/ecs/Component.h>
 #include <aoe/standard/Allocator.h>
 #include <aoe/standard/Memory.h>
 #include <aoe/standard/VectorMap.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		class ComponentManager
 		{

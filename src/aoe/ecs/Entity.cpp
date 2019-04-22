@@ -1,9 +1,9 @@
-#include <aoe/core/Entity.h>
+#include <aoe/ecs/Entity.h>
 
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		// Public
 		Entity::Entity(EntityId const a_id,

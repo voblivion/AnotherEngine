@@ -1,8 +1,8 @@
-#include <aoe/core/SystemUnspawnManager.h>
+#include <aoe/ecs/SystemUnspawnManager.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		// Public
 		SystemUnspawnManager::SystemUnspawnManager(

@@ -3,15 +3,15 @@
 #include <typeindex>
 
 #include <unordered_set>
-#include <aoe/core/EntityManager.h>
-#include <aoe/core/WorldData.h>
+#include <aoe/ecs/EntityManager.h>
+#include <aoe/ecs/WorldData.h>
 #include <aoe/standard/ADynamicType.h>
 // TMP
 #include <iostream>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		struct ResourceAccess
 		{
@@ -37,13 +37,13 @@ namespace aoe
 namespace std
 {
 	template <>
-	struct hash<aoe::core::ResourceAccess>
+	struct hash<aoe::ecs::ResourceAccess>
 	{
 		std::size_t operator()(
-			aoe::core::ResourceAccess const& a_resourceAccess) const noexcept
+			aoe::ecs::ResourceAccess const& a_resourceAccess) const noexcept
 		{
 			return hash<std::type_index>{}(a_resourceAccess.m_resourceTypeIndex)
-				^ ~(hash<aoe::core::ResourceAccess::AccessType>{}(
+				^ ~(hash<aoe::ecs::ResourceAccess::AccessType>{}(
 					a_resourceAccess.m_accessType));
 		}
 	};
@@ -51,7 +51,7 @@ namespace std
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		template <typename Type>
 		ResourceAccess makeResourceAccess()

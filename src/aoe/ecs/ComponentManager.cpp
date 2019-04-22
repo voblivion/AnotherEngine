@@ -1,9 +1,9 @@
-#include <aoe/core/ComponentManager.h>
+#include <aoe/ecs/ComponentManager.h>
 
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		// Public
 		ComponentManager::ComponentManager(

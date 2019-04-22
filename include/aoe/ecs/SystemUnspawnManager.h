@@ -4,11 +4,11 @@
 #include <vector>
 
 #include <aoe/Config.h>
-#include <aoe/core/EntityId.h>
+#include <aoe/ecs/EntityId.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		class SystemUnspawnManager
 		{

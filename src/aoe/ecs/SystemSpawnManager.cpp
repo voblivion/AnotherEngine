@@ -1,8 +1,8 @@
-#include <aoe/core/SystemSpawnManager.h>
+#include <aoe/ecs/SystemSpawnManager.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		// Public
 		SystemSpawnManager::SystemSpawnManager(

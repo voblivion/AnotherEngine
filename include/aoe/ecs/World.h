@@ -1,14 +1,14 @@
 #pragma once
 
 #include <vector>
-#include <aoe/core/WorldData.h>
-#include <aoe/core/WorldDataProvider.h>
+#include <aoe/ecs/WorldData.h>
+#include <aoe/ecs/WorldDataProvider.h>
 #include <aoe/sync/ATask.h>
 #include <aoe/sync/MultiThreadWorker.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		namespace detail
 		{

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <aoe/core/EntityManager.h>
-#include <aoe/core/ComponentManager.h>
+#include <aoe/ecs/EntityManager.h>
+#include <aoe/ecs/ComponentManager.h>
 #include <aoe/standard/Allocator.h>
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		struct WorldData
 		{

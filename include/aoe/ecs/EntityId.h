@@ -4,7 +4,7 @@
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		using EntityId = std::uint64_t;
 	}

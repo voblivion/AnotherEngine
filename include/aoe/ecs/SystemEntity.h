@@ -1,12 +1,12 @@
 #pragma once
 #include <deque>
-#include <aoe/core/Entity.h>
-#include <aoe/core/EntityId.h>
+#include <aoe/ecs/Entity.h>
+#include <aoe/ecs/EntityId.h>
 
 
 namespace aoe
 {
-	namespace core
+	namespace ecs
 	{
 		namespace detail
 		{
