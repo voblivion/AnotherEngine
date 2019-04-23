@@ -15,16 +15,24 @@ namespace aoe
 		{
 		public:
 			// Constructors
+			MultiThreadWorker(MultiThreadWorker&&) = default;
+
+			MultiThreadWorker(MultiThreadWorker const&) = delete;
+
 			MultiThreadWorker(TaskList const& a_tasks
 				, MultiThreadSchedule const& a_schedule);
-			MultiThreadWorker(MultiThreadWorker&&) = default;
+
+			~MultiThreadWorker() = default;
 
 			// Methods
 			void update();
 
 			void stop();
 
+			// Operators
 			MultiThreadWorker& operator=(MultiThreadWorker&&) = default;
+
+			MultiThreadWorker& operator=(MultiThreadWorker const&) = delete;
 
 		private:
 			// Attributes

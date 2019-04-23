@@ -1,5 +1,7 @@
 #pragma once
+
 #include <memory>
+
 #include <aoe/core/standard/ADynamicType.h>
 #include <aoe/core/standard/Allocator.h>
 #include <aoe/core/standard/Memory.h>

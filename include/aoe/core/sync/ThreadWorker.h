@@ -24,8 +24,11 @@ namespace aoe
 		public:
 			// Constructors
 			ThreadWorker(ThreadWorker&&) = delete;
+
 			ThreadWorker(ThreadWorker const&) = delete;
-			ThreadWorker(TaskList const& a_tasks, ThreadSchedule const& a_schedule);
+
+			ThreadWorker(TaskList const& a_tasks
+				, ThreadSchedule const& a_schedule);
 
 			~ThreadWorker();
 
