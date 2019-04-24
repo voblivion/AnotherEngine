@@ -1,15 +1,15 @@
-#include <aoe/space/MoveSystem.h>
+#include <aoe/common/space/MoveSystem.h>
 
 #include <iostream>
 
 namespace aoe
 {
-	namespace space
+	namespace common
 	{
 		// Public
 		MoveSystem::MoveSystem(ecs::WorldDataProvider& a_worldDataProvider)
 			: m_worldTime{ *a_worldDataProvider.getWorldComponent<
-				time::TimeComponent>() }
+				TimeComponent>() }
 			, m_entities{ a_worldDataProvider.getEntityList<
 					TransformComponent, MoveComponent const>() }
 		{}

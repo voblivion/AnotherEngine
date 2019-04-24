@@ -1,11 +1,11 @@
 #pragma once
 
 #include <aoe/core/ecs/Component.h>
-#include <aoe/time/Chrono.h>
+#include <aoe/common/time/Chrono.h>
 
 namespace aoe
 {
-	namespace time
+	namespace common
 	{
 		struct TimeComponent final
 			: public ecs::ComponentDefaultImpl<TimeComponent>

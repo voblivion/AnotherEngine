@@ -1,14 +1,14 @@
 #pragma once
 
 #include <aoe/core/ecs/Component.h>
-#include <aoe/space/Export.h>
-#include <aoe/space/Vector.h>
+#include <aoe/common/Export.h>
+#include <aoe/common/space/Vector.h>
 
 namespace aoe
 {
-	namespace space
+	namespace common
 	{
-		struct AOE_SPACE_API TransformComponent final
+		struct AOE_COMMON_API TransformComponent final
 			: public ecs::ComponentDefaultImpl<TransformComponent>
 		{
 			Vector3 m_position;

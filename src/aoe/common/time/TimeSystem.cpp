@@ -1,8 +1,8 @@
-#include <aoe/time/TimeSystem.h>
+#include <aoe/common/time/TimeSystem.h>
 
 namespace aoe
 {
-	namespace time
+	namespace common
 	{
 		// Public
 		TimeSystem::TimeSystem(ecs::WorldDataProvider& a_worldDataProvider)

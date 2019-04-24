@@ -1,16 +1,16 @@
 #pragma once
 
+#include <aoe/common/Export.h>
+#include <aoe/common/time/TimeComponent.h>
 #include <aoe/core/ecs/System.h>
 #include <aoe/core/ecs/WorldDataProvider.h>
-#include <aoe/time/Export.h>
-#include <aoe/time/TimeComponent.h>
 
 
 namespace aoe
 {
-	namespace time
+	namespace common
 	{
-		class AOE_TIME_API TimeSystem final
+		class AOE_COMMON_API TimeSystem final
 			: public ecs::ASystem
 		{
 		public:

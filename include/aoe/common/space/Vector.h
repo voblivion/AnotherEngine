@@ -4,7 +4,7 @@
 
 namespace aoe
 {
-	namespace space
+	namespace common
 	{
 		using Vector2 = glm::vec2;
 		using Vector3 = glm::vec3;

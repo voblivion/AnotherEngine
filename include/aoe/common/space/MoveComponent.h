@@ -1,14 +1,14 @@
 #pragma once
 
+#include <aoe/common/Export.h>
+#include <aoe/common/space/Vector.h>
 #include <aoe/core/ecs/Component.h>
-#include <aoe/space/Export.h>
-#include <aoe/space/Vector.h>
 
 namespace aoe
 {
-	namespace space
+	namespace common
 	{
-		struct AOE_SPACE_API MoveComponent final
+		struct AOE_COMMON_API MoveComponent final
 			: public ecs::ComponentDefaultImpl<MoveComponent>
 		{
 			// Attributes

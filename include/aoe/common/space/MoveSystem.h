@@ -2,16 +2,16 @@
 
 #include <aoe/core/ecs/System.h>
 #include <aoe/core/ecs/WorldDataProvider.h>
-#include <aoe/space/Export.h>
-#include <aoe/space/MoveComponent.h>
-#include <aoe/space/TransformComponent.h>
-#include <aoe/time/TimeComponent.h>
+#include <aoe/common/Export.h>
+#include <aoe/common/space/MoveComponent.h>
+#include <aoe/common/space/TransformComponent.h>
+#include <aoe/common/time/TimeComponent.h>
 
 namespace aoe
 {
-	namespace space
+	namespace common
 	{
-		class AOE_SPACE_API MoveSystem final
+		class AOE_COMMON_API MoveSystem final
 			: public ecs::ASystem
 		{
 		public:
@@ -20,7 +20,7 @@ namespace aoe
 			virtual void update() const override;
 
 		private:
-			time::TimeComponent& m_worldTime;
+			TimeComponent& m_worldTime;
 			ecs::SystemEntityList<TransformComponent
 				, MoveComponent const> const& m_entities;
 		};
