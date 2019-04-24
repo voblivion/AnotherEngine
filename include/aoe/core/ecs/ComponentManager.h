@@ -42,7 +42,7 @@ namespace aoe
 			}
 
 			template <typename ComponentType>
-			void addComponent(ComponentType a_component)
+			void addComponent(ComponentType a_component = {})
 			{
 				assert(!hasComponent<ComponentType>());
 				auto const t_allocator = m_components.get_allocator();

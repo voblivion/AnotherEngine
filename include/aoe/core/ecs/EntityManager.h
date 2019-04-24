@@ -116,9 +116,7 @@ namespace aoe
 
 			AOE_CORE_API SystemUnspawnManager& getSystemUnspawnManager();
 
-			AOE_CORE_API void processSpawns();
-
-			AOE_CORE_API void processUnspawns();
+			AOE_CORE_API void update();
 
 			template <typename... ComponentTypes>
 			SystemEntityList<ComponentTypes...> const& getEntityList()
@@ -142,6 +140,11 @@ namespace aoe
 
 			std::pmr::vector<EntityId> m_frameUnspawns;
 			SystemUnspawnManager m_systemUnspawnManager;
+
+			// Methods
+			void processSpawns();
+
+			void processUnspawns();
 		};
 	}
 }

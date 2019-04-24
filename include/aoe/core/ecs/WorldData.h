@@ -10,12 +10,12 @@ namespace aoe
 	{
 		struct WorldData
 		{
-		public:
 			// Constructors
-			explicit WorldData(sta::Allocator<std::byte> const& a_allocator)
-				: m_worldComponents{ a_allocator }
-				, m_entityManager{ a_allocator }
-			{}
+			explicit AOE_CORE_API WorldData(
+				sta::Allocator<std::byte> const& a_allocator);
+
+			// Methods
+			void update();
 
 			// Attributes
 			bool m_shouldStop = false;

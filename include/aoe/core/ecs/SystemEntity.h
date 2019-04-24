@@ -25,8 +25,8 @@ namespace aoe
 			template <typename ComponentType>
 			struct Component {};
 
-			template <typename ComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<ComponentType, ComponentTypes...>
+			template <typename TComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<TComponentType, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -34,24 +34,24 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ *a_entity.getComponent<ComponentType>() }
+					, m_component{ *a_entity.getComponent<TComponentType>() }
 				{}
 
 				// Methods
-				using Base::get;
 
-				ComponentType& get(Component<ComponentType>) const
+				TComponentType& get(Component<TComponentType>) const
 				{
 					return m_component.get();
 				}
+				using Base::get;
 
 			private:
 				// Attributes
-				std::reference_wrapper<ComponentType> m_component;
+				std::reference_wrapper<TComponentType> m_component;
 			};
 
-			template <typename ComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<ComponentType*, ComponentTypes...>
+			template <typename TComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<TComponentType*, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -59,24 +59,24 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ a_entity.getComponent<ComponentType>() }
+					, m_component{ a_entity.getComponent<TComponentType>() }
 				{}
 
 				// Methods
-				using Base::get;
 
-				ComponentType* get(Component<ComponentType>) const
+				TComponentType* get(Component<TComponentType>) const
 				{
 					return m_component;
 				}
+				using Base::get;
 
 			private:
 				// Attributes
-				ComponentType* m_component;
+				TComponentType* m_component;
 			};
 
-			template <typename ComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<ComponentType const, ComponentTypes...>
+			template <typename TComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<TComponentType const, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -84,24 +84,24 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ *a_entity.getComponent<ComponentType>() }
+					, m_component{ *a_entity.getComponent<TComponentType>() }
 				{}
 
 				// Methods
-				using Base::get;
 
-				ComponentType const& get(Component<ComponentType>) const
+				TComponentType const& get(Component<TComponentType>) const
 				{
 					return m_component.get();
 				}
+				using Base::get;
 
 			private:
 				// Attributes
-				std::reference_wrapper<ComponentType const> m_component;
+				std::reference_wrapper<TComponentType const> m_component;
 			};
 
-			template <typename ComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<ComponentType const*, ComponentTypes...>
+			template <typename TComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<TComponentType const*, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -109,20 +109,20 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ a_entity.getComponent<ComponentType>() }
+					, m_component{ a_entity.getComponent<TComponentType>() }
 				{}
 
 				// Methods
-				using Base::get;
 
-				ComponentType const* get(Component<ComponentType>) const
+				TComponentType const* get(Component<TComponentType>) const
 				{
 					return m_component;
 				}
+				using Base::get;
 
 			private:
 				// Attributes
-				ComponentType const* m_component;
+				TComponentType const* m_component;
 			};
 		}
 
@@ -148,7 +148,9 @@ namespace aoe
 				return m_impl.get(detail::Component<ComponentType>{});
 			}
 
-		private:
+			
+
+		public:
 			// Attributes
 			EntityId const m_id;
 			detail::SystemEntityImpl<ComponentTypes...> m_impl;

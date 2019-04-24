@@ -56,15 +56,8 @@ namespace aoe
 				return m_tasks.size() - 1;
 			}
 
-			void start(sync::MultiThreadSchedule const& a_schedule) const
-			{
-				sync::MultiThreadWorker t_worldWorker{ m_tasks, a_schedule };
-				while (!m_data.m_shouldStop)
-				{
-					t_worldWorker.update();
-				}
-				t_worldWorker.stop();
-			}
+			AOE_CORE_API void start(
+				sync::MultiThreadSchedule const& a_schedule);
 
 			WorldData& getData()
 			{
