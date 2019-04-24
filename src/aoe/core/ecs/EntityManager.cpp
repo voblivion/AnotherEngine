@@ -24,6 +24,13 @@ namespace aoe
 			return m_systemUnspawnManager;
 		}
 
+		void EntityManager::update()
+		{
+			processUnspawns();
+
+			processSpawns();
+		}
+
 		void EntityManager::processSpawns()
 		{
 			for (auto& t_entity : m_frameSpawns)
