@@ -5,14 +5,19 @@ namespace aoe
 {
 	namespace ecs
 	{
-		WorldData::WorldData(sta::Allocator<std::byte> const& a_allocator)
-			: m_worldComponents{ a_allocator }
-			, m_entityManager{ a_allocator }
+		WorldData::WorldData(ComponentManager a_worldComponents)
+			: m_worldComponents{ std::move(a_worldComponents) }
+			, m_entityManager{ m_worldComponents.getAllocator() }
 		{}
 
 		void WorldData::update()
 		{
 			m_entityManager.update();
+		}
+
+		sta::Allocator<std::byte> WorldData::getAllocator() const
+		{
+			return m_worldComponents.getAllocator();
 		}
 	}
 }

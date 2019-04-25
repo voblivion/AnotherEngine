@@ -62,6 +62,8 @@ namespace aoe
 				return nullptr;
 			}
 
+			AOE_CORE_API sta::Allocator<std::byte> getAllocator() const;
+
 			// Operators
 			ComponentManager& operator=(ComponentManager&&) = default;
 			AOE_CORE_API ComponentManager& operator=(

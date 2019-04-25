@@ -13,6 +13,11 @@ namespace aoe
 			*this = a_componentManager;
 		}
 
+		sta::Allocator<std::byte> ComponentManager::getAllocator() const
+		{
+			return m_components.get_allocator();
+		}
+
 		ComponentManager& ComponentManager::operator=(
 			ComponentManager const& a_componentManager)
 		{

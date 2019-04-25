@@ -41,9 +41,9 @@ namespace aoe
 		{
 		public:
 			// Constructors
-			explicit World(sta::Allocator<std::byte> const& a_allocator)
-				: m_data{ a_allocator }
-				, m_tasks{ a_allocator }
+			explicit World(ComponentManager a_worldComponents)
+				: m_data{ std::move(a_worldComponents) }
+				, m_tasks{ m_data.getAllocator() }
 			{}
 
 			// Methods
@@ -56,8 +56,7 @@ namespace aoe
 				return m_tasks.size() - 1;
 			}
 
-			AOE_CORE_API void start(
-				sync::MultiThreadSchedule const& a_schedule);
+			AOE_CORE_API void start(sync::MultiThreadSchedule const& a_schedule);
 
 			WorldData& getData()
 			{

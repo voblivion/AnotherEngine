@@ -2,7 +2,6 @@
 
 #include <aoe/core/ecs/EntityManager.h>
 #include <aoe/core/ecs/ComponentManager.h>
-#include <aoe/core/standard/Allocator.h>
 
 namespace aoe
 {
@@ -11,11 +10,12 @@ namespace aoe
 		struct WorldData
 		{
 			// Constructors
-			explicit AOE_CORE_API WorldData(
-				sta::Allocator<std::byte> const& a_allocator);
+			explicit AOE_CORE_API WorldData(ComponentManager a_worldComponents);
 
 			// Methods
 			void update();
+
+			AOE_CORE_API sta::Allocator<std::byte> getAllocator() const;
 
 			// Attributes
 			bool m_shouldStop = false;
