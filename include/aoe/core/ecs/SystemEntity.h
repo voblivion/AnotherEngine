@@ -25,8 +25,8 @@ namespace aoe
 			template <typename ComponentType>
 			struct Component {};
 
-			template <typename TComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<TComponentType, ComponentTypes...>
+			template <typename ComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<ComponentType, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -34,12 +34,12 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ *a_entity.getComponent<TComponentType>() }
+					, m_component{ *a_entity.getComponent<ComponentType>() }
 				{}
 
 				// Methods
 
-				TComponentType& get(Component<TComponentType>) const
+				ComponentType& get(Component<ComponentType>) const
 				{
 					return m_component.get();
 				}
@@ -47,11 +47,11 @@ namespace aoe
 
 			private:
 				// Attributes
-				std::reference_wrapper<TComponentType> m_component;
+				std::reference_wrapper<ComponentType> m_component;
 			};
 
-			template <typename TComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<TComponentType*, ComponentTypes...>
+			template <typename ComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<ComponentType*, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -59,12 +59,12 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ a_entity.getComponent<TComponentType>() }
+					, m_component{ a_entity.getComponent<ComponentType>() }
 				{}
 
 				// Methods
 
-				TComponentType* get(Component<TComponentType>) const
+				ComponentType* get(Component<ComponentType>) const
 				{
 					return m_component;
 				}
@@ -72,11 +72,11 @@ namespace aoe
 
 			private:
 				// Attributes
-				TComponentType* m_component;
+				ComponentType* m_component;
 			};
 
-			template <typename TComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<TComponentType const, ComponentTypes...>
+			template <typename ComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<ComponentType const, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -84,12 +84,12 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ *a_entity.getComponent<TComponentType>() }
+					, m_component{ *a_entity.getComponent<ComponentType>() }
 				{}
 
 				// Methods
 
-				TComponentType const& get(Component<TComponentType>) const
+				ComponentType const& get(Component<ComponentType>) const
 				{
 					return m_component.get();
 				}
@@ -97,11 +97,11 @@ namespace aoe
 
 			private:
 				// Attributes
-				std::reference_wrapper<TComponentType const> m_component;
+				std::reference_wrapper<ComponentType const> m_component;
 			};
 
-			template <typename TComponentType, typename... ComponentTypes>
-			class SystemEntityImpl<TComponentType const*, ComponentTypes...>
+			template <typename ComponentType, typename... ComponentTypes>
+			class SystemEntityImpl<ComponentType const*, ComponentTypes...>
 				: public SystemEntityImpl<ComponentTypes...>
 			{
 				using Base = SystemEntityImpl<ComponentTypes...>;
@@ -109,12 +109,12 @@ namespace aoe
 				// Constructors
 				explicit SystemEntityImpl(Entity const& a_entity)
 					: Base{ a_entity }
-					, m_component{ a_entity.getComponent<TComponentType>() }
+					, m_component{ a_entity.getComponent<ComponentType>() }
 				{}
 
 				// Methods
 
-				TComponentType const* get(Component<TComponentType>) const
+				ComponentType const* get(Component<ComponentType>) const
 				{
 					return m_component;
 				}
@@ -122,7 +122,7 @@ namespace aoe
 
 			private:
 				// Attributes
-				TComponentType const* m_component;
+				ComponentType const* m_component;
 			};
 		}
 
