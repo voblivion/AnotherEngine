@@ -3,7 +3,7 @@
 #include <aoe/core/ecs/System.h>
 #include <aoe/core/ecs/WorldDataProvider.h>
 #include <aoe/common/Export.h>
-#include <aoe/common/space/MoveComponent.h>
+#include <aoe/common/space/VelocityComponent.h>
 #include <aoe/common/space/TransformComponent.h>
 #include <aoe/common/time/TimeComponent.h>
 
@@ -22,7 +22,7 @@ namespace aoe
 		private:
 			TimeComponent& m_worldTime;
 			ecs::SystemEntityList<TransformComponent
-				, MoveComponent const> const& m_entities;
+				, VelocityComponent const> const& m_entities;
 		};
 	}
 }

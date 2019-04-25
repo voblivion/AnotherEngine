@@ -8,12 +8,12 @@ namespace aoe
 {
 	namespace common
 	{
-		struct AOE_COMMON_API MoveComponent final
-			: public ecs::ComponentDefaultImpl<MoveComponent>
+		struct AOE_COMMON_API VelocityComponent final
+			: public ecs::ComponentDefaultImpl<VelocityComponent>
 		{
 			// Attributes
-			Vector3 m_direction{};
-			Vector3 m_rotation{};
+			Vector3 m_linear{};
+			Vector3 m_angular{};
 		};
 	}
 }

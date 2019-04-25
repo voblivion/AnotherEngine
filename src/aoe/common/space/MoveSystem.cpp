@@ -11,7 +11,7 @@ namespace aoe
 			: m_worldTime{ *a_worldDataProvider.getWorldComponent<
 				TimeComponent>() }
 			, m_entities{ a_worldDataProvider.getEntityList<
-					TransformComponent, MoveComponent const>() }
+					TransformComponent, VelocityComponent const>() }
 		{}
 
 		void MoveSystem::update() const
@@ -19,10 +19,11 @@ namespace aoe
 			for (auto const& entity : m_entities)
 			{
 				auto& transform = entity.getComponent<TransformComponent>();
-				auto const& move = entity.getComponent<MoveComponent>();
-				transform.m_position += move.m_direction
+				auto const& move = entity.getComponent<VelocityComponent>();
+				transform.m_position += move.m_linear
 					* m_worldTime.m_elapsedTime;
-				std::cout << transform.m_position.x << std::endl;
+				transform.m_orientation += move.m_angular
+					* m_worldTime.m_elapsedTime;
 			}
 		}
 	}
