@@ -49,10 +49,9 @@ namespace aoe
 					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 					glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-					// Ambient light
+					// TODO Lights
 					m_worldRenderDebug.shader->setUniform("u_ambientColor"
 						, glm::vec3{ 0.02f });
-
 					m_worldRenderDebug.shader->setUniform("u_lightPosition"
 						, glm::vec3{ 10.0f * std::sin(t), 20.0f, 10.0f * std::cos(t) });
 					t += 0.0002f;
@@ -83,15 +82,6 @@ namespace aoe
 					{
 						// Get model components
 						auto const& modelTransform = t_model.getComponent<TransformComponent>();
-						if (tt++ % 1000 == 0)
-						{
-							std::cout << modelTransform.m_position.x << " ";
-							std::cout << modelTransform.m_position.y << " ";
-							std::cout << modelTransform.m_position.z << std::endl;
-							std::cout << cameramanTransform.m_position.x << " ";
-							std::cout << cameramanTransform.m_position.y << " ";
-							std::cout << cameramanTransform.m_position.z << std::endl;
-						}
 						auto const& modelGraphic = t_model.getComponent<GraphicComponent>();
 
 						if (modelGraphic.m_model.isValid())
@@ -160,6 +150,7 @@ namespace aoe
 			ecs::SystemEntityList<TransformComponent const
 				, GraphicComponent const> const& m_modelList;
 
+			// TODO
 			mutable float t{ 2.0f };
 			mutable int tt{ 0 };
 		};
