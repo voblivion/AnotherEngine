@@ -18,6 +18,8 @@ namespace aoe
 
 			virtual sta::PolymorphicPtr<AComponent> clone(
 				std::pmr::memory_resource* a_resource) const = 0;
+
+			virtual void copyFrom(AComponent const& a_component) = 0;
 		};
 
 		template <typename ComponentType>
@@ -25,6 +27,7 @@ namespace aoe
 			: public AComponent
 		{
 		public:
+			// Methods
 			virtual std::size_t getCloneAllocationSize() const override
 			{
 				using Allocator = sta::Allocator<ComponentType>;
@@ -37,6 +40,13 @@ namespace aoe
 				return sta::allocatePolymorphic<ComponentType>(
 					sta::Allocator<ComponentType>{ a_resource }
 				, static_cast<ComponentType const&>(*this));
+			}
+
+			virtual void copyFrom(AComponent const& a_component) override
+			{
+				assert(typeid(a_component) == typeid(ComponentType));
+				static_cast<ComponentType&>(*this) =
+					static_cast<ComponentType const&>(a_component);
 			}
 		};
 	}
