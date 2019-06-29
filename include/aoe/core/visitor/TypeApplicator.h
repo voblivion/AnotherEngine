@@ -37,7 +37,7 @@ namespace aoe
 			// Constructor
 			TypeApplicator() = default;
 
-			explicit TypeApplicator(sta::Allocator const& a_allocator)
+			explicit TypeApplicator(sta::Allocator<std::byte> const& a_allocator)
 				: m_applicators{ a_allocator }
 			{}
 
