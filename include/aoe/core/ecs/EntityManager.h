@@ -17,9 +17,6 @@ namespace aoe
 	{
 		using EntityMap = std::pmr::unordered_map<EntityId, sta::PolymorphicPtr<Entity>>;
 
-		template <typename... ComponentTypes>
-		using SystemEntityList = std::pmr::deque<SystemEntity<ComponentTypes...>>;
-
 		namespace detail
 		{
 			template <typename... ComponentTypes>
@@ -52,57 +49,95 @@ namespace aoe
 					return SystemEntityTester<ComponentTypes...>::test(a_entity);
 				}
 			};
-
-			struct AListHolder
-				: public sta::ADynamicType
-			{
-				// Methods
-				virtual void onEntityAdded(Entity const& a_entity) = 0;
-				virtual void onEntityRemoved(EntityId const a_id) = 0;
-			};
-
-			template <typename... ComponentTypes>
-			struct ListHolder final
-				: public AListHolder
-			{
-				// Attributes
-				SystemEntityList<ComponentTypes...> m_list;
-
-				// Constructor
-				explicit ListHolder(EntityMap const& a_entities)
-					: m_list{ a_entities.get_allocator() }
-					, m_entityIndexes{ a_entities.get_allocator() }
-				{
-					for (auto& t_pair : a_entities)
-					{
-						ListHolder::onEntityAdded(*t_pair.second);
-					}
-				}
-
-				// Methods
-				virtual void onEntityAdded(Entity const& a_entity) override
-				{
-					if (SystemEntityTester<ComponentTypes...>::test(a_entity))
-					{
-						m_entityIndexes.emplace(a_entity.getId(), m_list.size());
-						m_list.emplace_back(a_entity);
-					}
-				}
-
-				virtual void onEntityRemoved(EntityId const a_id) override
-				{
-					auto const t_it = m_entityIndexes.find(a_id);
-					if (t_it != m_entityIndexes.end())
-					{
-						m_entityIndexes.erase(t_it);
-					}
-				}
-
-			private:
-				// Attributes
-				std::pmr::unordered_map<EntityId, std::size_t> m_entityIndexes;
-			};
 		}
+
+		struct ASystemEntityList
+			: public sta::ADynamicType
+		{
+			// Methods
+			virtual void onEntityAdded(Entity const& a_entity) = 0;
+			virtual void onEntityRemoved(EntityId const a_id) = 0;
+		};
+
+		template <typename... ComponentTypes>
+		struct SystemEntityList final
+			: public ASystemEntityList
+		{
+			// Attributes
+			std::pmr::deque<SystemEntity<ComponentTypes...>> m_list;
+			std::pmr::unordered_map<EntityId, std::size_t> m_entityIndexes;
+
+			// Constructor
+			explicit SystemEntityList(EntityMap const& a_entities)
+				: m_list{ a_entities.get_allocator() }
+				, m_entityIndexes{ a_entities.get_allocator() }
+			{
+				for (auto& t_pair : a_entities)
+				{
+					SystemEntityList::onEntityAdded(*t_pair.second);
+				}
+			}
+
+			// Methods
+			virtual void onEntityAdded(Entity const& a_entity) override
+			{
+				if (detail::SystemEntityTester<ComponentTypes...>::test(a_entity))
+				{
+					m_entityIndexes.emplace(a_entity.getId(), m_list.size());
+					m_list.emplace_back(a_entity);
+				}
+			}
+
+			virtual void onEntityRemoved(EntityId const a_id) override
+			{
+				auto const t_it = m_entityIndexes.find(a_id);
+				if (t_it != m_entityIndexes.end())
+				{
+					m_entityIndexes.erase(t_it);
+				}
+			}
+
+			bool empty() const
+			{
+				return m_list.empty();
+			}
+
+			auto begin()
+			{
+				return m_list.begin();
+			}
+
+			auto begin() const
+			{
+				return m_list.begin();
+			}
+
+			auto const& front() const
+			{
+				return *begin();
+			}
+
+			auto end()
+			{
+				return m_list.end();
+			}
+
+			auto end() const
+			{
+				return m_list.end();
+			}
+
+			SystemEntity<ComponentTypes...> const* find(
+				EntityId const a_id) const
+			{
+				auto const t_it = m_entityIndexes.find(a_id);
+				if (t_it != m_entityIndexes.end())
+				{
+					return &m_list[t_it->second];
+				}
+				return nullptr;
+			}
+		};
 
 		class EntityManager
 		{
@@ -121,10 +156,10 @@ namespace aoe
 			template <typename... ComponentTypes>
 			SystemEntityList<ComponentTypes...> const& getEntityList()
 			{
-				auto t_listHolder = sta::allocatePolymorphic<detail::ListHolder<
+				auto t_listHolder = sta::allocatePolymorphic<SystemEntityList<
 					ComponentTypes...>>(m_systemEntityLists.get_allocator()
 						, m_entities);
-				auto& t_list = t_listHolder->m_list;
+				auto& t_list = *t_listHolder;
 				m_systemEntityLists.emplace_back(std::move(t_listHolder));
 				return t_list;
 			}
@@ -133,7 +168,7 @@ namespace aoe
 			// Attributes
 			EntityMap m_entities;
 			std::pmr::deque<sta::PolymorphicPtr<
-				detail::AListHolder>> m_systemEntityLists;
+				ASystemEntityList>> m_systemEntityLists;
 
 			std::pmr::vector<sta::PolymorphicPtr<Entity>> m_frameSpawns;
 			SystemSpawnManager m_systemSpawnManager;

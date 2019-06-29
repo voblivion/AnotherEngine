@@ -8,7 +8,8 @@ namespace aoe
 {
 	namespace ecs
 	{
-		class Entity : public ComponentManager
+		class Entity final
+		: public ComponentManager
 		{
 		public:
 			// Constructors
