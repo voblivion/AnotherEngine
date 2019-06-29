@@ -5,7 +5,7 @@
 #include <vector>
 #include <aoe/core/visitor/Utils.h>
 #include <aoe/core/standard/VectorMap.h>
-#include <aoe/core/standard/DefaultFactory.h>
+#include <aoe/core/type/Factory.h>
 
 namespace aoe
 {
@@ -40,7 +40,7 @@ namespace aoe
 			, WriterType<VisitorType>* = nullptr>
 			void makeVisit(VisitorType& a_visitor, std::unordered_map<KeyType
 				, ValueType, HashType, KeyEqType, AllocatorType>& a_map
-				, sta::DefaultFactory<std::pair<KeyType, ValueType>> a_defaultFactory = {})
+				, type::Factory<std::pair<KeyType, ValueType>> a_defaultFactory = {})
 		{
 			SizeTag t_size{};
 			a_visitor.visit(t_size);
@@ -73,7 +73,7 @@ namespace aoe
 			, WriterType<VisitorType>* = nullptr>
 			void makeVisit(VisitorType& a_visitor, sta::VectorMap<KeyType
 				, ValueType, AllocatorType>& a_map
-				, sta::DefaultFactory<std::pair<KeyType, ValueType>> a_defaultFactory = {})
+				, type::Factory<std::pair<KeyType, ValueType>> a_defaultFactory = {})
 		{
 			SizeTag t_size{};
 			a_visitor.visit(t_size);
@@ -91,7 +91,7 @@ namespace aoe
 			, WriterType<VisitorType>* = nullptr>
 		void makeVisit(VisitorType& a_visitor
 			, std::vector<ValueType, AllocatorType>& a_container
-			, sta::DefaultFactory<ValueType> a_defaultFactory = {})
+			, type::Factory<ValueType> a_defaultFactory = {})
 		{
 			SizeTag t_size{};
 			a_visitor.visit(t_size);

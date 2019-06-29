@@ -13,8 +13,9 @@ namespace aoe
 		{
 		public:
 			// Constructors
-			explicit Loader(WriterType a_visitorWriter)
-				: m_visitorWriter{ std::move(a_visitorWriter) }
+			template <typename... Args>
+			explicit Loader(Args&&... a_args)
+				: m_visitorWriter{ std::forward<Args>(a_args)... }
 			{}
 
 			// Methods
