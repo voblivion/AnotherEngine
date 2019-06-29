@@ -5,6 +5,7 @@
 
 #include <aoe/core/data/Id.h>
 #include <aoe/core/data/ADatabase.h>
+#include <aoe/core/type/Factory.h>
 
 namespace aoe
 {
@@ -18,10 +19,20 @@ namespace aoe
 				: m_database{ a_database }
 			{}
 
+			explicit Handle(ADatabase& a_database, Id const a_id)
+				: m_database{ a_database }
+				, m_id{ a_id }
+			{}
+
+			ADatabase& getDatabase() const
+			{
+				return m_database;
+			}
+
 			template <typename Visitor>
 			void accept(Visitor& a_visitor)
 			{
-				a_visitor.visit("id", m_id);
+				a_visitor.visit(m_id);
 				tryUnload();
 			}
 
@@ -33,7 +44,7 @@ namespace aoe
 
 			void tryLoad() const
 			{
-				m_data = m_database.find<DataType>(m_id);
+				m_data = getDatabase().find<DataType>(m_id);
 				m_isDirty = false;
 			}
 
@@ -71,9 +82,27 @@ namespace aoe
 
 		private:
 			mutable bool m_isDirty{ true };
-			ADatabase& m_database;
+			std::reference_wrapper<ADatabase> m_database;
 			Id m_id{};
 			mutable std::shared_ptr<DataType> m_data{};
+		};
+	}
+
+	namespace type
+	{
+		template <typename DataType>
+		struct Factory<data::Handle<DataType>>
+		{
+			explicit Factory(data::ADatabase& a_database)
+				: m_database{ a_database }
+			{}
+
+			data::Handle<DataType> operator()() const
+			{
+				return data::Handle<DataType>{ m_database };
+			}
+
+			data::ADatabase& m_database;
 		};
 	}
 }

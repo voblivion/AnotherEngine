@@ -7,6 +7,7 @@
 #include <aoe/core/data/Cache.h>
 #include <aoe/core/data/FormattedInputStream.h>
 #include <aoe/core/data/Id.h>
+#include <aoe/core/standard/IgnorableAssert.h>
 
 namespace aoe
 {
@@ -91,6 +92,7 @@ namespace aoe
 				{
 					auto const t_it = m_loaders.find(
 						t_formattedInputStream->getFormat());
+					ignorableAssert(t_it != m_loaders.end());
 					if (t_it != m_loaders.end())
 					{
 						return t_it->second.get().load(
