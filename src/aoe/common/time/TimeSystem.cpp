@@ -18,6 +18,7 @@ namespace aoe
 				m_worldTime.m_frameDuration = currentTime
 					- m_worldTime.m_frameStartTime;
 				m_worldTime.m_elapsedTime = m_worldTime.m_frameDuration.count();
+				m_worldTime.m_elapsedTime = std::min(0.1f, m_worldTime.m_elapsedTime);
 			}
 			m_worldTime.m_frameStartTime = currentTime;
 		}
