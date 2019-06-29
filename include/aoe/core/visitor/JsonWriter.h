@@ -21,9 +21,9 @@ namespace rapidjson
 
 namespace aoe
 {
-	namespace rjs = rapidjson;
 	namespace visitor
 	{
+		namespace rjs = rapidjson;
 		class JsonWriter
 		{
 			// Aliases
@@ -37,6 +37,7 @@ namespace aoe
 		public:
 			// Using
 			static const AccessType accessType = AccessType::Writer;
+			static const VisitType visitType = VisitType::Random;
 
 			// Constructors
 			explicit JsonWriter(sta::TypeFactory const& a_typeFactory)
@@ -60,6 +61,14 @@ namespace aoe
 				m_valueStack.emplace(t_document);
 				processVisit(a_value);
 				m_valueStack.pop();
+			}
+
+			template <typename ValueType>
+			bool visit(ValueType&& a_value)
+			{
+				processVisit(std::forward<ValueType>(a_value));
+
+				return true;
 			}
 
 			template <typename ValueType>
