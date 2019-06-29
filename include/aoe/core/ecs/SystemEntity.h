@@ -148,9 +148,7 @@ namespace aoe
 				return m_impl.get(detail::Component<ComponentType>{});
 			}
 
-			
-
-		public:
+		private:
 			// Attributes
 			EntityId const m_id;
 			detail::SystemEntityImpl<ComponentTypes...> m_impl;
