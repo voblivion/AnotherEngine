@@ -61,6 +61,9 @@ namespace aoe
 				: ResourceAccess::AccessType::Write };
 		}
 
+		template <typename... ComponentTypes>
+		struct ComponentTypeList {};
+
 		// ReSharper disable once CppClassCanBeFinal
 		class WorldDataProvider
 			: public sta::ADynamicType
@@ -90,6 +93,13 @@ namespace aoe
 			{
 				onGetEntityList({ makeResourceAccess<ComponentTypes>()... });
 				return m_worldData.m_entityManager.getEntityList<ComponentTypes...>();
+			}
+
+			template <typename... ComponentTypes>
+			SystemEntityList<ComponentTypes...> const& getEntityList(
+				ComponentTypeList<ComponentTypes...> const&)
+			{
+				return getEntityList<ComponentTypes...>();
 			}
 
 			SystemSpawnManager& getSpawnManager()
