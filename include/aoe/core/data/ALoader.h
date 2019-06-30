@@ -1,14 +1,14 @@
 #pragma once
 
 #include <memory>
-
+#include <aoe/core/Export.h>
 #include <aoe/core/standard/ADynamicType.h>
 
 namespace aoe
 {
 	namespace data
 	{
-		class ALoader
+		class AOE_CORE_API ALoader
 			: public sta::ADynamicType
 		{
 		public:
