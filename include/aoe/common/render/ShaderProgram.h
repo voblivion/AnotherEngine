@@ -7,6 +7,9 @@
 #include <aoe/core/standard/ADynamicType.h>
 #include <aoe/core/data/ADatabase.h>
 #include <aoe/core/data/Handle.h>
+#include <aoe/core/visitor/Utils.h>
+#include "aoe/core/visitor/Aggregate.h"
+
 #include <aoe/common/render/Shader.h>
 
 namespace aoe
@@ -14,59 +17,50 @@ namespace aoe
 	namespace common
 	{
 		class ShaderProgram final
-			: public sta::ADynamicType
+			: public vis::Aggregate<ShaderProgram, sta::ADynamicType>
 		{
 		public:
+			// Constructors
 			explicit ShaderProgram(data::ADatabase& a_database)
 				: m_vertexShader{ a_database }
 				, m_fragmentShader{ a_database }
-			{
-				m_openglId = glCreateProgram();
-			}
-			ShaderProgram(ShaderProgram&&) = delete; // TODO
-			ShaderProgram(ShaderProgram const&) = delete;
-
-			~ShaderProgram()
-			{
-				glDeleteProgram(m_openglId);
-			}
-
-			template <typename VisitorType>
-			void accept(VisitorType& a_visitor)
-			{
-				a_visitor.visit("Vertex Shader", m_vertexShader);
-				a_visitor.visit("Fragment Shader", m_fragmentShader);
-				m_isDirty = true;
-			}
+			{}
 
 			// Methods
-			bool isValid() const
+			void compile()
 			{
-				if (m_isDirty)
+				if(!m_vertexShader.isValid()
+					&& m_vertexShader->m_glShader.isValid())
 				{
-					compile();
+					return;
 				}
-				std::int32_t t_success;
-				glGetProgramiv(m_openglId, GL_LINK_STATUS, &t_success);
+				if(!m_fragmentShader.isValid()
+					&& m_fragmentShader->m_glShader.isValid())
+				{
+					return;
+				}
+				m_glProgram.tryCreate();
 
-				// TODO remove
-				if (!t_success)
+				glAttachShader(m_glProgram.m_id, m_vertexShader->m_glShader.m_id);
+				glAttachShader(m_glProgram.m_id, m_fragmentShader->m_glShader.m_id);
+				glLinkProgram(m_glProgram.m_id);
 				{
-					char infoLog[512];
-					int s;
-					glGetProgramInfoLog(m_openglId, 512, &s, infoLog);
-					std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+					std::int32_t t_success;
+					glGetProgramiv(m_glProgram.m_id, GL_COMPILE_STATUS, &t_success);
+					ignorableAssert(t_success != 0);
+					if (!t_success)
+					{
+						std::array<char, 512> t_errorLog{};
+						glGetProgramInfoLog(m_glProgram.m_id, t_errorLog.size(), nullptr
+							, t_errorLog.data());
+						std::cerr << t_errorLog.data() << std::endl;
+					}
 				}
-				return t_success == GL_TRUE;
 			}
 
-			void use() const
+			std::int32_t getUniformLocation(std::string_view a_name) const
 			{
-				if (m_isDirty)
-				{
-					compile();
-				}
-				glUseProgram(m_openglId);
+				return glGetUniformLocation(m_glProgram.m_id, a_name.data());
 			}
 
 			void setUniform(std::string_view const a_name, bool const a_value) const
@@ -115,38 +109,37 @@ namespace aoe
 					, 1, GL_FALSE, glm::value_ptr(a_value));
 			}
 
-			// Operators
-			ShaderProgram& operator=(ShaderProgram&&) = delete; // TODO
-			ShaderProgram& operator=(ShaderProgram const&) = delete;
-
-		private:
-			// Attributes
-			std::uint32_t m_openglId;
-			mutable bool m_isDirty = false;
-			data::Handle<VertexShader> m_vertexShader;
-			// DataHandle<Shader> m_geometryShader;
-			data::Handle<FragmentShader> m_fragmentShader;
-
-			// Methods
-			void compile() const
+			template <typename VisitorType>
+			void accept(VisitorType& a_visitor)
 			{
-				if (m_vertexShader.isValid() && m_vertexShader->isValid())
-				{
-					glAttachShader(m_openglId, m_vertexShader->getOpenglId());
-				}
-				if (m_fragmentShader.isValid() && m_fragmentShader->isValid())
-				{
-					glAttachShader(m_openglId, m_fragmentShader->getOpenglId());
-				}
-				glLinkProgram(m_openglId);
-				m_vertexShader.tryUnload();
-				m_fragmentShader.tryUnload();
-				m_isDirty = false;
+				a_visitor.visit(vis::makeNameValuePair("Vertex Shader"
+					, m_vertexShader));
+				a_visitor.visit(vis::makeNameValuePair("Fragment Shader"
+					, m_fragmentShader));
+				compile();
 			}
 
-			std::int32_t getUniformLocation(std::string_view a_name) const
+			// Attributes
+			gl::Program m_glProgram;
+			data::Handle<VertexShader> m_vertexShader;
+			// data::Handle<Shader> m_geometryShader;
+			data::Handle<FragmentShader> m_fragmentShader;
+
+		private:
+			// Methods
+			void postAccept()
 			{
-				return glGetUniformLocation(m_openglId, a_name.data());
+				compile();
+			}
+
+			friend class vis::Aggregate<ShaderProgram, sta::ADynamicType>;
+			template <typename VisitorType, typename ThisType>
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
+			{
+				a_visitor.visit(vis::makeNameValuePair("Vertex Shader"
+					, a_this.m_vertexShader));
+				a_visitor.visit(vis::makeNameValuePair("Fragment Shader"
+					, a_this.m_fragmentShader));
 			}
 		};
 	}

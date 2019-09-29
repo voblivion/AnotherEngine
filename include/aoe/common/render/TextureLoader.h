@@ -17,8 +17,9 @@ namespace aoe
 		{
 		public:
 			// Constructors
-			explicit TextureLoader(sta::Allocator<char> const& a_allocator)
-				: m_allocator{ a_allocator }
+			explicit TextureLoader(std::pmr::memory_resource* a_resource
+				= std::pmr::get_default_resource())
+				: m_resource{ a_resource }
 			{}
 
 			// Methods
@@ -45,13 +46,13 @@ namespace aoe
 				sf::Texture t_texture;
 				t_texture.loadFromMemory(&t_source[0], t_source.size());
 
-				return sta::allocatePolymorphic<Texture>(m_allocator
+				return sta::allocatePolymorphicWith<Texture>(m_resource
 					, std::move(t_texture));
 			}
 
 		private:
 			// Attributes
-			sta::Allocator<char> m_allocator;
+			std::pmr::memory_resource* m_resource;
 		};
 	}
 }

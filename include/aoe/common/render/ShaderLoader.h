@@ -18,8 +18,9 @@ namespace aoe
 		{
 		public:
 			// Constructors
-			explicit ShaderLoader(sta::Allocator<char> const& a_allocator)
-				: m_allocator{ a_allocator }
+			explicit ShaderLoader(std::pmr::memory_resource* a_resource
+				= std::pmr::get_default_resource())
+				: m_resource{ a_resource }
 			{}
 
 			// Methods
@@ -28,14 +29,15 @@ namespace aoe
 			{
 				std::pmr::string t_shaderSource{
 					std::istreambuf_iterator<char>(a_inputStream)
-					, {}, m_allocator };
-				return sta::allocatePolymorphic<ShaderType>(m_allocator
-					, t_shaderSource);
+					, {}, m_resource };
+				auto r_shader = sta::allocatePolymorphicWith<ShaderType>(m_resource);
+				r_shader->loadFrom(t_shaderSource);
+				return r_shader;
 			}
 
 		private:
 			// Attributes
-			sta::Allocator<char> m_allocator;
+			std::pmr::memory_resource* m_resource;
 		};
 	}
 }

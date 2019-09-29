@@ -8,9 +8,9 @@ namespace aoe
 	namespace common
 	{
 		struct DirectorComponent final
-			: public ecs::ComponentDefaultImpl<DirectorComponent>
+			: public ecs::AComponent
 		{
-			ecs::EntityId m_currentCameraman{ ecs::g_invalidEntityId };
+			ecs::EntityId m_currentCamera{ ecs::g_invalidEntityId };
 		};
 	}
 }

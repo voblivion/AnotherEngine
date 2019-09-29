@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <fstream>
 #include <string>
 #include <unordered_map>
@@ -7,86 +8,81 @@
 #include <aoe/core/data/FormattedInputStream.h>
 #include <aoe/core/visitor/Standard.h>
 
-namespace aoe
+namespace aoe::common
 {
-	namespace common
+	class FormattedFile
 	{
-		class FormattedFile
+	public:
+		// Methods
+		template <typename Visitor>
+		void accept(Visitor& a_visitor)
 		{
-		public:
-			// Methods
-			template <typename Visitor>
-			void accept(Visitor& a_visitor)
-			{
-				a_visitor.visit("format_id", m_format);
-				a_visitor.visit("binary", m_binary);
-				a_visitor.visit("file_name", m_name);
-			}
+			a_visitor.visit(vis::makeNameValuePair("format_id", m_format));
+			a_visitor.visit(vis::makeNameValuePair("binary", m_binary));
+			a_visitor.visit(vis::makeNameValuePair("file_name", m_name));
+		}
 
-			data::FormatId getFormat() const
-			{
-				return m_format;
-			}
-
-			bool isBinary() const
-			{
-				return m_binary;
-			}
-
-			std::pmr::string const& getName() const
-			{
-				return m_name;
-			}
-
-		private:
-			// Attributes
-			data::FormatId m_format = 0;
-			bool m_binary = true;
-			std::pmr::string m_name;
-		};
-
-		class FileIndexer
+		data::FormatId getFormat() const
 		{
-		public:
-			// Aliases
-			using FormattedFileMap = std::pmr::unordered_map<data::Id, FormattedFile>;
-			using AllocatorType = FormattedFileMap::allocator_type;
+			return m_format;
+		}
 
-			// Constructors
-			FileIndexer() = default;
+		bool isBinary() const
+		{
+			return m_binary;
+		}
 
-			explicit FileIndexer(AllocatorType const& a_allocator)
-				: m_formattedFiles{ a_allocator }
-			{}
+		std::pmr::string const& getName() const
+		{
+			return m_name;
+		}
 
-			// Methods
-			template <typename Visitor>
-			void accept(Visitor& a_visitor)
-			{
-				a_visitor.visit("data", m_formattedFiles);
-			}
+	private:
+		// Attributes
+		data::FormatId m_format = 0;
+		bool m_binary = true;
+		std::pmr::string m_name;
+	};
 
-			sta::PolymorphicPtr<data::AFormattedInputStream> find(
-				data::Id const a_dataId) const
-			{
-				using InputStream = data::FormattedInputStream<std::ifstream>;
+	class FileIndexer
+	{
+	public:
+		// Aliases
+		using FormattedFileMap = std::pmr::unordered_map<data::Id, FormattedFile>;
+		using AllocatorType = FormattedFileMap::allocator_type;
 
-				auto const t_it = m_formattedFiles.find(a_dataId);
-				if (t_it != m_formattedFiles.end())
-				{
-					auto const t_openMode = t_it->second.isBinary()
-						? std::ios::binary | std::ios::in : std::ios::in;
-					return sta::allocatePolymorphic<InputStream>(
-						m_formattedFiles.get_allocator()
-						, t_it->second.getFormat()
-						, std::ifstream{ t_it->second.getName().data()
-							, t_openMode });
-				}
-				return nullptr;
-			}
+		// Constructors
+		FileIndexer() = default;
 
-		private:
-			FormattedFileMap m_formattedFiles;
-		};
-	}
+		explicit FileIndexer(AllocatorType const& a_allocator)
+			: m_formattedFiles{ a_allocator }
+		{}
+
+		// Methods
+		template <typename Visitor>
+		void accept(Visitor& a_visitor)
+		{
+			a_visitor.visit(vis::makeNameValuePair("data", m_formattedFiles));
+		}
+
+		FormattedFile const* find(data::Id const a_dataId) const
+		{
+			auto const t_it = m_formattedFiles.find(a_dataId);
+			return t_it != m_formattedFiles.end() ? &t_it->second : nullptr;
+		}
+
+		void set(data::Id const a_dataId, FormattedFile a_formattedFile)
+		{
+			m_formattedFiles.emplace(a_dataId, std::move(a_formattedFile));
+		}
+
+		void set(data::Id const a_dataId
+			, FormattedFile const& a_formattedFile)
+		{
+			m_formattedFiles.emplace(a_dataId, a_formattedFile);
+		}
+
+	private:
+		FormattedFileMap m_formattedFiles;
+	};
 }

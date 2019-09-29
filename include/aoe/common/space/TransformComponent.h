@@ -1,6 +1,7 @@
 #pragma once
 
 #include <aoe/core/ecs/Component.h>
+#include <aoe/core/visitor/Aggregate.h>
 #include <aoe/common/space/Vector.h>
 #include <aoe/common/space/Quaternion.h>
 
@@ -13,18 +14,19 @@ namespace aoe
 		const Vector3 up = Vector3{ 0.0f, 0.0f, 1.0f };
 
 		struct TransformComponent final
-			: public ecs::ComponentDefaultImpl<TransformComponent>
+			: public vis::Aggregate<TransformComponent, ecs::AComponent>
 		{
 			// Attributes
 			Vector3 m_position{};
 			Quaternion m_rotation{ 1.0f, 0.0f, 0.0f, 0.0f };
 
-			// Methods
-			template <typename VisitorType>
-			void accept(VisitorType& a_visitor)
+		private:
+			friend class vis::Aggregate<TransformComponent, ecs::AComponent>;
+			template <typename VisitorType, typename ThisType>
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
-				a_visitor.visit("Position", m_position);
-				a_visitor.visit("Rotation", m_rotation);
+				a_visitor.visit(vis::makeNameValuePair("Position", a_this.m_position));
+				a_visitor.visit(vis::makeNameValuePair("Rotation", a_this.m_rotation));
 			}
 		};
 	}

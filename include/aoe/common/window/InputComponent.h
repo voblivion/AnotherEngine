@@ -9,7 +9,7 @@ namespace aoe
 	namespace common
 	{
 		struct InputComponent final
-			: public ecs::ComponentDefaultImpl<InputComponent>
+			: public ecs::AComponent
 		{
 			Keyboard m_keyboard;
 			Mouse m_mouse;

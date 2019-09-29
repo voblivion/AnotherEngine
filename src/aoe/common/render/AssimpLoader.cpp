@@ -9,9 +9,10 @@ namespace aoe
 	namespace common
 	{
 		std::pmr::vector<Vertex> extractVertices(
-			sta::Allocator<std::byte>& a_allocator, aiMesh const& a_meshData)
+			std::pmr::memory_resource* a_resource, aiMesh const& a_meshData)
 		{
-			std::pmr::vector<Vertex> t_vertices{ a_allocator };
+			std::pmr::vector<Vertex> t_vertices{
+				sta::Allocator<Vertex>{ a_resource } };
 			t_vertices.reserve(a_meshData.mNumVertices);
 			if (a_meshData.mTextureCoords[0] != nullptr)
 			{
@@ -39,13 +40,14 @@ namespace aoe
 			return t_vertices;
 		}
 
-		Mesh extractMesh(sta::Allocator<std::byte>& a_allocator
+		Mesh extractMesh(std::pmr::memory_resource* a_resource
 			, aiMesh const& a_meshData)
 		{
-			auto t_vertices = extractVertices(a_allocator, a_meshData);
+			auto t_vertices = extractVertices(a_resource, a_meshData);
 
 			// Load faces, only triangles supported
-			std::pmr::vector<std::uint32_t> t_faces{ a_allocator };
+			std::pmr::vector<std::uint32_t> t_faces{
+				sta::Allocator<std::uint32_t>{ a_resource } };
 			t_faces.reserve(a_meshData.mNumFaces * 3u);
 			for (auto k = 0u; k < a_meshData.mNumFaces; ++k)
 			{
@@ -60,22 +62,22 @@ namespace aoe
 			return Mesh{ std::move(t_vertices), std::move(t_faces) };
 		}
 
-		Model extractModel(sta::Allocator<std::byte>& a_allocator
+		Model extractModel(std::pmr::memory_resource* a_resource
 			, aiScene const& a_sceneData)
 		{
-			std::pmr::vector<Mesh> t_meshes{ a_allocator };
+			std::pmr::vector<Mesh> t_meshes{ sta::Allocator<Mesh>{ a_resource} };
 			t_meshes.reserve(a_sceneData.mNumMeshes);
 			for (auto k = 0u; k < a_sceneData.mNumMeshes; ++k)
 			{
-				t_meshes.emplace_back(extractMesh(a_allocator
+				t_meshes.emplace_back(extractMesh(a_resource
 					, *a_sceneData.mMeshes[k]));
 			}
 
 			return Model{ std::move(t_meshes) };
 		}
 
-		AssimpLoader::AssimpLoader(sta::Allocator<std::byte> const& a_allocator)
-			: m_allocator{ a_allocator }
+		AssimpLoader::AssimpLoader(std::pmr::memory_resource* a_resource)
+			: m_resource{ a_resource }
 		{}
 
 		std::shared_ptr<sta::ADynamicType> AssimpLoader::load(
@@ -96,8 +98,8 @@ namespace aoe
 					return nullptr;
 				}
 
-			return sta::allocatePolymorphic<Model>(m_allocator
-				, extractModel(m_allocator, *scene));
+			return sta::allocatePolymorphicWith<Model>(m_resource
+				, extractModel(m_resource, *scene));
 		}
 	}
 }

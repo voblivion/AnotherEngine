@@ -150,7 +150,7 @@ namespace aoe
 
 		private:
 			// Attributes
-			EntityId const m_id;
+			EntityId m_id;
 			detail::SystemEntityImpl<ComponentTypes...> m_impl;
 		};
 	}

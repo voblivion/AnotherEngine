@@ -18,7 +18,7 @@ namespace aoe
 				std::pmr::vector<sta::PolymorphicPtr<Entity>>& a_frameSpawns);
 
 			// Methods
-			AOE_CORE_API Entity& spawn(ComponentManager const& a_componentManager);
+			AOE_CORE_API Entity& spawn(ComponentManager a_componentManager);
 
 		private:
 			// Attributes

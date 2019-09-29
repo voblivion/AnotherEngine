@@ -15,11 +15,13 @@ namespace aoe
 		class MoveSystem final
 		{
 		public:
+			using Components = ecs::ComponentTypeList<TransformComponent
+				, VelocityComponent const>;
+
 			explicit MoveSystem(ecs::WorldDataProvider& a_worldDataProvider)
 				: m_worldTime{ *a_worldDataProvider.getWorldComponent<
 					TimeComponent>() }
-				, m_entities{ a_worldDataProvider.getEntityList<
-						TransformComponent, VelocityComponent const>() }
+				, m_entities{ a_worldDataProvider.getEntityList(*this, Components{}) }
 			{}
 
 			void update() const
@@ -38,7 +40,7 @@ namespace aoe
 
 		private:
 			TimeComponent& m_worldTime;
-			ecs::SystemEntityList<TransformComponent
+			ecs::SystemEntityList<MoveSystem, TransformComponent
 				, VelocityComponent const> const& m_entities;
 		};
 	}

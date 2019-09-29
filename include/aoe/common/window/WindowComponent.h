@@ -7,7 +7,7 @@ namespace aoe
 	namespace common
 	{
 		class WindowComponent final
-			: public ecs::ComponentDefaultImpl<WindowComponent>
+			: public ecs::AComponent
 		{
 		public:
 			// Attributes

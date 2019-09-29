@@ -36,6 +36,12 @@ namespace aoe
 				tryUnload();
 			}
 
+			template <typename Visitor>
+			void accept(Visitor& a_visitor) const
+			{
+				a_visitor.visit(m_id);
+			}
+
 			void setId(Id const a_id)
 			{
 				m_id = a_id;
@@ -78,6 +84,16 @@ namespace aoe
 			DataType const* operator->() const
 			{
 				return m_data.get();
+			}
+
+			bool operator==(std::nullptr_t) const
+			{
+				return isValid();
+			}
+
+			bool operator!=(std::nullptr_t) const
+			{
+				return !isValid();
 			}
 
 		private:

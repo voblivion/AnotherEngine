@@ -4,55 +4,35 @@
 
 #include <aoe/core/standard/ADynamicType.h>
 
-namespace aoe
+namespace aoe::data
 {
-	namespace data
+	using FormatId = std::uint64_t;
+
+	template <typename InputStreamType>
+	class FormattedInputStream final
 	{
-		using FormatId = std::uint64_t;
+	public:
+		// Constructors
+		explicit FormattedInputStream(FormatId const a_formatId
+			, InputStreamType a_inputStream)
+			: m_formatId{ a_formatId }
+			, m_inputStream{ std::move(a_inputStream) }
+		{}
 
-		class AFormattedInputStream
-			: public sta::ADynamicType
+		// Methods
+		FormatId getFormat() const
 		{
-		public:
-			// Constructors
-			explicit AFormattedInputStream(FormatId const a_formatId)
-				: m_formatId{ a_formatId }
-			{}
+			return m_formatId;
+		}
 
-			// Methods
-			FormatId getFormat() const
-			{
-				return m_formatId;
-			}
-
-			virtual std::istream& getInputStream() = 0;
-
-		private:
-			// Attributes
-			FormatId m_formatId;
-		};
-
-		template <typename InputStreamType>
-		class FormattedInputStream final
-			: public AFormattedInputStream
+		std::istream& getInputStream()
 		{
-		public:
-			// Constructors
-			explicit FormattedInputStream(FormatId const a_formatId
-				, InputStreamType a_inputStream)
-				: AFormattedInputStream{ a_formatId }
-				, m_inputStream{ std::move(a_inputStream) }
-			{}
+			return m_inputStream;
+		}
 
-			// Methods
-			virtual std::istream& getInputStream() override
-			{
-				return m_inputStream;
-			}
-
-		private:
-			// Attributes
-			InputStreamType m_inputStream;
-		};
-	}
+	private:
+		// Attributes
+		FormatId m_formatId;
+		InputStreamType m_inputStream;
+	};
 }

@@ -15,6 +15,7 @@ namespace aoe
 			class VectorMap
 			: public std::vector<std::pair<KeyType const, ValueType>, AllocatorType>
 		{
+			// Aliases
 			using Base = std::vector<std::pair<KeyType const, ValueType>
 				, AllocatorType>;
 		public:
@@ -28,6 +29,14 @@ namespace aoe
 			// Methods
 			using Base::begin;
 			using Base::end;
+
+			decltype(auto) find(KeyType const& a_key)
+			{
+				return std::find_if(begin(), end(), [&a_key](auto const& a_pair)
+				{
+					return a_pair.first == a_key;
+				});
+			}
 
 			decltype(auto) find(KeyType const& a_key) const
 			{

@@ -5,7 +5,7 @@
 
 namespace aoe
 {
-	namespace visitor
+	namespace vis
 	{
 		template <typename WriterType>
 		class Loader final

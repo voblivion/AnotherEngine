@@ -9,17 +9,18 @@ namespace aoe
 {
 	namespace common
 	{
-		struct AOE_COMMON_API VelocityComponent final
-			: public ecs::ComponentDefaultImpl<VelocityComponent>
+		struct VelocityComponent final
+			: public vis::Aggregate<VelocityComponent, ecs::AComponent>
 		{
 			// Attributes
 			glm::vec3 m_linear{};
 			glm::quat m_angular{};
 
 			// Methods
-			template <typename VisitorType>
+			friend class vis::Aggregate<VelocityComponent, ecs::AComponent>;
+			template <typename VisitorType, typename ThisType>
 			// ReSharper disable once CppMemberFunctionMayBeStatic
-			void accept(VisitorType& a_visitor)
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
 
 			}

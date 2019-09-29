@@ -7,7 +7,7 @@ namespace aoe
 	namespace common
 	{
 		struct CursorComponent final
-			: public ecs::ComponentDefaultImpl<CursorComponent>
+			: public ecs::AComponent
 		{
 			bool m_center = false;
 			bool m_visible = true;

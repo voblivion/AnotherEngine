@@ -1,22 +1,23 @@
 #pragma once
 #include <aoe/core/ecs/Component.h>
-
+#include <aoe/core/visitor/Aggregate.h>
 
 namespace aoe
 {
 	namespace common
 	{
 		struct CameraComponent final
-			: public ecs::ComponentDefaultImpl<CameraComponent>
+			: public vis::Aggregate<CameraComponent, ecs::AComponent>
 		{
 			float fov{ 50.0f };
 			float nearClip{ 0.1f };
 			float farClip{ 1000.0f };
 
 			// Methods
-			template <typename VisitorType>
+			friend class vis::Aggregate<CameraComponent, ecs::AComponent>;
+			template <typename VisitorType, typename ThisType>
 			// ReSharper disable once CppMemberFunctionMayBeStatic
-			void accept(VisitorType& a_visitor)
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
 
 			}

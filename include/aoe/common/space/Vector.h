@@ -35,25 +35,36 @@ namespace aoe
 		}
 	}
 
-	namespace visitor
+	namespace vis
 	{
-		template <typename VisitorType, typename ValueType
-			, glm::qualifier Qualifier>
-			void makeVisit(VisitorType& a_visitor
-				, glm::vec<2, ValueType, Qualifier>& a_vector)
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, aoe::common::Vector2& a_vector)
 		{
-			a_visitor.visit("X", a_vector.x);
-			a_visitor.visit("Y", a_vector.y);
+			a_visitor.visit(vis::makeNameValuePair("X", a_vector.x));
+			a_visitor.visit(vis::makeNameValuePair("Y", a_vector.y));
 		}
 
-		template <typename VisitorType, typename ValueType
-			, glm::qualifier Qualifier>
-			void makeVisit(VisitorType& a_visitor
-				, glm::vec<3, ValueType, Qualifier>& a_vector)
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, aoe::common::Vector2 const& a_vector)
 		{
-			a_visitor.visit("X", a_vector.x);
-			a_visitor.visit("Y", a_vector.y);
-			a_visitor.visit("Z", a_vector.z);
+			a_visitor.visit(vis::makeNameValuePair("X", a_vector.x));
+			a_visitor.visit(vis::makeNameValuePair("Y", a_vector.y));
+		}
+
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, aoe::common::Vector3& a_vector)
+		{
+			a_visitor.visit(vis::makeNameValuePair("X", a_vector.x));
+			a_visitor.visit(vis::makeNameValuePair("Y", a_vector.y));
+			a_visitor.visit(vis::makeNameValuePair("Z", a_vector.z));
+		}
+
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, aoe::common::Vector3 const& a_vector)
+		{
+			a_visitor.visit(vis::makeNameValuePair("X", a_vector.x));
+			a_visitor.visit(vis::makeNameValuePair("Y", a_vector.y));
+			a_visitor.visit(vis::makeNameValuePair("Z", a_vector.z));
 		}
 	}
 }

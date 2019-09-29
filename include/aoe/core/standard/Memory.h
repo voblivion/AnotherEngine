@@ -6,6 +6,7 @@
 
 #include <aoe/core/standard/Allocator.h>
 #include <aoe/core/standard/ADynamicType.h>
+#include "Traits.h"
 
 namespace aoe
 {
@@ -20,24 +21,25 @@ namespace aoe
 				// Methods
 				virtual void* getPtr() noexcept = 0;
 				virtual void destroy() noexcept = 0;
+				virtual std::pmr::memory_resource* getResource() = 0;
 			};
 
-			template <typename Type, typename Allocator>
+			template <typename Type>
 			class PolymorphicBlock final
 				: public APolymorphicBlock
 			{
 				// Aliases
 				using Storage = std::aligned_union_t<1, Type>;
-				using Block = PolymorphicBlock<Type, Allocator>;
-				using BlockAllocator = RebindAlloc<Allocator, Block>;
-				using AllocatorTraits = std::allocator_traits<BlockAllocator>;
+				using Block = PolymorphicBlock<Type>;
+				using Allocator = Allocator<Block>;
+				using AllocatorTraits = std::allocator_traits<Allocator>;
 
 			public:
 				// Constructors
 				template <typename... Args>
-				explicit PolymorphicBlock(Allocator const& a_allocator
+				explicit PolymorphicBlock(std::pmr::memory_resource* a_resource
 					, Args&&... a_args)
-					: m_allocator{ std::move(a_allocator) }
+					: m_allocator{ a_resource }
 				{
 					// ReSharper disable All
 					::new (static_cast<void*>(&m_storage))
@@ -59,14 +61,18 @@ namespace aoe
 				virtual void destroy() noexcept override
 				{
 					getTypePtr()->~Type();
-					BlockAllocator t_allocator{ m_allocator };
-					AllocatorTraits::destroy(t_allocator, this);
-					AllocatorTraits::deallocate(t_allocator, this, 1);
+					AllocatorTraits::destroy(m_allocator, this);
+					AllocatorTraits::deallocate(m_allocator, this, 1);
+				}
+
+				virtual std::pmr::memory_resource* getResource() override
+				{
+					return m_allocator.resource();
 				}
 
 			private:
 				// Attributes
-				BlockAllocator m_allocator;
+				Allocator m_allocator;
 				Storage m_storage;
 			};
 		}
@@ -79,6 +85,16 @@ namespace aoe
 			explicit PolymorphicDeleter(detail::APolymorphicBlock* a_polymorphicBlock)
 				: m_polymorphicBlock{ a_polymorphicBlock }
 			{}
+
+			// Methods
+			std::pmr::memory_resource* getResource() const
+			{
+				if (m_polymorphicBlock != nullptr)
+				{
+					return m_polymorphicBlock->getResource();
+				}
+				return nullptr;
+			}
 
 			// Operators
 			void operator()(void* a_ptr)
@@ -97,38 +113,41 @@ namespace aoe
 		template <typename Type>
 		using PolymorphicPtr = std::unique_ptr<Type, PolymorphicDeleter>;
 
-		template <typename Type, typename Allocator>
-		std::size_t getPolymorphicAllocationSize()
-		{
-			return sizeof(detail::PolymorphicBlock<Type, Allocator>);
-		}
-
-		template <typename Type, typename Allocator, typename... Args>
-		PolymorphicPtr<Type> allocatePolymorphic(Allocator const& a_allocator
+		template <typename Type, typename... Args>
+		PolymorphicPtr<Type> allocatePolymorphicWith(
+			std::pmr::memory_resource* a_resource
 			, Args&&... a_args)
 		{
-			using Block = detail::PolymorphicBlock<Type, Allocator>;
-			using BlockAllocator = RebindAlloc<Allocator, Block>;
-			using BlockAllocatorTraits = std::allocator_traits<BlockAllocator>;
+			using Block = detail::PolymorphicBlock<Type>;
+			using Allocator = Allocator<Block>;
+			using AllocatorTraits = std::allocator_traits<Allocator>;
 
 			// Allocate block
-			BlockAllocator t_allocator{ a_allocator };
-			auto const t_block = BlockAllocatorTraits::allocate(t_allocator, 1);
+			Allocator t_allocator{ a_resource };
+			auto const t_block = AllocatorTraits::allocate(t_allocator, 1);
 
 			// Construct block
 			try
 			{
-				BlockAllocatorTraits::construct(t_allocator, t_block
-					, a_allocator, std::forward<Args>(a_args)...);
+				AllocatorTraits::construct(t_allocator, t_block
+					, a_resource, std::forward<Args>(a_args)...);
 			}
 			catch (...)
 			{
-				BlockAllocatorTraits::deallocate(t_allocator, t_block, 1);
+				AllocatorTraits::deallocate(t_allocator, t_block, 1);
 				throw;
 			}
 
 			return PolymorphicPtr<Type>{t_block->getTypePtr()
 				, PolymorphicDeleter{ t_block } };
+		}
+
+		template <typename Type, typename... Args>
+		auto allocatePolymorphic(Args&&... a_args)
+		{
+			return allocatePolymorphicWith<Type, Args...>(
+				std::pmr::get_default_resource()
+				, std::forward<Args>(a_args)...);
 		}
 
 		template <typename TargetType, typename SourceType>

@@ -12,14 +12,14 @@ namespace aoe
 		{
 			assert(!a_schedule.empty());
 
-			auto const& t_allocator = m_threadWorkers.get_allocator();
+			auto const t_resource = m_threadWorkers.get_allocator().resource();
 			m_threadWorkers.reserve(a_schedule.size() - 1);
 			auto t_it = a_schedule.begin();
 			while (++t_it != a_schedule.end())
 			{
 				m_threadWorkers.emplace_back(
-					sta::allocatePolymorphic<ThreadWorker>(
-						t_allocator, a_tasks, *t_it));
+					sta::allocatePolymorphicWith<ThreadWorker>(
+						t_resource, a_tasks, *t_it));
 			}
 		}
 

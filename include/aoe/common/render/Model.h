@@ -19,8 +19,9 @@ namespace aoe
 			glm::vec2 m_textureCoordinates;
 
 			// Constructors
-			explicit Vertex(glm::vec3 a_position, glm::vec3 a_normal
-				, glm::vec2 a_textureCoordinate)
+			explicit Vertex(glm::vec3 const& a_position
+				, glm::vec3 const& a_normal
+				, glm::vec2 const& a_textureCoordinate)
 				: m_position{ a_position }
 				, m_normal{ a_normal }
 				, m_textureCoordinates{ a_textureCoordinate }

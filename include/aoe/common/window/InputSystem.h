@@ -6,6 +6,7 @@
 #include "InputComponent.h"
 #include "CursorComponent.h"
 #include <iomanip>
+#include <aoe/common/imgui/imgui_sfml.h>
 
 namespace aoe
 {
@@ -42,6 +43,7 @@ namespace aoe
 				sf::Event event{};
 				while (m_worldWindow.getWindow().pollEvent(event))
 				{
+					// ImGui::SFML::ProcessEvent(event);
 					switch (event.type)
 					{
 					case sf::Event::MouseButtonPressed:

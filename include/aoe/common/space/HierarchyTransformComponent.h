@@ -9,7 +9,7 @@ namespace aoe
 	namespace common
 	{
 		struct HierarchyTransformComponent final
-			: public ecs::ComponentDefaultImpl<HierarchyTransformComponent>
+			: public vis::Aggregate<HierarchyTransformComponent, ecs::AComponent>
 		{
 			// Attributes
 			Vector3 m_oldPosition{};
@@ -17,9 +17,10 @@ namespace aoe
 			bool m_processed{ true };
 
 			// Methods
-			template <typename VisitorType>
+			friend class vis::Aggregate<HierarchyTransformComponent, ecs::AComponent>;
+			template <typename VisitorType, typename ThisType>
 			// ReSharper disable once CppMemberFunctionMayBeStatic
-			void accept(VisitorType& a_visitor)
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
 			}
 		};

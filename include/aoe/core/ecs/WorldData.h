@@ -10,7 +10,8 @@ namespace aoe
 		struct WorldData
 		{
 			// Constructors
-			explicit AOE_CORE_API WorldData(ComponentManager a_worldComponents);
+			explicit AOE_CORE_API WorldData(
+				ComponentManager a_worldComponents);
 
 			// Methods
 			void update();

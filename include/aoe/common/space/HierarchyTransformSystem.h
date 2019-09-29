@@ -15,7 +15,7 @@ namespace aoe
 				, TransformComponent, HierarchyTransformComponent>;
 
 			explicit HierarchyTransformSystem(ecs::WorldDataProvider& a_worldDataProvider)
-				: m_entities{ a_worldDataProvider.getEntityList(Components{}) }
+				: m_entities{ a_worldDataProvider.getEntityList(*this, Components{}) }
 			{}
 
 			void update() const
@@ -51,7 +51,8 @@ namespace aoe
 
 		private:
 			// Attributes
-			ecs::SystemEntityList<HierarchyComponent const*, TransformComponent
+			ecs::SystemEntityList<HierarchyTransformSystem
+				, HierarchyComponent const*, TransformComponent
 				, HierarchyTransformComponent> const& m_entities;
 
 			using Entity = ecs::SystemEntity<HierarchyComponent const*

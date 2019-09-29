@@ -1,151 +1,119 @@
 #pragma once
+
 #include <cinttypes>
-#include <aoe/core/standard/Memory.h>
-#include <aoe/core/standard/PropagateConst.h>
-#include <aoe/core/standard/IgnorableAssert.h>
+#include <string_view>
 
 namespace aoe
 {
-	namespace visitor
+	namespace vis
 	{
-		enum class AccessType
-		{
-			Reader,
-			Writer
-		};
-
-		template <typename VisitorType>
-		using ReaderType = std::enable_if_t<
-			VisitorType::accessType == AccessType::Reader>;
-
-		template <typename VisitorType>
-		using WriterType = std::enable_if_t<
-			VisitorType::accessType == AccessType::Writer>;
-
-		enum class VisitType
-		{
-			Sequential,
-			Random
-		};
-
-		template <typename VisitorType>
-		using SequentialType = std::enable_if_t<
-			VisitorType::visitType == VisitType::Sequential>;
-
-		template <typename VisitorType>
-		using RandomType = std::enable_if_t<
-			VisitorType::visitType == VisitType::Random>;
-
-		template <typename VisitorType, typename ObjectType>
-		using AcceptType = std::enable_if_t<std::is_invocable_r_v<
-			void
-			, decltype(&ObjectType::accept)
-			, ObjectType*
-			, VisitorType&>>;
-
-		template <typename VisitorType, typename ObjectType>
-		using TemplateAcceptType = std::enable_if_t<
-			std::is_invocable_r_v<
-			void
-			, decltype(&ObjectType::template accept<VisitorType>)
-			, ObjectType*
-			, VisitorType&>>;
-
-		template <typename VisitorType, typename ObjectType, typename Enable = void>
-		struct IsVisitable : std::false_type {};
-
-		template <typename VisitorType, typename ObjectType>
-		struct IsVisitable<VisitorType, ObjectType
-			, AcceptType<VisitorType, ObjectType>> : std::true_type{};
-
-		template <typename VisitorType, typename ObjectType>
-		struct IsVisitable<VisitorType, ObjectType
-			, TemplateAcceptType<VisitorType, ObjectType>> : std::true_type{};
-
-		template <typename VisitorType, typename ValueType>
-		using VisitableType = std::enable_if_t<IsVisitable<VisitorType, ValueType>::value>;
-
-		template <typename VisitorType, typename ValueType
-			, VisitableType<VisitorType, ValueType>* = nullptr>
-		void makeVisit(VisitorType& a_visitor, ValueType& a_value)
-		{
-			a_value.accept(a_visitor);
-		}
-
 		struct SizeTag
 		{
 		public:
+			// Constructor
 			explicit SizeTag(std::size_t const a_size = 0)
 				: m_size{ a_size }
 			{}
 
+			// Attributes
 			std::size_t m_size;
 		};
+
+		template <typename ValueType>
+		struct IndexValuePair
+		{
+			using Type = std::conditional_t<std::is_lvalue_reference_v<ValueType>
+				, ValueType, std::remove_reference_t<ValueType>>;
+
+		public:
+			// Attributes
+			std::size_t m_index;
+			ValueType& m_value;
+
+			// Constructor
+			IndexValuePair(std::size_t const a_index, Type&& a_value)
+				: m_index{ a_index }
+				, m_value{ std::forward<Type>(a_value) }
+			{}
+		};
+
+		template <typename ValueType>
+		IndexValuePair<ValueType> makeIndexValuePair(std::size_t const a_index
+			, ValueType&& a_value)
+		{
+			return { a_index, std::forward<ValueType>(a_value) };
+		}
+
+		template <typename ValueType>
+		struct NameValuePair
+		{
+			using Type = std::conditional_t<std::is_lvalue_reference_v<ValueType>
+				, ValueType, std::remove_reference_t<ValueType>>;
+
+		public:
+			// Attributes
+			std::string_view m_name;
+			ValueType& m_value;
+			
+			// Constructor
+            NameValuePair(std::string_view a_name, Type&& a_value)
+                : m_name{ a_name }
+                , m_value{ std::forward<Type>(a_value) }
+            {}
+		};
+
+		template <typename ValueType>
+		NameValuePair<ValueType> makeNameValuePair(std::string_view const a_name
+			, ValueType&& a_value)
+		{
+			return { a_name, std::forward<ValueType>(a_value) };
+		}
+
+		template <typename ValueType>
+		NameValuePair<ValueType> nvp(std::string_view const a_name
+			, ValueType&& a_value)
+		{
+			return { a_name, std::forward<ValueType>(a_value) };
+		}
 
 		template <typename BaseType>
 		struct DynamicValue
 		{
-		public:
-			// ReSharper disable once CppNonExplicitConvertingConstructor
-			DynamicValue(BaseType& a_value)
+			// Constructor
+			explicit DynamicValue(BaseType& a_value)
 				: m_value{ a_value }
 			{}
 
+			// Attributes
 			BaseType& m_value;
 		};
 
 		template <typename BaseType>
 		DynamicValue<BaseType> makeDynamicValue(BaseType& a_value)
 		{
-			return { a_value };
+			return DynamicValue<BaseType>{ a_value };
 		}
 
-		template <typename VisitorType>
-		std::uint64_t visitTypeId(VisitorType& a_visitor)
+		template <typename ContainerType, typename FactoryType>
+		struct ContainerHolder
 		{
-			std::uint64_t t_id;
-			a_visitor.visit("type_id", t_id);
-			return t_id;
-		}
+			// Constructor
+			explicit ContainerHolder(ContainerType& a_container, FactoryType a_factory)
+				: m_container{ a_container }
+				, m_factory{ std::move(a_factory) }
+			{}
 
-		template <typename VisitorType, typename PointerType>
-		void visitData(VisitorType& a_visitor, PointerType& a_ptr)
+			// Attributes
+			ContainerType& m_container;
+			FactoryType m_factory;
+		};
+
+		template <typename ContainerType, typename FactoryType>
+		ContainerHolder<ContainerType, FactoryType> makeContainerHolder(
+			ContainerType& a_container, FactoryType a_factory)
 		{
-			ignorableAssert(a_ptr != nullptr);
-			if (a_ptr != nullptr)
-			{
-				a_visitor.visit("data", makeDynamicValue(*a_ptr));
-			}
-		}
-
-		template <typename VisitorType, typename BaseType>
-		void makeVisit(VisitorType& a_visitor, sta::PolymorphicPtr<BaseType>& a_ptr)
-		{
-
-			auto t_id = visitTypeId(a_visitor);
-
-			auto& t_typeFactory = a_visitor.getTypeFactory();
-			a_ptr = t_typeFactory.template create<BaseType>(t_id);
-
-			visitData(a_visitor, a_ptr);
-		}
-
-		template <typename VisitorType, typename BaseType>
-			void makeVisit(VisitorType& a_visitor, std::shared_ptr<BaseType>& a_ptr)
-		{
-			auto t_id = visitTypeId(a_visitor);
-
-			auto& t_typeFactory = a_visitor.getTypeFactory();
-			a_ptr = t_typeFactory.template createShared<BaseType>(t_id);
-
-			visitData(a_visitor, a_ptr);
-		}
-
-		template <typename VisitorType, typename BaseType>
-		void makeVisit(VisitorType& a_visitor, DynamicValue<BaseType> const& a_value)
-		{
-			auto& t_typeVisitorApplicator = a_visitor.getApplicator();
-			t_typeVisitorApplicator.apply(a_visitor, a_value.m_value);
+			return ContainerHolder<ContainerType, FactoryType>{ a_container
+				, std::move(a_factory) };
 		}
 	}
 }

@@ -1,105 +1,51 @@
 #pragma once
 
+#include <array>
+#include <iostream>
 #include <string>
+
 #include <GL/glew.h>
+
 #include <aoe/core/standard/ADynamicType.h>
 #include <aoe/core/standard/IgnorableAssert.h>
-// TODO
-#include <iostream>
+
+#include <aoe/common/render/GlObjects.h>
 
 namespace aoe
 {
 	namespace common
 	{
-		class Shader
+		template <GLenum shaderType>
+		struct Shader final
 			: public sta::ADynamicType
 		{
-		public:
-			// Aliases
-			enum class Type
+			void loadFrom(std::string_view const a_source)
 			{
-				Vertex,
-				Geometry,
-				Fragment
-			};
-
-			// Constructors
-			Shader(Type const a_type, std::string_view const a_source)
-			{
-				switch (a_type)
-				{
-				case Type::Vertex:
-					m_openglId = glCreateShader(GL_VERTEX_SHADER);
-					break;
-				case Type::Geometry:
-					m_openglId = glCreateShader(GL_GEOMETRY_SHADER);
-					break;
-				case Type::Fragment:
-					m_openglId = glCreateShader(GL_FRAGMENT_SHADER);
-					break;
-				}
-
-				auto t_sourceStr = a_source.data();
+				m_glShader.tryCreate();
+				auto t_sourceCStr = a_source.data();
 				auto t_sourceSize = static_cast<std::int32_t>(a_source.size());
-				glShaderSource(m_openglId, 1, &t_sourceStr, &t_sourceSize);
-				glCompileShader(m_openglId);
-
-				// TODO remove
-				std::int32_t t_success;
-				glGetShaderiv(m_openglId, GL_COMPILE_STATUS, &t_success);
-				ignorableAssert(t_success);
-				if (!t_success)
+				glShaderSource(m_glShader.m_id, 1, &t_sourceCStr, &t_sourceSize);
+				glCompileShader(m_glShader.m_id);
 				{
-					char infoLog[512];
-					int s;
-					glGetShaderInfoLog(m_openglId, 512, &s, infoLog);
-					std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+					std::int32_t t_success;
+					glGetShaderiv(m_glShader.m_id, GL_COMPILE_STATUS, &t_success);
+					ignorableAssert(t_success != 0);
+					if (!t_success)
+					{
+						std::array<char, 512> t_errorLog{};
+						glGetShaderInfoLog(m_glShader.m_id, t_errorLog.size(), nullptr
+							, t_errorLog.data());
+						std::cerr << t_errorLog.data() << std::endl;
+						m_glShader.release();
+					}
 				}
 			}
 
-			Shader(Shader&&) = delete; // TODO
-			Shader(Shader const&) = delete;
-
-			~Shader()
-			{
-				glDeleteShader(m_openglId);
-			}
-
-			// Methods
-			bool isValid() const
-			{
-				std::int32_t t_success;
-				glGetShaderiv(m_openglId, GL_COMPILE_STATUS, &t_success);
-				return t_success == GL_TRUE;
-			}
-
-			std::uint32_t getOpenglId() const
-			{
-				return m_openglId;
-			}
-
-			// Operators
-			Shader& operator=(Shader&&) = delete; // TODO
-			Shader& operator=(Shader const&) = delete;
-
-		private:
-			// Attributes
-			std::uint32_t m_openglId = 0;
+			gl::Shader<shaderType> m_glShader;
 		};
 
-		template <Shader::Type type>
-		class SpecialShader final
-			: public Shader
-		{
-		public:
-			// Constructors
-			explicit SpecialShader(std::string_view const a_source)
-				: Shader{ type, a_source }
-			{}
-		};
-
-		using VertexShader = SpecialShader<Shader::Type::Vertex>;
-		using GeometryShader = SpecialShader<Shader::Type::Geometry>;
-		using FragmentShader = SpecialShader<Shader::Type::Fragment>;
+		using VertexShader = Shader<GL_VERTEX_SHADER>;
+		using GeometryShader = Shader<GL_GEOMETRY_SHADER>;
+		using FragmentShader = Shader<GL_FRAGMENT_SHADER>;
 	}
 }

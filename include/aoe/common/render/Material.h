@@ -9,7 +9,7 @@ namespace aoe
 	namespace common
 	{
 		struct Material final
-			: public sta::ADynamicType
+			: public vis::Aggregate<Material, sta::ADynamicType>
 		{
 			// Attributes
 			data::Handle<Texture> m_diffuse;
@@ -21,12 +21,16 @@ namespace aoe
 				, m_specular{ a_database }
 			{}
 
+		private:
 			// Methods
-			template <typename VisitorType>
-			void accept(VisitorType& a_visitor)
+			friend class vis::Aggregate<Material, sta::ADynamicType>;
+			template <typename VisitorType, typename ThisType>
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
-				a_visitor.visit("Diffuse Texture", m_diffuse);
-				a_visitor.visit("Specular Texture", m_specular);
+				a_visitor.visit(vis::makeNameValuePair("Diffuse Texture"
+					, a_this.m_diffuse));
+				a_visitor.visit(vis::makeNameValuePair("Specular Texture"
+					, a_this.m_specular));
 			}
 		};
 	}

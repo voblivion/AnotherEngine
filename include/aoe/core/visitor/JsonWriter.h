@@ -5,48 +5,37 @@
 #include <stack>
 #include <string>
 #include <type_traits>
+#include "aoe/core/type/Applicator.h"
 
-#define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_NO_SIZETYPEDEFINE 1
-namespace rapidjson
-{
-	typedef std::size_t SizeType;
-}
-#include <rapidjson/document.h>
-#include <rapidjson/istreamwrapper.h>
+#include <aoe/core/json/JsonLoader.h>
 
 #include <aoe/core/standard/TypeFactory.h>
 #include <aoe/core/visitor/Utils.h>
-#include <aoe/core/visitor/TypeApplicator.h>
-
+#include <aoe/core/visitor/VisitorBase.h>
+#include <aoe/core/visitor/Applicator.h>
 namespace aoe
 {
-	namespace visitor
+	namespace json
 	{
-		namespace rjs = rapidjson;
 		class JsonWriter
+			: public vis::InputVisitorBase<JsonWriter>
 		{
 			// Aliases
-			using JsonValue = rjs::Document::ValueType;
+			using Base = vis::InputVisitorBase<JsonWriter>;
+
+			using Allocator = sta::Allocator<std::byte>;
+			using JsonValue = json::JsonValue<>;
 			using JsonValueConstRef = std::reference_wrapper<JsonValue const>;
-			using TypeVisitorApplicator = TypeApplicator<JsonWriter>;
 			using JsonValueDeque = std::pmr::deque<JsonValueConstRef>;
 			using JsonValueStack = std::stack<JsonValueConstRef, JsonValueDeque>;
-			using Allocator = sta::Allocator<std::byte>;
 
 		public:
-			// Using
-			static const AccessType accessType = AccessType::Writer;
-			static const VisitType visitType = VisitType::Random;
-
 			// Constructors
-			explicit JsonWriter(sta::TypeFactory const& a_typeFactory)
-				: m_typeFactory{ a_typeFactory }
-			{}
-
-			explicit JsonWriter(sta::TypeFactory const& a_typeFactory
-				, Allocator const& a_allocator)
-				: m_typeFactory{ a_typeFactory }
+			explicit JsonWriter(sta::TypeRegistry const& a_typeRegistry
+				, sta::TypeFactory const& a_typeFactory
+				, Allocator const& a_allocator = {})
+				: Base{ a_typeRegistry, a_typeFactory, a_allocator }
+				, m_allocator{ a_allocator }
 				, m_valueStack{ a_allocator }
 			{}
 
@@ -54,133 +43,127 @@ namespace aoe
 			template <typename ValueType>
 			void load(std::istream& a_inputStream, ValueType& a_value)
 			{
+				json::JsonLoader<> t_jsonLoader{};
+				auto t_document = t_jsonLoader.loadFrom(a_inputStream);
+				load(t_document, a_value);
+			}
+
+			template <typename ValueType>
+			void load(JsonValue const& a_entryNode, ValueType& a_value)
+			{
 				assert(m_valueStack.empty());
-				rjs::Document t_document;
-				rjs::IStreamWrapper t_inputStream{ a_inputStream };
-				t_document.ParseStream(t_inputStream);
-				m_valueStack.emplace(t_document);
-				processVisit(a_value);
+				m_valueStack.emplace(a_entryNode);
+				visit(a_value);
 				m_valueStack.pop();
 			}
 
-			template <typename ValueType>
-			bool visit(ValueType&& a_value)
-			{
-				processVisit(std::forward<ValueType>(a_value));
+			// ReSharper disable once CppMemberFunctionMayBeConst
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			void preVisit() {}
+			// ReSharper disable once CppMemberFunctionMayBeConst
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			void postVisit() {}
 
-				return true;
-			}
-
-			template <typename ValueType>
-			bool visit(std::string_view const a_name, ValueType&& a_value)
-			{
-				// Current node is object
-				auto const& t_currentValue = m_valueStack.top().get();
-				if (!t_currentValue.IsObject())
-				{
-					return false;
-				}
-
-				// Key exists
-				auto const t_valueIt = t_currentValue.FindMember(a_name.data());
-				if (t_valueIt == t_currentValue.MemberEnd())
-				{
-					return false;
-				}
-
-				m_valueStack.emplace(t_valueIt->value);
-				processVisit(std::forward<ValueType>(a_value));
-				m_valueStack.pop();
-
-				return true;
-			}
-
-			bool visit(SizeTag& a_sizeTag)
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			template <typename ValueType
+				, enforce(std::is_arithmetic_v<std::remove_reference_t<ValueType>>)>
+				void processArithmetic(ValueType& a_value)
 			{
 				auto const& t_currentValue = m_valueStack.top().get();
-				if (!t_currentValue.IsArray())
+				auto const t_number = std::get_if<json::JsonNumber<>>(&t_currentValue);
+				if (t_number != nullptr)
 				{
-					return false;
+					t_number->getAs(a_value);
 				}
-
-				a_sizeTag.m_size = t_currentValue.Size();
-				return true;
 			}
 
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			template <typename CharType, typename TraitsType, typename AllocatorType>
+			void processString(std::basic_string<CharType, TraitsType
+				, AllocatorType>& a_value)
+			{
+				auto const& t_currentValue = m_valueStack.top().get();
+				if(auto const t_string = std::get_if<json::JsonString<>>(&t_currentValue))
+				{
+					a_value = std::basic_string<CharType, TraitsType, AllocatorType>{
+						*t_string, a_value.get_allocator()
+					};
+				}
+			}
+
+			// ReSharper disable once CppMemberFunctionMayBeConst
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			void processSizeTag(vis::SizeTag& a_sizeTag)
+			{
+				a_sizeTag.m_size = 0;
+
+				auto const& t_currentValue = m_valueStack.top().get();
+				if (auto const t_array = std::get_if<json::JsonArray<>>(&t_currentValue))
+				{
+					a_sizeTag.m_size = t_array->m_values.size();
+				}
+
+			}
+
+			// ReSharper disable once CppMemberFunctionMayBeStatic
 			template <typename ValueType>
-			bool visit(std::size_t const a_index, ValueType&& a_value)
+			void processKeyValuePair(
+				vis::IndexValuePair<ValueType> a_indexValuePair)
 			{
 				// Current node is array
 				auto const& t_currentValue = m_valueStack.top().get();
-				if (!t_currentValue.IsArray())
+				auto const t_array = std::get_if<json::JsonArray<>>(&t_currentValue);
+				if (t_array == nullptr)
 				{
-					return false;
+					return;
 				}
 
 				// Index is valid
-				if (a_index >= t_currentValue.Size())
+				auto const t_index = a_indexValuePair.m_index;
+				if (t_index >= t_array->m_values.size())
 				{
-					return false;
+					return;
 				}
 
-				m_valueStack.emplace(t_currentValue[rjs::SizeType{ a_index }]);
-				processVisit(std::forward<ValueType>(a_value));
+				m_valueStack.emplace(t_array->m_values[t_index]);
+				visit(std::forward<ValueType>(a_indexValuePair.m_value));
 				m_valueStack.pop();
-
-				return true;
 			}
 
-			auto getAllocator()
+			// ReSharper disable once CppMemberFunctionMayBeStatic
+			template <typename ValueType>
+			void processKeyValuePair(
+				vis::NameValuePair<ValueType> a_nameValuePair)
 			{
-				return m_typeVisitorApplicator.getAllocator();
+				// Current node is object
+				auto const& t_currentValue = m_valueStack.top().get();
+				auto const t_object = std::get_if<json::JsonObject<>>(&t_currentValue);
+				if (t_object == nullptr)
+				{
+					return;
+				}
+
+				// Key exists
+				auto const t_valueIt = t_object->m_values.find(a_nameValuePair.m_name);
+				if (t_valueIt == t_object->m_values.end())
+				{
+					return;
+				}
+
+				m_valueStack.emplace(t_valueIt->second);
+				visit(a_nameValuePair.m_value);
+				m_valueStack.pop();
 			}
 
-			sta::TypeFactory const& getTypeFactory() const
+			auto getAllocator() const
 			{
-				return m_typeFactory;
-			}
-
-			TypeVisitorApplicator& getApplicator()
-			{
-				return m_typeVisitorApplicator;
+				return m_allocator;
 			}
 
 		private:
 			// Attributes
-			sta::TypeFactory const& m_typeFactory;
-			TypeVisitorApplicator m_typeVisitorApplicator;
+			Allocator m_allocator;
 			JsonValueStack m_valueStack;
-
-			// Methods
-			template <typename ValueType
-				, std::enable_if_t<!std::is_arithmetic_v<ValueType>>* = nullptr>
-				void processVisit(ValueType&& a_value)
-			{
-				makeVisit(*this, std::forward<ValueType>(a_value));
-			}
-
-			template <typename ValueType
-				, std::enable_if_t<std::is_arithmetic_v<ValueType>>* = nullptr>
-				void processVisit(ValueType& a_value)
-			{
-				auto const& t_currentValue = m_valueStack.top().get();
-				if (t_currentValue.Is<ValueType>())
-				{
-					a_value = t_currentValue.Get<ValueType>();
-				}
-			}
-
-			template <typename CharType, typename TraitsType
-				, typename AllocatorType>
-			void processVisit(std::basic_string<CharType, TraitsType
-				, AllocatorType>& a_value)
-			{
-				auto const& t_currentValue = m_valueStack.top().get();
-				if (t_currentValue.Is<std::basic_string<CharType>>())
-				{
-					a_value = t_currentValue.Get<std::basic_string<CharType>>();
-				}
-			}
 		};
 	}
 }

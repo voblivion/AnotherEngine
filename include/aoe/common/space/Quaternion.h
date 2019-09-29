@@ -19,20 +19,18 @@ namespace aoe
 		}
 	}
 
-	namespace visitor
+	namespace vis
 	{
-		template <typename VisitorType
-			, std::enable_if_t<VisitorType::accessType == AccessType::Writer>* = nullptr>
-		void makeVisit(VisitorType& a_visitor, common::Quaternion& a_quaternion)
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, common::Quaternion& a_quaternion)
 		{
 			common::Vector3 t_eulerAngles{};
 			a_visitor.visit(t_eulerAngles);
 			a_quaternion = common::Quaternion{ t_eulerAngles };
 		}
 
-		template <typename VisitorType
-			, std::enable_if_t<VisitorType::accessType == AccessType::Reader>* = nullptr>
-			void makeVisit(VisitorType& a_visitor, common::Quaternion& a_quaternion)
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor, common::Quaternion const& a_quaternion)
 		{
 			auto const t_eulerAngles = glm::eulerAngles(a_quaternion);
 			a_visitor.visit(t_eulerAngles);

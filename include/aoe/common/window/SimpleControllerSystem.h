@@ -9,6 +9,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <cmath>
 #include <algorithm>
+#include <aoe/common/physic/RigidBodyComponent.h>
+#include <aoe/common/physic/WorldPhysicComponent.h>
 
 //todo
 template <typename T>
@@ -24,14 +26,16 @@ namespace aoe
 		class SimpleControllerSystem
 		{
 			using Components = ecs::ComponentTypeList<TransformComponent
-				, VelocityComponent
-				, SimpleControllerComponent>;
+				, VelocityComponent, SimpleControllerComponent
+				, RigidBodyComponent>;
 		public:
-			explicit SimpleControllerSystem(ecs::WorldDataProvider& a_worldDataProvider)
-				: m_worldInput{ *a_worldDataProvider.getWorldComponent<InputComponent const>() }
-				, m_worldCursor{ *a_worldDataProvider.getWorldComponent<CursorComponent>() }
-				, m_worldTime{ *a_worldDataProvider.getWorldComponent<TimeComponent const>() }
-				, m_entities{ a_worldDataProvider.getEntityList(Components{}) }
+			explicit SimpleControllerSystem(ecs::WorldDataProvider& a_wdp)
+				: m_worldInput{ *a_wdp.getWorldComponent<InputComponent const>() }
+				, m_worldCursor{ *a_wdp.getWorldComponent<CursorComponent>() }
+				, m_worldTime{ *a_wdp.getWorldComponent<TimeComponent const>() }
+				, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
+				, m_entities{ a_wdp.getEntityList(*this, Components{}) }
+				, m_systemSpawnManager{ a_wdp.getSpawnManager() }
 			{}
 
 
@@ -57,16 +61,55 @@ namespace aoe
 					localMove.z += m_worldInput.m_keyboard.m_keys[sf::Keyboard::D];
 					localMove.y -= m_worldInput.m_keyboard.m_keys[sf::Keyboard::V];
 					localMove.y += m_worldInput.m_keyboard.m_keys[sf::Keyboard::Space];
-					linearSpeed += m_worldInput.m_keyboard.m_keys[sf::Keyboard::A] * 4;
+					linearSpeed += m_worldInput.m_keyboard.m_keys[sf::Keyboard::A] * 42;
 					auto const directionLength = glm::length(localMove);
 					if (directionLength > FLT_EPSILON)
 					{
 						localMove /= directionLength;
 					}
 
+					if(m_worldInput.m_keyboard.m_keys[sf::Keyboard::P].m_changed
+						&& m_worldInput.m_keyboard.m_keys[sf::Keyboard::P].m_pressed)
+					{
+						m_worldPhysicComponent.m_pause = !m_worldPhysicComponent.m_pause;
+					}
+
 					// Make local required movement global velocity
-					velocity.m_linear = glm::vec3{ glm::mat4_cast(transform.m_rotation)
+					auto t_linearVelocity/*velocity.m_linear*/ = glm::vec3{ glm::mat4_cast(transform.m_rotation)
 						* glm::vec4{ localMove, 1.0f } * linearSpeed };
+					//t_linearVelocity.y += entity.getComponent<RigidBodyComponent>().m_rigidBody->getLinearVelocity().y();
+
+					entity.getComponent<RigidBodyComponent>().m_rigidBody->activate(true);
+					entity.getComponent<RigidBodyComponent>().m_rigidBody->setLinearVelocity(toBtVector(t_linearVelocity));
+
+					// Shoot balls
+					if(m_worldInput.m_mouse.m_buttons[sf::Mouse::Left].m_pressed)
+					{
+						t = (t + 1) % 17;
+
+						if (t == 1)
+						{
+							auto& t_controller = entity.getComponent<SimpleControllerComponent>();
+							assert(t_controller.m_bullet.isValid());
+							auto t_bullet = *t_controller.m_bullet;
+
+							// Initial velocity
+							auto const t_rigidBody = t_bullet.getComponent<RigidBodyComponent>();
+							glm::vec3 t_localVelocity{ 0.0f, 0.0f, -20.0f };
+							t_rigidBody->m_linearVelocity = glm::vec3{ glm::mat4_cast(transform.m_rotation)
+							* glm::vec4{ t_localVelocity, 1.0f } };
+
+							// Initial position
+							auto const t_transform = t_bullet.getComponent<TransformComponent>();
+							t_transform->m_position = transform.m_position + t_rigidBody->m_linearVelocity / 10.0f;
+
+							m_systemSpawnManager.spawn(std::move(t_bullet));
+						}
+					}
+					else
+					{
+						t = 0;
+					}
 
 					if (m_worldInput.m_mouse.m_buttons[sf::Mouse::Right])
 					{
@@ -102,11 +145,14 @@ namespace aoe
 			}
 
 		private:
+			mutable int t = 0;
 			InputComponent const& m_worldInput;
 			CursorComponent& m_worldCursor;
 			TimeComponent const& m_worldTime;
-			ecs::SystemEntityList<TransformComponent, VelocityComponent
-				, SimpleControllerComponent> const& m_entities;
+			WorldPhysicComponent& m_worldPhysicComponent;
+			ecs::SystemEntityList<SimpleControllerSystem, TransformComponent
+				, VelocityComponent, SimpleControllerComponent, RigidBodyComponent> const& m_entities;
+			ecs::SystemSpawnManager& m_systemSpawnManager;
 		};
 	}
 }

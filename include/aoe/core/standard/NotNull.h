@@ -49,10 +49,6 @@ namespace aoe
 			~NotNull() = default;
 
 			// Methods
-			PointerType get() const
-			{
-				return m_pointer;
-			}
 
 			// Operators
 			NotNull& operator=(NotNull&&) = default;

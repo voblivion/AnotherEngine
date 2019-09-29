@@ -8,7 +8,7 @@ namespace aoe
 	namespace common
 	{
 		struct TimeComponent final
-			: public ecs::ComponentDefaultImpl<TimeComponent>
+			: ecs::AComponent
 		{
 			// Attributes
 			TimePoint m_frameStartTime;

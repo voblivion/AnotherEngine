@@ -11,7 +11,7 @@ namespace aoe
 	namespace common
 	{
 		struct GraphicComponent final
-			: public ecs::ComponentDefaultImpl<GraphicComponent>
+			: public vis::Aggregate<GraphicComponent, ecs::AComponent>
 		{
 			// Attributes
 			data::Handle<Model> m_model;
@@ -23,12 +23,15 @@ namespace aoe
 			{}
 
 			// Methods
-			template <typename VisitorType>
-				void accept(VisitorType& a_visitor)
+			friend class vis::Aggregate<GraphicComponent, ecs::AComponent>;
+			template <typename VisitorType, typename ThisType>
+			static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 			{
-				a_visitor.visit("Model", m_model);
-				a_visitor.visit("Materials", std::make_pair(std::ref(m_materials)
-					, type::Factory<data::Handle<Material>>{ m_model.getDatabase() }));
+				a_visitor.visit(vis::makeNameValuePair("Model", a_this.m_model));
+
+				auto t_materials = vis::makeContainerHolder(a_this.m_materials
+					, type::Factory<data::Handle<Material>>{ a_this.m_model.getDatabase() });
+				a_visitor.visit(vis::makeNameValuePair("Materials", t_materials));
 			}
 		};
 	}

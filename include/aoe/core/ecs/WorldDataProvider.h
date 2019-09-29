@@ -88,18 +88,21 @@ namespace aoe
 				return m_worldData.m_worldComponents.getComponent<ComponentType>();
 			}
 
-			template <typename... ComponentTypes>
-			SystemEntityList<ComponentTypes...> const& getEntityList()
+			template <typename SystemType, typename... ComponentTypes>
+			SystemEntityList<SystemType, ComponentTypes...> const& getEntityList(
+				SystemType& a_system)
 			{
 				onGetEntityList({ makeResourceAccess<ComponentTypes>()... });
-				return m_worldData.m_entityManager.getEntityList<ComponentTypes...>();
+				return m_worldData.m_entityManager.getEntityList<
+					SystemType, ComponentTypes...>(a_system);
 			}
 
-			template <typename... ComponentTypes>
-			SystemEntityList<ComponentTypes...> const& getEntityList(
-				ComponentTypeList<ComponentTypes...> const&)
+			template <typename SystemType, typename... ComponentTypes>
+			SystemEntityList<SystemType, ComponentTypes...> const& getEntityList(
+				SystemType& a_system
+				, ComponentTypeList<ComponentTypes...> const&)
 			{
-				return getEntityList<ComponentTypes...>();
+				return getEntityList<SystemType, ComponentTypes...>(a_system);
 			}
 
 			SystemSpawnManager& getSpawnManager()

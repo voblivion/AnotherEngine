@@ -13,7 +13,7 @@ namespace aoe
 {
 	namespace data
 	{
-		template <typename IndexerType>
+		template <typename StreamProviderType>
 		class Database final
 			: public ADatabase
 		{
@@ -26,15 +26,17 @@ namespace aoe
 				: ADatabase{ a_typeRegistry }
 			{}
 
-			explicit Database(sta::TypeRegistry& a_typeRegistry, IndexerType a_indexer)
+			explicit Database(sta::TypeRegistry& a_typeRegistry
+				, StreamProviderType a_streamProvider)
 				: ADatabase{ a_typeRegistry }
-				, m_indexer{ std::move(a_indexer) }
+				, m_streamProvider{ std::move(a_streamProvider) }
 			{}
 
-			explicit Database(sta::TypeRegistry& a_typeRegistry, IndexerType a_indexer
+			explicit Database(sta::TypeRegistry& a_typeRegistry
+				, StreamProviderType a_streamProvider
 				, AllocatorType const& a_allocator)
 				: ADatabase{ a_typeRegistry }
-				, m_indexer{ a_indexer }
+				, m_streamProvider{ a_streamProvider }
 				, m_cache{ a_allocator }
 				, m_loaders{ a_allocator }
 			{}
@@ -51,9 +53,9 @@ namespace aoe
 				m_loaders.emplace(a_format, a_dataLoader);
 			}
 
-			IndexerType& getIndexer()
+			StreamProviderType& getStreamProvider()
 			{
-				return m_indexer;
+				return m_streamProvider;
 			}
 
 		protected:
@@ -70,7 +72,7 @@ namespace aoe
 
 		private:
 			// Attributes
-			IndexerType m_indexer;
+			StreamProviderType m_streamProvider;
 			mutable Cache m_cache;
 			std::pmr::unordered_map<FormatId
 				, std::reference_wrapper<ALoader>> m_loaders;
@@ -88,7 +90,7 @@ namespace aoe
 
 			std::shared_ptr<ADynamicType> load(Id a_dataId)
 			{
-				if (auto t_formattedInputStream = m_indexer.find(a_dataId))
+				if (auto t_formattedInputStream = m_streamProvider.find(a_dataId))
 				{
 					auto const t_it = m_loaders.find(
 						t_formattedInputStream->getFormat());

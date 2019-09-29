@@ -17,7 +17,8 @@ namespace aoe
 			: public data::ALoader
 		{
 		public:
-			explicit AssimpLoader(sta::Allocator<std::byte> const& a_allocator);
+			explicit AssimpLoader(std::pmr::memory_resource* m_resource
+				= std::pmr::get_default_resource());
 
 			// Methods
 			virtual std::shared_ptr<sta::ADynamicType> load(
@@ -26,7 +27,7 @@ namespace aoe
 		private:
 			// Attributes
 			Assimp::Importer m_importer;
-			sta::Allocator<std::byte> m_allocator;
+			std::pmr::memory_resource* m_resource;
 		};
 	}
 }

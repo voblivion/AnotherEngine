@@ -50,9 +50,10 @@ namespace aoe
 			template <typename SystemType>
 			std::size_t addSystem()
 			{
-				auto const& t_allocator = m_tasks.get_allocator();
-				m_tasks.emplace_back(sta::allocatePolymorphic<
-					detail::SystemTask<SystemType>>(t_allocator, m_data));
+				using Task = detail::SystemTask<SystemType>;
+
+				auto const t_resource = m_tasks.get_allocator().resource();
+				m_tasks.emplace_back(sta::allocatePolymorphicWith<Task>(t_resource, m_data));
 				return m_tasks.size() - 1;
 			}
 
