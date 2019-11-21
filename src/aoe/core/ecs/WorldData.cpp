@@ -1,23 +1,20 @@
-#include <aoe/core/ecs/WorldData.h>
+#include <vob/aoe/core/ecs/WorldData.h>
 
 
-namespace aoe
+namespace vob::aoe::ecs
 {
-	namespace ecs
+	WorldData::WorldData(ComponentManager a_worldComponents)
+		: m_worldComponents{ std::move(a_worldComponents) }
+		, m_entityManager{ m_worldComponents.getAllocator() }
+	{}
+
+	void WorldData::update()
 	{
-		WorldData::WorldData(ComponentManager a_worldComponents)
-			: m_worldComponents{ std::move(a_worldComponents) }
-			, m_entityManager{ m_worldComponents.getAllocator() }
-		{}
+		m_entityManager.update();
+	}
 
-		void WorldData::update()
-		{
-			m_entityManager.update();
-		}
-
-		sta::Allocator<std::byte> WorldData::getAllocator() const
-		{
-			return m_worldComponents.getAllocator();
-		}
+	std::pmr::polymorphic_allocator<std::byte> WorldData::getAllocator() const
+	{
+		return m_worldComponents.getAllocator();
 	}
 }

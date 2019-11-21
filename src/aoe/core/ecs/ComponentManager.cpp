@@ -1,14 +1,11 @@
-#include <aoe/core/ecs/ComponentManager.h>
+#include <vob/aoe/core/ecs/ComponentManager.h>
 
 
-namespace aoe
+namespace vob::aoe::ecs
 {
-	namespace ecs
+	// Public
+	std::pmr::polymorphic_allocator<std::byte> ComponentManager::getAllocator() const
 	{
-		// Public
-		sta::Allocator<std::byte> ComponentManager::getAllocator() const
-		{
-			return m_components.get_allocator();
-		}
+		return m_components.get_allocator();
 	}
 }

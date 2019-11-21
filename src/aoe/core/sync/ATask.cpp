@@ -1,47 +1,44 @@
-#include <aoe/core/sync/ATask.h>
+#include <vob/aoe/core/sync/ATask.h>
 
-namespace aoe
+namespace vob::aoe::sync
 {
-	namespace sync
+	// Public
+	void ATask::addDependency(ATask& a_task)
 	{
-		// Public
-		void ATask::addDependency(ATask& a_task)
-		{
-			m_dependencies.emplace_back(a_task);
-		}
+		m_dependencies.emplace_back(a_task);
+	}
 
-		void ATask::preUpdate()
-		{
-			setState(State::Pending);
-		}
+	void ATask::preUpdate()
+	{
+		setState(State::Pending);
+	}
 
-		void ATask::update()
+	void ATask::update()
+	{
+		for (auto& t_dependency : m_dependencies)
 		{
-			for (auto& t_dependency : m_dependencies)
-			{
-				t_dependency.get().waitDone();
-			}
-			doUpdate();
-			setState(State::Done);
+			t_dependency.get().waitDone();
 		}
+		doUpdate();
+		setState(State::Done);
+	}
 
-		void ATask::waitDone()
+	void ATask::waitDone()
+	{
+		std::unique_lock<std::mutex> t_lock{ m_mutex };
+		m_sync.wait(t_lock, [this]
 		{
-			std::unique_lock<std::mutex> t_lock{ m_mutex };
-			m_sync.wait(t_lock, [this]
-			{
-				return m_state == State::Done;
-			});
-		}
+			return m_state == State::Done;
+		});
+	}
 
-		// Private
-		void ATask::setState(State const a_state)
+	// Private
+	void ATask::setState(State const a_state)
+	{
 		{
-			{
-				std::lock_guard<std::mutex> t_lock{ m_mutex };
-				m_state = a_state;
-			}
-			m_sync.notify_all();
+			std::lock_guard<std::mutex> t_lock{ m_mutex };
+			m_state = a_state;
 		}
+		m_sync.notify_all();
 	}
 }
