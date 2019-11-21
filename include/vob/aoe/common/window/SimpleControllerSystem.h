@@ -135,6 +135,8 @@ namespace vob::aoe::common
 				}
 				else
 				{
+					auto& euler = simpleController.m_orientation;
+					transform.m_rotation = glm::quat{ euler };
 					if (m_worldInput.m_mouse.m_buttons[sf::Mouse::Right].m_changed)
 					{
 						m_worldCursor.m_visible = true;
