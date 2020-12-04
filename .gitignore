@@ -30,3 +30,18 @@
 *.exe
 *.out
 *.app
+
+
+/bin
+/.vs
+/data
+/tmp
+
+# Visual Studio Files - TODO : generate them
+/Test.vcxproj.user
+/Test.vcxproj.filters
+/Test.vcxproj
+/AnotherEngine.vcxproj.user
+/AnotherEngine.vcxproj.filters
+/AnotherEngine.vcxproj
+/AnotherEngine.sln
