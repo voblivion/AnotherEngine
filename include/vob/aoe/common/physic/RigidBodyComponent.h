@@ -17,18 +17,18 @@ namespace vob::aoe::common
 		// Attributes
 		std::optional<btRigidBody> m_rigidBody;
 		btScalar m_mass{ 0.0 };
-		type::Clone<btCollisionShape> m_collisionShape; // TODO should be handle?
-		Vector3 m_linearFactor{ 1.0f };
-		Vector3 m_angularFactor{ 1.0f };
+		type::Clone<btCollisionShape, btCollisionShape> m_collisionShape; // TODO should be handle?
+		vec3 m_linearFactor{ 1.0f };
+		vec3 m_angularFactor{ 1.0f };
 		data::Handle<PhysicMaterial> m_physicMaterial;
 
 		btDefaultMotionState m_motionState;
-		Vector3 m_linearVelocity{ 0.0f };
-		Quaternion m_angularVelocity{ Vector3{ 0.0f } };
+		vec3 m_linearVelocity{ 0.0f };
+		quat m_angularVelocity{ vec3{ 0.0f } };
 
 		// Constructor
 		explicit RigidBodyComponent(data::ADatabase& a_database
-			, type::CloneCopier const& a_cloneCopier)
+			, type::CloneCopier<btCollisionShape> const& a_cloneCopier)
 			: m_collisionShape{ a_cloneCopier }
 			, m_physicMaterial{ a_database }
 		{}

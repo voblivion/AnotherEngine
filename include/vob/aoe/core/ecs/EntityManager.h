@@ -5,8 +5,6 @@
 #include <algorithm>
 #include <optional>
 
-#include <vob/sta/memory.h>
-
 #include <vob/aoe/api.h>
 #include <vob/aoe/core/ecs/Entity.h>
 #include <vob/aoe/core/ecs/EntityId.h>
@@ -17,7 +15,7 @@
 
 namespace vob::aoe::ecs
 {
-	using EntityMap = std::pmr::unordered_map<EntityId, sta::polymorphic_ptr<Entity>>;
+	using EntityMap = std::unordered_map<EntityId, std::unique_ptr<Entity>>;
 
 	namespace detail
 	{
@@ -62,7 +60,7 @@ namespace vob::aoe::ecs
 		private:
 			template <typename S>
 			static auto test(int)
-				-> decltype(std::declval<S>().onEntityRemoved(std::declval<EntityId const>()), std::true_type{})
+				-> decltype(std::declval<S>().onEntityRemoved(std::declval<Entity const&>()), std::true_type{})
 			{
 				return std::true_type{};
 			}
@@ -79,14 +77,14 @@ namespace vob::aoe::ecs
 
 		template <typename SystemType
 			, std::enable_if_t<hasOnEntityRemovedV<SystemType>>* = nullptr>
-		void callOnEntityRemoved(SystemType& a_system, EntityId const a_id)
+		void callOnEntityRemoved(SystemType& a_system, Entity const& a_entity)
 		{
-			a_system.onEntityRemoved(a_id);
+			a_system.onEntityRemoved(a_entity);
 		}
 
 		template <typename SystemType
 			, std::enable_if_t<!hasOnEntityRemovedV<SystemType>>* = nullptr>
-		void callOnEntityRemoved(SystemType& a_system, EntityId const a_id)
+		void callOnEntityRemoved(SystemType& a_system, Entity const& a_entity)
 		{
 
 		}
@@ -130,14 +128,8 @@ namespace vob::aoe::ecs
 		using EntityType = SystemEntity<ComponentTypes...>;
 
 		// Attributes
-		std::pmr::deque<EntityType> m_list;
-		std::pmr::unordered_map<EntityId, std::size_t> m_entityIndexes;
-
-		// Constructors
-		explicit EntityList(std::pmr::memory_resource* a_memoryResource)
-			: m_list{ a_memoryResource }
-			, m_entityIndexes{ a_memoryResource }
-		{}
+		std::deque<EntityType> m_list;
+		std::unordered_map<EntityId, std::size_t> m_entityIndexes;
 
 		// Methods
 		void add(Entity const& a_entity)
@@ -199,16 +191,13 @@ namespace vob::aoe::ecs
 			return m_list.end();
 		}
 
-		EntityType const* find(
-			EntityHandle const& a_handle
-		) const
+		EntityType const* find(EntityHandle const& a_handle) const
 		{
 			// todo : return it ?
 			return find(a_handle.m_id);
 		}
 
-		EntityType const* find(
-			EntityId const a_id) const
+		EntityType const* find(EntityId const a_id) const
 		{
 			// todo : return it ? optional ?
 			auto const t_it = m_entityIndexes.find(a_id);
@@ -220,12 +209,29 @@ namespace vob::aoe::ecs
 		}
 	};
 
+	template <typename TEntityList>
+	class EntityHandleChecker
+	{
+	public:
+		explicit EntityHandleChecker(TEntityList const& a_entities)
+			: m_entities{ a_entities }
+		{}
+
+		bool operator()(ecs::EntityHandle const& a_entityHandle) const
+		{
+			return m_entities.find(a_entityHandle) != nullptr;
+		}
+
+	private:
+		TEntityList const& m_entities;
+	};
+
 	struct ASystemEntityList
 		: public type::ADynamicType
 	{
 		// Methods
 		virtual void onEntityAdded(Entity const& a_entity) = 0;
-		virtual void onEntityRemoved(EntityId const a_id) = 0;
+		virtual void onEntityRemoved(Entity const& a_entity) = 0;
 	};
 
 	template <typename SystemType, typename... ComponentTypes>
@@ -244,7 +250,6 @@ namespace vob::aoe::ecs
 			, EntityMap const& a_entities
 		)
 			: m_system{ a_system }
-			, m_entityList{ a_entities.get_allocator().resource() }
 		{
 			for (auto& t_pair : a_entities)
 			{
@@ -262,13 +267,13 @@ namespace vob::aoe::ecs
 			}
 		}
 
-		virtual void onEntityRemoved(EntityId const a_id) override
+		virtual void onEntityRemoved(Entity const& a_entity) override
 		{
-			auto t_entity = m_entityList.find(a_id);
+			auto t_entity = m_entityList.find(a_entity.getId());
 			if(t_entity != nullptr)
 			{
-				detail::callOnEntityRemoved(m_system, a_id);
-				m_entityList.remove(a_id);
+				detail::callOnEntityRemoved(m_system, a_entity);
+				m_entityList.remove(a_entity.getId());
 			}
 		}
 	};
@@ -277,9 +282,9 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		VOB_AOE_API explicit EntityManager(
-			std::pmr::polymorphic_allocator<std::byte> const& a_allocator
-		);
+		VOB_AOE_API explicit EntityManager();
+
+		VOB_AOE_API ~EntityManager();
 
 		//Methods
 		VOB_AOE_API SystemSpawnManager& getSystemSpawnManager();
@@ -289,12 +294,11 @@ namespace vob::aoe::ecs
 		VOB_AOE_API void update();
 
 		template <typename System, typename... ComponentTypes>
-		EntityList<ComponentTypes...> const& getEntityList(
-			System& a_system)
+		EntityList<ComponentTypes...> const& getEntityList(System& a_system)
 		{
-			auto t_listHolder = sta::allocate_polymorphic<
+			auto t_listHolder = std::make_unique<
 				SystemEntityList<System, ComponentTypes...>
-			>(m_systemEntityLists.get_allocator(), a_system, m_entities);
+			>(a_system, m_entities);
 			auto& t_entityList = t_listHolder->m_entityList;
 			m_systemEntityLists.emplace_back(std::move(t_listHolder));
 			return t_entityList;
@@ -303,12 +307,12 @@ namespace vob::aoe::ecs
 	private:
 		// Attributes
 		EntityMap m_entities;
-		std::pmr::deque<sta::polymorphic_ptr<ASystemEntityList>> m_systemEntityLists;
+		std::deque<std::unique_ptr<ASystemEntityList>> m_systemEntityLists;
 
-		std::pmr::vector<sta::polymorphic_ptr<Entity>> m_frameSpawns;
+		std::vector<std::unique_ptr<Entity>> m_frameSpawns;
 		SystemSpawnManager m_systemSpawnManager;
 
-		std::pmr::vector<EntityId> m_frameUnspawns;
+		std::vector<EntityId> m_frameUnspawns;
 		SystemUnspawnManager m_systemUnspawnManager;
 
 		// Methods

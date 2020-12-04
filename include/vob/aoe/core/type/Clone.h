@@ -1,102 +1,92 @@
 #pragma once
 
-#include <vob/sta/memory.h>
 #include <vob/aoe/core/type/Traits.h>
 #include <vob/aoe/core/type/Applicator.h>
 
 namespace vob::aoe::type
 {
-	namespace detail
+	template <typename PolymorphicBaseType>
+	class CloneCopier
 	{
 		template <typename TypeT>
 		struct DoClone
 		{
 			void operator()(
 				TypeT const& a_source
-				, sta::polymorphic_ptr<void>& a_target
-				, std::pmr::memory_resource& a_resource
-			) const
+				, std::unique_ptr<PolymorphicBaseType>& a_target
+				) const
 			{
 				using Type = std::remove_const_t<TypeT>;
-				a_target = sta::allocate_polymorphic<std::remove_const_t<Type>>(
-					std::pmr::polymorphic_allocator<Type>{ &a_resource }, a_source
-				);
+
+				a_target = std::make_unique<Type>(a_source);
 			}
 		};
-	}
-
-	class CloneCopier
-	{
 	public:
-		// Constructors
-		explicit CloneCopier(std::pmr::memory_resource& a_resource)
-			: m_applicator{ &a_resource }
-			, m_cloneResource{ a_resource }
-		{}
-
 		// Methods
-		template <typename BaseType, typename SubType
-			, enforce((std::is_base_of_v<BaseType, SubType>))>
-		sta::polymorphic_ptr<BaseType> clone(
-			sta::polymorphic_ptr<SubType> const& a_source) const
+		template <typename BaseType, typename SubType, enforce((std::is_base_of_v<BaseType, SubType>))>
+		std::unique_ptr<BaseType> clone(std::unique_ptr<SubType> const& a_source) const
 		{
+			static_assert(std::is_base_of_v<PolymorphicBaseType, BaseType>);
 			if(a_source == nullptr)
 			{
 				return nullptr;
 			}
 
-			sta::polymorphic_ptr<void> t_target;
-			m_applicator.apply(*a_source, t_target, m_cloneResource);
-			return sta::static_polymorphic_cast<BaseType>(std::move(t_target));
+			std::unique_ptr<PolymorphicBaseType> t_target;
+			m_applicator.apply(*a_source, t_target);
+			return std::unique_ptr<BaseType>{ static_cast<BaseType*>(t_target.release()) };
 		}
 
 		template <typename Type>
 		bool isRegistered()
 		{
-			return m_applicator.isRegistered<Type>();
+			static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
+			return m_applicator.template isRegistered<Type>();
 		}
 
 		template <typename Type>
 		void registerType()
 		{
-			m_applicator.registerType<Type const>();
+			static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
+			m_applicator.template registerType<Type const>();
 		}
 
 	private:
 		// Attributes
-		Applicator<
-			void const, detail::DoClone
-			, sta::polymorphic_ptr<void>&
-			, std::pmr::memory_resource&
-		> m_applicator;
-		std::reference_wrapper<std::pmr::memory_resource> m_cloneResource;
+		Applicator<PolymorphicBaseType const, DoClone, std::unique_ptr<PolymorphicBaseType>&> m_applicator;
 	};
 
-	template <typename Type>
+	template <typename Type, typename PolymorphicBaseType>
 	class Clone
-		: public sta::polymorphic_ptr<Type>
+		: public std::unique_ptr<Type>
 	{
-		using Base = sta::polymorphic_ptr<Type>;
+		using Base = std::unique_ptr<Type>;
 	public:
-		// Constructors
-		explicit Clone(CloneCopier const& a_cloneCopier)
+		#pragma region Constructors
+		explicit Clone(CloneCopier<PolymorphicBaseType> const& a_cloneCopier)
 			: m_cloneCopier{a_cloneCopier}
 		{}
+
 		Clone(Clone&&) = default;
+
 		Clone(Clone const& a_other)
 			: Base{ a_other.m_cloneCopier.get().template clone<Type>(a_other) }
 			, m_cloneCopier{ a_other.m_cloneCopier }
 		{}
 
 		template <typename OtherType = Type>
-		explicit Clone(CloneCopier const& a_cloneCopier, sta::polymorphic_ptr<OtherType> a_ptr)
+		explicit Clone(
+			CloneCopier<PolymorphicBaseType> const& a_cloneCopier
+			, std::unique_ptr<OtherType> a_ptr
+		)
 			: Base{ std::move(a_ptr) }
 			, m_cloneCopier{ a_cloneCopier }
 		{}
 
 		~Clone() = default;
+		#pragma endregion
 
-		// Operators
+		#pragma region Operators
 		Clone& operator=(Clone&&) = default;
 		Clone& operator=(Clone const& a_other)
 		{
@@ -105,8 +95,11 @@ namespace vob::aoe::type
 				m_cloneCopier.get().template clone<Type>(a_other);
 			return *this;
 		}
+		#pragma endregion
 
 	private:
-		std::reference_wrapper<CloneCopier const> m_cloneCopier;
+		#pragma region Attributes
+		std::reference_wrapper<CloneCopier<PolymorphicBaseType> const> m_cloneCopier;
+		#pragma endregion
 	};
 }

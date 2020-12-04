@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <vob/sta/memory.h>
 #include <vob/sta/string_id.h>
 
 namespace vob::aoe::type
@@ -142,20 +141,20 @@ namespace vob::aoe::type
 		}
 
 		template <typename Type, typename Base>
-		sta::polymorphic_ptr<Type> fastCast(sta::polymorphic_ptr<Base> a_ptr)
+		std::unique_ptr<Type> fastCast(std::unique_ptr<Base>& a_ptr)
 		{
 			if (a_ptr != nullptr && isBaseOf<Type>(typeid(*a_ptr)))
 			{
-				return sta::static_polymorphic_cast<Type>(std::move(a_ptr));
+				return static_cast<Type>(a_ptr.release());
 			}
 			return nullptr;
 		}
 
 	private:
 		// Attributes
-		std::pmr::unordered_map<std::type_index, TypeData> m_typeData;
-		std::pmr::unordered_map<sta::string_id, std::type_index> m_idToTypeIndex;
-		std::pmr::vector<std::pair<std::type_index, std::size_t>> m_types;
+		std::unordered_map<std::type_index, TypeData> m_typeData;
+		std::unordered_map<sta::string_id, std::type_index> m_idToTypeIndex;
+		std::vector<std::pair<std::type_index, std::size_t>> m_types;
 
 		// Methods
 		bool isBaseOf(std::size_t const a_baseTypeIndex

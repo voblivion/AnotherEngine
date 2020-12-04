@@ -15,7 +15,7 @@ namespace vob::aoe::data
 		// Aliases
 		using KeyType = Id;
 		using ValueType = std::weak_ptr<type::ADynamicType> const;
-		using MapType = std::pmr::unordered_map<KeyType, ValueType>;
+		using MapType = std::unordered_map<KeyType, ValueType>;
 		using AllocatorType = MapType::allocator_type;
 
 		// Constructors

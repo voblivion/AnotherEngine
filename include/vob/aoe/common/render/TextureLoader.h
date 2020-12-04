@@ -1,63 +1,75 @@
 #pragma once
 
+#include <cwchar>
+#include <fstream>
 #include <vector>
 
-#include <vob/aoe/core/data/ALoader.h>
-#include <vob/sta/memory.h>
-#include <vob/aoe/common/render/SfmlInputStream.h>
-#include <vob/aoe/common/opengl/Manager.h>
-#include <vob/aoe/common/opengl/resources/Texture.h>
-#include <vob/aoe/common/opengl/Handle.h>
+#include <vob/aoe/common/data/filesystem/AFileSystemLoader.h>
+#include <vob/aoe/common/render/Manager.h>
+#include <vob/aoe/common/render/resources/Texture.h>
+#include <vob/aoe/common/render/GraphicResourceHandle.h>
 
-namespace vob::aoe::ogl
+namespace vob::aoe::common
 {
 	class TextureLoader final
-		: public data::ALoader
+		: public AFileSystemLoader
 	{
 	public:
 		// Constructors
-		explicit TextureLoader(
-			Manager<Texture>& a_textureManager
-			, std::pmr::memory_resource* a_memoryResource = std::pmr::get_default_resource()
-		)
+		explicit TextureLoader(IGraphicResourceManager<Texture>& a_textureManager)
 			: m_textureManager{ a_textureManager }
-			, m_memoryResource{ a_memoryResource }
 		{}
 
 		// Methods
-		std::shared_ptr<ADynamicType> load(std::istream& a_inputStream) override
+		bool canLoad(std::filesystem::path const& a_path) const override
 		{
-			// Get stream size
-			auto const t_startPos = a_inputStream.tellg();
-			a_inputStream.seekg(0, std::ios::end);
-			auto const t_endPos = a_inputStream.tellg();
-			a_inputStream.seekg(t_startPos, std::ios::beg);
+			constexpr std::array<wchar_t const*, 8> supportedExtensions{
+				L".bmp"
+				, L".png"
+				, L".tga"
+				, L".jpg"
+				, L".gif"
+				, L".psd"
+				, L".hdr"
+				, L".pic"
+			};
 
-			// Copy stream into vector
-			std::pmr::vector<char> t_source;
-			t_source.resize(t_endPos - t_startPos);
-			ignorable_assert(!t_source.empty());
-			if(t_source.empty())
+			auto extension = a_path.extension();
+			auto const supportedExtensionIt = std::find_if(
+				supportedExtensions.begin()
+				, supportedExtensions.end()
+				, [&extension] (auto a_supportedExtension) {
+					return std::wcscmp(a_supportedExtension, extension.c_str()) == 0;
+				}
+			);
+
+			return supportedExtensionIt != supportedExtensions.end();
+		}
+
+		std::shared_ptr<ADynamicType> load(std::filesystem::path const& a_path) const override
+		{
+			sf::Image image;
+			auto result = loadImage(a_path, image);
+			if (!loadImage(a_path, image))
 			{
 				return nullptr;
 			}
-			a_inputStream.read(&t_source[0], t_source.size());
 
-			// Load SFML texture
-			sf::Image t_image;
-			t_image.loadFromMemory(&t_source[0], t_source.size());
-
-			return std::allocate_shared<Handle<Texture>>(
-				std::pmr::polymorphic_allocator<Handle<Texture>>{ m_memoryResource }
-				, m_textureManager
-				, m_memoryResource
-				, std::move(t_image)
+			// TODO should probably load an Image then change the way Texture is generated
+			return std::make_shared<GraphicResourceHandle<Texture>>(
+				m_textureManager
+				, std::move(image)
 			);
 		}
 
 	private:
 		// Attributes
-		Manager<Texture>& m_textureManager;
-		std::pmr::memory_resource* m_memoryResource;
+		IGraphicResourceManager<Texture>& m_textureManager;
+
+		// Methods
+		bool loadImage(std::filesystem::path const& a_path, sf::Image& a_image) const
+		{
+			return a_image.loadFromFile(a_path.generic_string());
+		}
 	};
 }

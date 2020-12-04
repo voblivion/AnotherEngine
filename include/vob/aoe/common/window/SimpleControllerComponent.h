@@ -3,7 +3,7 @@
 #include "vob/aoe/core/ecs/EntityId.h"
 #include "vob/aoe/core/ecs/ComponentManager.h"
 #include <vob/aoe/core/data/Handle.h>
-
+#include <vob/aoe/common/time/Chrono.h>
 
 namespace vob::aoe::common
 {
@@ -25,5 +25,7 @@ namespace vob::aoe::common
 		{
 			a_visitor.visit(vis::nvp("BulletArchetype", a_this.m_bullet));
 		}
+
+		TimePoint m_lastBulletTime{};
 	};
 }

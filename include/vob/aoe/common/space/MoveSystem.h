@@ -27,14 +27,13 @@ namespace vob::aoe::common
 		{
 			for (auto const& entity : m_entities)
 			{
-				auto& transform = entity.getComponent<TransformComponent>();
+				/*auto& transform = entity.getComponent<TransformComponent>();
 				auto const& move = entity.getComponent<VelocityComponent>();
-				transform.m_position += move.m_linear
-					* m_worldTime.m_elapsedTime.value;
+				glm::translate(transform.m_matrix, move.m_linear * m_worldTime.m_elapsedTime.value);
 
-				glm::slerp(transform.m_rotation
-					, move.m_angular * transform.m_rotation
-					, m_worldTime.m_elapsedTime.value);
+				glm::quat angularMove;
+				glm::slerp(angularMove, move.m_angular, m_worldTime.m_elapsedTime.value);
+				transform.m_matrix *= glm::mat4{ angularMove };*/
 			}
 		}
 

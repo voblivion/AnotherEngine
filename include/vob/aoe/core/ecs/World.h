@@ -43,7 +43,6 @@ namespace vob::aoe::ecs
 		// Constructors
 		explicit World(ComponentManager a_worldComponents)
 			: m_data{ std::move(a_worldComponents) }
-			, m_tasks{ m_data.getAllocator() }
 		{}
 
 		// Methods
@@ -51,15 +50,16 @@ namespace vob::aoe::ecs
 		std::size_t addSystem()
 		{
 			using Task = detail::SystemTask<SystemType>;
-
-			auto const t_resource = m_tasks.get_allocator().resource();
-			m_tasks.emplace_back(sta::allocate_polymorphic<Task>(
-				std::pmr::polymorphic_allocator<Task>{ t_resource }, m_data)
-			);
+			m_tasks.emplace_back(std::make_unique<Task>(m_data));
 			return m_tasks.size() - 1;
 		}
 
-		VOB_AOE_API void start(sync::MultiThreadSchedule const& a_schedule);
+		void setSchedule(sync::MultiThreadSchedule a_schedule)
+		{
+			m_schedule = std::move(a_schedule);
+		}
+		VOB_AOE_API void start();
+		VOB_AOE_API void step();
 
 		WorldData& getData()
 		{
@@ -68,7 +68,8 @@ namespace vob::aoe::ecs
 
 	private:
 		// Attributes
-		WorldData m_data;
 		sync::TaskList m_tasks;
+		WorldData m_data;
+		sync::MultiThreadSchedule m_schedule;
 	};
 }

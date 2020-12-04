@@ -4,7 +4,6 @@
 #include <typeindex>
 #include <utility>
 
-#include <vob/sta/memory.h>
 #include <vob/sta/utility.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
@@ -15,37 +14,37 @@ namespace vob::aoe::type
 {
 	namespace detail
 	{
+		template <typename PolymorphicBaseType>
 		class AFactory
 			: public ADynamicType
 		{
+			static_assert(std::has_virtual_destructor_v<PolymorphicBaseType>);
 		public:
 			// Methods
-			virtual sta::polymorphic_ptr<void> create(
-				std::pmr::memory_resource* a_resource) = 0;
-			virtual std::shared_ptr<void> createShared(
-				std::pmr::memory_resource* a_resource) = 0;
+			virtual std::unique_ptr<PolymorphicBaseType> create() = 0;
+			virtual std::shared_ptr<PolymorphicBaseType> createShared() = 0;
 		};
 
-		template <typename Type, typename... Args>
+		template <typename PolymorphicBaseType, typename Type, typename... Args>
 		class Factory final
-			: public AFactory
+			: public AFactory<PolymorphicBaseType>
 		{
+			static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
 		public:
 			// Constructors
-			explicit Factory(Args... a_args)
+			explicit Factory(Args&&... a_args)
 				: m_args{ std::forward<Args>(a_args)... }
 			{}
 
 			// Methods
-			sta::polymorphic_ptr<void> create(std::pmr::memory_resource* a_resource) override
+			std::unique_ptr<PolymorphicBaseType> create() override
 			{
-				return createImpl(a_resource
-					, std::index_sequence_for<Args...>{});
+				return createImpl(std::index_sequence_for<Args...>{});
 			}
 
-			std::shared_ptr<void> createShared(std::pmr::memory_resource* a_resource) override
+			std::shared_ptr<PolymorphicBaseType> createShared() override
 			{
-				return createSharedImpl(a_resource, std::index_sequence_for<Args...>{});
+				return createSharedImpl(std::index_sequence_for<Args...>{});
 			}
 
 		private:
@@ -54,36 +53,26 @@ namespace vob::aoe::type
 
 			// Methods
 			template <std::size_t... indexes>
-			sta::polymorphic_ptr<void> createImpl(
-				std::pmr::memory_resource* a_resource
-				, std::index_sequence<indexes...>)
+			std::unique_ptr<PolymorphicBaseType> createImpl(std::index_sequence<indexes...>)
 			{
-				return sta::allocate_polymorphic<Type>(
-					std::pmr::polymorphic_allocator<Type>(a_resource)
-					, std::forward<Args>(std::get<indexes>(m_args))...
-				);
+				return std::make_unique<Type>(std::forward<Args>(std::get<indexes>(m_args))...);
 			}
 
 			template <std::size_t... indexes>
-			std::shared_ptr<void> createSharedImpl(
-				std::pmr::memory_resource* a_resource
-				, std::index_sequence<indexes...>)
+			std::shared_ptr<PolymorphicBaseType> createSharedImpl(std::index_sequence<indexes...>)
 			{
-				return std::allocate_shared<Type>(
-					std::pmr::polymorphic_allocator<Type>{ a_resource }
-					, std::forward<Args>(std::get<indexes>(m_args))...
-				);
+				return std::make_shared<Type>(std::forward<Args>(std::get<indexes>(m_args))...);
 			}
 		};
 	}
 
+	template <typename PolymorphicBaseType>
 	class TypeFactory
 	{
 		// Aliases
-		using Allocator = std::pmr::polymorphic_allocator<std::byte>;
-		using AFactory = detail::AFactory;
+		using AFactory = detail::AFactory<PolymorphicBaseType>;
 		template <typename Type, typename... Args>
-		using Factory = detail::Factory<Type, Args...>;
+		using Factory = detail::Factory<PolymorphicBaseType, Type, Args...>;
 
 	public:
 		// Constructors
@@ -91,30 +80,18 @@ namespace vob::aoe::type
 			: m_typeRegistry{ a_typeRegistry }
 		{}
 
-		explicit TypeFactory(
-			TypeRegistry const& a_typeRegistry
-			, std::pmr::memory_resource* a_resource
-		)
-			: m_typeRegistry{ a_typeRegistry }
-			, m_factories{ Allocator{ a_resource } }
-		{}
-
 		// Methods
 		template <typename Type, typename... Args>
-		void addFactory(Args... a_args)
+		void addFactory(Args&&... a_args)
 		{
-			auto const t_resource = m_factories.get_allocator().resource();
 			m_factories.emplace(
 				std::type_index{ typeid(Type) }
-				, sta::allocate_polymorphic<Factory<Type, Args...>>(
-					std::pmr::polymorphic_allocator<Factory<Type, Args...>>{ t_resource }
-					, std::forward<Args>(a_args)...
-				)
+				, std::make_unique<Factory<Type, Args...>>(std::forward<Args>(a_args)...)
 			);
 		}
 
 		template <typename Type>
-		sta::polymorphic_ptr<Type> create(std::type_index const a_typeId) const
+		std::unique_ptr<Type> create(std::type_index const a_typeId) const
 		{
 			if (!m_typeRegistry.isBaseOf<Type>(a_typeId))
 			{
@@ -124,14 +101,13 @@ namespace vob::aoe::type
 			auto const t_it = m_factories.find(std::type_index{ a_typeId });
 			if (t_it != m_factories.end())
 			{
-				auto const t_resource = m_factories.get_allocator().resource();
-				return sta::static_polymorphic_cast<Type>(t_it->second->create(t_resource));
+				return std::unique_ptr<Type>{ static_cast<Type*>(t_it->second->create().release()) };
 			}
 			return nullptr;
 		}
 
 		template <typename Type>
-		sta::polymorphic_ptr<Type> create(std::uint64_t const a_id) const
+		std::unique_ptr<Type> create(std::uint64_t const a_id) const
 		{
 			if (!m_typeRegistry.isUsed(a_id))
 			{
@@ -153,9 +129,7 @@ namespace vob::aoe::type
 			auto const t_it = m_factories.find(std::type_index{ a_typeId });
 			if (t_it != m_factories.end())
 			{
-				auto const t_resource = m_factories.get_allocator().resource();
-				return std::static_pointer_cast<Type>(
-					t_it->second->createShared(t_resource));
+				return std::static_pointer_cast<Type>(t_it->second->createShared());
 			}
 			return nullptr;
 		}
@@ -179,9 +153,6 @@ namespace vob::aoe::type
 	private:
 		// Attribute
 		TypeRegistry const& m_typeRegistry;
-		std::pmr::unordered_map<
-			std::type_index
-			, sta::polymorphic_ptr<AFactory>
-		> m_factories;
+		std::unordered_map<std::type_index, std::unique_ptr<AFactory>> m_factories;
 	};
 }

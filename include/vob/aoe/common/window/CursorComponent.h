@@ -7,7 +7,6 @@ namespace vob::aoe::common
 	struct CursorComponent final
 		: public ecs::AComponent
 	{
-		bool m_center = false;
-		bool m_visible = true;
+		common::CursorState m_state = common::CursorState::Normal;
 	};
 }

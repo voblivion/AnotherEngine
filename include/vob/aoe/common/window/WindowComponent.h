@@ -1,6 +1,10 @@
 #pragma once
+
+#include <vector>
+#include <functional>
+
 #include "vob/aoe/core/ecs/Component.h"
-#include <SFML/Window/Window.hpp>
+#include <vob/aoe/common/render/IWindow.h>
 
 namespace vob::aoe::common
 {
@@ -8,18 +12,23 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 	public:
-		// Attributes
-		std::reference_wrapper<sf::Window> m_window;
-
-		// Constructors
-		explicit WindowComponent(sf::Window& a_window)
+		// Constructor
+		explicit WindowComponent(common::IWindow& a_window)
 			: m_window{ a_window }
 		{}
 
 		// Methods
-		sf::Window& getWindow() const
+		auto& getWindow()
 		{
-			return m_window;
+			return m_window.get();
 		}
+		auto const& getWindow() const
+		{
+			return m_window.get();
+		}
+
+	private:
+		// Attributes
+		std::reference_wrapper<common::IWindow> m_window;
 	};
 }

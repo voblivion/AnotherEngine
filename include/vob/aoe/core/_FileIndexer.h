@@ -32,7 +32,7 @@ namespace vob::aoe::data
 			return m_binary;
 		}
 
-		std::pmr::string const& getName() const
+		std::string const& getName() const
 		{
 			return m_name;
 		}
@@ -41,14 +41,14 @@ namespace vob::aoe::data
 		// Attributes
 		FormatId m_format = 0;
 		bool m_binary = true;
-		std::pmr::string m_name;
+		std::string m_name;
 	};
 
 	class FileIndexer
 	{
 	public:
 		// Aliases
-		using FormattedFileMap = std::pmr::unordered_map<Id, FormattedFile>;
+		using FormattedFileMap = std::unordered_map<Id, FormattedFile>;
 		using AllocatorType = FormattedFileMap::allocator_type;
 
 		// Constructors

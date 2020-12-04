@@ -10,7 +10,7 @@ namespace vob::aoe::type
 	{
 	public:
 		// Constructors
-		explicit ForwardFactory(Args... a_args)
+		explicit ForwardFactory(Args&&... a_args)
 			: m_args{ std::forward<Args>(a_args)... }
 		{}
 

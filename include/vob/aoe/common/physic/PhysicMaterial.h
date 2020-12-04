@@ -17,7 +17,6 @@ namespace vob::aoe::common
 		// Methods
 		friend class vis::Aggregate<PhysicMaterial>;
 		template <typename VisitorType, typename ThisType>
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 		{
 			a_visitor.visit(vis::nvp("Restitution", a_this.m_restitution));

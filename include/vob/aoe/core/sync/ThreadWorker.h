@@ -49,7 +49,7 @@ namespace vob::aoe::sync
 		std::mutex m_mutex;
 		std::condition_variable m_sync;
 		std::thread m_thread;
-		std::pmr::vector<std::reference_wrapper<ATask>> m_tasks;
+		std::vector<std::reference_wrapper<ATask>> m_tasks;
 
 		// Methods
 		void start();

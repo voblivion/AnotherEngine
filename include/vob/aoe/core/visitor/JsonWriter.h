@@ -6,45 +6,47 @@
 #include <string>
 #include <type_traits>
 
-#include <vob/aoe/core/type/Applicator.h>
-#include <vob/aoe/core/json/JsonLoader.h>
-#include <vob/aoe/core/type/TypeFactory.h>
+#include <vob/json/loader.h>
+
 #include <vob/aoe/core/visitor/Utils.h>
 #include <vob/aoe/core/visitor/VisitorBase.h>
-#include <vob/aoe/core/visitor/Applicator.h>
+#include <locale>
 
-namespace vob::aoe::json
+namespace vob::aoe::common
 {
+	template <typename ContextType>
 	class JsonWriter
-		: public vis::InputVisitorBase<JsonWriter>
+		: public vis::InputVisitorBase<JsonWriter<ContextType>, ContextType>
 	{
 		// Aliases
-		using Base = vis::InputVisitorBase<JsonWriter>;
+		using Base = vis::InputVisitorBase<JsonWriter<ContextType>, ContextType>;
 
-		using Allocator = std::pmr::polymorphic_allocator<std::byte>;
-		using JsonValue = json::JsonValue<>;
+		using JsonValue = json::value<>;
 		using JsonValueConstRef = std::reference_wrapper<JsonValue const>;
-		using JsonValueDeque = std::pmr::deque<JsonValueConstRef>;
+		using JsonValueDeque = std::deque<JsonValueConstRef>;
 		using JsonValueStack = std::stack<JsonValueConstRef, JsonValueDeque>;
 
 	public:
 		// Constructors
-		explicit JsonWriter(
-			type::TypeRegistry const& a_typeRegistry
-			, type::TypeFactory const& a_typeFactory
-			, Allocator const& a_allocator = {}
-		)
-			: Base{ a_typeRegistry, a_typeFactory, a_allocator }
-			, m_allocator{ a_allocator }
-			, m_valueStack{ a_allocator }
+		explicit JsonWriter(ContextType const& a_context)
+			: Base{ a_context }
 		{}
 
 		// Methods
+		bool canLoad(std::istream& a_inputStream)
+		{
+			auto const t_startPos = a_inputStream.tellg();
+			json::loader t_jsonLoader{};
+			auto t_document = t_jsonLoader.load_from(a_inputStream);
+			a_inputStream.seekg(t_startPos, std::ios::beg);
+			return t_jsonLoader.get_error() == json::load_error::none;
+		}
+
 		template <typename ValueType>
 		void load(std::istream& a_inputStream, ValueType& a_value)
 		{
-			json::JsonLoader<> t_jsonLoader{};
-			auto t_document = t_jsonLoader.loadFrom(a_inputStream);
+			json::loader t_jsonLoader{};
+			auto t_document = t_jsonLoader.load_from(a_inputStream);
 			load(t_document, a_value);
 		}
 
@@ -53,7 +55,7 @@ namespace vob::aoe::json
 		{
 			assert(m_valueStack.empty());
 			m_valueStack.emplace(a_entryNode);
-			visit(a_value);
+			Base::visit(a_value);
 			m_valueStack.pop();
 		}
 
@@ -70,10 +72,10 @@ namespace vob::aoe::json
 		void processArithmetic(ValueType& a_value)
 		{
 			auto const& t_currentValue = m_valueStack.top().get();
-			auto const t_number = std::get_if<json::JsonNumber<>>(&t_currentValue);
+			auto const t_number = std::get_if<json::number<>>(&t_currentValue);
 			if (t_number != nullptr)
 			{
-				t_number->getAs(a_value);
+				t_number->get_as(a_value);
 			}
 		}
 
@@ -82,7 +84,7 @@ namespace vob::aoe::json
 		void processString(std::basic_string<CharType, TraitsType, AllocatorType>& a_value)
 		{
 			auto const& t_currentValue = m_valueStack.top().get();
-			if(auto const t_string = std::get_if<json::JsonString<>>(&t_currentValue))
+			if(auto const t_string = std::get_if<json::string<>>(&t_currentValue))
 			{
 				a_value = std::basic_string<CharType, TraitsType, AllocatorType>{
 					*t_string, a_value.get_allocator()
@@ -90,28 +92,24 @@ namespace vob::aoe::json
 			}
 		}
 
-		// ReSharper disable once CppMemberFunctionMayBeConst
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		void processSizeTag(vis::SizeTag& a_sizeTag)
 		{
 			a_sizeTag.m_size = 0;
 
 			auto const& t_currentValue = m_valueStack.top().get();
-			if (auto const t_array = std::get_if<json::JsonArray<>>(&t_currentValue))
+			if (auto const t_array = std::get_if<json::array<>>(&t_currentValue))
 			{
 				a_sizeTag.m_size = t_array->m_values.size();
 			}
 
 		}
 
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		template <typename ValueType>
-		void processKeyValuePair(
-			vis::IndexValuePair<ValueType> a_indexValuePair)
+		void processKeyValuePair(vis::IndexValuePair<ValueType> a_indexValuePair)
 		{
 			// Current node is array
 			auto const& t_currentValue = m_valueStack.top().get();
-			auto const t_array = std::get_if<json::JsonArray<>>(&t_currentValue);
+			auto const t_array = std::get_if<json::array<>>(&t_currentValue);
 			if (t_array == nullptr)
 			{
 				return;
@@ -125,17 +123,16 @@ namespace vob::aoe::json
 			}
 
 			m_valueStack.emplace(t_array->m_values[t_index]);
-			visit(std::forward<ValueType>(a_indexValuePair.m_value));
+			Base::visit(std::forward<ValueType>(a_indexValuePair.m_value));
 			m_valueStack.pop();
 		}
 
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		template <typename ValueType>
 		void processKeyValuePair(vis::NameValuePair<ValueType> a_nameValuePair)
 		{
 			// Current node is object
 			auto const& t_currentValue = m_valueStack.top().get();
-			auto const t_object = std::get_if<json::JsonObject<>>(&t_currentValue);
+			auto const t_object = std::get_if<json::object<>>(&t_currentValue);
 			if (t_object == nullptr)
 			{
 				return;
@@ -149,18 +146,12 @@ namespace vob::aoe::json
 			}
 
 			m_valueStack.emplace(t_valueIt->second);
-			visit(a_nameValuePair.m_value);
+			Base::visit(a_nameValuePair.m_value);
 			m_valueStack.pop();
-		}
-
-		auto getAllocator() const
-		{
-			return m_allocator;
 		}
 
 	private:
 		// Attributes
-		Allocator m_allocator;
 		JsonValueStack m_valueStack;
 	};
 }

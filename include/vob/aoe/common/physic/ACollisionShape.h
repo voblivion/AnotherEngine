@@ -1,7 +1,6 @@
 #pragma once
 
-#include "vob/aoe/core/type/ADynamicType.h"
-#include <vob/aoe/core/type/Cloneable.h>
+#include <vob/aoe/core/type/ADynamicType.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 
 namespace vob::aoe::common

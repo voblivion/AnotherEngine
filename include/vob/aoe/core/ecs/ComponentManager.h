@@ -5,7 +5,6 @@
 #include <typeindex>
 #include <unordered_set>
 
-#include <vob/sta/memory.h>
 #include <vob/sta/vector_map.h>
 #include <vob/sta/vector_set.h>
 
@@ -20,17 +19,17 @@ namespace vob::aoe::ecs
 	class CloneAComponentFactory
 	{
 	public:
-		explicit CloneAComponentFactory(type::CloneCopier const& a_cloneCopier)
+		explicit CloneAComponentFactory(type::CloneCopier<type::ADynamicType> const& a_cloneCopier)
 			: m_cloneCopier{ a_cloneCopier }
 		{}
 
-		type::Clone<AComponent> operator()() const
+		type::Clone<AComponent, type::ADynamicType> operator()() const
 		{
-			return type::Clone<AComponent>{ m_cloneCopier };
+			return type::Clone<AComponent, type::ADynamicType>{ m_cloneCopier };
 		}
 
 	private:
-		type::CloneCopier const& m_cloneCopier;
+		type::CloneCopier<type::ADynamicType> const& m_cloneCopier;
 	};
 
 	class VOB_AOE_API ComponentManager
@@ -38,12 +37,8 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		explicit ComponentManager(
-			type::CloneCopier const& a_cloneCopier
-			, std::pmr::memory_resource* a_resource =
-				std::pmr::get_default_resource())
-			: m_components{ std::pmr::polymorphic_allocator<std::byte>{ a_resource } }
-			, m_cloneCopier{ a_cloneCopier }
+		explicit ComponentManager(type::CloneCopier<type::ADynamicType> const& a_cloneCopier)
+			: m_cloneCopier{ a_cloneCopier }
 		{}
 
 		template <typename ComponentType>
@@ -54,11 +49,14 @@ namespace vob::aoe::ecs
 
 		bool hasComponent(std::type_index const a_typeIndex) const
 		{
-			return std::find_if(m_components.begin(), m_components.end()
+			return std::find_if(
+				m_components.begin()
+				, m_components.end()
 				, [a_typeIndex](auto const& a_component)
-			{
-				return std::type_index{ typeid(*a_component) } == a_typeIndex;
-			}) != m_components.end();
+				{
+					return std::type_index{ typeid(*a_component) } == a_typeIndex;
+				}
+			) != m_components.end();
 		}
 
 		template <typename ComponentType, typename... Args>
@@ -66,18 +64,15 @@ namespace vob::aoe::ecs
 		{
 			auto const t_typeIndex = std::type_index{ typeid(ComponentType) };
 			assert(!hasComponent(t_typeIndex));
-			auto t_component = sta::allocate_polymorphic<ComponentType>(
-				m_components.get_allocator()
-				, std::forward<Args>(a_args)...
-			);
+			auto t_component = std::make_unique<ComponentType>(std::forward<Args>(a_args)...);
 			auto& t_result = *t_component;
-			m_components.emplace(type::Clone<AComponent>{
+			m_components.emplace(type::Clone<AComponent, type::ADynamicType>{
 				m_cloneCopier
 				, std::move(t_component) });
 			return t_result;
 		}
 
-		void addComponent(type::Clone<AComponent> a_component)
+		void addComponent(type::Clone<AComponent, type::ADynamicType> a_component)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(a_component) };
 			assert(!hasComponent(t_typeIndex));
@@ -92,11 +87,14 @@ namespace vob::aoe::ecs
 		template <typename ComponentType>
 		ComponentType* getComponent() const
 		{
-			auto const t_it = std::find_if(m_components.begin()
-				, m_components.end(), [](auto const& a_component)
-			{
-				return typeid(*a_component) == typeid(std::remove_const_t<ComponentType>);
-			});
+			auto const t_it = std::find_if(
+				m_components.begin()
+				, m_components.end()
+				, [](auto const& a_component)
+				{
+					return typeid(*a_component) == typeid(std::remove_const_t<ComponentType>);
+				}
+			);
 
 			if (t_it != m_components.end())
 			{
@@ -105,14 +103,12 @@ namespace vob::aoe::ecs
 			return nullptr;
 		}
 
-		std::pmr::polymorphic_allocator<std::byte> getAllocator() const;
-
 	private:
 		// Attributes
 		struct PolymorphicComponentEqual
 		{
 			bool operator()(
-				type::Clone<AComponent> const& a_lhs, type::Clone<AComponent> const& a_rhs
+				type::Clone<AComponent, type::ADynamicType> const& a_lhs, type::Clone<AComponent, type::ADynamicType> const& a_rhs
 			) const
 			{
 				auto& lhs = *a_lhs;
@@ -121,8 +117,8 @@ namespace vob::aoe::ecs
 			}
 		};
 
-		sta::pmr::vector_set<type::Clone<AComponent>, PolymorphicComponentEqual> m_components;
-		std::reference_wrapper<type::CloneCopier const> m_cloneCopier;
+		sta::vector_set<type::Clone<AComponent, type::ADynamicType>, PolymorphicComponentEqual> m_components;
+		std::reference_wrapper<type::CloneCopier<type::ADynamicType> const> m_cloneCopier;
 
 		// Methods
 		friend class vis::Aggregate<ComponentManager, type::ADynamicType>;

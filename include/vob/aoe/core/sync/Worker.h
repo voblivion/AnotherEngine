@@ -21,7 +21,7 @@ namespace vob::aoe::sync
 
 	private:
 		// Attributes
-		std::pmr::vector<std::reference_wrapper<ATask>> m_tasks;
+		std::vector<std::reference_wrapper<ATask>> m_tasks;
 
 		// Methods
 		template <typename Functor>

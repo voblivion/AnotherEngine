@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vob/sta/memory.h>
 #include <vob/aoe/core/sync/ATask.h>
 #include <vob/aoe/core/sync/ThreadWorker.h>
 #include <vob/aoe/core/sync/Worker.h>
+
 
 namespace vob::aoe::sync
 {
@@ -35,7 +35,7 @@ namespace vob::aoe::sync
 	private:
 		// Attributes
 		Worker m_mainWorker;
-		std::pmr::vector<sta::polymorphic_ptr<ThreadWorker>> m_threadWorkers;
+		std::vector<std::unique_ptr<ThreadWorker>> m_threadWorkers;
 
 		// Methods
 		template <typename Functor>

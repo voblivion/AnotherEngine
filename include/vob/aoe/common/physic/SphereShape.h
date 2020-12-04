@@ -21,7 +21,6 @@ namespace vob::aoe::common
 		// Methods
 		friend class vis::Aggregate<SphereShape, ACollisionShape>;
 		template <typename VisitorType, typename ThisType>
-		// ReSharper disable once CppMemberFunctionMayBeStatic
 		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 		{
 			auto t_radius = btScalar{ 1.0f };

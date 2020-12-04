@@ -1,14 +1,15 @@
 #pragma once
 
-#include <vob/aoe/core/visitor/JsonWriter.h>
-#include <string>
+#include <vob/sta/string_id.h>
 
+#include <vob/aoe/core/visitor/JsonWriter.h>
 
 namespace vob::aoe::vis
 {
-	inline void accept(json::JsonWriter& a_visitor, sta::string_id& a_id)
+	template <typename ContextType>
+	inline void accept(common::JsonWriter<ContextType>& a_visitor, sta::string_id& a_id)
 	{
-		std::pmr::string string;
+		std::string string;
 		a_visitor.visit(string);
 		a_id.assign(string);
 	}

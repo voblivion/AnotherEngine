@@ -16,12 +16,12 @@ namespace vob::aoe::data
 		return t_endPos - t_startPos;
 	}
 
-	inline std::pmr::vector<char> getData(std::istream& a_inputStream)
+	inline std::vector<char> getData(std::istream& a_inputStream)
 	{
 		auto const t_size = getSize(a_inputStream);
 
 		// Copy stream into vector
-		std::pmr::vector<char> t_bytes;
+		std::vector<char> t_bytes;
 		t_bytes.resize(t_size);
 		if (t_bytes.empty())
 		{

@@ -134,6 +134,9 @@ namespace vob::aoe::ecs
 		explicit SystemEntity(Entity const& a_entity)
 			: m_id{ a_entity.getId() }
 			, m_impl{ a_entity }
+#ifndef NDEBUG
+			, m_entity{ &a_entity }
+#endif
 		{}
 
 		// Methods
@@ -152,5 +155,8 @@ namespace vob::aoe::ecs
 		// Attributes
 		EntityId m_id;
 		detail::SystemEntityImpl<ComponentTypes...> m_impl;
+#ifndef NDEBUG
+		Entity const* m_entity = nullptr;
+#endif
 	};
 }

@@ -4,8 +4,7 @@
 #include <vector>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/core/type/ADynamicType.h>
-#include <vob/sta/memory.h>
+
 
 namespace vob::aoe::sync
 {
@@ -44,7 +43,7 @@ namespace vob::aoe::sync
 		void setState(State const a_state);
 	};
 
-	using TaskList = std::pmr::vector<sta::polymorphic_ptr<ATask>>;
+	using TaskList = std::vector<std::unique_ptr<ATask>>;
 
 	struct TaskDescription
 	{

@@ -21,14 +21,14 @@ namespace vob::aoe::data
 
 		// Methods
 		template <typename DataType>
-		std::shared_ptr<DataType> find(Id const a_dataId)
+		std::shared_ptr<DataType> find(Id const a_id)
 		{
-			return m_typeRegistry.fastCast<DataType>(find(a_dataId));
+			return m_typeRegistry.fastCast<DataType>(find(a_id));
 		}
 
 	protected:
 		// Methods
-		virtual std::shared_ptr<type::ADynamicType> find(Id a_dataId) = 0;
+		virtual std::shared_ptr<type::ADynamicType> find(Id a_id) = 0;
 
 	private:
 		// Attributes

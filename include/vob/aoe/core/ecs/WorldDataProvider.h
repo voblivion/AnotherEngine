@@ -88,6 +88,14 @@ namespace vob::aoe::ecs
 			return m_worldData.m_worldComponents.getComponent<ComponentType>();
 		}
 
+		template <typename ComponentType>
+		ComponentType& getWorldComponentRef()
+		{
+			auto component = getWorldComponent<ComponentType>();
+			assert(component != nullptr);
+			return *component;
+		}
+
 		template <typename SystemType, typename... ComponentTypes>
 		EntityList<ComponentTypes...> const& getEntityList(SystemType& a_system)
 		{
@@ -122,8 +130,7 @@ namespace vob::aoe::ecs
 
 		virtual void onGetWorldComponent(ResourceAccess) {}
 
-		virtual void onGetEntityList(
-			std::pmr::unordered_set<ResourceAccess>) {} // NOLINT
+		virtual void onGetEntityList(std::unordered_set<ResourceAccess>) {}
 
 		virtual void onGetSpawnManager() {}
 

@@ -12,7 +12,7 @@ namespace vob::aoe::vis
 	template <typename VisitorType>
 	void accept(VisitorType& a_visitor, btBoxShape& a_boxShape)
 	{
-		auto t_halfExtent = common::Vector3{ 0.5f, 0.5f, 0.5f };
+		auto t_halfExtent = vec3{ 0.5f, 0.5f, 0.5f };
 		a_visitor.visit(vis::nvp("HalfExtent", t_halfExtent));
 
 		a_boxShape = btBoxShape(common::toBtVector(t_halfExtent));
@@ -49,7 +49,7 @@ namespace vob::aoe::vis
 	template <typename VisitorType>
 	void accept(VisitorType& a_visitor, btCylinderShape& a_cylinderShape)
 	{
-		auto t_halfExtent = common::Vector3{ 0.5f, 0.5f, 0.5f };
+		auto t_halfExtent = vec3{ 0.5f, 0.5f, 0.5f };
 		a_visitor.visit(vis::nvp("HalfExtent", t_halfExtent));
 
 		a_cylinderShape = btCylinderShape(common::toBtVector(t_halfExtent));

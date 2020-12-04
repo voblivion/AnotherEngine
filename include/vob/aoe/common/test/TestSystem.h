@@ -19,7 +19,7 @@ namespace vob::aoe::common
 
 		void update() const
 		{
-			for(auto& t_entity : m_entities)
+			/*for(auto& t_entity : m_entities)
 			{
 				auto& t_transform = t_entity.getComponent<TransformComponent>();
 				auto& t_test = t_entity.getComponent<TestComponent>();
@@ -38,7 +38,7 @@ namespace vob::aoe::common
 					}
 					t_transform.m_position.x = std::sin(t_test.t);
 				}
-			}
+			}*/
 		}
 
 		ecs::EntityList<

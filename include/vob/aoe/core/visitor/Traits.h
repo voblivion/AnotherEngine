@@ -11,7 +11,9 @@ namespace vob::aoe::vis
 		template <typename Vis, typename Val>
 		static auto test(int)
 			-> decltype(
-				std::declval<Val>().accept(std::declval<Vis&>()), std::true_type{}
+				std::declval<Val>().accept(
+					std::declval<Vis&>()
+				), std::true_type{}
 			)
 		{
 			return std::true_type{};
@@ -35,7 +37,11 @@ namespace vob::aoe::vis
 	private:
 		template <typename Vis, typename Val>
 		static auto test(int)
-			-> decltype(accept(std::declval<Vis&>(), std::declval<Val>())
+			-> decltype(
+				accept(
+					std::declval<Vis&>()
+					, std::declval<Val>()
+				)
 				, std::true_type{}
 		) {
 			return std::true_type{};

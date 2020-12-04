@@ -1,11 +1,12 @@
 #pragma once
 
 #include "vob/aoe/core/ecs/WorldDataProvider.h"
-#include "WindowComponent.h"
-#include <SFML/Window/Event.hpp>
+#include "vob/aoe/common/window/WindowComponent.h"
 #include "InputComponent.h"
 #include "CursorComponent.h"
 #include <iomanip>
+
+
 
 namespace vob::aoe::common
 {
@@ -13,83 +14,82 @@ namespace vob::aoe::common
 	{
 	public:
 		explicit InputSystem(ecs::WorldDataProvider& a_wdp)
-			: m_worldWindow{ *a_wdp.getWorldComponent<WindowComponent>() }
+			: m_worldWindowComponent{ *a_wdp.getWorldComponent<WindowComponent>() }
 			, m_worldInput{ *a_wdp.getWorldComponent<InputComponent>() }
 			, m_worldCursor{ *a_wdp.getWorldComponent<CursorComponent>() }
-		{}
+			, m_worldStop{ a_wdp.getStopBool() }
+		{
+			
+		}
 
 		void update() const
 		{
-			for (auto& key : m_worldInput.m_keyboard.m_keys)
+			auto& window = m_worldWindowComponent.getWindow();
+
+			if (window.shouldClose())
 			{
-				key.m_changed = false;
+				m_worldStop = true;
 			}
 
-			for (auto& button : m_worldInput.m_mouse.m_buttons)
+			auto mouseMoved = false;
+			auto optionalEvent = window.pollEvent();
+			while (optionalEvent.has_value())
 			{
-				button.m_changed = false;
+				std::visit([this, &mouseMoved](auto const& a_event)
+				{
+					using EventType = std::decay_t<decltype(a_event)>;
+					if constexpr (std::is_same_v<EventType, common::KeyEvent>)
+					{
+						auto const& keyEvent = static_cast<common::KeyEvent const&>(a_event);
+
+						if (keyEvent.m_action == common::KeyEvent::Action::Repeat)
+							return;
+
+						auto const key = static_cast<std::size_t>(toKey(keyEvent.m_keyCode));
+						if (key < m_worldInput.m_keyboard.m_keys.size())
+						{
+							auto& keyState = m_worldInput.m_keyboard.m_keys[key];
+							keyState.m_changed = true;
+							keyState.m_pressed = keyEvent.m_action == common::KeyEvent::Action::Press;
+						}
+					}
+					else if constexpr (std::is_same_v<EventType, common::MouseMoveEvent>)
+					{
+						auto const& mouseMoveEvent = static_cast<common::MouseMoveEvent const&>(a_event);
+						m_worldInput.m_mouse.m_move = mouseMoveEvent.m_position;
+						m_worldInput.m_mouse.m_move -= m_worldInput.m_mouse.m_position;
+						m_worldInput.m_mouse.m_position = mouseMoveEvent.m_position;
+						mouseMoved = true;
+					}
+					else if constexpr (std::is_same_v<EventType, common::MouseButtonEvent>)
+					{
+						auto const& mouseButtonEvent = static_cast<common::MouseButtonEvent const&>(a_event);
+						auto& buttonState = m_worldInput.m_mouse.m_buttons[mouseButtonEvent.m_button];
+						buttonState.m_changed = true;
+						buttonState.m_pressed = mouseButtonEvent.m_pressed;
+					}
+				}, optionalEvent.value());
+				optionalEvent = window.pollEvent();
 			}
-
-			// TODO maybe go event ?
-			m_worldInput.m_mouse.m_move = sf::Vector2i{};
-			auto const mousePosition = sf::Mouse::getPosition(m_worldWindow.m_window);
-			m_worldInput.m_mouse.m_move = mousePosition;
-			m_worldInput.m_mouse.m_move -= m_worldInput.m_mouse.m_position;
-			m_worldInput.m_mouse.m_position = mousePosition;
-
-			sf::Event event{};
-			while (m_worldWindow.getWindow().pollEvent(event))
+			m_worldInput.m_mouse.m_moving.m_changed = !m_worldInput.m_mouse.m_moving.m_pressed;
+			if (mouseMoved)
 			{
-				// ImGui::SFML::ProcessEvent(event);
-				switch (event.type)
-				{
-				case sf::Event::MouseButtonPressed:
-				{
-					auto& but = m_worldInput.m_mouse.m_buttons[event.mouseButton.button];
-					but.m_changed = true;
-					but.m_pressed = true;
-					break;
-
-				}
-				case sf::Event::MouseButtonReleased:
-				{
-					auto& but = m_worldInput.m_mouse.m_buttons[event.mouseButton.button];
-					but.m_changed = true;
-					but.m_pressed = false;
-					break;
-				}
-				case sf::Event::KeyPressed:
-				{
-					auto& key = m_worldInput.m_keyboard.m_keys[event.key.code];
-					key.m_changed = true;
-					key.m_pressed = true;
-					break;
-				}
-				case sf::Event::KeyReleased:
-				{
-					auto& key = m_worldInput.m_keyboard.m_keys[event.key.code];
-					key.m_changed = true;
-					key.m_pressed = false;
-					break;
-				}
-				default:
-					break;
-				}
+				m_worldInput.m_mouse.m_moving.m_pressed = true;
 			}
-
-			if (m_worldCursor.m_center)
+			else
 			{
-				sf::Vector2i centerPosition;
-				centerPosition.x = m_worldWindow.getWindow().getSize().x / 2;
-				centerPosition.y = m_worldWindow.getWindow().getSize().y / 2;
-				sf::Mouse::setPosition(centerPosition, m_worldWindow.getWindow());
-				m_worldInput.m_mouse.m_position = centerPosition;
+				m_worldInput.m_mouse.m_moving.m_pressed = false;
+				m_worldInput.m_mouse.m_move = {};
 			}
-			m_worldWindow.getWindow().setMouseCursorVisible(m_worldCursor.m_visible);
+			// TODO : Temporary because at start we don't know
+			m_worldInput.m_mouse.m_inside.m_pressed = window.isHovered();
+
+			window.setCursorState(m_worldCursor.m_state);
 		}
 
-		WindowComponent& m_worldWindow;
+		WindowComponent& m_worldWindowComponent;
 		InputComponent& m_worldInput;
 		CursorComponent const& m_worldCursor;
+		bool& m_worldStop;
 	};
 }

@@ -10,7 +10,7 @@ namespace vob::aoe::common
 	{
 		// Attributes
 		ecs::EntityHandle m_parent;
-		std::pmr::vector<ecs::EntityHandle> m_children;
+		std::vector<ecs::EntityHandle> m_children;
 
 		// Methods
 		friend class vis::Aggregate<HierarchyComponent, ecs::AComponent>;

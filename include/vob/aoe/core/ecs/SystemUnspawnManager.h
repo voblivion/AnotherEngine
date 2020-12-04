@@ -12,16 +12,14 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		VOB_AOE_API explicit SystemUnspawnManager(
-			std::pmr::vector<EntityId>& a_frameUnspawns);
+		VOB_AOE_API explicit SystemUnspawnManager(std::vector<EntityId>& a_frameUnspawns);
 
 		// Methods
-
 		VOB_AOE_API void unspawn(EntityId const a_id);
 
 	private:
 		// Attributes
 		std::mutex m_mutex;
-		std::pmr::vector<EntityId>& m_frameUnspawns;
+		std::vector<EntityId>& m_frameUnspawns;
 	};
 }

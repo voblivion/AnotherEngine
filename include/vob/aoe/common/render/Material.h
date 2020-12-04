@@ -2,18 +2,19 @@
 
 #include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/visitor/Aggregate.h>
+#include <vob/aoe/core/visitor/Standard.h>
 
-#include <vob/aoe/common/opengl/Handle.h>
-#include <vob/aoe/common/opengl/resources/Texture.h>
+#include <vob/aoe/common/render/GraphicResourceHandle.h>
+#include <vob/aoe/common/render/resources/Texture.h>
 
-namespace vob::aoe::ogl
+namespace vob::aoe::common
 {
 	struct Material final
 		: public vis::Aggregate<Material, type::ADynamicType>
 	{
 		// Attributes
-		data::Handle<Handle<Texture>> m_diffuse;
-		data::Handle<Handle<Texture>> m_specular;
+		data::Handle<GraphicResourceHandle<Texture>> m_diffuse;
+		data::Handle<GraphicResourceHandle<Texture>> m_specular;
 
 		// Constructor
 		explicit Material(data::ADatabase& a_database)

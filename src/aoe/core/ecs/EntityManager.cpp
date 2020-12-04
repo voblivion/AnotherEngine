@@ -4,14 +4,22 @@
 namespace vob::aoe::ecs
 {
 	// Public
-	EntityManager::EntityManager(
-		std::pmr::polymorphic_allocator<std::byte> const& a_allocator
-	)
-		: m_systemEntityLists{ a_allocator }
-		, m_frameSpawns{ a_allocator }
-		, m_systemSpawnManager{ m_frameSpawns }
+	EntityManager::EntityManager()
+		: m_systemSpawnManager{ m_frameSpawns }
 		, m_systemUnspawnManager{ m_frameUnspawns }
 	{}
+
+	EntityManager::~EntityManager()
+	{
+		for (auto& t_entity : m_entities)
+		{
+			for (auto& t_listHolder : m_systemEntityLists)
+			{
+				t_listHolder->onEntityRemoved(*t_entity.second);
+			}
+		}
+	}
+
 
 	SystemSpawnManager& EntityManager::getSystemSpawnManager()
 	{
@@ -47,12 +55,15 @@ namespace vob::aoe::ecs
 	{
 		for (auto const t_id : m_frameUnspawns)
 		{
-			for (auto& t_listHolder : m_systemEntityLists)
-			{
-				t_listHolder->onEntityRemoved(t_id);
-			}
 			auto const t_it = m_entities.find(t_id);
-			m_entities.erase(t_it);
+			if (t_it != m_entities.end())
+			{
+				for (auto& t_listHolder : m_systemEntityLists)
+				{
+					t_listHolder->onEntityRemoved(*t_it->second);
+				}
+				m_entities.erase(t_it);
+			}
 		}
 		m_frameUnspawns.clear();
 	}

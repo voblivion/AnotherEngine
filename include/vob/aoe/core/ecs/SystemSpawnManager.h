@@ -12,8 +12,7 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		explicit SystemSpawnManager(
-			std::pmr::vector<sta::polymorphic_ptr<Entity>>& a_frameSpawns);
+		explicit SystemSpawnManager(std::vector<std::unique_ptr<Entity>>& a_frameSpawns);
 
 		// Methods
 		Entity& spawn(ComponentManager a_componentManager);
@@ -21,7 +20,7 @@ namespace vob::aoe::ecs
 	private:
 		// Attributes
 		EntityId m_nextEntityId{};
-		std::mutex m_mutex;
-		std::pmr::vector<sta::polymorphic_ptr<Entity>>& m_frameSpawns;
+		std::mutex m_mutex{};
+		std::vector<std::unique_ptr<Entity>>& m_frameSpawns;
 	};
 }

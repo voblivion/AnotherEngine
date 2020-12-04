@@ -6,7 +6,7 @@
 #include <vob/aoe/core/data/Id.h>
 #include <vob/aoe/core/data/ADatabase.h>
 #include <vob/aoe/core/type/Factory.h>
-
+#include <vob/aoe/core/visitor/JsonWriter.h>
 
 namespace vob::aoe::data
 {
@@ -26,19 +26,6 @@ namespace vob::aoe::data
 		ADatabase& getDatabase() const
 		{
 			return m_database;
-		}
-
-		template <typename Visitor>
-		void accept(Visitor& a_visitor)
-		{
-			a_visitor.visit(m_id);
-			tryUnload();
-		}
-
-		template <typename Visitor>
-		void accept(Visitor& a_visitor) const
-		{
-			a_visitor.visit(m_id);
 		}
 
 		void setId(Id const a_id)

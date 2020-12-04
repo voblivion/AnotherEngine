@@ -29,6 +29,12 @@ namespace vob::aoe::ecs
 			: m_id{ a_entity.getId() }
 		{}
 
+		// Operators
+		friend bool operator==(EntityHandle const& a_lhs, EntityHandle const& a_rhs)
+		{
+			return a_lhs.m_id == a_rhs.m_id;
+		}
+
 		// Methods
 		bool isValid() const
 		{

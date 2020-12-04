@@ -8,13 +8,10 @@ namespace vob::aoe::ecs
 	struct WorldData
 	{
 		// Constructors
-		explicit VOB_AOE_API WorldData(
-			ComponentManager a_worldComponents);
+		explicit VOB_AOE_API WorldData(ComponentManager a_worldComponents);
 
 		// Methods
 		void update();
-
-		VOB_AOE_API std::pmr::polymorphic_allocator<std::byte> getAllocator() const;
 
 		// Attributes
 		bool m_shouldStop = false;

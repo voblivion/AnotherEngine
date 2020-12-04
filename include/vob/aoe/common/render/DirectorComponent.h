@@ -1,6 +1,6 @@
 #pragma once
 #include <vob/aoe/core/ecs/Component.h>
-#include "vob/aoe/core/ecs/EntityId.h"
+#include <vob/aoe/core/ecs/EntityId.h>
 
 
 namespace vob::aoe::common

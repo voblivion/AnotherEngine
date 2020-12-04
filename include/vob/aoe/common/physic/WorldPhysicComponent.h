@@ -5,15 +5,22 @@
 
 namespace vob::aoe::common
 {
-	struct WorldPhysicComponent final
+	class WorldPhysicComponent final
 		: public ecs::AComponent
 	{
 	public:
-		explicit WorldPhysicComponent(type::Clone<ADynamicsWorldHolder> a_dynamicsWorldHolder)
+		explicit WorldPhysicComponent(
+			type::Clone<ADynamicsWorldHolder, type::ADynamicType> a_dynamicsWorldHolder
+		)
 			: m_dynamicsWorldHolder{ std::move(a_dynamicsWorldHolder) }
 		{}
 
+		~WorldPhysicComponent()
+		{
+			m_dynamicsWorldHolder.reset();
+		}
+
 		bool m_pause{ false };
-		type::Clone<ADynamicsWorldHolder> m_dynamicsWorldHolder;
+		type::Clone<ADynamicsWorldHolder, type::ADynamicType> m_dynamicsWorldHolder;
 	};
 }

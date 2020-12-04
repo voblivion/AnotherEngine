@@ -69,7 +69,7 @@ namespace vob::aoe::common
 		DebugMesh& m_debugMesh;
 	};
 
-	float const g_physicLimit = 1.0e6;
+	constexpr float g_physicLimit = 1.0e6;
 
 	struct PhysicSystem
 	{
@@ -87,8 +87,8 @@ namespace vob::aoe::common
 				*a_wdp.getWorldComponent<WorldPhysicComponent>() }
 			, m_worldTimeComponent{
 				*a_wdp.getWorldComponent<TimeComponent>() }
-			, m_renderDebugComponent{
-				*a_wdp.getWorldComponent<DebugRenderComponent>() }
+			, m_debugSceneRenderComponent{
+				*a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{
 				a_wdp.getEntityList(*this, RigidBodyComponents{}) }
 			, m_characterEntities{
@@ -113,15 +113,14 @@ namespace vob::aoe::common
 					auto t_matrix = btTransform{};
 					t_rigidBody.m_motionState.getWorldTransform(t_matrix);
 
-					t_transform.m_position = toGlmVector(t_matrix.getOrigin());
-					t_transform.m_rotation = toGlmQuaternion(t_matrix.getRotation());
+					t_transform.m_matrix = toGlmMat4(t_matrix);
 
-					ignorable_assert(squaredLength(t_transform.m_position)
-						< g_physicLimit * g_physicLimit);
+					constexpr auto g_physicLimitSquared = g_physicLimit * g_physicLimit;
+					ignorable_assert(squaredLength(getTranslation(t_transform.m_matrix)) < g_physicLimitSquared);
 				}
 			}
 
-			DebugDrawer t_debugDrawer{ m_renderDebugComponent.m_debugMesh };
+			DebugDrawer t_debugDrawer{ m_debugSceneRenderComponent.m_debugMesh };
 			t_dynamicsWorld.setDebugDrawer(&t_debugDrawer);
 			t_dynamicsWorld.debugDrawWorld();
 			t_dynamicsWorld.setDebugDrawer(nullptr);
@@ -149,9 +148,7 @@ namespace vob::aoe::common
 
 				// Initialize motion state
 				auto const t_transform = a_entity.getComponent<TransformComponent>();
-				auto t_matrix = btTransform{};
-				t_matrix.setOrigin(toBtVector(t_transform->m_position));
-				t_matrix.setRotation(toBtQuaternion(t_transform->m_rotation));
+				auto const t_matrix = toBtTransform(t_transform->m_matrix);
 				t_rigidBody->m_motionState.setWorldTransform(t_matrix);
 
 				// Compute inertia
@@ -162,8 +159,7 @@ namespace vob::aoe::common
 				auto& t_shape = *t_rigidBody->m_collisionShape;
 				if (t_mass != btScalar{ 0.0 })
 				{
-					t_shape.calculateLocalInertia(
-						t_mass, t_inertia);
+					t_shape.calculateLocalInertia(t_mass, t_inertia);
 				}
 
 				// Create Bullet's rigid body
@@ -215,7 +211,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityRemoved(ecs::EntityId const a_id) const
+		void onEntityRemoved(ecs::Entity const& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -225,18 +221,18 @@ namespace vob::aoe::common
 			auto& t_dynamicsWorld =
 				m_worldPhysicComponent.m_dynamicsWorldHolder->getDynamicsWorld();
 
-			if (auto const t_entity = m_rigidBodyEntities.find(a_id))
+			auto const t_rigidBody = a_entity.getComponent<RigidBodyComponent>();
+			if (t_rigidBody != nullptr)
 			{
-				auto& t_rigidBody = t_entity->getComponent<RigidBodyComponent>();
-				t_dynamicsWorld.removeRigidBody(&*t_rigidBody.m_rigidBody);
-				t_rigidBody.m_rigidBody.reset();
+				t_dynamicsWorld.removeRigidBody(&*t_rigidBody->m_rigidBody);
+				t_rigidBody->m_rigidBody.reset();
 			}
 		}
 
 	private:
 		WorldPhysicComponent& m_worldPhysicComponent;
 		TimeComponent& m_worldTimeComponent;
-		DebugRenderComponent& m_renderDebugComponent;
+		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
 		ecs::EntityList<
 			TransformComponent
