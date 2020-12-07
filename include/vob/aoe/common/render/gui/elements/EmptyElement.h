@@ -1,14 +1,18 @@
 #pragma once
 
-#include <vob/aoe/common/render/gui/elements/StandardElement.h>
+#include <vob/aoe/common/render/gui/elements/AStandardElement.h>
 
 
 namespace vob::aoe::common
 {
 	class EmptyElement
-		: public StandardElement
+		: public AStandardElement
 	{
 	protected:
-		void renderContent(GuiShaderProgram const& a_shaderProgram, GuiRenderContext& a_renderContext, GuiTransform a_transform) const override {}
+		void renderContent(
+			GuiShaderProgram const& a_shaderProgram
+			, GuiRenderContext& a_renderContext
+			, GuiTransform a_transform
+		) const override {}
 	};
 }

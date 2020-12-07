@@ -1,9 +1,18 @@
 #pragma once
 #include <vob/aoe/common/render/resources/ShaderProgram.h>
 #include <vob/aoe/common/render/resources/SceneShaderProgram.h>
+#include <vob/aoe/core/type/Primitive.h>
 
 namespace vob::aoe::common
 {
+	enum class GuiRenderType : u32
+	{
+		QuadFill = 0
+		, QuadStroke = 1
+		, DistanceFieldFill = 2
+		, DistanceFieldStroke = 3
+	};
+
 	constexpr std::uint32_t c_renderTypeQuadFill = 0;
 	constexpr std::uint32_t c_renderTypeQuadStroke = 1;
 	constexpr std::uint32_t c_renderTypeDistanceFieldFill = 2;
@@ -19,10 +28,6 @@ namespace vob::aoe::common
 		{}
 
 		// Methods
-		auto getViewSizeUniformLocation() const
-		{
-			return m_viewSize;
-		}
 		void create() const
 		{
 			ShaderProgram::create();
@@ -41,7 +46,42 @@ namespace vob::aoe::common
 			
 		}
 
-	public: // TODO
+		void setViewSize(vec2 const& a_viewSize) const
+		{
+			setUniform(m_viewSize, a_viewSize);
+		}
+
+		void setRenderType(GuiRenderType a_renderType) const
+		{
+			setUniform(m_renderType, static_cast<u32>(a_renderType));
+		}
+
+		void setElementPosition(vec2 const& a_elementPosition) const
+		{
+			setUniform(m_elementPosition, a_elementPosition);
+		}
+
+		void setElementSize(vec2 const& a_elementSize) const
+		{
+			setUniform(m_elementSize, a_elementSize);
+		}
+
+		void setOuterCornerRadius(vec4 const& a_outerCornerRadius) const
+		{
+			setUniform(m_outerCornerRadius, a_outerCornerRadius);
+		}
+
+		void setInnerCornerRadius(vec4 const& a_innerCornerRadius) const
+		{
+			setUniform(m_innerCornerRadius, a_innerCornerRadius);
+		}
+
+		void setStrokeWidth(vec4 const& a_strokeWidth) const
+		{
+			setUniform(m_strokeWidth, a_strokeWidth);
+		}
+
+	private:
 		// Attributes
 		mutable UniformLocation m_viewSize = 0;
 		mutable UniformLocation m_renderType = 0;

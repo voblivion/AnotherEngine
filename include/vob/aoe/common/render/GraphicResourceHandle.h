@@ -59,6 +59,11 @@ namespace vob::aoe::common
 		}
 #pragma endregion
 #pragma region Methods
+		auto& getManager() const
+		{
+			return m_manager;
+		}
+
 		ResourceT const* resource() const
 		{
 			return m_resource.get();

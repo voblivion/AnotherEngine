@@ -6,25 +6,51 @@
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/gui/GuiMesh.h>
 #include <vob/aoe/common/render/gui/TextUtils.h>
+#include <vob/aoe/common/render/gui/elements/AStandardElement.h>
 
 namespace vob::aoe::common
 {
 	class TextElement
-		: public AElement
+		: public vis::Aggregate<TextElement, AStandardElement>
 	{
+		using Base = vis::Aggregate<TextElement, AStandardElement>;
 	public:
 		#pragma region Constructors
 		explicit TextElement(
 			data::ADatabase& a_database
 			, IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
 		)
-			: m_font{ a_database }
+			: Base{ a_database }
+			, m_font{ a_database }
 			, m_mesh{ a_guiMeshResourceManager }
 		{}
 		#pragma endregion
 
 		#pragma region Methods
-		virtual void render(
+		TextElement(TextElement const& a_other)
+			: Base{ a_other.m_borderTexture.getDatabase() }
+			, m_changed{ true }
+			, m_text{ a_other.m_text }
+			, m_size{ a_other.m_size }
+			, m_font{ a_other.m_font }
+			, m_lastRenderedSize{ 0.0f, 0.0f }
+			, m_mesh{ a_other.m_mesh.getManager() }
+		{}
+
+		friend class vis::Aggregate<TextElement, AStandardElement>;
+		template <typename VisitorType, typename ThisType>
+		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
+		{
+			if constexpr (!std::is_const_v<ThisType>)
+			{
+				a_this.m_changed = true;
+			}
+			a_visitor.visit(vis::makeNameValuePair("Text", a_this.m_text));
+			a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+			a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
+		}
+
+		virtual void renderContent(
 			GuiShaderProgram const& a_shaderProgram
 			, GuiRenderContext& a_renderContext
 			, GuiTransform const a_transform
@@ -46,9 +72,9 @@ namespace vob::aoe::common
 
 			glActiveTexture(GL_TEXTURE0 + 0);
 			(*m_font->m_pages[0])->bind(GL_TEXTURE_2D);
-			a_shaderProgram.setUniform(a_shaderProgram.m_renderType, c_renderTypeDistanceFieldFill);
-			a_shaderProgram.setUniform(a_shaderProgram.m_elementPosition, a_transform.m_position);
-			a_shaderProgram.setUniform(a_shaderProgram.m_elementSize, a_transform.m_size);
+			a_shaderProgram.setRenderType(GuiRenderType::DistanceFieldFill);
+			a_shaderProgram.setElementPosition(a_transform.m_position);
+			a_shaderProgram.setElementSize(a_transform.m_size);
 			m_mesh.resource()->render();
 		}
 
@@ -57,54 +83,6 @@ namespace vob::aoe::common
 			m_text = std::move(a_text);
 			m_changed = true;
 		}
-
-
-
-
-
-
-
-
-
-
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/*                  Polymorphic base for Clone                  */
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-		/****************************************************************/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 		void setFont(data::Handle<Font> a_font)
 		{
