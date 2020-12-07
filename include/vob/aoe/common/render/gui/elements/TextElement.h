@@ -27,15 +27,15 @@ namespace vob::aoe::common
 		#pragma endregion
 
 		#pragma region Methods
-		TextElement(TextElement const& a_other)
+		/*TextElement(TextElement const& a_other)
 			: Base{ a_other.m_borderTexture.getDatabase() }
 			, m_changed{ true }
 			, m_text{ a_other.m_text }
 			, m_size{ a_other.m_size }
 			, m_font{ a_other.m_font }
 			, m_lastRenderedSize{ 0.0f, 0.0f }
-			, m_mesh{ a_other.m_mesh.getManager() }
-		{}
+			, m_mesh{ a_other.m_mesh }
+		{}*/
 
 		friend class vis::Aggregate<TextElement, AStandardElement>;
 		template <typename VisitorType, typename ThisType>
@@ -56,8 +56,8 @@ namespace vob::aoe::common
 			, GuiTransform const a_transform
 		) const override
 		{
-			assert(m_mesh->isReady());
-			if (!m_font.isValid()
+			if (!m_mesh->isReady()
+				|| !m_font.isValid()
 				|| !m_font->m_pages[0].isValid()
 				|| !(*m_font->m_pages[0])->isReady())
 			{

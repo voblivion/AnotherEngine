@@ -10,7 +10,7 @@ namespace vob::aoe::common
 	struct GraphicResourceHandle final
 		: public type::ADynamicType
 	{
-#pragma region Constructors
+		#pragma region Constructors
 		template <typename... Args>
 		explicit GraphicResourceHandle(
 			IGraphicResourceManager<ResourceT>& a_manager
@@ -19,28 +19,37 @@ namespace vob::aoe::common
 			: m_manager{ a_manager }
 			, m_resource{ std::make_shared<ResourceT>(std::forward<Args>(a_args)...) }
 		{
-			if (m_resource != nullptr)
-			{
-				m_manager.requestCreate(m_resource);
-			}
+			tryRequestResourceCreation();
 		}
 
-		GraphicResourceHandle(GraphicResourceHandle&&) = default;
-		// TODO : could allow copy but reset m_resource ?
-		GraphicResourceHandle(GraphicResourceHandle const&) = delete;
+		GraphicResourceHandle(GraphicResourceHandle&&) noexcept = default;
+		GraphicResourceHandle(GraphicResourceHandle const& a_other)
+			: m_manager{ a_other.m_manager }
+			, m_resource{ std::make_shared<ResourceT>(*a_other.m_resource) }
+		{
+			tryRequestResourceCreation();
+		}
 
 		~GraphicResourceHandle()
 		{
-			if (m_resource != nullptr && m_resource->isReady())
-			{
-				m_manager.requestDestroy(std::move(m_resource));
-			}
+			tryRequestResourceDestruction();
 		}
-#pragma endregion
-#pragma region Operators
+		#pragma endregion
+
+		#pragma region Operators
 		GraphicResourceHandle& operator=(GraphicResourceHandle&&) = default;
-		// TODO : could allow copy but reset m_resource ?
-		GraphicResourceHandle& operator=(GraphicResourceHandle const&) = delete;
+		GraphicResourceHandle& operator=(GraphicResourceHandle const& a_other)
+		{
+			tryRequestResourceDestruction();
+
+			m_manager = a_other.m_manager.get();
+			m_resource = std::make_shared<ResourceT>(*a_other.m_resource);
+
+			tryRequestResourceCreation();
+
+			return *this;
+		}
+
 		auto const& operator*() const
 		{
 			return *resource();
@@ -57,13 +66,9 @@ namespace vob::aoe::common
 		{
 			return resource();
 		}
-#pragma endregion
-#pragma region Methods
-		auto& getManager() const
-		{
-			return m_manager;
-		}
+		#pragma endregion
 
+		#pragma region Methods
 		ResourceT const* resource() const
 		{
 			return m_resource.get();
@@ -84,11 +89,29 @@ namespace vob::aoe::common
 		{
 			a_visitor.visit(*m_resource);
 		}
-#pragma endregion
+		#pragma endregion
+
 	private:
-#pragma region Attributes
-		IGraphicResourceManager<ResourceT>& m_manager;
+		#pragma region Attributes
+		std::reference_wrapper<IGraphicResourceManager<ResourceT>> m_manager;
 		std::shared_ptr<ResourceT> m_resource;
-#pragma endregion
+		#pragma endregion
+
+		#pragma region Methods
+		void tryRequestResourceCreation()
+		{
+			if (m_resource != nullptr)
+			{
+				m_manager.get().requestCreate(m_resource);
+			}
+		}
+		void tryRequestResourceDestruction()
+		{
+			if (m_resource != nullptr && m_resource->isReady())
+			{
+				m_manager.get().requestDestroy(std::move(m_resource));
+			}
+		}
+		#pragma endregion
 	};
 }
