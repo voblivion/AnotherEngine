@@ -12,7 +12,7 @@
 namespace vob::aoe::common
 {
 	struct RigidBodyComponent final
-		: public vis::Aggregate<RigidBodyComponent, ecs::AComponent>
+		: public ecs::AComponent
 	{
 		// Attributes
 		std::optional<btRigidBody> m_rigidBody;
@@ -32,18 +32,18 @@ namespace vob::aoe::common
 			: m_collisionShape{ a_cloneCopier }
 			, m_physicMaterial{ a_database }
 		{}
-
-		// Methods
-		friend class vis::Aggregate<RigidBodyComponent, ecs::AComponent>;
-		template <typename VisitorType, typename ThisType>
-		// ReSharper disable once CppMemberFunctionMayBeStatic
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			a_visitor.visit(vis::nvp("Mass", a_this.m_mass));
-			a_visitor.visit(vis::nvp("Shape", a_this.m_collisionShape));
-			a_visitor.visit(vis::nvp("LinearFactor", a_this.m_linearFactor));
-			a_visitor.visit(vis::nvp("AngularFactor", a_this.m_angularFactor));
-			a_visitor.visit(vis::nvp("PhysicMaterial", a_this.m_physicMaterial));
-		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<common::RigidBodyComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		a_visitor.visit(vis::nvp("Mass", a_this.m_mass));
+		a_visitor.visit(vis::nvp("Shape", a_this.m_collisionShape));
+		a_visitor.visit(vis::nvp("LinearFactor", a_this.m_linearFactor));
+		a_visitor.visit(vis::nvp("AngularFactor", a_this.m_angularFactor));
+		a_visitor.visit(vis::nvp("PhysicMaterial", a_this.m_physicMaterial));
+	}
 }

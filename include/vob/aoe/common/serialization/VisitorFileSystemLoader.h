@@ -39,7 +39,8 @@ namespace vob::aoe::common
 			std::ifstream file;
 			open(file, a_path);
 
-			auto visitor = createVisitor(a_path);
+			const auto context = createContext(a_path);
+			auto visitor = Visitor{ context };
 
 			return visitor.canLoad(file);
 		}
@@ -49,7 +50,8 @@ namespace vob::aoe::common
 			std::ifstream file;
 			open(file, a_path);
 
-			auto visitor = createVisitor(a_path);
+			const auto context = createContext(a_path);
+			auto visitor = Visitor{ context };
 
 			std::shared_ptr<ADynamicType> t_data;
 			visitor.load(file, t_data);
@@ -81,9 +83,9 @@ namespace vob::aoe::common
 			a_file.open(a_path, std::ios::binary | std::ios::in);
 		}
 
-		Visitor createVisitor(std::filesystem::path const& a_path) const
+		Context createContext(std::filesystem::path const& a_path) const
 		{
-			const auto context = Context{
+			return {
 				m_typeRegistry
 				, m_dynamicTypeFactory
 				, m_btCollisionShapeFactory
@@ -92,8 +94,6 @@ namespace vob::aoe::common
 				, m_btCollisionShapeApplicator
 				, a_path
 			};
-			return Visitor{ context };
-			
 		}
 	};
 }

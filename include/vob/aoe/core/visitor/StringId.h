@@ -7,7 +7,7 @@
 namespace vob::aoe::vis
 {
 	template <typename ContextType>
-	inline void accept(common::JsonWriter<ContextType>& a_visitor, sta::string_id& a_id)
+	inline void accept(vis::JsonWriter<ContextType>& a_visitor, sta::string_id& a_id)
 	{
 		std::string string;
 		a_visitor.visit(string);

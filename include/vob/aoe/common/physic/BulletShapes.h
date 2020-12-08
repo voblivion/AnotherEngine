@@ -72,7 +72,6 @@ namespace vob::aoe::vis
 		a_sphereShape = btSphereShape(t_radius);
 	}
 
-
 	template <typename VisitorType>
 	void accept(VisitorType& a_visitor, btSphereShape const& a_sphereShape)
 	{

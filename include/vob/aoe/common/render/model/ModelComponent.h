@@ -11,7 +11,7 @@
 namespace vob::aoe::common
 {
 	struct ModelComponent final
-		: public vis::Aggregate<ModelComponent, ecs::AComponent>
+		: public ecs::AComponent
 	{
 		// Attributes
 		data::Handle<common::GraphicResourceHandle<common::StaticModel>> m_model;
@@ -21,13 +21,14 @@ namespace vob::aoe::common
 		explicit ModelComponent(data::ADatabase& a_database)
 			: m_model{ a_database }
 		{}
-
-		// Methods
-		friend class vis::Aggregate<ModelComponent, ecs::AComponent>;
-		template <typename VisitorType, typename ThisType>
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			a_visitor.visit(vis::makeNameValuePair("Model", a_this.m_model));
-		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<common::ModelComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		a_visitor.visit(vis::makeNameValuePair("Model", a_this.m_model));
+	}
 }

@@ -10,9 +10,10 @@
 
 #include <vob/aoe/api.h>
 #include <vob/aoe/core/ecs/Component.h>
-#include <vob/aoe/core/visitor/Aggregate.h>
 #include <vob/aoe/core/visitor/Utils.h>
 #include "vob/aoe/core/type/Clone.h"
+#include <vob/aoe/core/visitor/Traits.h>
+
 
 namespace vob::aoe::ecs
 {
@@ -33,7 +34,7 @@ namespace vob::aoe::ecs
 	};
 
 	class VOB_AOE_API ComponentManager
-		: public vis::Aggregate<ComponentManager, type::ADynamicType>
+		: public type::ADynamicType
 	{
 	public:
 		// Constructors
@@ -103,7 +104,7 @@ namespace vob::aoe::ecs
 			return nullptr;
 		}
 
-	private:
+	public: // TODO -> how to make accept friend ?
 		// Attributes
 		struct PolymorphicComponentEqual
 		{
@@ -119,14 +120,17 @@ namespace vob::aoe::ecs
 
 		sta::vector_set<type::Clone<AComponent, type::ADynamicType>, PolymorphicComponentEqual> m_components;
 		std::reference_wrapper<type::CloneCopier<type::ADynamicType> const> m_cloneCopier;
-
-		// Methods
-		friend class vis::Aggregate<ComponentManager, type::ADynamicType>;
-		template <typename VisitorType, typename ThisType>
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			a_visitor.visit(vis::makeContainerHolder(a_this.m_components
-				, CloneAComponentFactory{ a_this.m_cloneCopier }));
-		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<ecs::ComponentManager, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		a_visitor.visit(vis::makeContainerHolder(
+			a_this.m_components
+			, ecs::CloneAComponentFactory{ a_this.m_cloneCopier }
+		));
+	}
 }

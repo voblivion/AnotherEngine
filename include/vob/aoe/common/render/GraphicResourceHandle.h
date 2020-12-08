@@ -77,21 +77,9 @@ namespace vob::aoe::common
 		{
 			return m_resource.get();
 		}
-
-		template <typename VisitorT>
-		void accept(VisitorT& a_visitor)
-		{
-			a_visitor.visit(*m_resource);
-		}
-
-		template <typename VisitorT>
-		void accept(VisitorT& a_visitor) const
-		{
-			a_visitor.visit(*m_resource);
-		}
 		#pragma endregion
 
-	private:
+	public: // TODO -> how to make accept friend ?
 		#pragma region Attributes
 		std::reference_wrapper<IGraphicResourceManager<ResourceT>> m_manager;
 		std::shared_ptr<ResourceT> m_resource;
@@ -114,4 +102,19 @@ namespace vob::aoe::common
 		}
 		#pragma endregion
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ResourceType>
+	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType>& a_this)
+	{
+		a_visitor.visit(*a_this.m_resource);
+	}
+
+	template <typename VisitorType, typename ResourceType>
+	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType> const& a_this)
+	{
+		a_visitor.visit(*a_this.m_resource);
+	}
 }

@@ -10,7 +10,6 @@
 #include <vob/aoe/core/data/ADatabase.h>
 #include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/visitor/Utils.h>
-#include "vob/aoe/core/visitor/Aggregate.h"
 
 #include <vob/aoe/common/data/filesystem/Text.h>
 #include <vob/aoe/common/render/OpenGl.h>
@@ -19,7 +18,7 @@
 namespace vob::aoe::common
 {
 	class VOB_AOE_API ShaderProgram
-		: public vis::Aggregate<ShaderProgram>
+		: public type::ADynamicType
 	{
 	public:
 		// Constructors / Destructor
@@ -76,21 +75,22 @@ namespace vob::aoe::common
 		}
 		void create() const;
 		void destroy() const;
-		
-	private:
+
+	public: // TODO -> how to make accept friend ?
 		// Attributes
 		mutable bool m_isReady = false;
 		mutable GraphicObjectId m_programId = 0;
 		data::Handle<common::Text> m_vertexShaderSource;
 		data::Handle<common::Text> m_fragmentShaderSource;
-
-		// Static methods
-		friend class vis::Aggregate<ShaderProgram>;
-		template <typename VisitorType, typename ThisType>
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			a_visitor.visit(vis::makeNameValuePair("Vertex Shader Source", a_this.m_vertexShaderSource));
-			a_visitor.visit(vis::makeNameValuePair("Fragment Shader Source", a_this.m_fragmentShaderSource));
-		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<common::ShaderProgram, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		a_visitor.visit(vis::makeNameValuePair("Vertex Shader Source", a_this.m_vertexShaderSource));
+		a_visitor.visit(vis::makeNameValuePair("Fragment Shader Source", a_this.m_fragmentShaderSource));
+	}
 }

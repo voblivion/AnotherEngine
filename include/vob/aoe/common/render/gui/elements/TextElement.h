@@ -11,45 +11,21 @@
 namespace vob::aoe::common
 {
 	class TextElement
-		: public vis::Aggregate<TextElement, AStandardElement>
+		: public AStandardElement
 	{
-		using Base = vis::Aggregate<TextElement, AStandardElement>;
 	public:
 		#pragma region Constructors
 		explicit TextElement(
 			data::ADatabase& a_database
 			, IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
 		)
-			: Base{ a_database }
+			: AStandardElement{ a_database }
 			, m_font{ a_database }
 			, m_mesh{ a_guiMeshResourceManager }
 		{}
 		#pragma endregion
 
 		#pragma region Methods
-		/*TextElement(TextElement const& a_other)
-			: Base{ a_other.m_borderTexture.getDatabase() }
-			, m_changed{ true }
-			, m_text{ a_other.m_text }
-			, m_size{ a_other.m_size }
-			, m_font{ a_other.m_font }
-			, m_lastRenderedSize{ 0.0f, 0.0f }
-			, m_mesh{ a_other.m_mesh }
-		{}*/
-
-		friend class vis::Aggregate<TextElement, AStandardElement>;
-		template <typename VisitorType, typename ThisType>
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			if constexpr (!std::is_const_v<ThisType>)
-			{
-				a_this.m_changed = true;
-			}
-			a_visitor.visit(vis::makeNameValuePair("Text", a_this.m_text));
-			a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
-			a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
-		}
-
 		virtual void renderContent(
 			GuiShaderProgram const& a_shaderProgram
 			, GuiRenderContext& a_renderContext
@@ -102,7 +78,7 @@ namespace vob::aoe::common
 		}
 		#pragma endregion
 
-	private:
+	public: // TODO -> how to make accept friend ?
 		#pragma region Attributes
 		bool m_changed = false;
 		u8string m_text;
@@ -117,4 +93,19 @@ namespace vob::aoe::common
 			return m_changed || a_transform.m_size != m_lastRenderedSize;
 		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<common::TextElement, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		if constexpr (!std::is_const_v<ThisType>)
+		{
+			a_this.m_changed = true;
+		}
+		a_visitor.visit(vis::makeNameValuePair("Text", a_this.m_text));
+		a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+		a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
+	}
 }

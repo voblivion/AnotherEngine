@@ -5,7 +5,7 @@
 namespace vob::aoe::common
 {
 	struct CanvasComponent
-		: public vis::Aggregate<CanvasComponent, ecs::AComponent>
+		: public ecs::AComponent
 	{
 		// Attributes
 		type::Clone<AElement, type::ADynamicType> m_rootElement;
@@ -15,14 +15,15 @@ namespace vob::aoe::common
 		explicit CanvasComponent(type::CloneCopier<type::ADynamicType> const& a_cloneCopier)
 			: m_rootElement{ a_cloneCopier }
 		{}
-
-		// Methods
-		friend class vis::Aggregate<CanvasComponent, ecs::AComponent>;
-		template <typename VisitorType, typename ThisType>
-		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
-		{
-			a_visitor.visit(vis::makeNameValuePair("Root Element", a_this.m_rootElement));
-			a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
-		}
 	};
+}
+
+namespace vob::aoe::vis
+{
+	template <typename VisitorType, typename ThisType>
+	visitIfType<common::CanvasComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	{
+		a_visitor.visit(vis::makeNameValuePair("Root Element", a_this.m_rootElement));
+		a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+	}
 }
