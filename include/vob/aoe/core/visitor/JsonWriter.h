@@ -159,6 +159,15 @@ namespace vob::aoe::vis
 			accept(*this, a_object);
 		}
 
+		template <typename ValueType>
+		std::enable_if_t<
+			!std::is_arithmetic_v<ValueType>
+			&& !vis::hasAcceptValue<JsonWriter<ContextType>, ValueType>
+		> visit(ValueType& a_object)
+		{
+			static_assert(std::is_arithmetic_v<ValueType> && "Need to overload vis::accept for ValueType");
+		}
+
 		template <typename ContainerType, typename FactoryType>
 		void visit(ContainerHolder<ContainerType, FactoryType> const& a_containerHolder)
 		{
