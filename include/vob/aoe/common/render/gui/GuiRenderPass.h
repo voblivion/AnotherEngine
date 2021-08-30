@@ -79,25 +79,6 @@ namespace vob::aoe::common
 					);
 				}
 			}
-
-			//EmptyElement element{};
-			//element.m_margin = vec4{ 15.0f, 15.0f, 15.0f, 15.0f };
-			//element.m_borderWidth = vec4{ 5.0f, 5.0f, 5.0f, 5.0f };
-			//element.m_innerCornerRadius = vec4{ 20.0f, 0.0f, 0.0f, 0.0f };
-			//element.render(shaderProgram, m_guiRenderComponent.m_guiRenderContext, GuiTransform{ vec2{0.0f, 0.0f}, vec2{200.0f, 500.0f} });
-
-			//auto& textElement = m_guiRenderComponent.m_textElementTest;
-			//textElement.setSize(5 + 10 * (1 + std::sin(t)));
-			//t += 0.0005f;
-			//if (!textElement.getFont().isValid())
-			//{
-			//	textElement.setFont(data::Handle<Font>{ textElement.getFont().getDatabase(), 9 });
-			//}
-			//textElement.setText(
-			//	"Bonjour je m'appelle Victor et je suis en train de creer "
-			//	"un super text-renderer :)"
-			//);
-			//textElement.render(shaderProgram, m_guiRenderComponent.m_guiRenderContext, GuiTransform{ vec2{20.0f, 20.0f}, vec2{160.0f, 460.0f} });
 		}
 
 	private:

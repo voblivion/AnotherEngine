@@ -4,7 +4,6 @@
 
 #include <vob/aoe/core/ecs/Component.h>
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/data/Handle.h>
 
 #include <vob/aoe/common/render/gui/GuiShaderProgram.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>

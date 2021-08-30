@@ -4,7 +4,6 @@
 #include <memory>
 
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/common/data/filesystem/AFileSystemLoader.h>
 #include <vob/aoe/common/serialization/FileSystemVisitorContext.h>
 

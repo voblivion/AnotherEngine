@@ -6,7 +6,6 @@
 #include <vob/aoe/common/physic/ACollisionShape.h>
 #include "DefaultMotionState.h"
 #include "PhysicMaterial.h"
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/common/physic/BulletShapes.h>
 
 namespace vob::aoe::common

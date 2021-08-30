@@ -8,7 +8,6 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/visitor/Utils.h>
 
 #include <vob/aoe/common/data/filesystem/Text.h>

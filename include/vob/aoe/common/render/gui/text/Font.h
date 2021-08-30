@@ -9,7 +9,6 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/type/Primitive.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/resources/Texture.h>

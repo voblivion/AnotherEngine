@@ -53,7 +53,7 @@ namespace vob::aoe
 {
 	namespace vis
 	{
-		template <typename DataType>
+		/*template <typename DataType>
 		void accept(
 			vis::JsonWriter<common::FileSystemVisitorContext<vis::JsonWriter>>& a_visitor
 			, data::Handle<DataType>& a_handle
@@ -68,7 +68,7 @@ namespace vob::aoe
 			auto& indexer = a_visitor.getContext().m_fileSystemIndexer;
 			auto id = indexer.getId(path);
 			a_handle.setId(id);
-		}
+		}*/
 
 		template <typename DataType>
 		std::enable_if_t<std::is_base_of_v<type::ADynamicType, DataType>> accept(

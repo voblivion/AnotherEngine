@@ -3,7 +3,6 @@
 #include "vob/aoe/core/ecs/Component.h"
 #include "vob/aoe/core/ecs/EntityId.h"
 #include "vob/aoe/core/ecs/ComponentManager.h"
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/common/time/Chrono.h>
 
 

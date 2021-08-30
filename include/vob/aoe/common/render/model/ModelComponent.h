@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/ecs/Component.h>
 #include <vob/aoe/core/visitor/Standard.h>
 

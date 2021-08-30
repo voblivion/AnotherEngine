@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vob/aoe/core/data/Handle.h>
 // #include <vob/aoe/core/standard/ADynamicType.h>
 #include <vob/aoe/core/ecs/ComponentManager.h>
 

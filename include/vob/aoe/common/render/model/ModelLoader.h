@@ -2,11 +2,14 @@
 
 #include <fstream>
 
+#include <vob/aoe/core/data/ADatabase.h>
+
 #include <vob/aoe/common/data/filesystem/AFileSystemLoader.h>
-#include <assimp/Importer.hpp>
 #include <vob/aoe/common/render/Manager.h>
 #include <vob/aoe/common/render/model/StaticModel.h>
 #include <vob/aoe/common/data/filesystem/FileSystemIndexer.h>
+
+#include <assimp/Importer.hpp>
 
 namespace vob::aoe::common
 {

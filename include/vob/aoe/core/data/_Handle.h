@@ -5,10 +5,9 @@
 
 #include <vob/aoe/core/data/Id.h>
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/type/Factory.h>
 #include <vob/aoe/core/visitor/JsonWriter.h>
 
-namespace vob::aoe::data
+/*namespace vob::aoe::data
 {
 	template <typename DataType>
 	class Handle
@@ -93,22 +92,5 @@ namespace vob::aoe::data
 		Id m_id{};
 		mutable std::shared_ptr<DataType const> m_data{};
 	};
-}
+}*/
 
-namespace vob::aoe::type
-{
-	template <typename DataType>
-	struct Factory<data::Handle<DataType>>
-	{
-		explicit Factory(data::ADatabase& a_database)
-			: m_database{ a_database }
-		{}
-
-		data::Handle<DataType> operator()() const
-		{
-			return data::Handle<DataType>{ m_database };
-		}
-
-		data::ADatabase& m_database;
-	};
-}

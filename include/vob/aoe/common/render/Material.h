@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vob/aoe/core/data/Handle.h>
 #include <vob/aoe/core/visitor/Standard.h>
+#include <vob/aoe/core/visitor/Traits.h>
 
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/resources/Texture.h>
