@@ -8,7 +8,7 @@ namespace vob::aoe::common
         m_hasChanged = true;
     }
 
-    void TextElement::setFont(data::Handle<Font> a_font)
+    void TextElement::setFont(std::shared_ptr<aoe::common::Font const> a_font)
     {
         m_font = std::move(a_font);
         m_hasChanged = true;
@@ -103,8 +103,8 @@ namespace vob::aoe::common
         if (!m_preSelectionMesh->isReady()
             || !m_selectionMesh->isReady()
             || !m_postSelectionMesh->isReady()
-            || !m_font.isValid()
-            || !m_font->m_pages[0].isValid()
+            || m_font == nullptr
+            || m_font->m_pages[0] == nullptr
             || !(*m_font->m_pages[0])->isReady())
         {
             return;

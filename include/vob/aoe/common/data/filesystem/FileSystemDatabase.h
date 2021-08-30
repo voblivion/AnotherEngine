@@ -29,7 +29,7 @@ namespace vob::aoe::common
 
 	protected:
 		// Methods
-		std::shared_ptr<type::ADynamicType> find(data::Id const a_id) final override
+		std::shared_ptr<type::ADynamicType> findDynamic(data::Id const a_id) final override
 		{
 			auto t_data = m_cache.find(a_id);
 			if (t_data == nullptr)

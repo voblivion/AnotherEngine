@@ -23,12 +23,18 @@ namespace vob::aoe::data
 		template <typename DataType>
 		std::shared_ptr<DataType> find(Id const a_id)
 		{
-			return m_typeRegistry.fastCast<DataType>(find(a_id));
+			return m_typeRegistry.fastCast<DataType>(findDynamic(a_id));
+		}
+
+		template <typename DataType>
+		void find(Id const a_id, std::shared_ptr<DataType const>& a_ptr)
+		{
+			a_ptr = find<DataType>(a_id);
 		}
 
 	protected:
 		// Methods
-		virtual std::shared_ptr<type::ADynamicType> find(Id a_id) = 0;
+		virtual std::shared_ptr<type::ADynamicType> findDynamic(Id a_id) = 0;
 
 	private:
 		// Attributes

@@ -14,13 +14,8 @@ namespace vob::aoe::common
 	{
 		// Attributes
 		glm::vec3 m_orientation{ 0.0f };
-		data::Handle<ecs::ComponentManager> m_bullet;
+		std::shared_ptr<ecs::ComponentManager const> m_bullet;
 		TimePoint m_lastBulletTime{};
-
-		// Constructor
-		explicit SimpleControllerComponent(data::ADatabase& a_database)
-			: m_bullet{ a_database }
-		{}
 	};
 }
 

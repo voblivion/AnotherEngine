@@ -54,7 +54,7 @@ namespace vob::aoe::common
 		u32 m_lineHeight = 0;
 		u32 m_base = 0;
 		uvec2 m_scale = {};
-		std::vector<data::Handle<GraphicResourceHandle<Texture>>> m_pages;
+		std::vector<std::shared_ptr<GraphicResourceHandle<Texture> const>> m_pages;
 
 		// Methods
 		FontCharacter const* findCharacter(sta::unicode const a_unicode) const;

@@ -22,11 +22,6 @@ namespace vob::aoe::common
 		: public ShaderProgram
 	{
 	public:
-		// Constructor
-		explicit GuiShaderProgram(data::ADatabase& a_database)
-			: ShaderProgram{ a_database }
-		{}
-
 		// Methods
 		void create() const
 		{

@@ -15,7 +15,7 @@ namespace vob::aoe::common
 	{
 		// Attributes
 		DebugMesh m_debugMesh{};
-		data::Handle<GraphicResourceHandle<DebugSceneShaderProgram>> m_shaderProgram;
+		std::shared_ptr<GraphicResourceHandle<DebugSceneShaderProgram> const> m_shaderProgram;
 		IGraphicResourceManager<DebugSceneShaderProgram>& m_debugSceneShaderProgramResourceManager;
 
 		// Constructor
@@ -23,11 +23,10 @@ namespace vob::aoe::common
 			data::ADatabase& a_database
 			, IGraphicResourceManager<DebugSceneShaderProgram>& a_debugSceneShaderProgramResourceManager
 		)
-			: m_shaderProgram{ a_database }
-			, m_debugSceneShaderProgramResourceManager{ a_debugSceneShaderProgramResourceManager  }
+			: m_debugSceneShaderProgramResourceManager{ a_debugSceneShaderProgramResourceManager  }
 		{
-			m_shaderProgram.setId(6);
-			ignorable_assert(m_shaderProgram.isValid());
+			m_shaderProgram = a_database.find<GraphicResourceHandle<DebugSceneShaderProgram>>(6);
+			ignorable_assert(m_shaderProgram != nullptr);
 		}
 	};
 }

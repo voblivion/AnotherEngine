@@ -19,13 +19,8 @@ namespace vob::aoe::common
 	{
 	public:
 		#pragma region Constructors
-		explicit TextElement(
-			data::ADatabase& a_database
-			, IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
-		)
-			: AStandardElement{ a_database }
-			, m_font{ a_database }
-			, m_preSelectionMesh{ a_guiMeshResourceManager }
+		explicit TextElement(IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager)
+			: m_preSelectionMesh{ a_guiMeshResourceManager }
 			, m_selectionMesh{ a_guiMeshResourceManager }
 			, m_postSelectionMesh{ a_guiMeshResourceManager }
 		{}
@@ -43,7 +38,7 @@ namespace vob::aoe::common
 		void setText(sta::utf8_string a_text);
 
         auto const& getFont() const;
-		void setFont(data::Handle<Font> a_font);
+		void setFont(std::shared_ptr<aoe::common::Font const> a_font);
 
 		void setSize(float const a_size);
 		#pragma endregion
@@ -69,7 +64,7 @@ namespace vob::aoe::common
 		sta::utf8_string m_text;
         float m_size = 12.0f;
 		std::optional<float> m_lineHeight;
-		data::Handle<Font> m_font;
+		std::shared_ptr<Font const> m_font;
 		vec4 m_color{ 1.0f };
 		mutable vec2 m_lastRenderedSize = { 0, 0 };
 		GraphicResourceHandle<GuiMesh> m_preSelectionMesh;

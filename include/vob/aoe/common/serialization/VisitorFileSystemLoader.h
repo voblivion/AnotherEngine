@@ -25,11 +25,13 @@ namespace vob::aoe::common
 			, type::TypeFactory<type::ADynamicType> const& a_dynamicTypeFactory
 			, type::TypeFactory<btCollisionShape> const& a_btCollisionShapeFactory
 			, FileSystemIndexer& a_fileSystemIndexer
+			, data::ADatabase& a_database
 		)
 			: m_typeRegistry{ a_typeRegistry }
 			, m_dynamicTypeFactory{ a_dynamicTypeFactory }
 			, m_btCollisionShapeFactory{ a_btCollisionShapeFactory }
 			, m_fileSystemIndexer{ a_fileSystemIndexer }
+			, m_database{ a_database }
 		{}
 
 		// Methods
@@ -76,6 +78,7 @@ namespace vob::aoe::common
 		FileSystemIndexer& m_fileSystemIndexer;
 		vis::Applicator<type::ADynamicType, Visitor> m_dynamicTypeApplicator;
 		vis::Applicator<btCollisionShape, Visitor> m_btCollisionShapeApplicator;
+		data::ADatabase& m_database;
 
 		// Methods
 		static void open(std::ifstream& a_file, std::filesystem::path const& a_path)
@@ -93,6 +96,7 @@ namespace vob::aoe::common
 				, m_dynamicTypeApplicator
 				, m_btCollisionShapeApplicator
 				, a_path
+				, m_database
 			};
 		}
 	};

@@ -39,7 +39,7 @@ namespace vob::aoe::vis
 	{
 	public:
 		explicit EditorVisitor(
-			data::Handle<common::Font> a_font
+			std::shared_ptr<common::Font const> a_font
 			, data::ADatabase& a_database
 			, common::IGraphicResourceManager<common::GuiMesh>& a_guiMeshResourceManager
 			, type::Cloner<type::ADynamicType>& a_cloner)
@@ -130,7 +130,7 @@ namespace vob::aoe::vis
 			ValueType::accept(*this, a_object);
 		}
 
-		data::Handle<common::Font> m_font;
+		std::shared_ptr<common::Font const> m_font;
 		data::ADatabase& m_database;
 		common::IGraphicResourceManager<common::GuiMesh>& m_guiMeshResourceManager;
 		type::Cloner<type::ADynamicType>& m_cloner;

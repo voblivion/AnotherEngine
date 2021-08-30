@@ -69,6 +69,22 @@ namespace vob::aoe
 			auto id = indexer.getId(path);
 			a_handle.setId(id);
 		}
+
+		template <typename DataType>
+		std::enable_if_t<std::is_base_of_v<type::ADynamicType, DataType>> accept(
+			vis::JsonWriter<common::FileSystemVisitorContext<vis::JsonWriter>>& a_visitor
+			, std::shared_ptr<DataType const>& a_dataPtr
+		)
+		{
+			std::string rawPath;
+			a_visitor.visit(rawPath);
+
+			auto const& context = a_visitor.getContext();
+			auto const path = common::pathFromFilePath(rawPath, context.m_loadingDataPath);
+
+			auto& indexer = a_visitor.getContext().m_fileSystemIndexer;
+			a_visitor.getContext().m_database.find(indexer.getId(path), a_dataPtr);
+		}
 	}
 
 	struct DataHolder
@@ -112,46 +128,38 @@ namespace vob::aoe
 
 			// Register visitable dynamic types
 			{
-				registerVisitableDynamicType<common::Material, type::ADynamicType, data::ADatabase&>("vob::aoe::common::Material"_id, database);
+				registerVisitableDynamicType<common::Material>("vob::aoe::common::Material"_id);
 				registerVisitableDynamicType<
 					common::GraphicResourceHandle<common::ModelShaderProgram>
 					, type::ADynamicType
 					, common::IGraphicResourceManager<common::ModelShaderProgram>&
-					, data::ADatabase&
 				>(
 					"vob::aoe::common::GraphicResourceHandle<vob::aoe::common::ModelShaderProgram>"_id
 					, modelShaderProgramResourceManager
-					, database
 					);
 				registerVisitableDynamicType<
 					common::GraphicResourceHandle<common::DebugSceneShaderProgram>
 					, type::ADynamicType
 					, common::IGraphicResourceManager<common::DebugSceneShaderProgram>&
-					, data::ADatabase&
 				>(
 					"vob::aoe::common::GraphicResourceHandle<vob::aoe::common::DebugSceneShaderProgram>"_id
 					, debugSceneShaderProgramResourceManager
-					, database
 					);
 				registerVisitableDynamicType<
 					common::GraphicResourceHandle<common::PostProcessShaderProgram>
 					, type::ADynamicType
 					, common::IGraphicResourceManager<common::PostProcessShaderProgram>&
-					, data::ADatabase&
 				>(
 					"vob::aoe::common::GraphicResourceHandle<vob::aoe::common::PostProcessShaderProgram>"_id
 					, postProcessShaderProgramResourceManager
-					, database
 					);
 				registerVisitableDynamicType<
 					common::GraphicResourceHandle<common::GuiShaderProgram>
 					, type::ADynamicType
 					, common::IGraphicResourceManager<common::GuiShaderProgram>&
-					, data::ADatabase&
 				>(
 					"vob::aoe::common::GraphicResourceHandle<vob::aoe::common::GuiShaderProgram>"_id
 					, guiShaderProgramResourceManager
-					, database
 					);
 				registerVisitableDynamicType<
 					ecs::ComponentManager
@@ -164,33 +172,27 @@ namespace vob::aoe
 				registerVisitableDynamicType<
 					common::TextElement
 					, common::AStandardElement
-					, data::ADatabase&
 					, common::IGraphicResourceManager<common::GuiMesh>&
 				>(
 					"vob::aoe::common::TextElement"_id
-					, database
 					, guiMeshResourceManager
 				);
 				dynamicTypeCloner.registerType<common::TextElement>();
 				registerVisitableDynamicType<
 					common::TextInputElement
 					, common::AStandardElement
-					, data::ADatabase&
 					, common::IGraphicResourceManager<common::GuiMesh>&
 				>(
 					"vob::aoe::common::TextInputElement"_id
-					, database
 					, guiMeshResourceManager
 				);
 				dynamicTypeCloner.registerType<common::TextInputElement>();
 				registerVisitableDynamicType<
 					common::SplitElement
 					, common::AStandardElement
-					, data::ADatabase&
 					, type::Cloner<type::ADynamicType> const&
 				>(
 					"vob::aoe::common::SplitElement"_id
-					, database
 					, dynamicTypeCloner
 				);
 				dynamicTypeCloner.registerType<common::SplitElement>();
@@ -211,14 +213,14 @@ namespace vob::aoe
 			// Register components
 			{
 				registerComponent<common::TransformComponent>("vob::aoe::common::TransformComponent"_id);
-				registerComponent<common::ModelComponent, data::ADatabase&>("vob::aoe::common::ModelComponent"_id, database);
+				registerComponent<common::ModelComponent>("vob::aoe::common::ModelComponent"_id);
 				registerComponent<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
 				registerComponent<common::LocalTransformComponent>("vob::aoe::common::LocalTransformComponent"_id);
 				registerComponent<common::TestComponent>("vob::aoe::common::TestComponent"_id);
 				registerComponent<common::VelocityComponent>("vob::aoe::common::VelocityComponent"_id);
-				registerComponent<common::SimpleControllerComponent, data::ADatabase&>("vob::aoe::common::SimpleControllerComponent"_id, database);
+				registerComponent<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
 				registerComponent<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
-				registerComponent<common::RigidBodyComponent, data::ADatabase&, type::Cloner<btCollisionShape> const&>("vob::aoe::common::RigidBodyComponent"_id, database, btCollisionShapeCloner);
+				registerComponent<common::RigidBodyComponent, type::Cloner<btCollisionShape> const&>("vob::aoe::common::RigidBodyComponent"_id, btCollisionShapeCloner);
 				registerComponent<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
 				registerComponent<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
 				registerComponent<common::CanvasComponent, type::Cloner<type::ADynamicType> const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
@@ -240,7 +242,7 @@ namespace vob::aoe
 			, fileSystemIndexer
 		};
 
-		common::VisitorLoader<vis::JsonWriter> jsonVisitorLoader{ typeRegistry, dynamicTypeFactory, btCollisionShapeFactory, fileSystemIndexer };
+		common::VisitorLoader<vis::JsonWriter> jsonVisitorLoader{ typeRegistry, dynamicTypeFactory, btCollisionShapeFactory, fileSystemIndexer, database };
 		common::TextFileSystemLoader textLoader{};
 		common::TextureLoader textureLoader{ textureResourceManager };
 		common::ModelLoader modelLoader{ database, fileSystemIndexer, staticModelResourceManager };

@@ -21,9 +21,6 @@ namespace vob::aoe::common
 		: public type::ADynamicType
 	{
 	public:
-		// Constructors / Destructor
-		explicit ShaderProgram(data::ADatabase& a_database);
-
 		// Methods
 		auto getProgramId() const
 		{
@@ -88,8 +85,8 @@ namespace vob::aoe::common
 		// Attributes
 		mutable bool m_isReady = false;
 		mutable GraphicObjectId m_programId = 0;
-		data::Handle<common::Text> m_vertexShaderSource;
-		data::Handle<common::Text> m_fragmentShaderSource;
+		std::shared_ptr<common::Text const> m_vertexShaderSource;
+		std::shared_ptr<common::Text const> m_fragmentShaderSource;
 	};
 }
 

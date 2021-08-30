@@ -185,8 +185,8 @@ namespace vob::aoe::common
         , GuiRenderContext& a_renderContext
         , GuiTransform a_transform) const
     {
-        if (!m_font.isValid()
-            || !m_font->m_pages[0].isValid()
+        if (m_font == nullptr
+            || m_font->m_pages[0] == nullptr
             || !(*m_font->m_pages[0])->isReady())
         {
             return;

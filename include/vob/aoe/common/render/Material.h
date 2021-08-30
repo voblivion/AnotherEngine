@@ -12,14 +12,8 @@ namespace vob::aoe::common
 		: public type::ADynamicType
 	{
 		// Attributes
-		data::Handle<GraphicResourceHandle<Texture>> m_diffuse;
-		data::Handle<GraphicResourceHandle<Texture>> m_specular;
-
-		// Constructor
-		explicit Material(data::ADatabase& a_database)
-			: m_diffuse{ a_database }
-			, m_specular{ a_database }
-		{}
+		std::shared_ptr<GraphicResourceHandle<Texture> const> m_diffuse;
+		std::shared_ptr<GraphicResourceHandle<Texture> const> m_specular;
 	};
 }
 

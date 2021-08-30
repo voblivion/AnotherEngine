@@ -180,7 +180,7 @@ namespace vob::aoe::common
 
 
 				// Apply material
-				if (t_rigidBody->m_physicMaterial.isValid())
+				if (t_rigidBody->m_physicMaterial != nullptr)
 				{
 					t_rigidBody->m_rigidBody->setRestitution(
 						t_rigidBody->m_physicMaterial->m_restitution);

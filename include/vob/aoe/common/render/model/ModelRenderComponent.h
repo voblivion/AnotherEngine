@@ -17,7 +17,7 @@ namespace vob::aoe::common
 	{
 		// Attributes
 		glm::vec3 m_ambientColor{ 0.05f, 0.05f, 0.1f };
-		data::Handle<GraphicResourceHandle<ModelShaderProgram>> m_shaderProgram;
+		std::shared_ptr<GraphicResourceHandle<ModelShaderProgram> const> m_shaderProgram;
 		// GraphicResourceHandle<RenderTexture> m_renderTexture;
 
 		IGraphicResourceManager<Texture>& m_textureResourceManager;
@@ -34,14 +34,13 @@ namespace vob::aoe::common
 			, IGraphicResourceManager<ModelShaderProgram>& a_modelShaderProgramResourceManager
 			, glm::ivec2 a_renderTextureSize
 		)
-			: m_shaderProgram{ a_database }
-			, m_textureResourceManager{ a_textureResourceManager }
+			: m_textureResourceManager{ a_textureResourceManager }
 			, m_renderTextureResourceManager{ a_renderTextureResourceManager }
 			, m_staticModelResourceManager{ a_staticModelResourceManager }
 			, m_modelShaderProgramResourceManager{ a_modelShaderProgramResourceManager }
 		{
-			m_shaderProgram.setId(1);
-			ignorable_assert(m_shaderProgram.isValid());
+			m_shaderProgram = a_database.find<GraphicResourceHandle<ModelShaderProgram>>(1);
+			ignorable_assert(m_shaderProgram != nullptr);
 		}
 	};
 }

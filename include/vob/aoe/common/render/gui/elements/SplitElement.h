@@ -29,12 +29,8 @@ namespace vob::aoe::common
 #pragma endregion
 
 #pragma region Constructors
-		explicit SplitElement(
-			data::ADatabase& a_database
-			, type::Cloner<type::ADynamicType> const& a_cloner
-		)
-			: AStandardElement{ a_database }
-			, m_firstChildElement{ a_cloner }
+		explicit SplitElement(type::Cloner<type::ADynamicType> const& a_cloner)
+			: m_firstChildElement{ a_cloner }
 			, m_secondChildElement{ a_cloner }
 		{}
 #pragma endregion

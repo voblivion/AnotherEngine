@@ -10,11 +10,6 @@ namespace vob::aoe::common
 		: public ShaderProgram
 	{
 	public:
-		// Constructor
-		explicit SceneShaderProgram(data::ADatabase& a_database)
-			: ShaderProgram{ a_database }
-		{}
-
 		// Methods
 		auto getViewUniformLocation() const
 		{

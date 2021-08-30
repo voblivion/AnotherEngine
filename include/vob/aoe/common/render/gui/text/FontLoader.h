@@ -186,7 +186,7 @@ namespace vob::aoe::common
 				ignorable_assert(a_font.m_pages.empty());
 				std::size_t pages;
 				parse(a_tokenValue, pages);
-				a_font.m_pages.resize(pages, data::Handle<GraphicResourceHandle<Texture>>{ a_database });
+				a_font.m_pages.resize(pages);
 			}
 			else if (a_tokenName.compare("packed") == 0)
 			{
@@ -204,7 +204,7 @@ namespace vob::aoe::common
 		void operator()(
 			std::string_view const a_tokenName
 			, std::string_view const a_tokenValue
-			, data::Handle<GraphicResourceHandle<Texture>>& a_page
+			, std::shared_ptr<GraphicResourceHandle<Texture> const>& a_page
 			, FileSystemDatabase& a_database
 			, fs::path const& a_fontPath
 		)
@@ -221,7 +221,7 @@ namespace vob::aoe::common
 
 				auto& loader = a_database.getMultiFileSystemLoader();
 				auto& indexer = loader.getIndexer();
-				a_page.setId(indexer.getId(filePath));
+				a_page = a_database.find<GraphicResourceHandle<Texture>>(indexer.getId(filePath));
 			}
 			else
 			{

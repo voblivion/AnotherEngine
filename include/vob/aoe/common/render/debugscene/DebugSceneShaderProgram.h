@@ -11,8 +11,5 @@ namespace vob::aoe::common
 		: public SceneShaderProgram
 	{
 	public:
-		explicit DebugSceneShaderProgram(data::ADatabase& a_database)
-			: SceneShaderProgram{ a_database }
-		{}
 	};
 }

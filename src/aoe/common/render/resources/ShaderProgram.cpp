@@ -110,15 +110,10 @@ namespace vob::aoe::common
 		return shaderId;
 	}
 
-	ShaderProgram::ShaderProgram(data::ADatabase& a_database)
-		: m_vertexShaderSource{ a_database }
-		, m_fragmentShaderSource{ a_database }
-	{}
-
 	void ShaderProgram::create() const
 	{
 		assert(!isReady());
-		if (!m_vertexShaderSource.isValid() || !m_fragmentShaderSource.isValid())
+		if (m_vertexShaderSource == nullptr || m_fragmentShaderSource == nullptr)
 		{
 			return;
 		}

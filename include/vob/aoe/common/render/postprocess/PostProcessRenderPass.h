@@ -24,7 +24,7 @@ namespace vob::aoe::common
 		// Methods
 		void run() const
 		{
-			if (!m_postProcessRenderComponent.m_shaderProgram.isValid())
+			if (m_postProcessRenderComponent.m_shaderProgram == nullptr)
 			{
 				return;
 			}

@@ -14,13 +14,8 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		data::Handle<common::GraphicResourceHandle<common::StaticModel>> m_model;
-		std::vector<data::Handle<common::Material>> m_materials;
-
-		// Constructor
-		explicit ModelComponent(data::ADatabase& a_database)
-			: m_model{ a_database }
-		{}
+		std::shared_ptr<common::GraphicResourceHandle<common::StaticModel> const> m_model;
+		std::vector<std::shared_ptr<common::Material const>> m_materials;
 	};
 }
 

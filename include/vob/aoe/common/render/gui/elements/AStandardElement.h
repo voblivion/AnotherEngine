@@ -11,11 +11,6 @@ namespace vob::aoe::common
 
 	struct StandardElementStyle
     {
-		StandardElementStyle(data::ADatabase& a_database)
-			: m_borderTexture{ a_database }
-			, m_backgroundTexture{ a_database }
-		{}
-
         // Attributes
 		QuadValue m_outerCornerRadius{ 0_px };
 		QuadValue m_innerCornerRadius{ 0_px };
@@ -23,9 +18,9 @@ namespace vob::aoe::common
 		QuadValue m_margin{ 0_px };
 		QuadValue m_padding{ 0_px };
 		QuadValue m_borderColor{ 0_px };
-        data::Handle<GraphicResourceHandle<Texture>> m_borderTexture;
+        std::shared_ptr<GraphicResourceHandle<Texture> const> m_borderTexture;
 		QuadValue m_backgroundColor{ 0_px };
-        data::Handle<GraphicResourceHandle<Texture>> m_backgroundTexture;
+		std::shared_ptr<GraphicResourceHandle<Texture> const> m_backgroundTexture;
 	};
 
 	class VOB_AOE_API AStandardElement
@@ -39,14 +34,9 @@ namespace vob::aoe::common
 		vec4 m_margin{ 0.0f }; // TODO should propagate surrounding elements margins, maybe?
 		vec4 m_padding{ 0.0f };
 		vec4 m_borderColor{ 0.0f };
-		data::Handle<GraphicResourceHandle<Texture>> m_borderTexture;
+		std::shared_ptr<GraphicResourceHandle<Texture> const> m_borderTexture;
 		vec4 m_backgroundColor{ 0.0f };
-		data::Handle<GraphicResourceHandle<Texture>> m_backgroundTexture;
-
-		explicit AStandardElement(data::ADatabase& a_database)
-			: m_borderTexture{ a_database }
-			, m_backgroundTexture{ a_database }
-		{}
+		std::shared_ptr<GraphicResourceHandle<Texture> const> m_backgroundTexture;
 
 		// Methods
 		virtual void render(

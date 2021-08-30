@@ -88,7 +88,7 @@ namespace vob::aoe::common
 				{
 					if (m_worldTime.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
 					{
-						assert(simpleController.m_bullet.isValid());
+						assert(simpleController.m_bullet != nullptr);
 						auto t_bullet = *simpleController.m_bullet;
 
 						// Initial velocity

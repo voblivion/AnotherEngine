@@ -24,6 +24,7 @@ namespace vob::aoe::common
 			, DynamicTypeApplicator const& a_dynamicTypeApplicator
 			, btCollisionShapeApplicator const& a_btCollisionShapeApplicator
 			, std::filesystem::path const& a_loadingDataPath
+			, data::ADatabase& a_database
 		)
 			: m_typeRegistry{ a_typeRegistry }
 			, m_dynamicTypeFactory{ a_dynamicTypeFactory }
@@ -32,6 +33,7 @@ namespace vob::aoe::common
 			, m_dynamicTypeApplicator{ a_dynamicTypeApplicator }
 			, m_btCollisionShapeApplicator{ a_btCollisionShapeApplicator }
 			, m_loadingDataPath{ a_loadingDataPath }
+			, m_database{ a_database }
 		{}
 
 		type::TypeRegistry const& m_typeRegistry;
@@ -41,5 +43,6 @@ namespace vob::aoe::common
 		DynamicTypeApplicator const& m_dynamicTypeApplicator;
 		btCollisionShapeApplicator const& m_btCollisionShapeApplicator;
 		std::filesystem::path const& m_loadingDataPath;
+		data::ADatabase& m_database;
 	};
 }

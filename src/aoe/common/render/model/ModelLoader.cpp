@@ -108,20 +108,20 @@ namespace vob::aoe::common
 			std::cout << "Str: " << std::string_view{ materialProperty->mData, materialProperty->mDataLength } << std::endl;
 		}*/
 
-		auto material = Material{ a_database };
+		Material material;
 
 		aiString diffusePathStr;
 		if (a_materialData.GetTexture(aiTextureType_DIFFUSE, 0, &diffusePathStr) == aiReturn_SUCCESS)
 		{
 			auto const diffusePath = common::pathFromFilePath(diffusePathStr.C_Str(), a_loadingDataPath);
-			material.m_diffuse.setId(a_fileSystemIndexer.getId(diffusePath));
+			a_database.find(a_fileSystemIndexer.getId(diffusePath), material.m_diffuse);
 		}
 
 		aiString specularPathStr;
 		if (a_materialData.GetTexture(aiTextureType_SPECULAR, 0, &specularPathStr) == aiReturn_SUCCESS)
 		{
 			auto const specularPath = common::pathFromFilePath(specularPathStr.C_Str(), a_loadingDataPath);
-			material.m_diffuse.setId(a_fileSystemIndexer.getId(specularPath));
+			 a_database.find(a_fileSystemIndexer.getId(specularPath), material.m_specular);
 		}
 
 		return material;

@@ -9,11 +9,6 @@ namespace vob::aoe::common
 		: public SceneShaderProgram
 	{
 	public:
-		// Constructors / Destructor
-		explicit ModelShaderProgram(data::ADatabase& a_database)
-			: SceneShaderProgram{ a_database }
-		{}
-
 		// Methods
 		auto getAmbientColorUniformLocation() const
 		{

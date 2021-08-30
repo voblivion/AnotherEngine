@@ -11,10 +11,6 @@ namespace vob::aoe::common
 		: public ShaderProgram
 	{
 	public:
-		explicit PostProcessShaderProgram(data::ADatabase& a_database)
-			: ShaderProgram{ a_database }
-		{}
-
 		auto getWindowSizeLocation() const
 		{
 			return m_windowSize;

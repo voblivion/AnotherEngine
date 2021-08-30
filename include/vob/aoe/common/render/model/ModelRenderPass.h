@@ -33,7 +33,7 @@ namespace vob::aoe::common
 
 		void run() const
 		{
-			if (!m_modelRenderComponent.m_shaderProgram.isValid())
+			if (m_modelRenderComponent.m_shaderProgram == nullptr)
 			{
 				return;
 			}
@@ -68,7 +68,7 @@ namespace vob::aoe::common
 				auto const& modelTransformComponent = modelEntity.getComponent<TransformComponent>();
 				auto const& modelModelComponent = modelEntity.getComponent<ModelComponent>();
 
-				if (!modelModelComponent.m_model.isValid() || !(*modelModelComponent.m_model)->isReady())
+				if (modelModelComponent.m_model == nullptr || !(*modelModelComponent.m_model)->isReady())
 				{
 					continue;
 				}
@@ -85,7 +85,7 @@ namespace vob::aoe::common
 					auto& material = model.m_materials[mesh.getMaterialIndex()];
 
 					glActiveTexture(GL_TEXTURE0 + 0);
-					if (material.m_diffuse.isValid() && (*material.m_diffuse)->isReady())
+					if (material.m_diffuse != nullptr && (*material.m_diffuse)->isReady())
 					{
 						(*material.m_diffuse)->bind(GL_TEXTURE_2D);
 					}
@@ -95,7 +95,7 @@ namespace vob::aoe::common
 					}
 
 					glActiveTexture(GL_TEXTURE0 + 1);
-					if (material.m_specular.isValid() && (*material.m_specular)->isReady())
+					if (material.m_specular != nullptr && (*material.m_specular)->isReady())
 					{
 						(*material.m_specular)->bind(GL_TEXTURE_2D);
 					}

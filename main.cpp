@@ -125,16 +125,16 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 
 	auto& guiMeshResourceManager = a_data.guiMeshResourceManager;
 
-	auto& splitElement = canvasComponent.m_rootElement.init<aoe::common::SplitElement>(database, cloner);
+	auto& splitElement = canvasComponent.m_rootElement.init<aoe::common::SplitElement>(cloner);
 	splitElement.m_firstSideSize = 300.0f;
 	splitElement.m_firstSide = aoe::common::SplitElement::Side::Right;
 
-	auto& textInputElement = splitElement.m_firstChildElement.init<aoe::common::TextInputElement>(database, guiMeshResourceManager);
+	auto& textInputElement = splitElement.m_firstChildElement.init<aoe::common::TextInputElement>(guiMeshResourceManager);
 	textInputElement.m_borderColor = aoe::vec4{ 1.0f };
 	textInputElement.m_borderWidth = aoe::vec4{ 1.f, 15.f, 25.f, 125.f };
 	textInputElement.setText("Bonjour");
 	textInputElement.setSize(32);
-	textInputElement.setFont(aoe::data::Handle<aoe::common::Font>{database, a_data.fileSystemIndexer.getId("data/font.fnt")});
+	textInputElement.setFont(database.find<aoe::common::Font>(a_data.fileSystemIndexer.getId("data/font.fnt")));
 
 	systemSpawnManager.spawn(canvasArk);
 }
@@ -148,19 +148,19 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 
 	// Load player
 	leakingEditorVisitor = new aoe::vis::EditorVisitor{
-		aoe::data::Handle<aoe::common::Font>(a_data.database, 9)
+		a_data.database.find<aoe::common::Font>(9)
 		, a_data.database
 		, a_data.guiMeshResourceManager
 		, a_data.dynamicTypeCloner
 	};
 
-	aoe::data::Handle<aoe::ecs::ComponentManager> playerArk{ a_data.database, 2 };
-	if (playerArk.isValid())
+	auto playerArk = a_data.database.find<aoe::ecs::ComponentManager>(2);
+	if (playerArk != nullptr)
 	{
 		auto& player = systemSpawnManager.spawn(*playerArk);
 
-		aoe::data::Handle<aoe::ecs::ComponentManager> playerCameraArk{ a_data.database, 3 };
-		if (playerCameraArk.isValid())
+		auto playerCameraArk = a_data.database.find<aoe::ecs::ComponentManager>(3);
+		if (playerCameraArk != nullptr)
 		{
 			auto playerCamera = *playerCameraArk;
 			auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
@@ -173,12 +173,11 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	}
 
 	// Load model
-	aoe::data::Handle<aoe::ecs::ComponentManager> t_modelArk{ a_data.database, 4 };
-	if (t_modelArk.isValid())
+	auto modelArk = a_data.database.find<aoe::ecs::ComponentManager>(4);
+	if (modelArk != nullptr)
 	{
 		{
-			auto ark = *t_modelArk;
-			systemSpawnManager.spawn(ark);
+			systemSpawnManager.spawn(*modelArk);
 		}
 // 		{
 // 			auto ark = *t_modelArk;
@@ -194,35 +193,35 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	}
 
 	// Load ground
-	aoe::data::Handle<aoe::ecs::ComponentManager> t_groundArk{ a_data.database, 5 };
-	if (t_groundArk.isValid())
+	auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(5);
+	if (groundArk != nullptr)
 	{
 		{
-			auto ark = *t_groundArk;
+			auto ark = *groundArk;
 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
 			matrix *= aoe::common::translation(glm::vec3{ 0.0f, 0.0f, 0.0f });
 			systemSpawnManager.spawn(std::move(ark));
 		}
 		{
-			auto ark = *t_groundArk;
+			auto ark = *groundArk;
 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
 			matrix *= aoe::common::translation(glm::vec3{ 8.0f, 0.0f, 0.2f });
 			systemSpawnManager.spawn(std::move(ark));
 		}
 		{
-			auto ark = *t_groundArk;
+			auto ark = *groundArk;
 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
 			matrix *= aoe::common::translation(glm::vec3{ 16.0f, 0.0f, 0.4f });
 			systemSpawnManager.spawn(std::move(ark));
 		}
 		{
-			auto ark = *t_groundArk;
+			auto ark = *groundArk;
 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
 			matrix *= aoe::common::translation(glm::vec3{ 24.0f, 0.0f, 0.6f });
 			systemSpawnManager.spawn(std::move(ark));
 		}
 		{
-			auto ark = *t_groundArk;
+			auto ark = *groundArk;
 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
 			matrix *= aoe::common::translation(glm::vec3{ -6.0f, 0.0f, 1.0f });
 			systemSpawnManager.spawn(std::move(ark));
@@ -241,21 +240,6 @@ std::unique_ptr<aoe::ecs::World> createEditorWorld(aoe::DataHolder& a_data)
 #include <unordered_map>
 
 static_assert(aoe::vis::FreeAcceptVisitable<aoe::vis::EditorVisitor, int>);
-
-template <typename BaseType>
-class DataResource : public AResourceHolder<BaseType>
-{
-public:
-	BaseType* get() override
-	{
-		return m_ptr.get();
-	}
-
-private:
-    std::uint64_t m_id;
-	// using a shared_ptr for proper destruction and deallocation
-	std::shared_ptr<BaseType> m_ptr;
-};
 
 // TO CONSIDERE IF shared_ptr TOO MEMORY HEAVY
 /* struct AUniquePtrBlock

@@ -10,10 +10,9 @@ namespace vob::aoe::common
 	{
 	public:
 		explicit TextInputElement(
-			data::ADatabase& a_database
-			, IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
+			IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
 		)
-			: TextElement{ a_database, a_guiMeshResourceManager }
+			: TextElement{ a_guiMeshResourceManager }
 		{}
 
 		bool onEvent(WindowEvent const& a_event, GuiTransform a_transform) override;

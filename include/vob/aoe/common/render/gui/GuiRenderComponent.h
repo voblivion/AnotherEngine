@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		data::Handle<GraphicResourceHandle<GuiShaderProgram>> m_shaderProgram;
+		std::shared_ptr<GraphicResourceHandle<GuiShaderProgram> const> m_shaderProgram;
 		IGraphicResourceManager<GuiShaderProgram>& m_shaderProgramResourceManager;
 		IGraphicResourceManager<GuiMesh>& m_guiMeshResourceManager;
 		IGraphicResourceManager<Texture>& m_textureResourceManager;
@@ -29,14 +29,13 @@ namespace vob::aoe::common
 			, IGraphicResourceManager<GuiMesh>& a_guiMeshResourceManager
 			, IGraphicResourceManager<Texture>& a_textureResourceManager
 		)
-			: m_shaderProgram{ a_database }
-			, m_shaderProgramResourceManager{ a_shaderProgramResourceManager }
+			: m_shaderProgramResourceManager{ a_shaderProgramResourceManager }
 			, m_guiMeshResourceManager{ a_guiMeshResourceManager }
 			, m_textureResourceManager{ a_textureResourceManager }
 			, m_guiRenderContext{ a_guiMeshResourceManager }
 		{
-			m_shaderProgram.setId(8);
-			ignorable_assert(m_shaderProgram.isValid());
+			m_shaderProgram = a_database.find<GraphicResourceHandle<GuiShaderProgram>>(8);
+			ignorable_assert(m_shaderProgram != nullptr);
 		}
 	};
 }
