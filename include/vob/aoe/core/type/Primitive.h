@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #include <vob/sta/string_id.h>
+#include <vob/sta/unicode.h>
 
 namespace vob::aoe
 {

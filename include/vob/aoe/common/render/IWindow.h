@@ -119,7 +119,8 @@ namespace vob::aoe::common
 		// Methods
 		virtual glm::ivec2 getSize() const = 0;
 		virtual void swapBuffer() = 0;
-		virtual std::optional<WindowEvent> pollEvent() = 0;
+		virtual void pollEvents() = 0;
+		virtual const std::vector<WindowEvent>& getPolledEvents() const = 0;
 		virtual bool shouldClose() const = 0;
 		virtual GraphicObjectId getDefaultFramebufferId() const = 0;
 		virtual bool isHovered() const = 0;

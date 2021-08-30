@@ -15,7 +15,7 @@ namespace vob::aoe::common
 		, DirectorComponent const& a_directorComponent
 		, ecs::EntityList<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
 	)
-	{
+    {
 		if (!a_sceneShaderProgram.isReady())
 		{
 			return false;
@@ -37,7 +37,8 @@ namespace vob::aoe::common
 			, glm::inverse(viewMatrix)
 		);
 
-		auto const windowSize = a_windowComponent.getWindow().getSize();
+        const auto& window = a_windowComponent.getWindow();
+        auto const windowSize = window.getSize();
 		auto const projectionMatrix = glm::perspective(
 			glm::radians(cameramanCameraComponent.fov)
 			, static_cast<float>(windowSize.x) / windowSize.y

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 
 #include <vob/sta/ignorable_assert.h>
+#include <vob/sta/type_traits.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
@@ -31,8 +33,8 @@ namespace vob::aoe::type
 		>
 		class TypeApplicator final
 			: public ATypeApplicator<PolymorphicBaseType, Args...>
-		{
-			static_assert(!(std::is_const_v<PolymorphicBaseType> ^ std::is_const_v<Type>));
+        {
+            static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
 		public:
 			// Constructors
 			explicit TypeApplicator(Func<Type> a_functor)
@@ -42,7 +44,8 @@ namespace vob::aoe::type
 			// Methods
 			void apply(PolymorphicBaseType* a_object, Args&&... a_args) const override
 			{
-				auto& t_object = *static_cast<Type*>(a_object);
+				using _Type = sta::same_const_t<PolymorphicBaseType, Type>;
+				auto& t_object = *static_cast<_Type*>(a_object);
 				m_functor(t_object, std::forward<Args>(a_args)...);
 			}
 
@@ -54,6 +57,7 @@ namespace vob::aoe::type
 
 	template <
 		typename PolymorphicBaseType
+		, typename AllocatorType
 		, template <typename> typename Func
 		, typename... Args
 	>
@@ -82,9 +86,10 @@ namespace vob::aoe::type
 		void registerType(Func<Type> a_functor = {})
 		{
 			assert(!isRegistered<Type>());
+			auto allocator = m_typeApplicators.get_allocator();
 			m_typeApplicators.emplace(
 				typeid(Type)
-				, std::make_unique<TypeApplicator<Type>>(a_functor)
+				, std::allocate_shared<TypeApplicator<Type>>(allocator, a_functor)
 			);
 		}
 
@@ -99,13 +104,17 @@ namespace vob::aoe::type
 			}
 		}
 
-		auto getResource()
-		{
-			return m_typeApplicators.get_allocator().resource();
-		}
-
 	private:
-		// Attributes
-		std::unordered_map<std::type_index, std::unique_ptr<ATypeApplicator>> m_typeApplicators;
+        // Attributes
+        using MapAllocator = typename std::allocator_traits<AllocatorType>::template rebind_alloc<
+            std::pair<std::type_index const, std::shared_ptr<ATypeApplicator>>
+        >;
+		std::unordered_map<
+			std::type_index
+			, std::shared_ptr<ATypeApplicator>
+			, std::hash<std::type_index>
+			, std::equal_to<std::type_index>
+			, MapAllocator
+		> m_typeApplicators;
 	};
 }

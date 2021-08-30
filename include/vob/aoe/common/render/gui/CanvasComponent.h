@@ -8,22 +8,20 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		type::Clone<AElement, type::ADynamicType> m_rootElement;
+		type::Cloneable<AElement, type::ADynamicType> m_rootElement;
 		vec2 m_size{ 2048.f, 1024.f };
 
 		// Constructor
-		explicit CanvasComponent(type::CloneCopier<type::ADynamicType> const& a_cloneCopier)
-			: m_rootElement{ a_cloneCopier }
+		explicit CanvasComponent(type::Cloner<type::ADynamicType> const& a_cloner)
+			: m_rootElement{ a_cloner }
 		{}
+
+		template <typename VisitorType, typename ThisType>
+		static void accept(VisitorType& a_visitor, ThisType& a_this)
+        {
+            a_visitor.visit(vis::makeNameValuePair("Root Element", a_this.m_rootElement));
+            a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+		}
 	};
 }
 
-namespace vob::aoe::vis
-{
-	template <typename VisitorType, typename ThisType>
-	visitIfType<common::CanvasComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
-	{
-		a_visitor.visit(vis::makeNameValuePair("Root Element", a_this.m_rootElement));
-		a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
-	}
-}

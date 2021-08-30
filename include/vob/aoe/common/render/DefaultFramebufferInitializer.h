@@ -40,7 +40,10 @@ namespace vob::aoe::common
 			{
 				glDisable(GL_DEPTH_TEST);
 				glClear(GL_COLOR_BUFFER_BIT);
-			}
+            }
+
+            auto const windowSize = m_windowComponent.getWindow().getSize();
+            glViewport(0, 0, windowSize.x, windowSize.y);
 			return true;
 		}
 

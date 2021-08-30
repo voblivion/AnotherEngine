@@ -44,7 +44,7 @@ namespace vob::aoe::common
 	private:
 		// Attributes
 		mutable UniformLocation m_view = 0;
-		mutable UniformLocation m_viewPosition;
+		mutable UniformLocation m_viewPosition = 0;
 		mutable UniformLocation m_projection = 0;
 	};
 }

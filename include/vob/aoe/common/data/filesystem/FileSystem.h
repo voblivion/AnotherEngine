@@ -31,7 +31,7 @@ namespace vob::aoe::common
 		// Constructors
 		explicit PathKey(std::filesystem::path const& a_path)
 			: m_cleanPath{ cleanPath(a_path) }
-			, m_hashValue{ std::hash_value(m_cleanPath.native()) }
+			, m_hashValue{ std::filesystem::hash_value(m_cleanPath) }
 		{}
 
 		auto getHashValue() const

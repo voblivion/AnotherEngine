@@ -296,11 +296,11 @@ namespace vob::aoe::ecs
 		template <typename System, typename... ComponentTypes>
 		EntityList<ComponentTypes...> const& getEntityList(System& a_system)
 		{
-			auto t_listHolder = std::make_unique<
+			auto listHolder = std::make_unique<
 				SystemEntityList<System, ComponentTypes...>
 			>(a_system, m_entities);
-			auto& t_entityList = t_listHolder->m_entityList;
-			m_systemEntityLists.emplace_back(std::move(t_listHolder));
+			auto& t_entityList = listHolder->m_entityList;
+			m_systemEntityLists.emplace_back(std::move(listHolder));
 			return t_entityList;
 		}
 

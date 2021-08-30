@@ -66,7 +66,7 @@ namespace vob::aoe::common
 		SceneFramebufferInitializer m_sceneFramebufferInitializer;
 		ModelRenderPass m_modelRenderPass;
 		DebugSceneRenderPass m_debugSceneRenderPass;
-		DefaultFramebufferInitializer<false, 255, 0, 0> m_defaultFramebufferInitializer;
+		DefaultFramebufferInitializer<false, 255, 0, 127> m_defaultFramebufferInitializer;
 		PostProcessRenderPass m_postProcessRenderPass;
 		GuiRenderPass m_guiRenderPass;
 

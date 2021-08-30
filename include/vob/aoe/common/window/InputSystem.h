@@ -1,9 +1,12 @@
 #pragma once
 
-#include "vob/aoe/core/ecs/WorldDataProvider.h"
-#include "vob/aoe/common/window/WindowComponent.h"
-#include "InputComponent.h"
-#include "CursorComponent.h"
+#include <vob/aoe/core/ecs/WorldDataProvider.h>
+
+#include <vob/aoe/common/render/IWindow.h>
+#include <vob/aoe/common/window/CursorComponent.h>
+#include <vob/aoe/common/window/InputComponent.h>
+#include <vob/aoe/common/window/WindowComponent.h>
+
 #include <iomanip>
 
 
@@ -32,8 +35,8 @@ namespace vob::aoe::common
 			}
 
 			auto mouseMoved = false;
-			auto optionalEvent = window.pollEvent();
-			while (optionalEvent.has_value())
+			window.pollEvents();
+			for (auto const& polledEvent : window.getPolledEvents())
 			{
 				std::visit([this, &mouseMoved](auto const& a_event)
 				{
@@ -68,8 +71,7 @@ namespace vob::aoe::common
 						buttonState.m_changed = true;
 						buttonState.m_pressed = mouseButtonEvent.m_pressed;
 					}
-				}, optionalEvent.value());
-				optionalEvent = window.pollEvent();
+				}, polledEvent);
 			}
 			m_worldInput.m_mouse.m_moving.m_changed = !m_worldInput.m_mouse.m_moving.m_pressed;
 			if (mouseMoved)

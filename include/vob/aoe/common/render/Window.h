@@ -66,6 +66,8 @@ namespace vob::aoe::common
 			glfwSetCursorEnterCallback(m_nativeHandle, mouseEnterEventCallback);
 			glfwSetMouseButtonCallback(m_nativeHandle, mouseButtonEventCallback);
 			glfwSetScrollCallback(m_nativeHandle, mouseScrollEventCallback);
+			
+			glfwSetFramebufferSizeCallback(m_nativeHandle, framebufferSizeCallback);
 
 #ifndef NDEBUG
 			// Set error callback
@@ -107,24 +109,15 @@ namespace vob::aoe::common
 			glfwSwapBuffers(m_nativeHandle);
 		}
 
-		std::optional<WindowEvent> pollEvent() override
+		void pollEvents() override
 		{
-			if (m_needPollEvents)
-			{
-				glfwPollEvents();
-				m_needPollEvents = false;
-			}
+			m_events.clear();
+			glfwPollEvents();
+		}
 
-			if (m_events.empty())
-			{
-				m_needPollEvents = true;
-				return std::nullopt;
-			}
-
-			auto const e = m_events.front();
-			m_events.pop_front();
-			return e;
-
+		const std::vector<WindowEvent>& getPolledEvents() const override
+		{
+			return m_events;
 		}
 
 		bool shouldClose() const override
@@ -165,7 +158,7 @@ namespace vob::aoe::common
 		// Attributes
 		GLFWwindow* m_nativeHandle = nullptr;
 		bool m_needPollEvents = true;
-		std::deque<WindowEvent> m_events;
+		std::vector<WindowEvent> m_events;
 
 		// Methods
 		void addEvent(WindowEvent a_windowEvent)
@@ -174,6 +167,14 @@ namespace vob::aoe::common
 		}
 
 		// Static methods
+		static void framebufferSizeCallback(
+			GLFWwindow* a_windowNativeHandle
+			, GLint a_width
+			, GLint a_height
+		)
+		{
+		}
+
 		static void debugMessageCallback(
 			GLenum a_source
 			, GLenum a_type

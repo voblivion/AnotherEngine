@@ -23,9 +23,14 @@ namespace vob::aoe::vis
 	template <typename VisitorType>
 	using ApplyVisitor = typename ApplyVisitorHolder<VisitorType>::Type;
 
-	template <typename PolymorphicBaseType, typename VisitorType>
+	template <
+		typename PolymorphicBaseType
+		, typename VisitorType
+		, typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
+	>
 	using Applicator = type::Applicator<
 		PolymorphicBaseType
+		, AllocatorType
 		, ApplyVisitorHolder<VisitorType>::template Type
 		, VisitorType&
 	>;

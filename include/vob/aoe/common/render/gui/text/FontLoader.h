@@ -10,7 +10,7 @@
 #include <vob/sta/ignorable_assert.h>
 
 #include <vob/aoe/common/data/filesystem/FileSystemDatabase.h>
-#include <vob/aoe/common/render/gui/Font.h>
+#include <vob/aoe/common/render/gui/text/Font.h>
 
 namespace vob::aoe::common
 {
@@ -25,8 +25,7 @@ namespace vob::aoe::common
 		using string = std::basic_string<CharType, CharTraitsType, AllocatorType>;
 
 		string lineNameStr;
-		if (!(a_inputStream >> lineNameStr)
-			|| a_expectedName.compare(lineNameStr) != 0)
+		if (!std::getline(a_inputStream, lineNameStr, ' ') || lineNameStr.empty())
 		{
 
 			ignorable_assert(false && "Invalid .fnt format : missing or misplaced section.");
@@ -92,14 +91,7 @@ namespace vob::aoe::common
 		, std::basic_string<CharType, CharTraitsType, AllocatorType>& a_string
 	)
 	{
-		if (a_value.size() >= 2 && a_value[0] == '\"' && a_value[a_value.size() - 1] == '\"')
-		{
-			a_string = a_value.substr(1, a_value.size() - 2);
-		}
-		else
-		{
-			ignorable_assert(false);
-		}
+		a_string = a_value;
 	}
 
 	struct InfoLineTokenParser
@@ -329,11 +321,11 @@ namespace vob::aoe::common
 		{
 			if (a_tokenName.compare("first") == 0)
 			{
-				parse(a_tokenValue, a_kerning.m_first);
+				parse(a_tokenValue, a_kerning.m_sequence.first);
 			}
 			else if (a_tokenName.compare("second") == 0)
 			{
-				parse(a_tokenValue, a_kerning.m_second);
+				parse(a_tokenValue, a_kerning.m_sequence.second);
 			}
 			else if (a_tokenName.compare("amount") == 0)
 			{
@@ -354,11 +346,28 @@ namespace vob::aoe::common
 		, fs::path const& a_fontPath
 	)
 	{
-		u8string token;
-		if (a_inputStream >> token)
+		u8string tokenName;
+		if (std::getline(a_inputStream, tokenName, '='))
 		{
-			auto const tokenName = token.substr(0, token.find_first_of('='));
-			auto const tokenValue = token.substr(token.find_first_of('=') + 1);
+			u8string tokenValue;
+			if (a_inputStream.peek() == '"')
+			{
+				a_inputStream.ignore(1);
+				char separator;
+				if (!std::getline(a_inputStream, tokenValue, '"')
+					|| a_inputStream.read(&separator, 1) && separator != ' ')
+				{
+					return false;
+				}
+			}
+			else
+			{
+				if (!std::getline(a_inputStream, tokenValue, ' '))
+				{
+					return false;
+				}
+			}
+
 			TokenParserType{}(tokenName, tokenValue, a_object, a_database, a_fontPath);
 			return true;
 		}
@@ -366,14 +375,23 @@ namespace vob::aoe::common
 	}
 
 	template <typename TokenParserType, typename ObjectType>
-	inline void parseLine(
+	inline bool parseLine(
 		std::istream& a_inputStream
 		, ObjectType& a_object
 		, FileSystemDatabase& a_database
 		, fs::path const& a_fontPath
 	)
 	{
-		while (readToken<TokenParserType>(a_inputStream, a_object, a_database, a_fontPath)) {}
+		do
+		{
+			while (a_inputStream.peek() == ' ')
+			{
+				a_inputStream.ignore(1);
+			}
+		}
+		while (readToken<TokenParserType>(a_inputStream, a_object, a_database, a_fontPath));
+
+		return true;
 	}
 
 	class FontLoader
@@ -396,43 +414,39 @@ namespace vob::aoe::common
 			std::istringstream line{};
 			auto token = u8string{};
 
-			if (!readNamedLine(file, "info", line))
+			if (!readNamedLine(file, "info", line)
+				|| !parseLine<InfoLineTokenParser>(line, font, m_database, a_path)
+				|| !readNamedLine(file, "common", line)
+				|| !parseLine<CommonLineTokenParser>(line, font, m_database, a_path))
 			{
 				return nullptr;
 			}
-			parseLine<InfoLineTokenParser>(line, font, m_database, a_path);
-
-			if (!readNamedLine(file, "common", line))
-			{
-				return nullptr;
-			}
-			parseLine<CommonLineTokenParser>(line, font, m_database, a_path);
 
 			for (auto& page : font.m_pages)
 			{
-				if (!readNamedLine(file, "page", line))
+				if (!readNamedLine(file, "page", line)
+					|| !parseLine<PageLineTokenParser>(line, page, m_database, a_path))
 				{
 					return nullptr;
 				}
-				parseLine<PageLineTokenParser>(line, page, m_database, a_path);
 			}
 
-			if (!readNamedLine(file, "chars", line))
+			std::size_t charCount = 0;
+			if (!readNamedLine(file, "chars", line)
+				|| !parseLine<CountLineTokenParser>(line, charCount, m_database, a_path))
 			{
 				return nullptr;
 			}
-			std::size_t charCount = 0;
-			parseLine<CountLineTokenParser>(line, charCount, m_database, a_path);
 
 			for (auto k = 0; k < charCount; ++k)
 			{
-				if (!readNamedLine(file, "char", line))
+				FontCharacter character;
+				if (!readNamedLine(file, "char", line)
+					|| !parseLine<CharLineTokenParser>(line, character, m_database, a_path))
 				{
 					return nullptr;
 				}
-				FontCharacter character;
-				parseLine<CharLineTokenParser>(line, character, m_database, a_path);
-				if (character.m_id == g_invalidCharacterId)
+				if (character.m_id == sta::invalid_unicode)
 				{
 					ignorable_assert(false && "invalid character");
 					return nullptr;
@@ -440,23 +454,24 @@ namespace vob::aoe::common
 				font.setCharacter(character);
 			}
 
-			if (!readNamedLine(file, "kernings", line))
+			std::size_t kerningsCount = 0;
+			if (!readNamedLine(file, "kernings", line)
+				|| !parseLine<CountLineTokenParser>(line, kerningsCount, m_database, a_path))
 			{
 				return nullptr;
 			}
-			std::size_t kerningsCount = 0;
-			parseLine<CountLineTokenParser>(line, kerningsCount, m_database, a_path);
 
 			for (auto k = 0; k < kerningsCount; ++k)
 			{
-				if (!readNamedLine(file, "kerning", line))
+				FontKerning kerning;
+				if (!readNamedLine(file, "kerning", line)
+					|| !parseLine<KerningLineTokenParser>(line, kerning, m_database, a_path))
 				{
 					return nullptr;
 				}
 
-				FontKerning kerning;
-				parseLine<KerningLineTokenParser>(line, kerning, m_database, a_path);
-				if (kerning.m_first == g_invalidCharacterId || kerning.m_second == g_invalidCharacterId)
+				if (kerning.m_sequence.first == sta::invalid_unicode
+					|| kerning.m_sequence.second == sta::invalid_unicode)
 				{
 					ignorable_assert(false && "invalid kerning");
 					return nullptr;

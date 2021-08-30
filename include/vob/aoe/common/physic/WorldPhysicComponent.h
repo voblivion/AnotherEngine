@@ -10,7 +10,7 @@ namespace vob::aoe::common
 	{
 	public:
 		explicit WorldPhysicComponent(
-			type::Clone<ADynamicsWorldHolder, type::ADynamicType> a_dynamicsWorldHolder
+			type::Cloneable<ADynamicsWorldHolder, type::ADynamicType> a_dynamicsWorldHolder
 		)
 			: m_dynamicsWorldHolder{ std::move(a_dynamicsWorldHolder) }
 		{}
@@ -21,6 +21,6 @@ namespace vob::aoe::common
 		}
 
 		bool m_pause{ false };
-		type::Clone<ADynamicsWorldHolder, type::ADynamicType> m_dynamicsWorldHolder;
+		type::Cloneable<ADynamicsWorldHolder, type::ADynamicType> m_dynamicsWorldHolder;
 	};
 }

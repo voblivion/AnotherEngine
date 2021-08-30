@@ -6,6 +6,8 @@
 #include <vob/aoe/common/render/gui/elements/EmptyElement.h>
 #include <vob/aoe/common/render/gui/elements/TextElement.h>
 #include <vob/aoe/common/render/gui/CanvasComponent.h>
+#include <vob/aoe/common/time/TimeComponent.h>
+#include <vob/aoe/common/window/WindowComponent.h>
 
 namespace vob::aoe::common
 {
@@ -16,6 +18,8 @@ namespace vob::aoe::common
 		// Constructor
 		explicit GuiRenderPass(ecs::WorldDataProvider& a_wdp)
 			: m_guiRenderComponent{ a_wdp.getWorldComponentRef<GuiRenderComponent>() }
+			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent const>() }
+			, m_worldTimeComponent{ a_wdp.getWorldComponentRef<TimeComponent const>() }
 			, m_canvasEntityList{ a_wdp.getEntityList(*this, CanvasComponents{}) }
 		{}
 
@@ -43,24 +47,35 @@ namespace vob::aoe::common
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-			// TODO
-			shaderProgram.setViewSize(vec2{ 2048.f, 1024.f });
+            // TODO
+			auto const& window = m_windowComponent.getWindow();
+			auto const windowSize = vec2{ window.getSize() };
+			shaderProgram.setViewSize(windowSize);
 
 			auto& quad = m_guiRenderComponent.m_guiRenderContext.m_quad;
 			if (!quad->isReady())
 			{
 				quad->create();
 			}
+			m_guiRenderComponent.m_guiRenderContext.m_frameStartTime = m_worldTimeComponent.m_frameStartTime;
 
 			for (auto const canvas : m_canvasEntityList)
 			{
 				auto const& canvasComponent = canvas.getComponent<CanvasComponent>();
 				if (canvasComponent.m_rootElement != nullptr)
 				{
+					for (auto const& event : window.getPolledEvents())
+					{
+						canvasComponent.m_rootElement->onEvent(
+							event,
+							GuiTransform { vec2{ 0.0f, 0.0f }, windowSize }
+						);
+					}
+
 					canvasComponent.m_rootElement->render(
 						shaderProgram
 						, m_guiRenderComponent.m_guiRenderContext
-						, GuiTransform{ vec2{ 0.0f, 0.0f }, canvasComponent.m_size }
+						, GuiTransform{ vec2{ 0.0f, 0.0f }, windowSize }
 					);
 				}
 			}
@@ -88,7 +103,8 @@ namespace vob::aoe::common
 	private:
 		mutable float t = 0.0f;
 		GuiRenderComponent& m_guiRenderComponent;
+		WindowComponent const& m_windowComponent;
+		TimeComponent const& m_worldTimeComponent;
 		ecs::EntityList<CanvasComponent const> const& m_canvasEntityList;
-
 	};
 }

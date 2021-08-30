@@ -1,11 +1,13 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <utility>
 #include <unordered_map>
 #include <vector>
 #include <variant>
 
+#include <vob/sta/unicode.h>
 #include <vob/sta/vector_map.h>
 #include <vob/sta/vector_set.h>
 #include <vob/sta/ignorable_assert.h>
@@ -16,7 +18,12 @@
 #include <vob/aoe/core/type/TypeRegistry.h>
 #include <vob/aoe/core/type/Traits.h>
 #include <vob/aoe/core/type/TypeFactory.h>
+// TODO why is this here ? hmm... ready dynamic types --'
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <vob/sta/enum.h>
+
+
+#include <iostream>
 
 namespace vob::aoe::vis
 {
@@ -174,9 +181,11 @@ namespace vob::aoe::vis
 		typename VisitorType, typename ValueType, typename AllocatorType
 		, typename Factory = type::Factory<ValueType>
 	>
-	void accept(VisitorType& a_visitor
-			, std::vector<ValueType, AllocatorType>& a_container
-			, Factory a_defaultFactory = {})
+	void accept(
+		VisitorType& a_visitor
+		, std::vector<ValueType, AllocatorType>& a_container
+		, Factory a_defaultFactory = {}
+	)
 	{
 		SizeTag t_size{};
 		a_visitor.visit(t_size);
@@ -186,6 +195,19 @@ namespace vob::aoe::vis
 			auto t_value = a_defaultFactory();
 			a_visitor.visit(makeIndexValuePair(t_index, t_value));
 			a_container.emplace_back(std::move(t_value));
+		}
+	}
+#endif
+#define BLOCK_VISIT_ARRAY
+#ifdef BLOCK_VISIT_ARRAY
+	template <
+		typename VisitorType, typename ValueType, std::size_t t_size
+	>
+	void accept(VisitorType& a_visitor, std::array<ValueType, t_size>& a_container)
+	{
+		for (auto index = 0u; index < t_size; ++index)
+		{
+			a_visitor.visit(makeIndexValuePair(index, a_container[index]));
 		}
 	}
 #endif
@@ -208,8 +230,10 @@ namespace vob::aoe::vis
 	}
 
 	template <typename VisitorType, typename FactoryType, typename... Types>
-	void accept(VisitorType& a_visitor, std::variant<Types...>& a_variant
-		, FactoryType const& a_variantFactory)
+	void accept(
+		VisitorType& a_visitor, std::variant<Types...>& a_variant
+		, FactoryType const& a_variantFactory
+	)
 	{
 		std::size_t t_variantIndex{ a_variant.index() };
 		a_visitor.visit(nvp("variant_index", t_variantIndex));
@@ -232,16 +256,20 @@ namespace vob::aoe::vis
 #ifdef BLOCK_VISIT_CONTAINER_ITEM
 	template <typename VisitorType, typename ContainerType
 		, typename ConstructorType, enforce(!std::is_const_v<ContainerType>)>
-	void accept(VisitorType& a_visitor
-		, ContainerHolder<ContainerType, ConstructorType> a_pair)
+	void accept(
+		VisitorType& a_visitor
+		, ContainerHolder<ContainerType, ConstructorType> a_pair
+	)
 	{
 		accept(a_visitor, a_pair.m_container, a_pair.m_factory);
 	}
 
 	template <typename VisitorType, typename ContainerType
 		, typename ConstructorType, enforce(std::is_const_v<ContainerType>)>
-	void accept(VisitorType& a_visitor
-		, ContainerHolder<ContainerType&, ConstructorType> a_pair)
+	void accept(
+		VisitorType& a_visitor
+		, ContainerHolder<ContainerType&, ConstructorType> a_pair
+	)
 	{
 		accept(a_visitor, a_pair.m_container);
 	}
@@ -296,24 +324,7 @@ namespace vob::aoe::vis
 		visitData(a_visitor, a_ptr);
 	}
 
-	template <typename PolymorphicBaseType, typename VisitorType, typename BaseType>
-	void visitUnique(
-		VisitorType& a_visitor
-		, std::unique_ptr<BaseType>& a_ptr
-		, type::TypeFactory<PolymorphicBaseType> const& a_typeFactory
-	)
-	{
-		auto const& t_typeRegistry = a_visitor.getContext().m_typeRegistry;
-		auto t_voidTypeId = t_typeRegistry.template getId<void>();
-		auto t_id = readTypeId(a_visitor, t_voidTypeId);
-
-		a_ptr = a_typeFactory.template create<BaseType>(t_id);
-
-		ignorable_assert(a_ptr != nullptr || t_id == t_voidTypeId);
-		visitData(a_visitor, a_ptr);
-	}
-
-	template <typename PolymorphicBaseType, typename VisitorType, typename BaseType>
+	template <typename VisitorType, typename BaseType, typename PolymorphicBaseType>
 	void visitShared(
 		VisitorType& a_visitor
 		, std::shared_ptr<BaseType>& a_ptr
@@ -330,41 +341,72 @@ namespace vob::aoe::vis
 		visitData(a_visitor, a_ptr);
 	}
 
+	template <typename BaseType, typename = void>
+	struct TypeFactoryGetter;
 
+	template <typename BaseType, typename = void>
+	struct VisitorApplicatorGetter;
 
-#define VOB_AOE_VIS_PTR(PolymorphicBaseType, polymorphicBaseTypeName) \
-	template <typename VisitorType, typename BaseType> \
-	std::enable_if_t<std::is_base_of_v<PolymorphicBaseType, BaseType>> accept( \
-		VisitorType& a_visitor \
-		, std::unique_ptr<BaseType>& a_ptr \
-	) \
-	{ \
-		auto const& t_typeFactory = a_visitor.getContext().m_##polymorphicBaseTypeName##Factory; \
-		visitUnique<PolymorphicBaseType>(a_visitor, a_ptr, t_typeFactory); \
-	} \
-	\
-	template <typename VisitorType, typename BaseType> \
-	std::enable_if_t<std::is_base_of_v<PolymorphicBaseType, BaseType>> accept( \
-		VisitorType& a_visitor \
-		, std::shared_ptr<BaseType>& a_ptr \
-	) \
-	{ \
-		auto const& t_typeFactory = a_visitor.getContext().m_##polymorphicBaseTypeName##Factory; \
-		visitShared<PolymorphicBaseType>(a_visitor, a_ptr, t_typeFactory); \
-	} \
-	\
-	template <typename VisitorType, typename BaseType> \
-	std::enable_if_t<std::is_base_of_v<PolymorphicBaseType, BaseType>> accept( \
-		VisitorType& a_visitor \
-		, DynamicValue<BaseType> const& a_value \
-	) \
-	{ \
-		auto& t_typeVisitorApplicator = a_visitor.getContext().m_##polymorphicBaseTypeName##Applicator; \
-		t_typeVisitorApplicator.apply(a_value.m_value, a_visitor); \
+	template <typename VisitorType, typename BaseType>
+	void accept(VisitorType& a_visitor, std::shared_ptr<BaseType>& a_ptr)
+	{
+		auto const& typeFactory = TypeFactoryGetter<BaseType>()(a_visitor);
+		auto const& typeRegistry = a_visitor.getContext().m_typeRegistry;
+		auto voidTypeId = typeRegistry.template getId<void>();
+		auto id = readTypeId(a_visitor, voidTypeId);
+
+		a_ptr = typeFactory.template create<BaseType>(id);
+
+		ignorable_assert(id == voidTypeId || a_ptr != nullptr);
+		visitData(a_visitor, a_ptr);
 	}
 
-	VOB_AOE_VIS_PTR(type::ADynamicType, dynamicType)
-	VOB_AOE_VIS_PTR(btCollisionShape, btCollisionShape)
+	template <typename VisitorType, typename BaseType>
+	void accept(VisitorType& a_visitor, DynamicValue<BaseType> const& a_value)
+	{
+		auto& typeVisitorApplicator = VisitorApplicatorGetter<BaseType>()(a_visitor);
+		typeVisitorApplicator.apply(a_value.m_value, a_visitor);
+	}
+
+    template <typename Type>
+    struct TypeFactoryGetter<Type, std::enable_if_t<std::is_base_of_v<type::ADynamicType, Type>>>
+	{
+		template <typename VisitorType>
+		auto const& operator()(VisitorType& a_visitor)
+		{
+			return a_visitor.getContext().m_dynamicTypeFactory;
+		}
+    };
+
+    template <typename Type>
+    struct VisitorApplicatorGetter<Type, std::enable_if_t<std::is_base_of_v<type::ADynamicType, Type>>>
+    {
+        template <typename VisitorType>
+        auto const& operator()(VisitorType& a_visitor)
+        {
+            return a_visitor.getContext().m_dynamicTypeApplicator;
+        }
+    };
+
+    template <typename Type>
+    struct TypeFactoryGetter<Type, std::enable_if_t<std::is_base_of_v<btCollisionShape, Type>>>
+	{
+		template <typename VisitorType>
+		auto const& operator()(VisitorType& a_visitor)
+		{
+			return a_visitor.getContext().m_btCollisionShapeFactory;
+		}
+    };
+
+    template <typename Type>
+    struct VisitorApplicatorGetter<Type, std::enable_if_t<std::is_base_of_v<btCollisionShape, Type>>>
+    {
+        template <typename VisitorType>
+        auto const& operator()(VisitorType& a_visitor)
+        {
+            return a_visitor.getContext().m_btCollisionShapeApplicator;
+        }
+    };
 
 	/*template <typename VisitorType, typename BaseType>
 	void accept(
@@ -396,4 +438,44 @@ namespace vob::aoe::vis
 		a_path = std::filesystem::path{ rawPath };
 	}
 #pragma endregion
+
+	template <typename VisitorType, typename EnumType>
+	std::enable_if_t<std::is_enum_v<EnumType> && !std::is_const_v<EnumType>> accept(
+		VisitorType& a_visitor
+		, EnumType& a_value
+	)
+	{
+		auto all = sta::enum_value_name_pairs<EnumType>;
+		for (auto a : all)
+		{
+			std::cout << a.second << std::endl;
+		}
+
+		std::string valueRepresentation;
+		a_visitor.visit(valueRepresentation);
+		a_value = sta::enum_cast<EnumType>(valueRepresentation).value_or(a_value);
+	}
+
+    template <typename VisitorType, typename ValueType>
+    void accept(VisitorType& a_visitor, std::optional<ValueType>& a_optional)
+    {
+		bool hasValue = false;
+		a_visitor.visit(makeNameValuePair("Has Value", hasValue));
+		if (hasValue)
+		{
+			ValueType value = {};
+			a_visitor.visit(makeNameValuePair("Value", value));
+			a_optional = value;
+		}
+    }
+
+    template <typename VisitorType, typename ValueType>
+	void accept(VisitorType& a_visitor, std::optional<ValueType> const& a_optional)
+	{
+		a_visitor.visit(makeNameValuePair("Has Value", a_optional.has_value()));
+		if (a_optional.has_value())
+		{
+			a_visitor.visit(makeNameValuePair("Value", a_optional.value()));
+		}
+	}
 }

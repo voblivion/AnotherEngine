@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <tuple>
 
 #include <vob/sta/ignorable_assert.h>
@@ -14,16 +15,43 @@
 
 namespace vob::aoe::common
 {
+    inline auto preCharacterOffset(
+        Font const& a_font
+        , FontCharacter const& a_character
+        , std::optional<sta::unicode> a_previousCode
+    )
+    {
+        i32 offset = 0;
+        if (a_previousCode.has_value())
+        {
+            offset += a_font.getKerningAmount(a_previousCode.value(), a_character.m_id);
+            //offset -= a_font.m_padding.w;
+        }
+        return offset;
+    }
+
+    inline auto postCharacterOffset(
+        Font const& a_font
+        , FontCharacter const& a_character
+    )
+    {
+        i32 offset = a_font.m_spacing.x + a_character.m_xAdvance;
+        //offset += a_font.m_padding.y;
+        return offset;
+    }
+
     struct TextCursor
     {
-        TextCursor(float a_lineHeight, float a_base)
+        TextCursor() = default;
+
+        TextCursor(float a_lineHeight, vec2 a_position)
             : m_lineHeight{ a_lineHeight }
-            , m_position{ 0, (a_lineHeight + a_base) / 2.0f }
+            , m_position{ a_position }
         {}
 
-        void advance(float x)
+        void advance(float a_offset)
         {
-            m_position.x += x;
+            m_position.x += a_offset;
         }
 
         void newLine()
@@ -37,16 +65,16 @@ namespace vob::aoe::common
             return m_position.x;
         }
 
-        float m_lineHeight;
-        vec2 m_position;
+        float m_lineHeight{};
+        vec2 m_position{};
     };
 
-	vec2 multiply(vec2 const& a_lhs, vec2 const& a_rhs)
+	inline vec2 multiply(vec2 const& a_lhs, vec2 const& a_rhs)
 	{
 		return vec2{ a_lhs.x * a_rhs.x, a_lhs.y * a_rhs.y };
 	}
 
-    vec2 divide(vec2 const& a_lhs, vec2 const& a_rhs)
+    inline vec2 divide(vec2 const& a_lhs, vec2 const& a_rhs)
     {
         return vec2{ a_lhs.x / a_rhs.x, a_lhs.y / a_rhs.y };
     }
@@ -72,22 +100,20 @@ namespace vob::aoe::common
 
 	inline float getCharWidth(
 		Font const& a_font
-		, FontCharacter const& a_character
-		, sta::unicode a_previousCode
+        , FontCharacter const& a_character
+        , std::optional<sta::unicode> a_previousCode
 		, vec2 const a_renderRatio
 	)
 	{
-		auto const kerning = a_font.getKerningAmount(a_previousCode, a_character.m_id);
-		return (a_character.m_xAdvance + kerning
-			- a_font.m_spacing.x - a_font.m_spacing.y
-			- a_font.m_padding.w - a_font.m_padding.y) * a_renderRatio.x;
+        return (preCharacterOffset(a_font, a_character, a_previousCode)
+            + postCharacterOffset(a_font, a_character)) * a_renderRatio.x;
 	}
 
 	inline float getCharWidth(
         Font const& a_font
         , sta::unicode const a_code
         , FontCharacter const* a_replacementCharacter
-        , sta::unicode a_previousCode
+        , std::optional<sta::unicode> a_previousCode
         , vec2 const a_renderRatio
 	)
 	{
@@ -107,7 +133,7 @@ namespace vob::aoe::common
 		Font const& a_font
         , sta::utf8_string_view a_word
         , FontCharacter const* a_replacementCharacter
-        , sta::unicode a_previousCode
+        , std::optional<sta::unicode> a_previousCode
 		, vec2 const a_renderRatio
 	)
 	{
@@ -129,24 +155,24 @@ namespace vob::aoe::common
 	inline void addCharToLine(
 		Font const& a_font
         , FontCharacter const& a_character
-        , sta::unicode& a_previousCode
+        , std::optional<sta::unicode>& a_previousCode
         , vec2 const a_renderRatio
-        , vec2& a_cursor
+        , TextCursor& a_cursor
         , std::vector<GuiVertex>& a_vertices
 	)
 	{
-		auto const kerning = a_font.getKerningAmount(a_previousCode, a_character.m_id);
-		a_cursor.x += (kerning - a_font.m_spacing.x) * a_renderRatio.x;
+        a_cursor.advance(preCharacterOffset(a_font, a_character, a_previousCode) * a_renderRatio.x);
 
 		auto const offset = vec2{ a_character.m_offset };
+
 		auto const width = vec2{ a_character.m_size.x, 0.0f };
 		auto const height = vec2{ 0.0f, a_character.m_size.y };
 
 		// TODO: could pre-compute some of these
-		auto const tl = multiply(offset, a_renderRatio) + a_cursor;
-		auto const tr = multiply(offset + width, a_renderRatio) + a_cursor;
-		auto const bl = multiply(offset + height, a_renderRatio) + a_cursor;
-		auto const br = multiply(offset + width + height, a_renderRatio) + a_cursor;
+		auto const tl = multiply(offset, a_renderRatio) + a_cursor.m_position;
+		auto const tr = multiply(offset + width, a_renderRatio) + a_cursor.m_position;
+		auto const bl = multiply(offset + height, a_renderRatio) + a_cursor.m_position;
+		auto const br = multiply(offset + width + height, a_renderRatio) + a_cursor.m_position;
 		
 		auto const sfmlTextureSize = (*a_font.m_pages[a_character.m_page])->m_source.getSize();
 		auto const textureSize = vec2{ sfmlTextureSize.x, sfmlTextureSize.y };
@@ -166,61 +192,209 @@ namespace vob::aoe::common
         a_vertices.emplace_back(GuiVertex{ tl, ttl });
 
 		a_previousCode = a_character.m_id;
-        a_cursor.x += (a_character.m_xAdvance - a_font.m_spacing.y
-            - a_font.m_padding.y - a_font.m_padding.w) * a_renderRatio.x;
+        a_cursor.advance(postCharacterOffset(a_font, a_character) * a_renderRatio.x);
 	}
 
-    inline void addCharToLine(
-        Font const& a_font
-        , sta::unicode const a_code
-        , FontCharacter const* a_replacementCharacter
-        , sta::unicode& a_previousCode
-        , vec2 const a_renderRatio
-        , vec2& a_cursor
-        , std::vector<GuiVertex>& a_vertices
-	)
-	{
-		auto character = a_font.findCharacter(a_code);
-		if (character == nullptr)
-		{
-			character = a_replacementCharacter;
-		}
-		if (character != nullptr)
-		{
-			addCharToLine(
-				a_font
-				, *character
-				, a_previousCode
-				, a_renderRatio
-				, a_cursor
-				, a_vertices
-			);
-		}
-	}
+    template <typename CharacterOp>
+    concept InitAwareTextOp = requires(CharacterOp& a_characterOp)
+    {
+        {
+            a_characterOp.init(
+                std::declval<TextCursor>()
+                , std::declval<vec2>()
+            )
+        };
+    };
 
-    inline void addWordToLine(
+    template <typename CharacterOp>
+    concept SkipAwareTextOp = requires(CharacterOp& a_characterOp)
+    {
+        { a_characterOp.skip() };
+    };
+
+    template <typename CharacterOp>
+    inline void tryProcessChar(
         Font const& a_font
-        , sta::utf8_string_view a_word
+        , sta::unicode a_code
         , FontCharacter const* a_replacementCharacter
-        , sta::unicode& a_previousCode
-        , vec2 const a_renderRatio
-        , vec2& a_cursor
-        , std::vector<GuiVertex>& a_vertices
+        , vec2 a_renderRatio
+        , std::optional<sta::unicode>& a_previousCode
+        , TextCursor& a_cursor
+        , CharacterOp& a_characterOp
     )
     {
-        for (auto code : a_word)
+        auto character = a_font.findCharacter(a_code);
+        if (character == nullptr)
+        {
+            character = a_replacementCharacter;
+        }
+        if (character != nullptr)
+        {
+            a_characterOp(a_font, *character, a_renderRatio, a_previousCode, a_cursor);
+            a_previousCode = character->m_id;
+        }
+        else
+        {
+            if constexpr (SkipAwareTextOp<CharacterOp>)
+            {
+                a_characterOp.skip();
+            }
+        }
+    }
+
+    template <typename CharacterOp>
+    inline void processText(
+        Font const& a_font
+        , sta::utf8_string_view a_text
+        , sta::utf8_string_view::size_type a_beginIndex
+        , sta::utf8_string_view::size_type a_endIndex
+        , float const a_size
+        , vec2 const a_areaSize
+        , std::optional<vec2> a_cursor
+        , std::optional<sta::unicode>& a_previousCode
+        , CharacterOp& a_characterOp
+    )
+    {
+        if (a_areaSize.x == 0.0f || a_areaSize.y == 0.0f || a_font.m_size == 0.0f)
+        {
+            return;
+        }
+
+        auto const fontRatio = a_size / a_font.m_size;
+        auto const renderRatio = fontRatio * divide(vec2{ 1.0f, 1.0f }, a_areaSize);
+        auto const replacement = a_font.findCharacter(g_replacementCode);
+        auto const base = a_font.m_base * renderRatio.y;
+        auto const lineHeight = a_font.m_lineHeight * renderRatio.y;
+        auto const textBegin = a_text.begin() + a_beginIndex;
+        auto const textEnd = a_text.begin() + a_endIndex;
+
+        auto text = a_text.substr(a_beginIndex);
+        auto cursor = TextCursor{
+            lineHeight
+            , a_cursor.value_or(vec2{ 0.0f, (lineHeight + base) / 2.0f })
+        };
+
+        if constexpr (InitAwareTextOp<CharacterOp>)
+        {
+            a_characterOp.init(cursor, renderRatio);
+        }
+
+        auto textIt = textBegin;
+        while (textIt != textEnd)
+        {
+            auto word = peekWord(text);
+            if (!word.empty())
+            {
+                auto wordWidth = getWordWidth(a_font, word, replacement, a_previousCode, renderRatio);
+                if (cursor.getX() + wordWidth > 1.0f && a_previousCode.has_value())
+                {
+                    a_characterOp.newLine(cursor);
+                    a_previousCode = std::nullopt;
+                    wordWidth = getWordWidth(a_font, word, replacement, a_previousCode, renderRatio);
+                }
+
+                tryProcessChar(
+                    a_font
+                    , *textIt++
+                    , replacement
+                    , renderRatio
+                    , a_previousCode
+                    , cursor
+                    , a_characterOp
+                );
+                while (textIt != word.end() && textIt != textEnd && cursor.getX()
+                    + getCharWidth(a_font, *textIt, replacement, a_previousCode, renderRatio) < 1.0f)
+                {
+                    tryProcessChar(
+                        a_font
+                        , *textIt++
+                        , replacement
+                        , renderRatio
+                        , a_previousCode
+                        , cursor
+                        , a_characterOp
+                    );
+                }
+                text = text.substr(textIt, text.end());
+            }
+
+            if (textIt == textEnd)
+            {
+                break;
+            }
+
+            auto possibleBlank = text.front();
+            if (possibleBlank == g_newlineCode)
+            {
+                a_characterOp.newLine(cursor);
+                a_previousCode = std::nullopt;
+                text = text.substr(1);
+                ++textIt;
+            }
+            else if (g_blankChars.contains(possibleBlank))
+            {
+                auto blankWidth = getCharWidth(
+                    a_font
+                    , possibleBlank
+                    , replacement
+                    , a_previousCode
+                    , renderRatio
+                );
+                if (cursor.getX() + blankWidth > 1.0f)
+                {
+                    a_characterOp.newLine(cursor);
+                    a_previousCode = std::nullopt;
+                }
+                tryProcessChar(
+                    a_font
+                    , possibleBlank
+                    , replacement
+                    , renderRatio
+                    , a_previousCode
+                    , cursor
+                    , a_characterOp
+                );
+                text = text.substr(1);
+                ++textIt;
+            }
+        }
+    }
+
+    struct GenerateCharVertices
+    {
+        void init(TextCursor a_cursor, vec2 a_renderRatio)
+        {
+            m_cursorPosition = a_cursor.m_position;
+        }
+
+        void newLine(TextCursor& a_cursor)
+        {
+            a_cursor.newLine();
+            m_cursorPosition = a_cursor.m_position;
+        }
+
+        void operator()(
+            Font const& a_font
+            , FontCharacter const& a_character
+            , vec2 a_renderRatio
+            , std::optional<sta::unicode> a_previousCode
+            , TextCursor& a_cursor
+        )
         {
             addCharToLine(
                 a_font
-                , code
-                , a_replacementCharacter
+                , a_character
                 , a_previousCode
                 , a_renderRatio
                 , a_cursor
-                , a_vertices
+                , m_vertices
             );
+            m_cursorPosition = a_cursor.m_position;
         }
-    }
+
+        std::vector<GuiVertex>& m_vertices;
+        vec2 m_cursorPosition;
+    };
 
     inline std::vector<GuiVertex> createTextMesh(
         Font const& a_font
@@ -228,336 +402,165 @@ namespace vob::aoe::common
         , std::size_t a_start
         , std::size_t a_end
         , float const a_size
-		, std::optional<float> const a_lineHeight
         , vec2 const a_areaSize
-        , std::optional<TextCursor>& a_cursor
+        , std::optional<vec2>& a_cursor
+        , std::optional<sta::unicode>& a_previousCode
     )
     {
-        if (a_areaSize.x == 0.0f || a_areaSize.y == 0.0f || a_font.m_size == 0.0f)
-        {
-            return {};
-        }
-
         std::vector<GuiVertex> vertices;
         vertices.reserve((a_end - a_start) * 6);
 
-		auto const fontRatio = a_size / a_font.m_size;
-		auto const renderRatio = fontRatio * divide(vec2{ 1.0f, 1.0f }, a_areaSize);
-        auto const replacement = a_font.findCharacter(g_replacementCode);
-        auto const base = a_font.m_base * renderRatio.y;
-        auto const lineHeight = a_lineHeight.value_or(a_font.m_lineHeight) * renderRatio.y;
-        if (!a_cursor.has_value())
-        {
-            a_cursor = TextCursor{ lineHeight, base };
-        }
-        auto& cursor = a_cursor.value();
-		sta::unicode lastCode = a_start == 0 ? 0 : *(a_text.begin() + (a_start - 1));
-        
-        auto ignoreNewLine = a_start == 0 || !g_blankChars.contains(a_text[a_start - 1]);
-        auto start = a_text.begin() + a_start;
-        auto jt = start;
-        auto end = a_text.begin() + a_end;
-        a_text = a_text.substr(a_start);
+        GenerateCharVertices op{ vertices };
+        processText(
+            a_font
+            , a_text
+            , a_start
+            , a_end
+            , a_size
+            , a_areaSize
+            , a_cursor
+            , a_previousCode
+            , op
+        );
+        a_cursor = op.m_cursorPosition;
 
-		while (jt != end)
-		{
-			auto word = peekWord(a_text);
-			if (!word.empty())
-			{
-				// Add new line if necessary
-				auto wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-				if (cursor.getX() + wordWidth > 1.0f
-                    && (jt != start || !ignoreNewLine))
-				{
-                    cursor.newLine();
-					lastCode = g_newlineCode;
-					wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-				}
-
-				// Put as many characters from word as possible
-                auto it = word.begin();
-				addCharToLine(a_font, *it++, replacement, lastCode, renderRatio, cursor.m_position, vertices);
-                ++jt;
-				while (it != word.end() && jt != end
-					&& cursor.getX() + getCharWidth(a_font, *it, replacement, lastCode, renderRatio) < 1.0f)
-				{
-					addCharToLine(a_font, *it++, replacement, lastCode, renderRatio, cursor.m_position, vertices);
-                    ++jt;
-				}
-				a_text = a_text.substr(it, a_text.end()); // it is not from same utf8_string_view...
-			}
-
-            if (jt == end)
-            {
-                break;
-            }
-
-			auto blank = a_text.front();
-            if (blank == g_newlineCode)
-            {
-                cursor.newLine();
-                lastCode = g_newlineCode;
-                a_text = a_text.substr(1);
-                ++jt;
-            }
-            else if (g_blankChars.contains(blank))
-            {
-                if (cursor.getX() + getCharWidth(a_font, blank, replacement, lastCode, renderRatio) > 1.0f)
-                {
-                    cursor.newLine();
-                    lastCode = g_newlineCode;
-                }
-
-                addCharToLine(a_font, blank, replacement, lastCode, renderRatio, cursor.m_position, vertices);
-                a_text = a_text.substr(1);
-                ++jt;
-            }
-		}
-
-		return vertices;
+        return vertices;
     }
+
+    struct AdvanceCharWidth
+    {
+        void init(TextCursor a_cursor, vec2 a_renderRatio)
+        {
+            m_cursorPosition = a_cursor.m_position;
+        }
+
+        void newLine(TextCursor& a_cursor)
+        {
+            a_cursor.newLine();
+            m_cursorPosition = a_cursor.m_position;
+            m_lastCharacterPostOffset = 0.0f;
+        }
+
+        void operator()(
+            Font const& a_font
+            , FontCharacter const& a_character
+            , vec2 a_renderRatio
+            , std::optional<sta::unicode> a_previousCode
+            , TextCursor& a_cursor
+        )
+        {
+            a_cursor.advance(preCharacterOffset(a_font, a_character, a_previousCode) * a_renderRatio.x);
+            a_cursor.advance(postCharacterOffset(a_font, a_character) * a_renderRatio.x);
+            m_cursorPosition = a_cursor.m_position;
+            m_lastCharacterPostOffset = (/*a_font.m_padding.z +*/ a_font.m_padding.y + a_font.m_spacing.x) * a_renderRatio.x;
+        }
+
+        vec2 m_cursorPosition;
+        float m_lastCharacterPostOffset = 0.0f;
+    };
 
     inline std::pair<vec2, vec2> getCursorTransform(
         Font const& a_font
         , sta::utf8_string_view a_text
         , std::size_t a_cursorIndex
         , float const a_size
-        , std::optional<float> const a_lineHeight
         , vec2 const a_areaSize
-	)
+    )
     {
-        if (a_areaSize.x == 0.0f || a_areaSize.y == 0.0f || a_font.m_size == 0.0f)
-        {
-            return {};
-        }
+        std::optional<sta::unicode> previousCode;
+        AdvanceCharWidth op;
+        processText(
+            a_font
+            , a_text
+            , 0
+            , a_cursorIndex
+            , a_size
+            , a_areaSize
+            , std::nullopt
+            , previousCode
+            , op
+        );
 
-        auto const fontRatio = a_size / a_font.m_size;
-		auto const renderRatio = fontRatio * divide(vec2{ 1.0f, 1.0f }, a_areaSize);
-        auto const replacement = a_font.findCharacter(g_replacementCode);
-		auto const base = a_font.m_base * renderRatio.y;
-        auto const lineHeight = a_lineHeight.value_or(a_font.m_lineHeight) * renderRatio.y;
-        vec2 cursor{ 0.0f, lineHeight - base };
-		sta::unicode lastCode = 0;
+        return std::make_pair(
+            multiply(op.m_cursorPosition - vec2{ op.m_lastCharacterPostOffset, 0.0f }, a_areaSize)
+            , vec2{ 1.0f * a_size / 24.0f, a_font.m_base * a_size / a_font.m_size }
+        );
+    }
 
-		while (!a_text.empty() && a_cursorIndex > 0)
-		{
-			auto word = peekWord(a_text);
-			if (!word.empty())
-			{
-				// Add new line if necessary
-				auto wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-				if (cursor.x + wordWidth > 1.0f)
-                {
-                    cursor = { 0.0f, cursor.y + lineHeight };
-                    lastCode = g_newlineCode;
-                    wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-                }
-
-                // Put as many characters from word as possible
-                auto it = word.begin();
-				cursor.x += getCharWidth(a_font, *it, replacement, lastCode, renderRatio);
-				lastCode = *it++;
-				--a_cursorIndex;
-                while (it != word.end() && a_cursorIndex > 0
-                    && cursor.x + getCharWidth(a_font, *it, replacement, lastCode, renderRatio) < 1.0f)
-                {
-                    cursor.x += getCharWidth(a_font, *it, replacement, lastCode, renderRatio);
-					lastCode = *it++;
-					--a_cursorIndex;
-                }
-                a_text = a_text.substr(it, a_text.end()); // it is not from same utf8_string_view...
-            }
-
-			if (a_cursorIndex == 0)
-			{
-				break;
-			}
-
-            auto blank = a_text.front();
-            if (blank == g_newlineCode)
-            {
-                cursor = { 0.0f, cursor.y + lineHeight };
-                lastCode = g_newlineCode;
-                a_text = a_text.substr(1);
-				--a_cursorIndex;
-            }
-            else if (g_blankChars.contains(blank))
-            {
-                if (cursor.x + getCharWidth(a_font, blank, replacement, lastCode, renderRatio) > 1.0f)
-                {
-                    cursor = { 0.0f, cursor.y + lineHeight };
-                    lastCode = g_newlineCode;
-                }
-
-                cursor.x += getCharWidth(a_font, blank, replacement, lastCode, renderRatio);
-				lastCode = blank;
-                a_text = a_text.substr(1);
-                --a_cursorIndex;
-            }
-		}
-
-#ifdef WHATEVER
-		sta::utf8_string_view word = readWord(a_text).substr(0, a_cursorIndex);
-		cursor.x += getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-		a_cursorIndex -= word.size();
-		while (!a_text.empty() && a_cursorIndex > 0)
-		{
-			auto const blank = a_text.front();
-			auto const blankWidth = getCharWidth(
-				a_font
-				, blank
-				, replacement
-				, lastCode
-				, renderRatio
-			);
-			a_text = a_text.substr(1);
-
-			auto lastCodeCopy = lastCode;
-			word = readWord(a_text);
-			auto wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-			if (blank == g_newlineCode || cursor.x + blankWidth + wordWidth > 1.0f)
-			{
-				cursor = { 0.0f, cursor.y + lineHeight };
-				lastCode = g_newlineCode;
-			}
-			else
-			{
-				cursor.x += blankWidth;
-			}
-			if (--a_cursorIndex == 0)
-			{
-				break;
-			}
-
-			word = word.substr(0, a_cursorIndex);
-			wordWidth = getWordWidth(a_font, word, replacement, lastCodeCopy, renderRatio);
-			cursor.x += wordWidth;
-			a_cursorIndex -= word.size();
-		}
-#endif
-		return std::make_pair(
-			multiply(cursor, a_areaSize)
-				+ vec2{ 0.0f, (a_font.m_base * fontRatio - a_size) }
-			, vec2{ 1.0f * a_size / 24.0f, a_font.m_base * fontRatio }
-		);
-	}
-
-	inline std::size_t getMouseIndex(
-		Font const& a_font
-		, sta::utf8_string_view a_text
-		, vec2 a_mousePos
-		, float const a_size
-		, std::optional<float> const a_lineHeight
-		, vec2 const a_areaSize
-	)
+    struct StoreClosestPos
     {
-        if (a_areaSize.x == 0.0f || a_areaSize.y == 0.0f || a_font.m_size == 0.0f)
+        StoreClosestPos(vec2 a_position, float a_size)
+            : m_position{ a_position }
+            , m_offset{ 0.0f, a_size / 2.0f }
         {
-            return {};
         }
 
-        auto const fontRatio = a_size / a_font.m_size;
-        auto const renderRatio = fontRatio * divide(vec2{ 1.0f, 1.0f }, a_areaSize);
-        auto const replacement = a_font.findCharacter(g_replacementCode);
-        auto const base = a_font.m_base * renderRatio.y;
-        auto const lineHeight = a_lineHeight.value_or(a_font.m_lineHeight) * renderRatio.y;
-        vec2 cursor{ 0.0f, lineHeight - base };
-        sta::unicode lastCode = 0;
-
-		auto cursorCenterOffset = vec2{
-			1.0f * a_size / 24.0f
-			, (a_font.m_base * fontRatio - a_size + a_font.m_base * fontRatio)
-		};
-
-        std::size_t currentIndex = 0;
-        auto currentDistance = glm::length(cursorCenterOffset - a_mousePos);
-		std::size_t bestIndex = currentIndex++;
-		auto bestDistance = currentDistance;
-
-        while (!a_text.empty())
+        void init(TextCursor a_cursor, vec2 a_renderRatio)
         {
-            auto word = peekWord(a_text);
-            if (!word.empty())
-            {
-                // Add new line if necessary
-                auto wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-                if (cursor.x + wordWidth > 1.0f)
-                {
-                    cursor = { 0.0f, cursor.y + lineHeight };
-                    lastCode = g_newlineCode;
-                    wordWidth = getWordWidth(a_font, word, replacement, lastCode, renderRatio);
-                }
+            m_offset *= a_renderRatio;
+            m_position = m_position * a_renderRatio - m_offset;
 
-                // Put as many characters from word as possible
-                auto it = word.begin();
-                cursor.x += getCharWidth(a_font, *it, replacement, lastCode, renderRatio);
-                lastCode = *it++;
-                currentDistance = glm::length(
-					cursorCenterOffset + multiply(cursor, a_areaSize) - a_mousePos
-                );
-				if (currentDistance < bestDistance)
-				{
-					bestDistance = currentDistance;
-					bestIndex = currentIndex;
-				}
-				++currentIndex;
-                while (it != word.end()
-                    && cursor.x + getCharWidth(a_font, *it, replacement, lastCode, renderRatio) < 1.0f)
-                {
-                    cursor.x += getCharWidth(a_font, *it, replacement, lastCode, renderRatio);
-                    lastCode = *it++;
-                    currentDistance = glm::length(
-                        cursorCenterOffset + multiply(cursor, a_areaSize) - a_mousePos
-                    );
-                    if (currentDistance < bestDistance)
-                    {
-                        bestDistance = currentDistance;
-                        bestIndex = currentIndex;
-                    }
-                    ++currentIndex;
-                }
-                a_text = a_text.substr(it, a_text.end()); // it is not from same utf8_string_view...
-            }
-
-            auto blank = a_text.front();
-            if (blank == g_newlineCode)
-            {
-                cursor = { 0.0f, cursor.y + lineHeight };
-                lastCode = g_newlineCode;
-                currentDistance = glm::length(
-                    cursorCenterOffset + multiply(cursor, a_areaSize) - a_mousePos
-                );
-                if (currentDistance < bestDistance)
-                {
-                    bestDistance = currentDistance;
-                    bestIndex = currentIndex;
-                }
-                ++currentIndex;
-                a_text = a_text.substr(1);
-            }
-            else if (g_blankChars.contains(blank))
-            {
-                if (cursor.x + getCharWidth(a_font, blank, replacement, lastCode, renderRatio) > 1.0f)
-                {
-                    cursor = { 0.0f, cursor.y + lineHeight };
-                    lastCode = g_newlineCode;
-                }
-
-                cursor.x += getCharWidth(a_font, blank, replacement, lastCode, renderRatio);
-                lastCode = blank;
-                currentDistance = glm::length(
-                    cursorCenterOffset + multiply(cursor, a_areaSize) - a_mousePos
-				);
-                if (currentDistance < bestDistance)
-                {
-                    bestDistance = currentDistance;
-                    bestIndex = currentIndex;
-                }
-                ++currentIndex;
-                a_text = a_text.substr(1);
-            }
+            m_bestIndex = m_currentIndex;
+            m_bestDistance = glm::length(a_cursor.m_position - m_position );
         }
 
-		return bestIndex;
-	}
+        void newLine(TextCursor& a_cursor)
+        {
+            a_cursor.newLine();
+        }
+
+        void skip()
+        {
+            ++m_currentIndex;
+        }
+
+        void operator()(
+            Font const& a_font
+            , FontCharacter const& a_character
+            , vec2 a_renderRatio
+            , std::optional<sta::unicode> a_previousCode
+            , TextCursor& a_cursor
+        )
+        {
+            auto distance = glm::length(a_cursor.m_position - m_position);
+            if (distance < m_bestDistance)
+            {
+                m_bestDistance = distance;
+                m_bestIndex = m_currentIndex;
+            }
+
+            a_cursor.advance(getCharWidth(a_font, a_character, a_previousCode, a_renderRatio));
+            ++m_currentIndex;
+        }
+
+        vec2 m_position;
+        vec2 m_offset;
+        float m_bestDistance = std::numeric_limits<float>::max();
+        sta::utf8_string_view::size_type m_bestIndex = -1;
+        sta::utf8_string_view::size_type m_currentIndex = 0;
+    };
+
+    inline auto getIndexAtPos(
+        Font const& a_font
+        , sta::utf8_string_view a_text
+        , vec2 a_position
+        , float const a_size
+        , vec2 const a_areaSize
+        , std::optional<sta::unicode>& a_previousCode
+    )
+    {
+        StoreClosestPos op{ a_position, a_size };
+        processText(
+            a_font
+            , a_text
+            , 0
+            , a_text.size()
+            , a_size
+            , a_areaSize
+            , std::nullopt
+            , a_previousCode
+            , op
+        );
+        return op.m_bestIndex;
+    }
 }

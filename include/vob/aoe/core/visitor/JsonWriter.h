@@ -9,6 +9,7 @@
 #include <vob/json/loader.h>
 
 #include <vob/aoe/core/type/Traits.h>
+#include <vob/aoe/core/visitor/Standard.h>
 #include <vob/aoe/core/visitor/Traits.h>
 #include <vob/aoe/core/visitor/Utils.h>
 
@@ -18,6 +19,7 @@ namespace vob::aoe::vis
 	class JsonWriter
 	{
 		// Aliases
+		using Self = JsonWriter<ContextType>;
 		using JsonValue = json::value<>;
 		using JsonValueConstRef = std::reference_wrapper<JsonValue const>;
 		using JsonValueDeque = std::deque<JsonValueConstRef>;
@@ -61,8 +63,31 @@ namespace vob::aoe::vis
 			m_valueStack.pop();
 		}
 
+        template <typename ValueType>
+		requires FreeAcceptVisitable<Self, ValueType>
+			&& (!std::is_arithmetic_v<ValueType>)
+		void visit(ValueType& a_object)
+        {
+            accept(*this, a_object);
+        }
+
 		template <typename ValueType>
-		std::enable_if_t<std::is_arithmetic_v<ValueType>> visit(ValueType& a_number)
+		requires MemberAcceptVisitable<Self, ValueType>
+		void visit(ValueType& a_object)
+		{
+			a_object.accept(*this);
+		}
+
+        template <typename ValueType>
+        requires StaticAcceptVisitable<Self, ValueType>
+        void visit(ValueType& a_object)
+        {
+            ValueType::accept(*this, a_object);
+        }
+
+		template <typename ValueType>
+		requires std::is_arithmetic_v<ValueType>
+		void visit(ValueType& a_number)
 		{
 			auto const& currentValue = m_valueStack.top().get();
 			if (auto const number = std::get_if<json::number<>>(&currentValue))
@@ -92,7 +117,9 @@ namespace vob::aoe::vis
 			}
 		}
 
-		void visit(vis::SizeTag& a_sizeTag)
+        template <typename ValueType>
+        requires std::is_same_v<vis::SizeTag, ValueType>
+		void visit(ValueType& a_sizeTag)
 		{
 			a_sizeTag.m_size = 0;
 
@@ -103,7 +130,7 @@ namespace vob::aoe::vis
 			}
 
 		}
-
+		
 		template <typename ValueType>
 		void visit(vis::IndexValuePair<ValueType> a_indexValuePair)
 		{
@@ -148,24 +175,6 @@ namespace vob::aoe::vis
 			m_valueStack.emplace(valueIt->second);
 			visit(a_nameValuePair.m_value);
 			m_valueStack.pop();
-		}
-
-		template <typename ValueType>
-		std::enable_if_t<
-			!std::is_arithmetic_v<ValueType>
-			&& vis::hasAcceptValue<JsonWriter<ContextType>, ValueType>
-		> visit(ValueType& a_object)
-		{
-			accept(*this, a_object);
-		}
-
-		template <typename ValueType>
-		std::enable_if_t<
-			!std::is_arithmetic_v<ValueType>
-			&& !vis::hasAcceptValue<JsonWriter<ContextType>, ValueType>
-		> visit(ValueType& a_object)
-		{
-			static_assert(std::is_arithmetic_v<ValueType> && "Need to overload vis::accept for ValueType");
 		}
 
 		template <typename ContainerType, typename FactoryType>

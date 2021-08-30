@@ -3,10 +3,32 @@
 #include <vob/aoe/common/render/gui/elements/AElement.h>
 #include <vob/aoe/common/render/gui/GuiUtils.h>
 
+#include <vob/aoe/common/render/gui/Value.h>
 
 namespace vob::aoe::common
 {
-	class AStandardElement
+	using namespace literals;
+
+	struct StandardElementStyle
+    {
+		StandardElementStyle(data::ADatabase& a_database)
+			: m_borderTexture{ a_database }
+			, m_backgroundTexture{ a_database }
+		{}
+
+        // Attributes
+		QuadValue m_outerCornerRadius{ 0_px };
+		QuadValue m_innerCornerRadius{ 0_px };
+		QuadValue m_borderWidth{ 0_px };
+		QuadValue m_margin{ 0_px };
+		QuadValue m_padding{ 0_px };
+		QuadValue m_borderColor{ 0_px };
+        data::Handle<GraphicResourceHandle<Texture>> m_borderTexture;
+		QuadValue m_backgroundColor{ 0_px };
+        data::Handle<GraphicResourceHandle<Texture>> m_backgroundTexture;
+	};
+
+	class VOB_AOE_API AStandardElement
 		: public AElement
 	{
 	public:
@@ -16,9 +38,9 @@ namespace vob::aoe::common
 		vec4 m_borderWidth{ 0.0f };
 		vec4 m_margin{ 0.0f }; // TODO should propagate surrounding elements margins, maybe?
 		vec4 m_padding{ 0.0f };
-		vec4 m_borderColor{ 1.0f };
+		vec4 m_borderColor{ 0.0f };
 		data::Handle<GraphicResourceHandle<Texture>> m_borderTexture;
-		vec4 m_backgroundColor{ 1.0f };
+		vec4 m_backgroundColor{ 0.0f };
 		data::Handle<GraphicResourceHandle<Texture>> m_backgroundTexture;
 
 		explicit AStandardElement(data::ADatabase& a_database)
@@ -49,6 +71,7 @@ namespace vob::aoe::common
 			a_shaderProgram.setStrokeWidth(m_borderWidth);
 			a_shaderProgram.setElementPosition(borderQuadPosition);
 			a_shaderProgram.setElementSize(borderQuadSize);
+			a_shaderProgram.setColor(m_borderColor);
 			a_renderContext.m_quad->render();
 
 			auto const insideQuadPosition = borderQuadPosition + topLeftBorderWidth;
@@ -57,7 +80,8 @@ namespace vob::aoe::common
 			a_shaderProgram.setRenderType(GuiRenderType::QuadFill);
 			a_shaderProgram.setOuterCornerRadius(m_innerCornerRadius);
 			a_shaderProgram.setElementPosition(insideQuadPosition);
-			a_shaderProgram.setElementPosition(insideQuadSize);
+			a_shaderProgram.setElementSize(insideQuadSize);
+			a_shaderProgram.setColor(m_backgroundColor);
 			a_renderContext.m_quad->render();
 
 			auto const contentQuadPosition = insideQuadPosition + topLeftPadding;
@@ -65,6 +89,19 @@ namespace vob::aoe::common
 			renderContent(a_shaderProgram, a_renderContext, GuiTransform{ contentQuadPosition, contentQuadSize });
 		}
 
+        template <typename VisitorType, typename Self>
+		static void accept(VisitorType& a_visitor, Self& a_this)
+        {
+            a_visitor.visit(vis::makeNameValuePair("Outer Corner Radius", a_this.m_outerCornerRadius));
+            a_visitor.visit(vis::makeNameValuePair("Inner Corner Radius", a_this.m_innerCornerRadius));
+            a_visitor.visit(vis::makeNameValuePair("Border Width", a_this.m_borderWidth));
+            a_visitor.visit(vis::makeNameValuePair("Margin", a_this.m_margin));
+            a_visitor.visit(vis::makeNameValuePair("Padding", a_this.m_padding));
+            a_visitor.visit(vis::makeNameValuePair("Border Color", a_this.m_borderColor));
+            a_visitor.visit(vis::makeNameValuePair("Border Texture", a_this.m_borderTexture));
+            a_visitor.visit(vis::makeNameValuePair("Background Color", a_this.m_backgroundColor));
+            a_visitor.visit(vis::makeNameValuePair("Background Texture", a_this.m_backgroundTexture));
+		}
 	protected:
 		// Methods
 		virtual void renderContent(
@@ -74,3 +111,4 @@ namespace vob::aoe::common
 		) const = 0;
 	};
 }
+

@@ -7,9 +7,33 @@
 namespace vob::aoe::common
 {
 	template <typename ResourceT>
-	struct GraphicResourceHandle final
+	class GraphicResourceHandle;
+}
+
+namespace vob::aoe::vis
+{
+    template <typename VisitorType, typename ResourceType>
+	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType>& a_this);
+
+    template <typename VisitorType, typename ResourceType>
+	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType> const& a_this);
+}
+
+namespace vob::aoe::common
+{
+	template <typename ResourceT>
+	class GraphicResourceHandle final
 		: public type::ADynamicType
-	{
+    {
+        template <typename VisitorType, typename OtherResourceT>
+        friend void vis::accept(VisitorType&, GraphicResourceHandle<OtherResourceT>&);
+
+        template <typename VisitorType, typename OtherResourceT>
+        friend void vis::accept(VisitorType&, GraphicResourceHandle<OtherResourceT> const&);
+
+	public:
+		// TODO : where is my allocator ?
+
 		#pragma region Constructors
 		template <typename... Args>
 		explicit GraphicResourceHandle(
@@ -79,7 +103,7 @@ namespace vob::aoe::common
 		}
 		#pragma endregion
 
-	public: // TODO -> how to make accept friend ?
+	private:
 		#pragma region Attributes
 		std::reference_wrapper<IGraphicResourceManager<ResourceT>> m_manager;
 		std::shared_ptr<ResourceT> m_resource;

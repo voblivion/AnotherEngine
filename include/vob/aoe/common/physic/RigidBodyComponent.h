@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		// Attributes
 		std::optional<btRigidBody> m_rigidBody;
 		btScalar m_mass{ 0.0 };
-		type::Clone<btCollisionShape, btCollisionShape> m_collisionShape; // TODO should be handle?
+		type::Cloneable<btCollisionShape, btCollisionShape> m_collisionShape; // TODO should be handle?
 		vec3 m_linearFactor{ 1.0f };
 		vec3 m_angularFactor{ 1.0f };
 		data::Handle<PhysicMaterial> m_physicMaterial;
@@ -28,8 +28,8 @@ namespace vob::aoe::common
 
 		// Constructor
 		explicit RigidBodyComponent(data::ADatabase& a_database
-			, type::CloneCopier<btCollisionShape> const& a_cloneCopier)
-			: m_collisionShape{ a_cloneCopier }
+			, type::Cloner<btCollisionShape> const& a_cloner)
+			: m_collisionShape{ a_cloner }
 			, m_physicMaterial{ a_database }
 		{}
 	};

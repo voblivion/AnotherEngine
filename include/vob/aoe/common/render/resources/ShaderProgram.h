@@ -76,7 +76,15 @@ namespace vob::aoe::common
 		void create() const;
 		void destroy() const;
 
-	public: // TODO -> how to make accept friend ?
+
+        template <typename VisitorType, typename Self>
+		static void accept(VisitorType& a_visitor, Self& a_this)
+        {
+            a_visitor.visit(vis::makeNameValuePair("Vertex Shader Source", a_this.m_vertexShaderSource));
+            a_visitor.visit(vis::makeNameValuePair("Fragment Shader Source", a_this.m_fragmentShaderSource));
+		}
+
+	private:
 		// Attributes
 		mutable bool m_isReady = false;
 		mutable GraphicObjectId m_programId = 0;
@@ -85,12 +93,3 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
-{
-	template <typename VisitorType, typename ThisType>
-	visitIfType<common::ShaderProgram, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
-	{
-		a_visitor.visit(vis::makeNameValuePair("Vertex Shader Source", a_this.m_vertexShaderSource));
-		a_visitor.visit(vis::makeNameValuePair("Fragment Shader Source", a_this.m_fragmentShaderSource));
-	}
-}

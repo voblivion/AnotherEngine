@@ -43,7 +43,7 @@ namespace vob::aoe::common
 			m_outerCornerRadius = getUniformLocation("u_outerCornerRadius");
 			m_innerCornerRadius = getUniformLocation("u_innerCornerRadius");
 			m_strokeWidth = getUniformLocation("u_strokeWidth");
-			
+			m_color = getUniformLocation("u_color");
 		}
 
 		void setViewSize(vec2 const& a_viewSize) const
@@ -81,13 +81,19 @@ namespace vob::aoe::common
 			setUniform(m_strokeWidth, a_strokeWidth);
 		}
 
+		void setColor(vec4 const& a_color) const
+		{
+			setUniform(m_color, a_color);
+		}
+
 	private:
 		// Attributes
 		mutable UniformLocation m_viewSize = 0;
 		mutable UniformLocation m_renderType = 0;
 		mutable UniformLocation m_elementPosition = 0;
 		mutable UniformLocation m_elementSize = 0;
-		// RENDER_TYPE_QUAD
+		mutable UniformLocation m_color = 0;
+		// RENDER_TYPE_QUAD - TODO
 		mutable UniformLocation m_outerCornerRadius = 0;
 		mutable UniformLocation m_innerCornerRadius = 0;
 		mutable UniformLocation m_strokeWidth = 0;

@@ -5,6 +5,7 @@
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
 #include <bullet/BulletCollision/CollisionShapes/btCapsuleShape.h>
 
+
 namespace vob::aoe::common
 {
 	struct CharacterControllerComponent final

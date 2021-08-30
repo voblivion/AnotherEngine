@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
 #include <optional>
 #include <typeindex>
 #include <unordered_map>
@@ -101,18 +102,18 @@ namespace vob::aoe::type
 			return isBaseOf<Base>(m_idToTypeIndex.find(a_id)->second);
 		}
 
-		std::type_index getTypeIndex(std::uint64_t const a_id) const
-		{
-			return m_idToTypeIndex.find(a_id)->second;
-		}
+        std::type_index const* findTypeIndex(std::uint64_t const a_id) const
+        {
+			auto it = m_idToTypeIndex.find(a_id);
+			return it != m_idToTypeIndex.end() ? &it->second : nullptr;
+        }
 
-		auto getId(std::type_index const a_typeIndex) const
-		{
-			assert(isRegistered(a_typeIndex));
-
-			// TODO ?
-			return sta::string_id{ 0 };
-		}
+        auto getId(std::type_index const a_typeIndex) const
+        {
+            assert(isRegistered(a_typeIndex));
+			auto it = m_typeData.find(a_typeIndex);
+			return it != m_typeData.end() ? it->second.m_id : 0;
+        }
 
 		template <typename Type>
 		auto getId() const

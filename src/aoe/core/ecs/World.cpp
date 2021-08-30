@@ -1,5 +1,8 @@
 #include <vob/aoe/core/ecs/World.h>
 
+// TODO : remove this, no need to sleep
+#include <windows.h>
+
 namespace vob::aoe::ecs
 {
 	void World::start()
@@ -9,6 +12,8 @@ namespace vob::aoe::ecs
 		{
 			t_worldWorker.update();
 			m_data.update();
+            // TODO : remove this, no need to sleep
+			Sleep(5);
 		}
 		t_worldWorker.stop();
 	}

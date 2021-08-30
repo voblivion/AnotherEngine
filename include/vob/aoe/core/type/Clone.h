@@ -1,105 +1,226 @@
 #pragma once
 
+#include <memory>
+
 #include <vob/aoe/core/type/Traits.h>
 #include <vob/aoe/core/type/Applicator.h>
 
 namespace vob::aoe::type
 {
-	template <typename PolymorphicBaseType>
-	class CloneCopier
+    template <
+        typename PolymorphicBaseType
+        , typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
+        , typename ApplicatorAllocatorType = AllocatorType
+    >
+    class Cloner
+    {
+        using Self = Cloner<PolymorphicBaseType>;
+
+        template <typename Type>
+        struct DoClone
+        {
+            void operator()(
+				Type const& a_source
+                , std::shared_ptr<PolymorphicBaseType>& a_target
+                , AllocatorType const& a_allocator
+                ) const
+            {
+				a_target = std::allocate_shared<Type>(a_allocator, a_source);
+            }
+        };
+
+    public:
+		#pragma region Constructors
+        explicit Cloner(AllocatorType a_allocator = {})
+            : m_allocator{ a_allocator }
+        {}
+		#pragma endregion
+
+		#pragma region Methods
+        template <typename Type>
+        std::shared_ptr<Type> clone(std::shared_ptr<Type> const& a_source) const
+        {
+            static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
+            if (a_source == nullptr)
+            {
+                return nullptr;
+            }
+
+            std::shared_ptr<PolymorphicBaseType> target = nullptr;
+            m_applicator.apply(*a_source, target, m_allocator);
+            return std::static_pointer_cast<Type>(std::move(target));
+        }
+
+        template <typename Type, typename... Args>
+        auto create(Args&&... a_args) const
+        {
+            return std::allocate_shared<Type>(m_allocator, std::forward<Args>(a_args)...);
+        }
+
+        template <typename Type>
+        bool isRegistered()
+        {
+            static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
+            return m_applicator.template isRegistered<Type>();
+        }
+
+        template <typename Type>
+        void registerType()
+        {
+            static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
+            m_applicator.template registerType<Type>();
+        }
+		#pragma endregion
+
+    private:
+        // Attributes
+        AllocatorType m_allocator;
+        Applicator<
+			PolymorphicBaseType const
+			, ApplicatorAllocatorType
+			, DoClone
+			, std::shared_ptr<PolymorphicBaseType>&
+			, AllocatorType const&
+		> m_applicator;
+    };
+
+	template <
+		typename Type
+		, typename PolymorphicBaseType
+		, typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
+		, typename ApplicatorAllocatorType = AllocatorType
+	>
+	class Cloneable;
+}
+
+namespace vob::aoe::vis
+{
+	template <
+		typename VisitorType
+		, typename Type
+		, typename PolymorphicBaseType
+		, typename AllocatorType
+		, typename ApplicatorAllocatorType
+	>
+	void accept(VisitorType& a_visitor, type::Cloneable<Type, PolymorphicBaseType, AllocatorType, ApplicatorAllocatorType>& a_this);
+}
+
+namespace vob::aoe::type
+{
+	template <
+		typename Type
+		, typename PolymorphicBaseType
+        , typename AllocatorType
+        , typename ApplicatorAllocatorType
+	>
+	class Cloneable
 	{
-		template <typename TypeT>
-		struct DoClone
-		{
-			void operator()(
-				TypeT const& a_source
-				, std::unique_ptr<PolymorphicBaseType>& a_target
-				) const
-			{
-				using Type = std::remove_const_t<TypeT>;
-
-				a_target = std::make_unique<Type>(a_source);
-			}
-		};
-	public:
-		// Methods
-		template <typename BaseType, typename SubType, enforce((std::is_base_of_v<BaseType, SubType>))>
-		std::unique_ptr<BaseType> clone(std::unique_ptr<SubType> const& a_source) const
-		{
-			static_assert(std::is_base_of_v<PolymorphicBaseType, BaseType>);
-			if(a_source == nullptr)
-			{
-				return nullptr;
-			}
-
-			std::unique_ptr<PolymorphicBaseType> t_target;
-			m_applicator.apply(*a_source, t_target);
-			return std::unique_ptr<BaseType>{ static_cast<BaseType*>(t_target.release()) };
-		}
-
-		template <typename Type>
-		bool isRegistered()
-		{
-			static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
-			return m_applicator.template isRegistered<Type>();
-		}
-
-		template <typename Type>
-		void registerType()
-		{
-			static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
-			m_applicator.template registerType<Type const>();
-		}
-
-	private:
-		// Attributes
-		Applicator<PolymorphicBaseType const, DoClone, std::unique_ptr<PolymorphicBaseType>&> m_applicator;
-	};
-
-	template <typename Type, typename PolymorphicBaseType>
-	class Clone
-		: public std::unique_ptr<Type>
-	{
-		using Base = std::unique_ptr<Type>;
+		using Cloner = Cloner<PolymorphicBaseType, AllocatorType, ApplicatorAllocatorType>;
 	public:
 		#pragma region Constructors
-		explicit Clone(CloneCopier<PolymorphicBaseType> const& a_cloneCopier)
-			: m_cloneCopier{a_cloneCopier}
+		explicit Cloneable(Cloner const& a_cloner)
+			: m_cloner{ a_cloner }
 		{}
 
-		Clone(Clone&&) = default;
+		Cloneable(Cloneable&&) = default;
+		Cloneable(Cloneable const& a_other)
+			: m_cloner{ a_other.m_cloner }
+			, m_ptr{ m_cloner.get().clone(a_other.m_ptr) }
+        {}
 
-		Clone(Clone const& a_other)
-			: Base{ a_other.m_cloneCopier.get().template clone<Type>(a_other) }
-			, m_cloneCopier{ a_other.m_cloneCopier }
-		{}
+		~Cloneable()
+        {
+            reset();
+		}
+		#pragma endregion
 
-		template <typename OtherType = Type>
-		explicit Clone(
-			CloneCopier<PolymorphicBaseType> const& a_cloneCopier
-			, std::unique_ptr<OtherType> a_ptr
-		)
-			: Base{ std::move(a_ptr) }
-			, m_cloneCopier{ a_cloneCopier }
-		{}
+		#pragma region Methods
+		Type* get() const
+		{
+			return m_ptr.get();
+        }
 
-		~Clone() = default;
+		void reset()
+		{
+			m_ptr.reset();
+		}
+
+		template <typename OtherType>
+		void reset(std::shared_ptr<OtherType> a_ptr)
+		{
+			m_ptr = std::move(a_ptr);
+		}
+
+		template <typename OtherType, typename... Args>
+		OtherType& init(Args&&... a_args)
+		{
+			reset();
+			auto ptr = m_cloner.get().template create<OtherType>(std::forward<Args>(a_args)...);
+			m_ptr = ptr;
+			return *ptr;
+		}
 		#pragma endregion
 
 		#pragma region Operators
-		Clone& operator=(Clone&&) = default;
-		Clone& operator=(Clone const& a_other)
-		{
-			m_cloneCopier = a_other.m_cloneCopier;
-			static_cast<Base&>(*this) =
-				m_cloneCopier.get().template clone<Type>(a_other);
+		Cloneable& operator=(Cloneable&&) = default;
+		Cloneable& operator=(Cloneable const& a_other)
+        {
+            m_cloner = a_other.m_cloner;
+            m_ptr = m_cloner.get().clone(a_other.m_ptr);
 			return *this;
+		}
+
+		Type* operator->() const
+		{
+			return m_ptr.get();
+		}
+		Type& operator*() const
+		{
+			return *m_ptr;
+		}
+		bool operator==(std::nullptr_t) const
+		{
+			return m_ptr == nullptr;
+		}
+		bool operator!=(std::nullptr_t) const
+		{
+			return m_ptr != nullptr;
 		}
 		#pragma endregion
 
 	private:
-		#pragma region Attributes
-		std::reference_wrapper<CloneCopier<PolymorphicBaseType> const> m_cloneCopier;
-		#pragma endregion
+		std::reference_wrapper<Cloner const> m_cloner;
+		std::shared_ptr<Type> m_ptr = nullptr;
+
+
+		template <
+			typename VisitorType
+			, typename Type
+			, typename PolymorphicBaseType
+			, typename AllocatorType
+			, typename ApplicatorAllocatorType
+		>
+		friend void vis::accept(
+			VisitorType& a_visitor
+			, type::Cloneable<Type, PolymorphicBaseType, AllocatorType, ApplicatorAllocatorType>& a_this
+		);
 	};
+}
+
+namespace vob::aoe::vis
+{
+    template <
+		typename VisitorType
+		, typename Type
+		, typename PolymorphicBaseType
+		, typename AllocatorType
+		, typename ApplicatorAllocatorType
+	>
+    void accept(
+		VisitorType& a_visitor
+		, type::Cloneable<Type, PolymorphicBaseType, AllocatorType, ApplicatorAllocatorType>& a_this
+	)
+    {
+		accept(a_visitor, a_this.m_ptr);
+    }
 }

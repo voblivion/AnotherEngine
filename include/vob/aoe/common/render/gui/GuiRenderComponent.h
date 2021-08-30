@@ -34,12 +34,9 @@ namespace vob::aoe::common
 			, m_guiMeshResourceManager{ a_guiMeshResourceManager }
 			, m_textureResourceManager{ a_textureResourceManager }
 			, m_guiRenderContext{ a_guiMeshResourceManager }
-			, m_textElementTest{ a_database, m_guiMeshResourceManager }
 		{
 			m_shaderProgram.setId(8);
 			ignorable_assert(m_shaderProgram.isValid());
 		}
-
-		TextElement m_textElementTest;
 	};
 }

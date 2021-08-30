@@ -1,16 +1,20 @@
 #pragma once
 
+#include <vob/sta/unicode.h>
+
+#include <vob/aoe/api.h>
+
 #include <vob/aoe/common/render/gui/elements/AElement.h>
-#include <vob/aoe/common/render/gui/Font.h>
+#include <vob/aoe/common/render/gui/text/Font.h>
 #include <vob/aoe/common/render/Manager.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/gui/GuiMesh.h>
-#include <vob/aoe/common/render/gui/TextUtils.h>
+#include <vob/aoe/common/render/gui/text/TextUtils.h>
 #include <vob/aoe/common/render/gui/elements/AStandardElement.h>
 
 namespace vob::aoe::common
 {
-	class TextElement
+	class VOB_AOE_API TextElement
 		: public AStandardElement
 	{
 	public:
@@ -21,91 +25,66 @@ namespace vob::aoe::common
 		)
 			: AStandardElement{ a_database }
 			, m_font{ a_database }
-			, m_mesh{ a_guiMeshResourceManager }
+			, m_preSelectionMesh{ a_guiMeshResourceManager }
+			, m_selectionMesh{ a_guiMeshResourceManager }
+			, m_postSelectionMesh{ a_guiMeshResourceManager }
 		{}
 		#pragma endregion
 
 		#pragma region Methods
-		virtual void renderContent(
+		bool onEvent(WindowEvent const& a_event, GuiTransform a_transform) override;
+
+		void renderContent(
 			GuiShaderProgram const& a_shaderProgram
 			, GuiRenderContext& a_renderContext
 			, GuiTransform const a_transform
-		) const override
-		{
-			if (!m_mesh->isReady()
-				|| !m_font.isValid()
-				|| !m_font->m_pages[0].isValid()
-				|| !(*m_font->m_pages[0])->isReady())
-			{
-				return;
-			}
+		) const override;
 
-			if (needsTextMeshUpdate(a_transform))
-			{
-				auto vertices = createTextMeshVertices(a_transform.m_size, m_text, m_size, *m_font);
-				m_mesh->setVertices(vertices.data(), static_cast<u32>(vertices.size()));
-			}
+		void setText(sta::utf8_string a_text);
 
-			glActiveTexture(GL_TEXTURE0 + 0);
-			(*m_font->m_pages[0])->bind(GL_TEXTURE_2D);
-			a_shaderProgram.setRenderType(GuiRenderType::DistanceFieldFill);
-			a_shaderProgram.setElementPosition(a_transform.m_position);
-			a_shaderProgram.setElementSize(a_transform.m_size);
-			m_mesh.resource()->render();
-		}
+        auto const& getFont() const;
+		void setFont(data::Handle<Font> a_font);
 
-		void setText(u8string a_text)
-		{
-			m_text = std::move(a_text);
-			m_changed = true;
-		}
-
-		void setFont(data::Handle<Font> a_font)
-		{
-			m_font = std::move(a_font);
-			m_changed = true;
-		}
-
-		auto const& getFont() const
-		{
-			return m_font;
-		}
-
-		void setSize(float const a_size)
-		{
-			m_size = a_size;
-			m_changed = true;
-		}
+		void setSize(float const a_size);
 		#pragma endregion
 
-	public: // TODO -> how to make accept friend ?
+        template <typename VisitorType, typename ThisType>
+        static void accept(VisitorType& a_visitor, ThisType& a_this)
+        {
+			AStandardElement::accept(a_visitor, a_this);
+
+            std::string text;
+            a_visitor.visit(vis::makeNameValuePair("Text", text));
+            a_this.m_text.assign(text);
+            a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+            a_visitor.visit(vis::makeNameValuePair("Line Height", a_this.m_lineHeight));
+            a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
+            a_visitor.visit(vis::makeNameValuePair("Color", a_this.m_color));
+            a_this.m_hasChanged = true;
+        }
+
+	protected:
 		#pragma region Attributes
-		bool m_changed = false;
-		u8string m_text;
-		float m_size = 0;
+		mutable bool m_hasChanged = false;
+		sta::utf8_string m_text;
+        float m_size = 12.0f;
+		std::optional<float> m_lineHeight;
 		data::Handle<Font> m_font;
+		vec4 m_color{ 1.0f };
 		mutable vec2 m_lastRenderedSize = { 0, 0 };
-		GraphicResourceHandle<GuiMesh> m_mesh;
+		GraphicResourceHandle<GuiMesh> m_preSelectionMesh;
+		GraphicResourceHandle<GuiMesh> m_selectionMesh;
+		GraphicResourceHandle<GuiMesh> m_postSelectionMesh;
+		std::size_t m_selectionStart = 0;
+		std::size_t m_selectionEnd = 0;
+		vec2 m_mousePos = {};
+		bool m_isSelecting = false;
 		#pragma endregion
 
 		bool needsTextMeshUpdate(GuiTransform const& a_transform) const
 		{
-			return m_changed || a_transform.m_size != m_lastRenderedSize;
+			return m_hasChanged || a_transform.m_size != m_lastRenderedSize;
 		}
 	};
 }
 
-namespace vob::aoe::vis
-{
-	template <typename VisitorType, typename ThisType>
-	visitIfType<common::TextElement, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
-	{
-		if constexpr (!std::is_const_v<ThisType>)
-		{
-			a_this.m_changed = true;
-		}
-		a_visitor.visit(vis::makeNameValuePair("Text", a_this.m_text));
-		a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
-		a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
-	}
-}

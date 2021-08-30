@@ -16,6 +16,10 @@ namespace vob::aoe::common
 		explicit RenderTexture(glm::ivec2 const a_size, std::size_t a_multiSampling = 1);
 
 		// Methods
+		auto getSize() const
+		{
+			return m_size;
+		}
 		auto const& getFramebufferId() const
 		{
 			return m_state.m_framebufferId;

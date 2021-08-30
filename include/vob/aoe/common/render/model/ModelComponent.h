@@ -30,5 +30,6 @@ namespace vob::aoe::vis
 	visitIfType<common::ModelComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
 	{
 		a_visitor.visit(vis::makeNameValuePair("Model", a_this.m_model));
+		// TODO : load material?
 	}
 }
