@@ -28,10 +28,10 @@ namespace vob::aoe::common
 		{
 			return false;
 		}
-		auto const& cameramanTransformComponent = cameramanEntity->getComponent<TransformComponent>();
-		auto const& cameramanCameraComponent = cameramanEntity->getComponent<CameraComponent>();
+		auto const& transformComponent = cameramanEntity->getComponent<TransformComponent>();
+		auto const& cameraComponent = cameramanEntity->getComponent<CameraComponent>();
 
-		auto const viewMatrix = cameramanTransformComponent.m_matrix;
+		auto const viewMatrix = transformComponent.m_matrix;
 		a_sceneShaderProgram.setUniform(
 			a_sceneShaderProgram.getViewUniformLocation()
 			, glm::inverse(viewMatrix)
@@ -40,10 +40,10 @@ namespace vob::aoe::common
         const auto& window = a_windowComponent.getWindow();
         auto const windowSize = window.getSize();
 		auto const projectionMatrix = glm::perspective(
-			glm::radians(cameramanCameraComponent.fov)
+			glm::radians(cameraComponent.fov)
 			, static_cast<float>(windowSize.x) / windowSize.y
-			, cameramanCameraComponent.nearClip
-			, cameramanCameraComponent.farClip
+			, cameraComponent.nearClip
+			, cameraComponent.farClip
 		);
 		a_sceneShaderProgram.setUniform(
 			a_sceneShaderProgram.getProjectionUniformLocation()
@@ -51,7 +51,7 @@ namespace vob::aoe::common
 		);
 		a_sceneShaderProgram.setUniform(
 			a_sceneShaderProgram.getViewPositionUniformLocation()
-			, getTranslation(cameramanTransformComponent.m_matrix)
+			, getTranslation(transformComponent.m_matrix)
 		);
 		return true;
 	}

@@ -4,6 +4,7 @@
 #include <typeindex>
 #include <utility>
 
+#include <vob/sta/memory.h>
 #include <vob/sta/utility.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
@@ -24,7 +25,8 @@ namespace vob::aoe::type
 			static_assert(std::has_virtual_destructor_v<PolymorphicBaseType>);
 		public:
 			// Methods
-			virtual std::shared_ptr<PolymorphicBaseType> create(AllocatorType const& a_allocator) = 0;
+			virtual sta::polymorphic_ptr<PolymorphicBaseType> create(AllocatorType const& a_allocator) = 0;
+			virtual std::shared_ptr<PolymorphicBaseType> createShared(AllocatorType const& a_allocator) = 0;
 		};
 
 		template <
@@ -43,9 +45,14 @@ namespace vob::aoe::type
 			{}
 
 			// Methods
-			std::shared_ptr<PolymorphicBaseType> create(AllocatorType const& a_allocator) override
+			sta::polymorphic_ptr<PolymorphicBaseType> create(AllocatorType const& a_allocator) override
 			{
 				return createImpl(a_allocator, std::index_sequence_for<Args...>{});
+			}
+
+			std::shared_ptr<PolymorphicBaseType> createShared(AllocatorType const& a_allocator) override
+			{
+				return createSharedImpl(a_allocator, std::index_sequence_for<Args...>{});
 			}
 
 		private:
@@ -54,7 +61,19 @@ namespace vob::aoe::type
 
 			// Methods
 			template <std::size_t... indexes>
-			std::shared_ptr<PolymorphicBaseType> createImpl(
+			sta::polymorphic_ptr<PolymorphicBaseType> createImpl(
+				AllocatorType const& a_allocator
+				, std::index_sequence<indexes...>
+			)
+			{
+				return sta::allocate_polymorphic<Type>(
+					a_allocator
+					, std::forward<Args>(std::get<indexes>(m_args))...
+				);
+			}
+
+			template <std::size_t... indexes>
+			std::shared_ptr<PolymorphicBaseType> createSharedImpl(
 				AllocatorType const& a_allocator
 				, std::index_sequence<indexes...>
 			)
@@ -108,7 +127,7 @@ namespace vob::aoe::type
 		}
 
 		template <typename Type>
-		std::shared_ptr<Type> create(std::type_index const a_typeId) const
+		sta::polymorphic_ptr<Type> create(std::type_index const a_typeId) const
 		{
 			if (!m_typeRegistry.isBaseOf<Type>(a_typeId))
 			{
@@ -118,16 +137,39 @@ namespace vob::aoe::type
 			auto const t_it = m_factories.find(std::type_index{ a_typeId });
 			if (t_it != m_factories.end())
 			{
-				return std::static_pointer_cast<Type>(t_it->second->create(m_allocator));
+				return sta::polymorphic_pointer_cast<Type>(t_it->second->create(m_allocator));
 			}
 			return nullptr;
 		}
 
 		template <typename Type>
-		std::shared_ptr<Type> create(std::uint64_t const a_id) const
+		sta::polymorphic_ptr<Type> create(std::uint64_t const a_id) const
 		{
 			auto typeIndex = m_typeRegistry.findTypeIndex(a_id);
 			return typeIndex != nullptr ? create<Type>(*typeIndex) : nullptr;
+		}
+
+		template <typename Type>
+		std::shared_ptr<Type> createShared(std::type_index const a_typeId) const
+		{
+			if (!m_typeRegistry.isBaseOf<Type>(a_typeId))
+			{
+				return nullptr;
+			}
+
+			auto const t_it = m_factories.find(std::type_index{ a_typeId });
+			if (t_it != m_factories.end())
+			{
+				return std::static_pointer_cast<Type>(t_it->second->createShared(m_allocator));
+			}
+			return nullptr;
+		}
+
+		template <typename Type>
+		std::shared_ptr<Type> createShared(std::uint64_t const a_id) const
+		{
+			auto typeIndex = m_typeRegistry.findTypeIndex(a_id);
+			return typeIndex != nullptr ? createShared<Type>(*typeIndex) : nullptr;
 		}
 
 		TypeRegistry const& getTypeRegistry() const

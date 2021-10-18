@@ -32,6 +32,7 @@
 #include "vob/aoe/common/physic/SphereShape.h"
 #include "vob/aoe/common/physic/BoxShape.h"
 #include "vob/aoe/common/physic/CylinderShape.h"
+#include "vob/aoe/common/physic/ModelShape.h"
 #include "vob/aoe/common/time/LifetimeComponent.h"
 #include "vob/aoe/common/physic/CapsuleShape.h"
 #include "vob/aoe/common/physic/CharacterControllerComponent.h"
@@ -113,7 +114,9 @@ namespace vob::aoe
 			{
 				typeRegistry.registerType<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
 				registerDynamicType<ecs::AComponent>("vob::aoe::ecs::AComponent"_id);
-				typeRegistry.registerType<btCollisionShape>("btCollisionShape"_id);
+				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
+				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
+				registerDynamicType<common::ACollisionShape>("vob::aoe::common::ACollisionShape"_id);
 			}
 
 			// Register non-visitable data types
@@ -122,8 +125,6 @@ namespace vob::aoe
 				registerDataType<common::GraphicResourceHandle<common::StaticModel>>("vob::aoe::common::GraphicResourceHandle<vob::aoe::common::StaticModel>"_id);
 				registerDataType<common::GraphicResourceHandle<common::Texture>>("vob::aoe::common::GraphicResourceHandle<vob::aoe::common::Texture>"_id);
 				registerDataType<common::Font>("vob::aoe::common::Font"_id);
-				registerDataType<common::AElement>("vob::aoe::common::AElement"_id);
-				registerDataType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
 			}
 
 			// Register visitable dynamic types
@@ -164,7 +165,7 @@ namespace vob::aoe
 				registerVisitableDynamicType<
 					ecs::ComponentManager
 					, type::ADynamicType
-					, type::Cloner<type::ADynamicType> const&
+					, type::Cloner<> const&
 				>(
 					"vob::aoe::ecs::ComponentManager"_id
 					, dynamicTypeCloner
@@ -190,7 +191,7 @@ namespace vob::aoe
 				registerVisitableDynamicType<
 					common::SplitElement
 					, common::AStandardElement
-					, type::Cloner<type::ADynamicType> const&
+					, type::Cloner<> const&
 				>(
 					"vob::aoe::common::SplitElement"_id
 					, dynamicTypeCloner
@@ -198,14 +199,16 @@ namespace vob::aoe
 				dynamicTypeCloner.registerType<common::SplitElement>();
 
 				// TODO since they will be handles, shapes should inherit from ADynamicType...
-				registerVisitableBtCollisionShape<btBoxShape, btCollisionShape, btVector3>("btBoxShape"_id, btVector3{ 1.0f, 1.0f, 1.0f });
-				btCollisionShapeCloner.registerType<btBoxShape>();
-				registerVisitableBtCollisionShape<btCapsuleShape, btCollisionShape, btScalar, btScalar>("btCapsuleShape"_id, btScalar{ 1.0f }, btScalar{ 1.0f });
-				btCollisionShapeCloner.registerType<btCapsuleShape>();
-				registerVisitableBtCollisionShape<btCylinderShape, btCollisionShape, btVector3>("btCylinderShape"_id, btVector3{ 1.0f, 1.0f, 1.0f });
-				btCollisionShapeCloner.registerType<btCylinderShape>();
-				registerVisitableBtCollisionShape<btSphereShape, btCollisionShape, btScalar>("btSphereShape"_id, btScalar{ 1.0f });
-				btCollisionShapeCloner.registerType<btSphereShape>();
+				registerVisitableDynamicType<common::BoxShape, common::ACollisionShape>("vob::aoe::common::BoxShape"_id);
+				dynamicTypeCloner.registerType<common::BoxShape>();
+				registerVisitableDynamicType<common::CapsuleShape, common::ACollisionShape>("vob::aoe::common::CapsuleShape"_id);
+				dynamicTypeCloner.registerType<common::CapsuleShape>();
+				registerVisitableDynamicType<common::CylinderShape, common::ACollisionShape>("vob::aoe::common::CylinderShape"_id);
+				dynamicTypeCloner.registerType<common::CylinderShape>();
+				registerVisitableDynamicType<common::SphereShape, common::ACollisionShape>("vob::aoe::common::SphereShape"_id);
+				dynamicTypeCloner.registerType<common::SphereShape>();
+				registerVisitableDynamicType<common::ModelShape, common::ACollisionShape>("vob::aoe::common::ModelShape"_id);
+				dynamicTypeCloner.registerType<common::ModelShape>();
 
 				registerVisitableDynamicType<common::PhysicMaterial, type::ADynamicType>("vob::aoe::common::PhysicMaterial"_id);
 			}
@@ -220,10 +223,10 @@ namespace vob::aoe
 				registerComponent<common::VelocityComponent>("vob::aoe::common::VelocityComponent"_id);
 				registerComponent<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
 				registerComponent<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
-				registerComponent<common::RigidBodyComponent, type::Cloner<btCollisionShape> const&>("vob::aoe::common::RigidBodyComponent"_id, btCollisionShapeCloner);
+				registerComponent<common::RigidBodyComponent, type::Cloner<> const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
 				registerComponent<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
 				registerComponent<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
-				registerComponent<common::CanvasComponent, type::Cloner<type::ADynamicType> const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
+				registerComponent<common::CanvasComponent, type::Cloner<> const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
 				// registerComponent<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
 				// registerComponent<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
 			}
@@ -233,7 +236,7 @@ namespace vob::aoe
 		type::TypeFactory<type::ADynamicType> dynamicTypeFactory{ typeRegistry };
 		type::TypeFactory<btCollisionShape> btCollisionShapeFactory{ typeRegistry };
 
-		type::Cloner<type::ADynamicType> dynamicTypeCloner{};
+		type::Cloner<> dynamicTypeCloner{};
 		type::Cloner<btCollisionShape> btCollisionShapeCloner{};
 		// aoe::ins::InstanceAllocationSizer instanceAllocationSizer{ typeRegistry, typeFactory, allocator };
 		common::FileSystemIndexer fileSystemIndexer;

@@ -25,9 +25,9 @@ namespace vob::aoe::vis
 	template <typename VisitorType, typename ThisType>
 	visitIfType<common::TransformComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
 	{
-		glm::vec3 position;
+		vec3 position;
 		a_visitor.visit(vis::makeNameValuePair("Position", position));
-		glm::vec3 rotation;
+		vec3 rotation;
 		a_visitor.visit(vis::makeNameValuePair("Rotation", rotation));
 
 		a_this.m_matrix = glm::translate(a_this.m_matrix, position);

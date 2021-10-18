@@ -100,6 +100,9 @@ namespace vob::aoe::common
 			glDeleteVertexArrays(1, &m_vao);
 		}
 
+		std::vector<Vertex> const& getVertices() const { return m_vertices; }
+		std::vector<Triangle> const& getTriangles() const { return m_triangles; }
+
 	private:
 		// Attributes
 		std::vector<Vertex> m_vertices;

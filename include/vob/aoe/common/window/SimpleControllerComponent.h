@@ -15,6 +15,7 @@ namespace vob::aoe::common
 		glm::vec3 m_orientation{ 0.0f };
 		std::shared_ptr<ecs::ComponentManager const> m_bullet;
 		TimePoint m_lastBulletTime{};
+		float m_fallVelocity = 0.0f;
 	};
 }
 

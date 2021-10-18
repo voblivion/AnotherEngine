@@ -2,13 +2,15 @@
 
 #include <memory>
 
+#include <vob/sta/memory.h>
+
 #include <vob/aoe/core/type/Traits.h>
 #include <vob/aoe/core/type/Applicator.h>
 
 namespace vob::aoe::type
 {
     template <
-        typename PolymorphicBaseType
+        typename PolymorphicBaseType = ADynamicType
         , typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
         , typename ApplicatorAllocatorType = AllocatorType
     >
@@ -21,11 +23,11 @@ namespace vob::aoe::type
         {
             void operator()(
 				Type const& a_source
-                , std::shared_ptr<PolymorphicBaseType>& a_target
+                , sta::polymorphic_ptr<PolymorphicBaseType>& a_target
                 , AllocatorType const& a_allocator
                 ) const
             {
-				a_target = std::allocate_shared<Type>(a_allocator, a_source);
+				a_target = sta::allocate_polymorphic<Type>(a_allocator, a_source);
             }
         };
 
@@ -38,7 +40,7 @@ namespace vob::aoe::type
 
 		#pragma region Methods
         template <typename Type>
-        std::shared_ptr<Type> clone(std::shared_ptr<Type> const& a_source) const
+        sta::polymorphic_ptr<Type> clone(sta::polymorphic_ptr<Type> const& a_source) const
         {
             static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
             if (a_source == nullptr)
@@ -46,15 +48,15 @@ namespace vob::aoe::type
                 return nullptr;
             }
 
-            std::shared_ptr<PolymorphicBaseType> target = nullptr;
+            sta::polymorphic_ptr<PolymorphicBaseType> target = nullptr;
             m_applicator.apply(*a_source, target, m_allocator);
-            return std::static_pointer_cast<Type>(std::move(target));
+            return sta::polymorphic_pointer_cast<Type>(target);
         }
 
         template <typename Type, typename... Args>
         auto create(Args&&... a_args) const
         {
-            return std::allocate_shared<Type>(m_allocator, std::forward<Args>(a_args)...);
+            return sta::allocate_polymorphic<Type>(m_allocator, std::forward<Args>(a_args)...);
         }
 
         template <typename Type>
@@ -79,14 +81,14 @@ namespace vob::aoe::type
 			PolymorphicBaseType const
 			, ApplicatorAllocatorType
 			, DoClone
-			, std::shared_ptr<PolymorphicBaseType>&
+			, sta::polymorphic_ptr<PolymorphicBaseType>&
 			, AllocatorType const&
 		> m_applicator;
     };
 
 	template <
 		typename Type
-		, typename PolymorphicBaseType
+		, typename PolymorphicBaseType = ADynamicType
 		, typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
 		, typename ApplicatorAllocatorType = AllocatorType
 	>
@@ -146,7 +148,7 @@ namespace vob::aoe::type
 		}
 
 		template <typename OtherType>
-		void reset(std::shared_ptr<OtherType> a_ptr)
+		void reset(sta::polymorphic_ptr<OtherType> a_ptr)
 		{
 			m_ptr = std::move(a_ptr);
 		}
@@ -156,8 +158,9 @@ namespace vob::aoe::type
 		{
 			reset();
 			auto ptr = m_cloner.get().template create<OtherType>(std::forward<Args>(a_args)...);
-			m_ptr = ptr;
-			return *ptr;
+			auto& object = *ptr;
+			m_ptr = std::move(ptr);
+			return object;
 		}
 		#pragma endregion
 
@@ -190,7 +193,7 @@ namespace vob::aoe::type
 
 	private:
 		std::reference_wrapper<Cloner const> m_cloner;
-		std::shared_ptr<Type> m_ptr = nullptr;
+		sta::polymorphic_ptr<Type> m_ptr = nullptr;
 
 
 		template <

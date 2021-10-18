@@ -8,11 +8,11 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		type::Cloneable<AElement, type::ADynamicType> m_rootElement;
+		type::Cloneable<AElement> m_rootElement;
 		vec2 m_size{ 2048.f, 1024.f };
 
 		// Constructor
-		explicit CanvasComponent(type::Cloner<type::ADynamicType> const& a_cloner)
+		explicit CanvasComponent(type::Cloner<> const& a_cloner)
 			: m_rootElement{ a_cloner }
 		{}
 

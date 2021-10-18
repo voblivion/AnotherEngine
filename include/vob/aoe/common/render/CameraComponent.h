@@ -17,5 +17,8 @@ namespace vob::aoe::vis
 	template <typename VisitorType, typename ThisType>
 	visitIfType<common::CameraComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
 	{
+		a_visitor.visit(nvp("FOV", a_this.fov));
+		a_visitor.visit(nvp("Near Clip", a_this.nearClip));
+		a_visitor.visit(nvp("Far Clip", a_this.farClip));
 	}
 }

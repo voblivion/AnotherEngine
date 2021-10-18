@@ -24,12 +24,12 @@ namespace vob::aoe::common
         Side m_firstSide = Side::Top;
         float m_firstSideSize = 0.0f;
 
-        type::Cloneable<AElement, type::ADynamicType> m_firstChildElement;
-        type::Cloneable<AElement, type::ADynamicType> m_secondChildElement;
+        type::Cloneable<AElement> m_firstChildElement;
+        type::Cloneable<AElement> m_secondChildElement;
 #pragma endregion
 
 #pragma region Constructors
-		explicit SplitElement(type::Cloner<type::ADynamicType> const& a_cloner)
+		explicit SplitElement(type::Cloner<> const& a_cloner)
 			: m_firstChildElement{ a_cloner }
 			, m_secondChildElement{ a_cloner }
 		{}

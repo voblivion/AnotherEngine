@@ -1,8 +1,10 @@
 #pragma once
 
 #include "ACollisionShape.h"
+
 #include <bullet/BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
+
 #include <vob/aoe/core/visitor/Utils.h>
 #include <vob/aoe/common/space/Vector.h>
 #include <vob/aoe/common/physic/Utils.h>
@@ -28,7 +30,7 @@ namespace vob::aoe::common
             a_this.m_shape = btCylinderShape(common::toBtVector(t_halfExtent));
         }
 
-	public: // TODO -> how to make accept friend ?
+	private:
 		// Attributes
 		btCylinderShape m_shape{ btVector3{0.5f, 1.0f, 0.5f} };
 	};

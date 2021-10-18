@@ -53,7 +53,7 @@ namespace vob::aoe::common
 				auto& rigidBody = entity.getComponent<RigidBodyComponent>();
 
 				// Compute local required movement
-				auto linearSpeed{ 4.0f };
+				auto linearSpeed{ 8.0f };
 				glm::vec3 localMove{ 0.0f };
 				localMove.x -= m_worldInput.m_keyboard.m_keys[Keyboard::Key::S];
 				localMove.x += m_worldInput.m_keyboard.m_keys[Keyboard::Key::F];
@@ -68,20 +68,88 @@ namespace vob::aoe::common
 				}
 
 				// Make local required movement global velocity
-				auto t_linearVelocity = glm::vec3{
-					glm::mat4_cast(glm::quat{ simpleController.m_orientation }) * glm::vec4{ localMove, 1.0f }
-				};
-				t_linearVelocity.y -= m_worldInput.m_keyboard.m_keys[Keyboard::Key::V];
-				t_linearVelocity.y += m_worldInput.m_keyboard.m_keys[Keyboard::Key::Space];
-
+				// TODO : don't count X rotation, just Z rotation matters
+				auto rot = glm::vec3{ 0.0f, simpleController.m_orientation.y, 0.0f };
+				auto t_linearVelocity = glm::vec3{ glm::mat4_cast(glm::quat{ rot }) * glm::vec4{ localMove, 1.0f } };
+				t_linearVelocity.y = 0.0f;
 				auto const directionLength = glm::length(t_linearVelocity);
 				if (directionLength > FLT_EPSILON)
 				{
 					t_linearVelocity *= linearSpeed / directionLength;
 				}
+				
+				sta::acceleration_measure<float> const gravity{ -9.81f };
+				sta::speed_measure<float> const addedVerticalSpeed = gravity * m_worldTime.m_elapsedTime;
 
-				rigidBody.m_rigidBody->activate(true);
-				rigidBody.m_rigidBody->setLinearVelocity(toBtVector(t_linearVelocity));
+				t_linearVelocity.y = simpleController.m_fallVelocity;
+				t_linearVelocity.y += addedVerticalSpeed.value;
+
+				{
+					auto from = toBtVector(glm::vec3{ transform.m_matrix[3] });
+					auto to = from;
+					to[1] -= 5.0f;
+					btCollisionWorld::AllHitsRayResultCallback res(from, to);
+
+					auto& t_dynamicsWorld =
+						m_worldPhysicComponent.m_dynamicsWorldHolder->getDynamicsWorld();
+					t_dynamicsWorld.rayTest(from, to, res);
+					if (res.hasHit())
+					{
+						for (auto k = 0; k < res.m_collisionObjects.size(); ++k)
+						{
+							auto const* colObj = res.m_collisionObjects[k];
+							if (colObj != static_cast<btCollisionObject const*>(&rigidBody.m_rigidBody.value()))
+							{
+								auto pt = res.m_hitPointWorld[k];
+								if (from[1] - pt[1] < 0.75f + 0.1f)
+								{
+									auto nw = res.m_hitNormalWorld[k];
+									if (nw.dot(btVector3{ 0.0f, 1.0f, 0.0f }) > 0.9f)
+									{
+										t_linearVelocity.y = 0.0f;
+									}
+									else
+									{
+										t_linearVelocity.y = std::max(-5.0f, t_linearVelocity.y);
+									}
+								}
+							}
+						}
+						/*if (from[1] - res.m_hitPointWorld[1] < 0.1f)
+						{
+							if (glm::dot(toGlmVec3(res.m_hitNormalWorld), vec3{ 0.0f, 1.0f, 0.0f }) > 0.8f)
+							{
+								t_linearVelocity.y = 0.0f;
+							}
+							else
+							{
+								t_linearVelocity.y = std::max(-5.0f, t_linearVelocity.y);
+							}
+						}*/
+					}
+				}
+
+				auto jumpKey = m_worldInput.m_keyboard.m_keys[Keyboard::Key::Space];
+				if (jumpKey.m_changed && jumpKey.m_pressed)
+				{
+					t_linearVelocity.y += 3.0f;
+				}
+
+				simpleController.m_fallVelocity = t_linearVelocity.y;
+				// t_linearVelocity.y += m_worldInput.m_keyboard.m_keys[Keyboard::Key::Space];
+
+				if (glm::length(t_linearVelocity) > 0.0f)
+				{
+					rigidBody.m_rigidBody->activate(true);
+					rigidBody.m_rigidBody->setGravity(btVector3{ 0.0f, 0.0f, 0.0f });
+					rigidBody.m_rigidBody->setLinearVelocity(toBtVector(t_linearVelocity));
+				}
+				else
+				{
+					rigidBody.m_rigidBody->activate(false);
+					rigidBody.m_rigidBody->setGravity(btVector3{ 0.0f, 0.0f, 0.0f });
+					rigidBody.m_rigidBody->setLinearVelocity(toBtVector(t_linearVelocity));
+				}
 
 				// Shoot balls
 				if(m_worldInput.m_mouse.m_buttons[sf::Mouse::Left].m_pressed)
@@ -93,7 +161,7 @@ namespace vob::aoe::common
 
 						// Initial velocity
 						auto const t_rigidBody = t_bullet.getComponent<RigidBodyComponent>();
-						glm::vec3 t_localVelocity{ 0.0f, 0.0f, -16.0f };
+						glm::vec3 t_localVelocity{ 0.0f, 0.0f, -8.0f };
 						t_rigidBody->m_linearVelocity = glm::vec3{
 							glm::quat{ simpleController.m_orientation } * glm::vec4{ t_localVelocity, 1.0f }
 						};

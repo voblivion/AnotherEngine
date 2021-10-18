@@ -42,7 +42,7 @@ namespace vob::aoe::vis
 			std::shared_ptr<common::Font const> a_font
 			, data::ADatabase& a_database
 			, common::IGraphicResourceManager<common::GuiMesh>& a_guiMeshResourceManager
-			, type::Cloner<type::ADynamicType>& a_cloner)
+			, type::Cloner<>& a_cloner)
 			: m_font{ a_font }
 			, m_database{ a_database }
 			, m_guiMeshResourceManager{ a_guiMeshResourceManager }
@@ -53,7 +53,7 @@ namespace vob::aoe::vis
 
 		template <typename ValueType>
 		EditionInterface generateEditionInterface(
-			type::Cloneable<common::AElement, type::ADynamicType>& a_root
+			type::Cloneable<common::AElement>& a_root
 			, ValueType& a_value
 		)
 		{
@@ -133,7 +133,7 @@ namespace vob::aoe::vis
 		std::shared_ptr<common::Font const> m_font;
 		data::ADatabase& m_database;
 		common::IGraphicResourceManager<common::GuiMesh>& m_guiMeshResourceManager;
-		type::Cloner<type::ADynamicType>& m_cloner;
+		type::Cloner<>& m_cloner;
 		common::SplitElement* m_listSplit = nullptr;
 		common::SplitElement* m_attributeSplit = nullptr;
 		EditionInterface m_editionInterface;

@@ -1,5 +1,6 @@
 
 #include <vob/sta/vector_map.h>
+#include <vob/random/perlin.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
@@ -64,10 +65,7 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	t_worldComponents.addComponent<aoe::common::InputComponent>();
 	t_worldComponents.addComponent<aoe::common::CursorComponent>();
 	t_worldComponents.addComponent<aoe::common::DirectorComponent>();
-	auto dynamicsWorldHolder = aoe::type::Cloneable<
-		aoe::common::ADynamicsWorldHolder
-		, vob::aoe::type::ADynamicType
-	>(a_data.dynamicTypeCloner);
+	auto dynamicsWorldHolder = aoe::type::Cloneable<aoe::common::ADynamicsWorldHolder>(a_data.dynamicTypeCloner);
 	dynamicsWorldHolder.init<aoe::common::DefaultDynamicsWorldHolder>();
 	t_worldComponents.addComponent<aoe::common::WorldPhysicComponent>(std::move(dynamicsWorldHolder));
 	t_worldComponents.addComponent<aoe::common::GuiRenderComponent>(
@@ -172,61 +170,105 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 		//editionInterface = leakingEditorVisitor->generateEditionInterface(canvas->m_rootElement, stupidData);
 	}
 
-	// Load model
-	auto modelArk = a_data.database.find<aoe::ecs::ComponentManager>(4);
-	if (modelArk != nullptr)
-	{
-		{
-			systemSpawnManager.spawn(*modelArk);
-		}
-// 		{
-// 			auto ark = *t_modelArk;
-// 			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-// 			matrix = glm::translate(matrix, glm::vec3{ 0.0f, 0.5f, 0.0f });
-// 			auto& t_model = systemSpawnManager.spawn(ark);
-// 		}
-// 		if (auto t_hierarchyComponent = t_camera.getComponent<common::HierarchyComponent>())
-// 		{
-// 			t_hierarchyComponent->m_children.push_back(t_model.getId());
-// 		}
-// 		auto& t_other = worldData.m_entityManager.getSystemSpawnManager().spawn(*t_modelArk);
-	}
-
-	// Load ground
-	auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(5);
+	auto const groundPath = std::filesystem::path{ "data/archetypes/grass.json" };
+	auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
 	if (groundArk != nullptr)
 	{
+		auto ground = *groundArk;
+
+		constexpr int sizeX = 64;
+		constexpr int sizeY = 64;
+		
+		auto mc = ground.getComponent<aoe::common::ModelComponent>();
+
+		std::vector<aoe::common::Vertex> vertices;
+		vertices.reserve(3 * sizeX * sizeY * 2 * 2);
+		std::vector<aoe::common::Triangle> triangles;
+		triangles.reserve(sizeX * sizeY * 2 * 2);
+		for (auto i = 0; i < sizeX; ++i)
 		{
-			auto ark = *groundArk;
-			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-			matrix *= aoe::common::translation(glm::vec3{ 0.0f, 0.0f, 0.0f });
-			systemSpawnManager.spawn(std::move(ark));
+			for (auto j = 0; j < sizeY; ++j)
+			{
+				auto n = glm::vec3{ 0.0f, 1.0f, 0.0f };
+
+				auto s = static_cast<std::uint32_t>(vertices.size());
+				triangles.emplace_back(s, s + 1, s + 2);
+
+				constexpr auto e = 1.0f;
+
+				auto a = static_cast<float>(i);
+				auto b = static_cast<float>(j);
+				auto c = a + 1.0f;
+				auto d = b + 1.0f;
+
+				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, b/e), b }, n, glm::vec2{ 0.0f, 0.0f });
+				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
+				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
+
+				s = static_cast<std::uint32_t>(vertices.size());
+				triangles.emplace_back(s, s + 1, s + 2);
+
+				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, d/e), d }, n, glm::vec2{ 1.0f, 1.0f });
+				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
+				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
+			}
 		}
-		{
-			auto ark = *groundArk;
-			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-			matrix *= aoe::common::translation(glm::vec3{ 8.0f, 0.0f, 0.2f });
-			systemSpawnManager.spawn(std::move(ark));
-		}
-		{
-			auto ark = *groundArk;
-			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-			matrix *= aoe::common::translation(glm::vec3{ 16.0f, 0.0f, 0.4f });
-			systemSpawnManager.spawn(std::move(ark));
-		}
-		{
-			auto ark = *groundArk;
-			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-			matrix *= aoe::common::translation(glm::vec3{ 24.0f, 0.0f, 0.6f });
-			systemSpawnManager.spawn(std::move(ark));
-		}
-		{
-			auto ark = *groundArk;
-			auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
-			matrix *= aoe::common::translation(glm::vec3{ -6.0f, 0.0f, 1.0f });
-			systemSpawnManager.spawn(std::move(ark));
-		}
+
+		std::vector<aoe::common::StaticMesh> meshes;
+		meshes.emplace_back(std::move(vertices), std::move(triangles), 0);
+		std::vector<aoe::common::Material> materials = (*mc->m_model)->m_materials;
+		mc->m_model = std::make_shared<aoe::common::GraphicResourceHandle<aoe::common::StaticModel>>(a_data.staticModelResourceManager, meshes, materials);
+
+		auto rbc = ground.getComponent<aoe::common::RigidBodyComponent>();
+		static_cast<aoe::common::ModelShape&>(*rbc->m_collisionShape).setModel(mc->m_model);
+
+		systemSpawnManager.spawn(std::move(ground));
 	}
+
+	//// Load model
+	//auto modelArk = a_data.database.find<aoe::ecs::ComponentManager>(4);
+	//if (modelArk != nullptr)
+	//{
+	//	{
+	//		systemSpawnManager.spawn(*modelArk);
+	//	}
+	//}
+
+	//// Load ground
+	//auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(5);
+	//if (groundArk != nullptr)
+	//{
+	//	{
+	//		auto ark = *groundArk;
+	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		matrix *= aoe::common::translation(glm::vec3{ 0.0f, 0.0f, 0.0f });
+	//		systemSpawnManager.spawn(std::move(ark));
+	//	}
+	//	{
+	//		auto ark = *groundArk;
+	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		matrix *= aoe::common::translation(glm::vec3{ 8.0f, 0.0f, 0.2f });
+	//		systemSpawnManager.spawn(std::move(ark));
+	//	}
+	//	{
+	//		auto ark = *groundArk;
+	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		matrix *= aoe::common::translation(glm::vec3{ 16.0f, 0.0f, 0.4f });
+	//		systemSpawnManager.spawn(std::move(ark));
+	//	}
+	//	{
+	//		auto ark = *groundArk;
+	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		matrix *= aoe::common::translation(glm::vec3{ 24.0f, 0.0f, 0.6f });
+	//		systemSpawnManager.spawn(std::move(ark));
+	//	}
+	//	{
+	//		auto ark = *groundArk;
+	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		matrix *= aoe::common::translation(glm::vec3{ -6.0f, 0.0f, 1.0f });
+	//		systemSpawnManager.spawn(std::move(ark));
+	//	}
+	//}
 }
 
 std::unique_ptr<aoe::ecs::World> createEditorWorld(aoe::DataHolder& a_data)
@@ -240,131 +282,6 @@ std::unique_ptr<aoe::ecs::World> createEditorWorld(aoe::DataHolder& a_data)
 #include <unordered_map>
 
 static_assert(aoe::vis::FreeAcceptVisitable<aoe::vis::EditorVisitor, int>);
-
-// TO CONSIDERE IF shared_ptr TOO MEMORY HEAVY
-/* struct AUniquePtrBlock
-{
-	virtual void destroy() = 0;
-};
-
-template <typename Type, typename Allocator>
-struct PolymorphicPtrBlock : AUniquePtrBlock
-{
-	template <typename... Args>
-	PolymorphicPtrBlock(Allocator a_allocator, Args&&... a_args)
-		: m_allocator{ a_allocator }
-		, m_object{ std::forward<Args>(a_args)... }
-	{}
-
-	void destroy() override
-	{
-		this->~PolymorphicPtrBlock();
-		using Self = PolymorphicPtrBlock<Type, Allocator>;
-		using BlockAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<Self>;
-		auto allocator = BlockAllocator{ m_allocator };
-		allocator.deallocate(this, 1);
-	}
-
-    Type m_object;
-    Allocator m_allocator;
-};
-
-struct PolymorphicDeleter
-{
-	void operator()(void* a_ptr)
-	{
-		auto p0 = static_cast<AUniquePtrBlock*>(a_ptr);
-		auto p1 = p0 - 1;
-		p1->destroy();
-	}
-};
-
-template <typename Type>
-using PolymorphicPtr = std::unique_ptr<Type, PolymorphicDeleter>;
-
-template <typename Type, typename Allocator, typename... Args>
-PolymorphicPtr<Type> allocatePolymorphic(Allocator a_allocator, Args&&... a_args)
-{
-	using Block = PolymorphicPtrBlock<Type, Allocator>;
-	using BlockAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<Block>;
-	auto allocator = BlockAllocator{ a_allocator };
-
-	auto block = allocator.allocate(1);
-	::new (block) Block(a_allocator, std::forward<Args>(a_args)...);
-	return PolymorphicPtr<Type>{ &block->m_object };
-}
-
-struct Foo
-{
-	~Foo()
-	{
-		std::cout << "deleting Foo" << std::endl;
-	}
-
-	virtual int joh() { return 0; }
-};
-
-struct Bar : public Foo
-{
-	Bar() = default;
-	Bar(int k)
-		: m_k{ k }
-	{}
-
-	~Bar()
-	{
-		std::cout << "deleting Bar" << std::endl;
-	}
-
-	int joh() override { return m_k; }
-
-	int m_k = 17;
-	std::array<char, 10000000> dummy;
-};
-
-struct debug_resource : std::pmr::memory_resource
-{
-	debug_resource(std::pmr::memory_resource* a_upstream = std::pmr::get_default_resource())
-		: m_upstream{ a_upstream }
-	{}
-
-	void* do_allocate(size_t a_size, size_t a_alignment) override
-    {
-        std::cout << "allocating " << a_size << " bytes" << std::endl;
-		return m_upstream->allocate(a_size, a_alignment);
-	}
-
-	void do_deallocate(void* a_ptr, size_t a_size, size_t a_alignment) override
-	{
-		std::cout << "deallocating " << a_size << " bytes" << std::endl;
-		m_upstream->deallocate(a_ptr, a_size, a_alignment);
-	}
-
-	bool do_is_equal(std::pmr::memory_resource const& a_other) const noexcept override
-	{
-		return this == &a_other;
-	}
-
-	std::pmr::memory_resource* m_upstream;
-};
-
-void testPolymorphic()
-{
-    std::cout << "Foo: " << sizeof(Foo) << std::endl;
-    std::cout << "PolymorphicPtr<Foo>: " << sizeof(PolymorphicPtr<Foo>) << std::endl;
-    std::cout << "PolymorphicPtrBlock<Foo>: ";
-    std::cout << sizeof(PolymorphicPtrBlock<Foo, std::pmr::polymorphic_allocator<Foo>>) << std::endl;
-    std::cout << "SharedPtr<Foo>: " << sizeof(std::shared_ptr<Foo>) << std::endl;
-    std::cout << "SharedPtrBlock<Foo>: ";
-    std::cout << sizeof(std::_Ref_count_obj_alloc3<Foo, std::pmr::polymorphic_allocator<Foo>>) << std::endl;
-
-    debug_resource resource;
-
-    {
-        auto allocator = std::pmr::polymorphic_allocator<Foo>(&resource);
-        PolymorphicPtr<Foo> foo = allocatePolymorphic<Bar>(allocator, 42);
-    }
-}*/
 
 int main()
 {
@@ -388,8 +305,8 @@ int main()
 	auto world = createGameWorld(data, window);
 
 	// Init with default map
-	//initGameWorldDefaultMap(data, *world);
-	initGameWorldGuiMap(data, *world);
+	initGameWorldDefaultMap(data, *world);
+	// initGameWorldGuiMap(data, *world);
 
 	// Run game
 	world->start();
@@ -397,11 +314,3 @@ int main()
 	// Destroy game window
 	glfwTerminate();
 }
-
-/*
-void compileData(DataHolder& a_data)
-{
-	aoe::data::Handle<aoe::ecs::ComponentManager> m_game{ a_data.database, "../game_root.json" };
-
-}
-*/

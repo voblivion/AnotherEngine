@@ -7,10 +7,11 @@
 #include <vector>
 #include <variant>
 
+#include <vob/sta/ignorable_assert.h>
+#include <vob/sta/memory.h>
 #include <vob/sta/unicode.h>
 #include <vob/sta/vector_map.h>
 #include <vob/sta/vector_set.h>
-#include <vob/sta/ignorable_assert.h>
 
 #include <vob/aoe/core/visitor/Utils.h>
 #include <vob/aoe/core/type/Factory.h>
@@ -324,7 +325,7 @@ namespace vob::aoe::vis
 		visitData(a_visitor, a_ptr);
 	}
 
-	template <typename VisitorType, typename BaseType, typename PolymorphicBaseType>
+	/*template <typename VisitorType, typename BaseType, typename PolymorphicBaseType>
 	void visitShared(
 		VisitorType& a_visitor
 		, std::shared_ptr<BaseType>& a_ptr
@@ -339,7 +340,7 @@ namespace vob::aoe::vis
 
 		ignorable_assert(a_ptr != nullptr || t_id == t_voidTypeId);
 		visitData(a_visitor, a_ptr);
-	}
+	}*/
 
 	template <typename BaseType, typename = void>
 	struct TypeFactoryGetter;
@@ -349,6 +350,20 @@ namespace vob::aoe::vis
 
 	template <typename VisitorType, typename BaseType>
 	void accept(VisitorType& a_visitor, std::shared_ptr<BaseType>& a_ptr)
+	{
+		auto const& typeFactory = TypeFactoryGetter<BaseType>()(a_visitor);
+		auto const& typeRegistry = a_visitor.getContext().m_typeRegistry;
+		auto voidTypeId = typeRegistry.template getId<void>();
+		auto id = readTypeId(a_visitor, voidTypeId);
+
+		a_ptr = typeFactory.template createShared<BaseType>(id);
+
+		ignorable_assert(id == voidTypeId || a_ptr != nullptr);
+		visitData(a_visitor, a_ptr);
+	}
+
+	template <typename VisitorType, typename BaseType>
+	void accept(VisitorType& a_visitor, sta::polymorphic_ptr<BaseType>& a_ptr)
 	{
 		auto const& typeFactory = TypeFactoryGetter<BaseType>()(a_visitor);
 		auto const& typeRegistry = a_visitor.getContext().m_typeRegistry;

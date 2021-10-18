@@ -1,9 +1,13 @@
 #pragma once
 
 #include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/common/physic/CharacterControllerComponent.h>
 #include <vob/aoe/common/physic/RigidBodyComponent.h>
 #include <vob/aoe/common/physic/WorldPhysicComponent.h>
+#include <vob/aoe/common/render/debugscene/DebugMesh.h>
+#include <vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
+#include <vob/aoe/common/time/TimeComponent.h>
 #include <LinearMath/btIDebugDraw.h>
 
 namespace vob::aoe::common
@@ -108,7 +112,6 @@ namespace vob::aoe::common
 				{
 					auto& t_transform = t_rigidBodyEntity.getComponent<TransformComponent>();
 					auto& t_rigidBody = t_rigidBodyEntity.getComponent<RigidBodyComponent>();
-					t_rigidBody.m_rigidBody.value().setGravity(btVector3{ 0.0, 0.0, 0.0 });
 
 					auto t_matrix = btTransform{};
 					t_rigidBody.m_motionState.getWorldTransform(t_matrix);
@@ -140,9 +143,9 @@ namespace vob::aoe::common
 			if (auto const t_rigidBody
 				= a_entity.getComponent<RigidBodyComponent>())
 			{
-				ignorable_assert(t_rigidBody->m_collisionShape != nullptr);
 				if(t_rigidBody->m_collisionShape == nullptr)
 				{
+					ignorable_assert(false);
 					return;
 				}
 
@@ -156,7 +159,7 @@ namespace vob::aoe::common
 					? t_rigidBody->m_mass
 					: btScalar{ 0.0 };
 				btVector3 t_inertia{ 0.0, 0.0, 0.0 };
-				auto& t_shape = *t_rigidBody->m_collisionShape;
+				auto& t_shape = t_rigidBody->m_collisionShape->getCollisionShape();
 				if (t_mass != btScalar{ 0.0 })
 				{
 					t_shape.calculateLocalInertia(t_mass, t_inertia);
@@ -167,7 +170,9 @@ namespace vob::aoe::common
 					t_mass
 					, &t_rigidBody->m_motionState
 					, &t_shape
-					, t_inertia };
+					, t_inertia
+				};
+				t_rigidBody->m_rigidBody->setGravity(btVector3{ 0.0, -9.81f, 0.0 });
 
 				// Apply initial velocity
 				t_rigidBody->m_rigidBody->setLinearVelocity(

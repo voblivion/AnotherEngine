@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		// Attributes
 		std::optional<btRigidBody> m_rigidBody;
 		btScalar m_mass{ 0.0 };
-		type::Cloneable<btCollisionShape, btCollisionShape> m_collisionShape; // TODO should be handle?
+		type::Cloneable<ACollisionShape> m_collisionShape; // TODO should be handle?
 		vec3 m_linearFactor{ 1.0f };
 		vec3 m_angularFactor{ 1.0f };
 		std::shared_ptr<PhysicMaterial const> m_physicMaterial;
@@ -26,7 +26,7 @@ namespace vob::aoe::common
 		quat m_angularVelocity{ vec3{ 0.0f } };
 
 		// Constructor
-		explicit RigidBodyComponent(type::Cloner<btCollisionShape> const& a_cloner)
+		explicit RigidBodyComponent(type::Cloner<> const& a_cloner)
 			: m_collisionShape{ a_cloner }
 		{}
 	};

@@ -12,7 +12,12 @@ namespace vob::aoe::common
 		, std::filesystem::path const& a_filePath
 	)
 	{
-		return fs::absolute(a_filePath).parent_path() / a_relativePath;
+		auto tmp0 = fs::absolute(a_filePath);
+		auto tmp1 = tmp0.parent_path();
+		auto tmp2 = tmp1 / a_relativePath;
+		auto tmp3 = fs::weakly_canonical(tmp2);
+		return tmp3;
+		// return fs::canonical(fs::absolute(a_filePath).parent_path() / a_relativePath);
 	}
 
 	inline auto cleanPath(

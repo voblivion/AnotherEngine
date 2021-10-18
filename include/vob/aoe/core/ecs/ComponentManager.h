@@ -20,17 +20,17 @@ namespace vob::aoe::ecs
 	class CloneAComponentFactory
 	{
 	public:
-		explicit CloneAComponentFactory(type::Cloner<type::ADynamicType> const& a_cloner)
+		explicit CloneAComponentFactory(type::Cloner<> const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
-		type::Cloneable<AComponent, type::ADynamicType> operator()() const
+		type::Cloneable<AComponent> operator()() const
 		{
-			return type::Cloneable<AComponent, type::ADynamicType>{ m_cloner };
+			return type::Cloneable<AComponent>{ m_cloner };
 		}
 
 	private:
-		type::Cloner<type::ADynamicType> const& m_cloner;
+		type::Cloner<> const& m_cloner;
 	};
 
 	class VOB_AOE_API ComponentManager
@@ -38,7 +38,7 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		explicit ComponentManager(type::Cloner<type::ADynamicType> const& a_cloner)
+		explicit ComponentManager(type::Cloner<> const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
@@ -65,13 +65,13 @@ namespace vob::aoe::ecs
 		{
 			auto const t_typeIndex = std::type_index{ typeid(ComponentType) };
 			assert(!hasComponent(t_typeIndex));
-			type::Cloneable<AComponent, type::ADynamicType> component{ m_cloner };
+			type::Cloneable<AComponent> component{ m_cloner };
 			auto& result = component.init<ComponentType>(std::forward<Args>(a_args)...);
 			m_components.emplace(std::move(component));
 			return result;
 		}
 
-		void addComponent(type::Cloneable<AComponent, type::ADynamicType> a_component)
+		void addComponent(type::Cloneable<AComponent> a_component)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(a_component) };
 			assert(!hasComponent(t_typeIndex));
@@ -116,8 +116,8 @@ namespace vob::aoe::ecs
 		struct PolymorphicComponentEqual
 		{
 			bool operator()(
-				type::Cloneable<AComponent, type::ADynamicType> const& a_lhs
-				, type::Cloneable<AComponent, type::ADynamicType> const& a_rhs
+				type::Cloneable<AComponent> const& a_lhs
+				, type::Cloneable<AComponent> const& a_rhs
 			) const
 			{
 				auto& lhs = *a_lhs;
@@ -126,7 +126,7 @@ namespace vob::aoe::ecs
 			}
 		};
 
-		sta::vector_set<type::Cloneable<AComponent, type::ADynamicType>, PolymorphicComponentEqual> m_components;
-		std::reference_wrapper<type::Cloner<type::ADynamicType> const> m_cloner;
+		sta::vector_set<type::Cloneable<AComponent>, PolymorphicComponentEqual> m_components;
+		std::reference_wrapper<type::Cloner<> const> m_cloner;
 	};
 }

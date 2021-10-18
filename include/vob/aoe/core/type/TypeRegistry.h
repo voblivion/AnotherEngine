@@ -72,7 +72,9 @@ namespace vob::aoe::type
 		void registerType(std::uint64_t const a_id)
 		{
 			static_assert(std::is_base_of_v<Base, Type>);
-			assert(!isRegistered<Type>() && isRegistered<Base>() && !isUsed(a_id));
+			assert(!isRegistered<Type>());
+			assert(isRegistered<Base>());
+			assert(!isUsed(a_id));
 			m_typeData.emplace(typeid(Type), TypeData{ a_id, m_types.size() });
 			m_idToTypeIndex.emplace(a_id, typeid(Type));
 			m_types.emplace_back(typeid(Type)
