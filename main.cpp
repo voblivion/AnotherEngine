@@ -17,7 +17,8 @@
 #include "vob/aoe/common/render/RenderSystem.h"
 #include "vob/aoe/common/space/MoveSystem.h"
 #include "vob/aoe/common/time/TimeSystem.h"
-#include "vob/aoe/common/window/InputSystem.h"
+#include "vob/aoe/common/window/GlfwCursorSystem.h"
+#include "vob/aoe/common/window/GlfwInputSystem.h"
 #include "vob/aoe/common/window/SimpleControllerSystem.h"
 #include "vob/aoe/common/render/DefaultDirectorSystem.h"
 #include "vob/aoe/common/time/LifetimeSystem.h"
@@ -81,7 +82,8 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	// Register Systems
 	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
 	auto const moveSystemId = world->addSystem<aoe::common::MoveSystem>();
-	auto const inputSystemId = world->addSystem<aoe::common::InputSystem>();
+	auto const glfwInputSystemId = world->addSystem<aoe::common::GlfwInputSystem>();
+	auto const glfwCursorSystemId = world->addSystem<aoe::common::GlfwCursorSystem>();
 	auto const simpleControllerSystemId = world->addSystem<aoe::common::SimpleControllerSystem>();
 	auto const renderSystemId = world->addSystem<aoe::common::GameRenderSystem>();
 	auto const testSystemId = world->addSystem<aoe::common::TestSystem>();
@@ -95,7 +97,8 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	// Set schedule
 	world->setSchedule({ {
 		{timeSystemId,					{}}
-		, {inputSystemId,				{}}
+		, {glfwInputSystemId,			{}}
+		, {glfwCursorSystemId,			{}}
 		, {simpleControllerSystemId,	{}}
 		, {moveSystemId,				{}}
 		, {testSystemId,				{}}

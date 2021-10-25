@@ -1,6 +1,8 @@
 #pragma once
 #include <vob/aoe/core/ecs/Component.h>
 
+#include <vob/aoe/common/render/IWindow.h>
+
 
 namespace vob::aoe::common
 {

@@ -1,31 +1,39 @@
 #pragma once
 
 #include <array>
-#include <vob/aoe/common/space/Vector.h>
+
 #include <SFML/Window/Mouse.hpp>
 
+#include <vob/sta/enum_map.h>
+
+#include <vob/aoe/common/space/Vector.h>
 #include <vob/aoe/common/window/Switch.h>
 
 namespace vob::aoe::common
 {
 	struct Mouse
 	{
-		enum Button
+		enum class Button
 		{
 			Unknown = -1
-			, Left = 0
-			, Right
-			, Middle
-			, X1
-			, X2
+			, M1 = 0
+			, M2
+			, M3
+			, M4
+			, M5
 			, Count
+
+			, Left = M1
+			, Right = M2
+			, Middle = M3
+			, X1 = M4
+			, X2 = M5
 		};
 
 		vec2 m_position{};
 		vec2 m_move{};
-		Switch m_moving;
-		Switch m_inside;
-		std::array<Switch, Mouse::Count> m_buttons;
+		Switch m_hover;
+		sta::enum_map<Button, Switch, Button::M1, Button::Count> m_buttons;
 	};
 
 	inline Mouse::Button toButton(int a_glfwButtonId)

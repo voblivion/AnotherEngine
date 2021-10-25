@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include <vob/sta/enum_map.h>
 #include <vob/aoe/common/window/Switch.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -10,7 +11,7 @@ namespace vob::aoe::common
 {
 	struct Keyboard
 	{
-		enum Key
+		enum class Key
 		{
 			Unknown = -1
 			, A = 0
@@ -117,7 +118,7 @@ namespace vob::aoe::common
 			, Count
 		};
 
-		std::array<Switch, static_cast<std::underlying_type_t<Key>>(Key::Count)> m_keys;
+		sta::enum_map<Key, Switch, Key::A, Key::Count> m_keys;
 	};
 
 	inline Keyboard::Key toKey(int a_glfwKeyId)

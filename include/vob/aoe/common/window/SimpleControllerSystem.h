@@ -62,7 +62,7 @@ namespace vob::aoe::common
 				linearSpeed += m_worldInput.m_keyboard.m_keys[Keyboard::Key::A] * 42;
 
 				if(m_worldInput.m_keyboard.m_keys[Keyboard::Key::P].m_changed
-					&& m_worldInput.m_keyboard.m_keys[Keyboard::Key::P].m_pressed)
+					&& m_worldInput.m_keyboard.m_keys[Keyboard::Key::P].m_isActive)
 				{
 					m_worldPhysicComponent.m_pause = !m_worldPhysicComponent.m_pause;
 				}
@@ -98,7 +98,7 @@ namespace vob::aoe::common
 						for (auto k = 0; k < res.m_collisionObjects.size(); ++k)
 						{
 							auto const* colObj = res.m_collisionObjects[k];
-							if (colObj != static_cast<btCollisionObject const*>(&rigidBody.m_rigidBody.value()))
+							if (colObj != static_cast<btCollisionObject const*>(rigidBody.m_rigidBody.get()))
 							{
 								auto pt = res.m_hitPointWorld[k];
 								if (from[1] - pt[1] < 0.75f + 0.1f)
@@ -130,7 +130,7 @@ namespace vob::aoe::common
 				}
 
 				auto jumpKey = m_worldInput.m_keyboard.m_keys[Keyboard::Key::Space];
-				if (jumpKey.m_changed && jumpKey.m_pressed)
+				if (jumpKey.m_changed && jumpKey.m_isActive)
 				{
 					t_linearVelocity.y += 3.0f;
 				}
@@ -152,7 +152,7 @@ namespace vob::aoe::common
 				}
 
 				// Shoot balls
-				if(m_worldInput.m_mouse.m_buttons[sf::Mouse::Left].m_pressed)
+				if(m_worldInput.m_mouse.m_buttons[Mouse::Button::Left].m_isActive)
 				{
 					if (m_worldTime.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
 					{
@@ -180,9 +180,9 @@ namespace vob::aoe::common
 					t = 0;
 				}
 
-				if (m_worldInput.m_mouse.m_buttons[sf::Mouse::Right])
+				if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right])
 				{
-					if (m_worldInput.m_mouse.m_buttons[sf::Mouse::Right].m_changed)
+					if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right].m_changed)
 					{
 						m_worldCursor.m_state = common::CursorState::Disable;
 					}
@@ -206,7 +206,7 @@ namespace vob::aoe::common
 				{
 					auto& euler = simpleController.m_orientation;
 					// TODO VOB TODO transform.m_rotation = glm::quat{ euler };
-					if (m_worldInput.m_mouse.m_buttons[sf::Mouse::Right].m_changed)
+					if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right].m_changed)
 					{
 						m_worldCursor.m_state = common::CursorState::Normal;
 					}
