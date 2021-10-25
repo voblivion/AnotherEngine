@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		glm::vec3 m_ambientColor{ 0.05f, 0.05f, 0.1f };
+		glm::vec3 m_ambientColor{ 0.25f, 0.25f, 0.25f };
 		std::shared_ptr<GraphicResourceHandle<ModelShaderProgram> const> m_shaderProgram;
 		// GraphicResourceHandle<RenderTexture> m_renderTexture;
 
