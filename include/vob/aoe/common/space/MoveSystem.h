@@ -20,7 +20,7 @@ namespace vob::aoe::common
 		explicit MoveSystem(ecs::WorldDataProvider& a_worldDataProvider)
 			: m_worldTime{ *a_worldDataProvider.getWorldComponent<
 				TimeComponent>() }
-			, m_entities{ a_worldDataProvider.getEntityList(*this, Components{}) }
+			, m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
 
 		void update() const
@@ -39,6 +39,6 @@ namespace vob::aoe::common
 
 	private:
 		TimeComponent& m_worldTime;
-		ecs::EntityList<TransformComponent, VelocityComponent const> const& m_entities;
+		ecs::EntityViewList<TransformComponent, VelocityComponent const> const& m_entities;
 	};
 }

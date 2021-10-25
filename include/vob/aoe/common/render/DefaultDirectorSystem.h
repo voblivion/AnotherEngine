@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit DefaultDirectorSystem(ecs::WorldDataProvider& a_wdp)
 			: m_directorComponent{ *a_wdp.getWorldComponent<DirectorComponent>() }
-			, m_cameraList{ a_wdp.getEntityList(*this, CameraComponents{}) }
+			, m_cameraList{ a_wdp.getEntityViewList(*this, CameraComponents{}) }
 		{}
 
 		void update() const
@@ -34,7 +34,7 @@ namespace vob::aoe::common
 
 		// Attributes
 		DirectorComponent& m_directorComponent;
-		ecs::EntityList<
+		ecs::EntityViewList<
 			TransformComponent const
 			, CameraComponent const
 		> const& m_cameraList;

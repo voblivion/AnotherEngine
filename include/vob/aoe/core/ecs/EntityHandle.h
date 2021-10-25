@@ -2,7 +2,7 @@
 
 #include <vob/aoe/core/ecs/EntityId.h>
 #include <vob/aoe/core/ecs/Entity.h>
-#include <vob/aoe/core/ecs/SystemEntity.h>
+#include <vob/aoe/core/ecs/EntityView.h>
 
 namespace vob::aoe::ecs
 {
@@ -24,7 +24,7 @@ namespace vob::aoe::ecs
 
 		template <typename... ComponentTypes>
 		explicit EntityHandle(
-			SystemEntity<ComponentTypes...> const& a_entity
+			EntityView<ComponentTypes...> const& a_entity
 		)
 			: m_id{ a_entity.getId() }
 		{}

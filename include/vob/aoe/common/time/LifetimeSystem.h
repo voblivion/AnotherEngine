@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		explicit LifetimeSystem(ecs::WorldDataProvider& a_wdp)
 			: m_unspawnManager{ a_wdp.getUnspawnManager() }
 			, m_worldTime{ *a_wdp.getWorldComponent<TimeComponent const>() }
-			, m_entities{ a_wdp.getEntityList(*this, Components{}) }
+			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 		{}
 
 		// Methods
@@ -37,6 +37,6 @@ namespace vob::aoe::common
 		// Attributes
 		ecs::SystemUnspawnManager& m_unspawnManager;
 		TimeComponent const& m_worldTime;
-		ecs::EntityList<LifetimeComponent> const& m_entities;
+		ecs::EntityViewList<LifetimeComponent> const& m_entities;
 	};
 }

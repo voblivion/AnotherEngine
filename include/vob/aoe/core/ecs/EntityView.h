@@ -11,13 +11,13 @@ namespace vob::aoe::ecs
 	namespace detail
 	{
 		template <typename... ComponentTypes>
-		class SystemEntityImpl;
+		class SystemEntityViewImpl;
 
 		template <>
-		class SystemEntityImpl<>
+		class SystemEntityViewImpl<>
 		{
 		public:
-			explicit SystemEntityImpl(Entity const&) {}
+			explicit SystemEntityViewImpl(Entity const&) {}
 
 			static void get() {}
 		};
@@ -26,13 +26,13 @@ namespace vob::aoe::ecs
 		struct Component {};
 
 		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityImpl<ComponentType, ComponentTypes...>
-			: public SystemEntityImpl<ComponentTypes...>
+		class SystemEntityViewImpl<ComponentType, ComponentTypes...>
+			: public SystemEntityViewImpl<ComponentTypes...>
 		{
-			using Base = SystemEntityImpl<ComponentTypes...>;
+			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity const& a_entity)
 				: Base{ a_entity }
 				, m_component{ *a_entity.getComponent<ComponentType>() }
 			{}
@@ -51,13 +51,13 @@ namespace vob::aoe::ecs
 		};
 
 		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityImpl<ComponentType*, ComponentTypes...>
-			: public SystemEntityImpl<ComponentTypes...>
+		class SystemEntityViewImpl<ComponentType*, ComponentTypes...>
+			: public SystemEntityViewImpl<ComponentTypes...>
 		{
-			using Base = SystemEntityImpl<ComponentTypes...>;
+			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity const& a_entity)
 				: Base{ a_entity }
 				, m_component{ a_entity.getComponent<ComponentType>() }
 			{}
@@ -76,13 +76,13 @@ namespace vob::aoe::ecs
 		};
 
 		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityImpl<ComponentType const, ComponentTypes...>
-			: public SystemEntityImpl<ComponentTypes...>
+		class SystemEntityViewImpl<ComponentType const, ComponentTypes...>
+			: public SystemEntityViewImpl<ComponentTypes...>
 		{
-			using Base = SystemEntityImpl<ComponentTypes...>;
+			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity const& a_entity)
 				: Base{ a_entity }
 				, m_component{ *a_entity.getComponent<ComponentType>() }
 			{}
@@ -101,13 +101,13 @@ namespace vob::aoe::ecs
 		};
 
 		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityImpl<ComponentType const*, ComponentTypes...>
-			: public SystemEntityImpl<ComponentTypes...>
+		class SystemEntityViewImpl<ComponentType const*, ComponentTypes...>
+			: public SystemEntityViewImpl<ComponentTypes...>
 		{
-			using Base = SystemEntityImpl<ComponentTypes...>;
+			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity const& a_entity)
 				: Base{ a_entity }
 				, m_component{ a_entity.getComponent<ComponentType>() }
 			{}
@@ -127,11 +127,11 @@ namespace vob::aoe::ecs
 	}
 
 	template <typename... ComponentTypes>
-	class SystemEntity
+	class EntityView
 	{
 	public:
 		// Constructors
-		explicit SystemEntity(Entity const& a_entity)
+		explicit EntityView(Entity const& a_entity)
 			: m_id{ a_entity.getId() }
 			, m_impl{ a_entity }
 #ifndef NDEBUG
@@ -154,7 +154,7 @@ namespace vob::aoe::ecs
 	private:
 		// Attributes
 		EntityId m_id;
-		detail::SystemEntityImpl<ComponentTypes...> m_impl;
+		detail::SystemEntityViewImpl<ComponentTypes...> m_impl;
 #ifndef NDEBUG
 		Entity const* m_entity = nullptr;
 #endif

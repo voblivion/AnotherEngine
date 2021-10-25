@@ -12,7 +12,7 @@ namespace vob::aoe::common
 
 		explicit HierarchySystem(ecs::WorldDataProvider& a_wdp)
 			: m_systemUnspawnManager{ a_wdp.getUnspawnManager() }
-			, m_entities{ a_wdp.getEntityList(*this, Components{}) }
+			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 		{}
 
 		void onEntityAdded(ecs::Entity const& a_entity) const
@@ -69,6 +69,6 @@ namespace vob::aoe::common
 
 	private:
 		ecs::SystemUnspawnManager& m_systemUnspawnManager;
-		ecs::EntityList<HierarchyComponent> const& m_entities;
+		ecs::EntityViewList<HierarchyComponent> const& m_entities;
 	};
 }

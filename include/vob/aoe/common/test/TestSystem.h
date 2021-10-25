@@ -14,7 +14,7 @@ namespace vob::aoe::common
 		>;
 
 		explicit TestSystem(ecs::WorldDataProvider& a_worldDataProvider)
-			: m_entities{ a_worldDataProvider.getEntityList(*this, Components{}) }
+			: m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
 
 		void update() const
@@ -41,7 +41,7 @@ namespace vob::aoe::common
 			}*/
 		}
 
-		ecs::EntityList<
+		ecs::EntityViewList<
 			TransformComponent
 			, TestComponent
 		> const& m_entities;

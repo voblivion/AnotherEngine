@@ -8,7 +8,7 @@
 #include <vob/aoe/api.h>
 #include <vob/aoe/core/ecs/Entity.h>
 #include <vob/aoe/core/ecs/EntityId.h>
-#include <vob/aoe/core/ecs/SystemEntity.h>
+#include <vob/aoe/core/ecs/EntityView.h>
 #include <vob/aoe/core/ecs/SystemSpawnManager.h>
 #include <vob/aoe/core/ecs/SystemUnspawnManager.h>
 #include <vob/aoe/core/ecs/EntityHandle.h>
@@ -122,13 +122,13 @@ namespace vob::aoe::ecs
 	}
 
 	template <typename... ComponentTypes>
-	struct EntityList
+	struct EntityViewList
 	{
 		// Aliases
-		using EntityType = SystemEntity<ComponentTypes...>;
+		using EntityViewType = EntityView<ComponentTypes...>;
 
 		// Attributes
-		std::deque<EntityType> m_list;
+		std::deque<EntityViewType> m_list;
 		std::unordered_map<EntityId, std::size_t> m_entityIndexes;
 
 		// Methods
@@ -191,13 +191,13 @@ namespace vob::aoe::ecs
 			return m_list.end();
 		}
 
-		EntityType const* find(EntityHandle const& a_handle) const
+		EntityViewType const* find(EntityHandle const& a_handle) const
 		{
 			// todo : return it ?
 			return find(a_handle.m_id);
 		}
 
-		EntityType const* find(EntityId const a_id) const
+		EntityViewType const* find(EntityId const a_id) const
 		{
 			// todo : return it ? optional ?
 			auto const t_it = m_entityIndexes.find(a_id);
@@ -238,11 +238,11 @@ namespace vob::aoe::ecs
 	struct SystemEntityList final
 		: public ASystemEntityList
 	{
-		using EntityType = SystemEntity<ComponentTypes...>;
+		using EntityViewType = EntityView<ComponentTypes...>;
 
 		// Attributes
 		SystemType& m_system;
-		EntityList<ComponentTypes...> m_entityList;
+		EntityViewList<ComponentTypes...> m_entityList;
 
 		// Constructor
 		explicit SystemEntityList(
@@ -294,7 +294,7 @@ namespace vob::aoe::ecs
 		VOB_AOE_API void update();
 
 		template <typename System, typename... ComponentTypes>
-		EntityList<ComponentTypes...> const& getEntityList(System& a_system)
+		EntityViewList<ComponentTypes...> const& getEntityViewList(System& a_system)
 		{
 			auto listHolder = std::make_unique<
 				SystemEntityList<System, ComponentTypes...>

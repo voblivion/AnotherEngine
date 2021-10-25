@@ -27,8 +27,8 @@ namespace vob::aoe::common
 			: m_modelRenderComponent{ a_wdp.getWorldComponentRef<ModelRenderComponent>() }
 			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
-			, m_cameramanEntityList{ a_wdp.getEntityList(*this, CameramanComponents{}) }
-			, m_modelEntityList{ a_wdp.getEntityList(*this, ModelComponents{}) }
+			, m_cameramanEntityList{ a_wdp.getEntityViewList(*this, CameramanComponents{}) }
+			, m_modelEntityList{ a_wdp.getEntityViewList(*this, ModelComponents{}) }
 		{}
 
 		void run() const
@@ -114,8 +114,8 @@ namespace vob::aoe::common
 		ModelRenderComponent& m_modelRenderComponent;
 		WindowComponent& m_windowComponent;
 		DirectorComponent& m_directorComponent;
-		ecs::EntityList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
-		ecs::EntityList<TransformComponent const, ModelComponent const> const& m_modelEntityList;
+		ecs::EntityViewList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
+		ecs::EntityViewList<TransformComponent const, ModelComponent const> const& m_modelEntityList;
 
 		mutable float t = 0;
 	};

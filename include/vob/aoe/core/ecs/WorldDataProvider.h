@@ -61,7 +61,7 @@ namespace vob::aoe::ecs
 	template <typename... ComponentTypes>
 	struct ComponentTypeList
 	{
-		using EntityType = SystemEntity<ComponentTypes...>;
+		using EntityType = EntityView<ComponentTypes...>;
 	};
 
 	// ReSharper disable once CppClassCanBeFinal
@@ -97,19 +97,19 @@ namespace vob::aoe::ecs
 		}
 
 		template <typename SystemType, typename... ComponentTypes>
-		EntityList<ComponentTypes...> const& getEntityList(SystemType& a_system)
+		EntityViewList<ComponentTypes...> const& getEntityViewList(SystemType& a_system)
 		{
 			onGetEntityList({ makeResourceAccess<ComponentTypes>()... });
-			return m_worldData.m_entityManager.getEntityList<
+			return m_worldData.m_entityManager.getEntityViewList<
 				SystemType, ComponentTypes...>(a_system);
 		}
 
 		template <typename SystemType, typename... ComponentTypes>
-		EntityList<ComponentTypes...> const& getEntityList(
+		EntityViewList<ComponentTypes...> const& getEntityViewList(
 			SystemType& a_system, ComponentTypeList<ComponentTypes...> const&
 		)
 		{
-			return getEntityList<SystemType, ComponentTypes...>(a_system);
+			return getEntityViewList<SystemType, ComponentTypes...>(a_system);
 		}
 
 		SystemSpawnManager& getSpawnManager()

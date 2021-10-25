@@ -34,7 +34,7 @@ namespace vob::aoe::common
 			, m_worldCursor{ *a_wdp.getWorldComponent<CursorComponent>() }
 			, m_worldTime{ *a_wdp.getWorldComponent<TimeComponent const>() }
 			, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
-			, m_entities{ a_wdp.getEntityList(*this, Components{}) }
+			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 			, m_systemSpawnManager{ a_wdp.getSpawnManager() }
 		{}
 
@@ -221,7 +221,7 @@ namespace vob::aoe::common
 		CursorComponent& m_worldCursor;
 		TimeComponent const& m_worldTime;
 		WorldPhysicComponent& m_worldPhysicComponent;
-		ecs::EntityList<
+		ecs::EntityViewList<
 			TransformComponent
 			, VelocityComponent
 			, SimpleControllerComponent

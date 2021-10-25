@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		>;
 
 		explicit LocalTransformSystem(ecs::WorldDataProvider& a_worldDataProvider)
-			: m_entities{ a_worldDataProvider.getEntityList(*this, Components{}) }
+			: m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
 
 		void update() const
@@ -35,17 +35,17 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		using EntityList = ecs::EntityList<
+		using EntityViewList = ecs::EntityViewList<
 			HierarchyComponent const
 			, TransformComponent
 			, LocalTransformComponent*
 		>;
-		using Entity = EntityList::EntityType;
+		using EntityView = EntityViewList::EntityViewType;
 
-		EntityList const& m_entities;
+		EntityViewList const& m_entities;
 
 		// Methods
-		void updateChildrenTransform(Entity const& a_entity) const
+		void updateChildrenTransform(EntityView const& a_entity) const
 		{
 			auto const& hierarchy = a_entity.getComponent<HierarchyComponent>();
 			auto const& transform = a_entity.getComponent<TransformComponent>();
@@ -59,7 +59,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void updateTransform(glm::mat4 const& a_parentMatrix, Entity const& a_entity) const
+		void updateTransform(glm::mat4 const& a_parentMatrix, EntityView const& a_entity) const
 		{
 			auto& transform = a_entity.getComponent<TransformComponent>();
 			auto const localTransform = a_entity.getComponent<LocalTransformComponent>();

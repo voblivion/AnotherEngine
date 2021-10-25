@@ -36,10 +36,10 @@ namespace vob
 		}
 
 		template <typename... ComponentTypes>
-		SystemEntityList<ComponentTypes...> const& getEntityList()
+		SystemEntityList<ComponentTypes...> const& getEntityViewList()
 		{
 			onGetEntityList({ access<ComponentTypes>()... });
-			return m_worldData.m_entityManager.getEntityList<ComponentTypes...>();
+			return m_worldData.m_entityManager.getEntityViewList<ComponentTypes...>();
 		}
 
 		SystemSpawnManager& getSpawnManager()

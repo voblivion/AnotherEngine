@@ -94,9 +94,9 @@ namespace vob::aoe::common
 			, m_debugSceneRenderComponent{
 				*a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{
-				a_wdp.getEntityList(*this, RigidBodyComponents{}) }
+				a_wdp.getEntityViewList(*this, RigidBodyComponents{}) }
 			, m_characterEntities{
-				a_wdp.getEntityList(*this, CharacterComponents{}) }
+				a_wdp.getEntityViewList(*this, CharacterComponents{}) }
 		{}
 
 		void update() const
@@ -239,11 +239,11 @@ namespace vob::aoe::common
 		TimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
-		ecs::EntityList<
+		ecs::EntityViewList<
 			TransformComponent
 			, RigidBodyComponent
 		> const& m_rigidBodyEntities;
-		ecs::EntityList<
+		ecs::EntityViewList<
 			TransformComponent
 			, CharacterControllerComponent
 		> const& m_characterEntities;
