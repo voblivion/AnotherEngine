@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "vob/aoe/core/ecs/Component.h"
 #include <bullet/BulletDynamics/Dynamics/btRigidBody.h>
 #include "AMotionState.h"
@@ -14,16 +16,18 @@ namespace vob::aoe::common
 		: public ecs::AComponent
 	{
 		// Attributes
-		std::optional<btRigidBody> m_rigidBody;
 		btScalar m_mass{ 0.0 };
-		type::Cloneable<ACollisionShape> m_collisionShape; // TODO should be handle?
+		type::Cloneable<ACollisionShape> m_collisionShape;
 		vec3 m_linearFactor{ 1.0f };
 		vec3 m_angularFactor{ 1.0f };
 		std::shared_ptr<PhysicMaterial const> m_physicMaterial;
 
-		btDefaultMotionState m_motionState;
 		vec3 m_linearVelocity{ 0.0f };
 		quat m_angularVelocity{ vec3{ 0.0f } };
+
+		// shared but different from one entity in the world to another
+		std::shared_ptr<btRigidBody> m_rigidBody;
+		std::shared_ptr<btDefaultMotionState> m_motionState;
 
 		// Constructor
 		explicit RigidBodyComponent(type::Cloner<> const& a_cloner)

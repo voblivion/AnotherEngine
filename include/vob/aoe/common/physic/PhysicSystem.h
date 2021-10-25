@@ -114,7 +114,7 @@ namespace vob::aoe::common
 					auto& t_rigidBody = t_rigidBodyEntity.getComponent<RigidBodyComponent>();
 
 					auto t_matrix = btTransform{};
-					t_rigidBody.m_motionState.getWorldTransform(t_matrix);
+					t_rigidBody.m_motionState->getWorldTransform(t_matrix);
 
 					t_transform.m_matrix = toGlmMat4(t_matrix);
 
@@ -152,7 +152,7 @@ namespace vob::aoe::common
 				// Initialize motion state
 				auto const t_transform = a_entity.getComponent<TransformComponent>();
 				auto const t_matrix = toBtTransform(t_transform->m_matrix);
-				t_rigidBody->m_motionState.setWorldTransform(t_matrix);
+				t_rigidBody->m_motionState = std::make_shared<btDefaultMotionState>(t_matrix);
 
 				// Compute inertia
 				auto const t_mass = t_rigidBody != nullptr
@@ -166,12 +166,13 @@ namespace vob::aoe::common
 				}
 
 				// Create Bullet's rigid body
-				t_rigidBody->m_rigidBody = btRigidBody{
+				// TODO allocator...
+				t_rigidBody->m_rigidBody = std::make_shared<btRigidBody>(
 					t_mass
-					, &t_rigidBody->m_motionState
+					, t_rigidBody->m_motionState.get()
 					, &t_shape
 					, t_inertia
-				};
+				);
 				t_rigidBody->m_rigidBody->setGravity(btVector3{ 0.0, -9.81f, 0.0 });
 
 				// Apply initial velocity
@@ -229,8 +230,7 @@ namespace vob::aoe::common
 			auto const t_rigidBody = a_entity.getComponent<RigidBodyComponent>();
 			if (t_rigidBody != nullptr)
 			{
-				t_dynamicsWorld.removeRigidBody(&*t_rigidBody->m_rigidBody);
-				t_rigidBody->m_rigidBody.reset();
+				t_dynamicsWorld.removeRigidBody(t_rigidBody->m_rigidBody.get());
 			}
 		}
 
