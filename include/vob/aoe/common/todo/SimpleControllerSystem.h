@@ -1,16 +1,22 @@
 #pragma once
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+
 #include <vob/aoe/common/space/VelocityComponent.h>
-#include <vob/aoe/common/window/SimpleControllerComponent.h>
-#include <vob/aoe/common/window/InputComponent.h>
+#include <vob/aoe/common/todo/SimpleControllerComponent.h>
+#include <vob/aoe/common/input/WorldInputComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/window/CursorComponent.h>
-#include <vob/aoe/common/time/TimeComponent.h>
-#include <glm/gtc/quaternion.hpp>
-#include <cmath>
-#include <algorithm>
+#include <vob/aoe/common/window/WorldCursorComponent.h>
+#include <vob/aoe/common/time/WorldTimeComponent.h>
 #include <vob/aoe/common/physic/RigidBodyComponent.h>
 #include <vob/aoe/common/physic/WorldPhysicComponent.h>
+#include <vob/aoe/common/input/raw/Keyboard.h>
+#include <vob/aoe/common/input/raw/Mouse.h>
+
+#include <vob/aoe/core/ecs/WorldDataProvider.h>
+
+#include <glm/gtc/quaternion.hpp>
+
+#include <cmath>
+#include <algorithm>
 
 //todo
 template <typename T>
@@ -30,9 +36,9 @@ namespace vob::aoe::common
 		>;
 	public:
 		explicit SimpleControllerSystem(ecs::WorldDataProvider& a_wdp)
-			: m_worldInput{ *a_wdp.getWorldComponent<InputComponent const>() }
-			, m_worldCursor{ *a_wdp.getWorldComponent<CursorComponent>() }
-			, m_worldTime{ *a_wdp.getWorldComponent<TimeComponent const>() }
+			: m_worldInput{ *a_wdp.getWorldComponent<WorldInputComponent const>() }
+			, m_worldCursor{ *a_wdp.getWorldComponent<WorldCursorComponent>() }
+			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
 			, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
 			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 			, m_systemSpawnManager{ a_wdp.getSpawnManager() }
@@ -79,7 +85,7 @@ namespace vob::aoe::common
 				}
 				
 				sta::acceleration_measure<float> const gravity{ -9.81f };
-				sta::speed_measure<float> const addedVerticalSpeed = gravity * m_worldTime.m_elapsedTime;
+				sta::speed_measure<float> const addedVerticalSpeed = gravity * m_worldTimeComponent.m_elapsedTime;
 
 				t_linearVelocity.y = simpleController.m_fallVelocity;
 				t_linearVelocity.y += addedVerticalSpeed.value;
@@ -154,7 +160,7 @@ namespace vob::aoe::common
 				// Shoot balls
 				if(m_worldInput.m_mouse.m_buttons[Mouse::Button::Left].m_isActive)
 				{
-					if (m_worldTime.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
+					if (m_worldTimeComponent.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
 					{
 						assert(simpleController.m_bullet != nullptr);
 						auto t_bullet = *simpleController.m_bullet;
@@ -172,7 +178,7 @@ namespace vob::aoe::common
 						t_transform->m_matrix = glm::translate(t_transform->m_matrix, t_rigidBody->m_linearVelocity / 10.0f);
 
 						m_systemSpawnManager.spawn(std::move(t_bullet));
-						simpleController.m_lastBulletTime = m_worldTime.m_frameStartTime;
+						simpleController.m_lastBulletTime = m_worldTimeComponent.m_frameStartTime;
 					}
 				}
 				else
@@ -190,11 +196,11 @@ namespace vob::aoe::common
 					// Compute new orientation
 
 					auto& euler = simpleController.m_orientation;
-					euler.y += m_worldTime.m_elapsedTime.value
+					euler.y += m_worldTimeComponent.m_elapsedTime.value
 						* -m_worldInput.m_mouse.m_move.x;
 					euler.y = std::fmod(euler.y, 2 * glm::pi<float>());
 
-					euler.x += m_worldTime.m_elapsedTime.value
+					euler.x += m_worldTimeComponent.m_elapsedTime.value
 						* -m_worldInput.m_mouse.m_move.y;
 					euler.x = std::clamp(euler.x
 						, -glm::pi<float>() / 2
@@ -217,9 +223,9 @@ namespace vob::aoe::common
 
 	private:
 		mutable int t = 0;
-		InputComponent const& m_worldInput;
-		CursorComponent& m_worldCursor;
-		TimeComponent const& m_worldTime;
+		WorldInputComponent const& m_worldInput;
+		WorldCursorComponent& m_worldCursor;
+		WorldTimeComponent const& m_worldTimeComponent;
 		WorldPhysicComponent& m_worldPhysicComponent;
 		ecs::EntityViewList<
 			TransformComponent

@@ -4,14 +4,14 @@
 #include <vob/aoe/common/render/CameraComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
 #include <vob/aoe/common/render/DirectorComponent.h>
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 namespace vob::aoe::common
 {
 	template <typename TSceneShaderProgram>
 	bool initSceneShaderProgram(
 		TSceneShaderProgram const& a_sceneShaderProgram
-		, WindowComponent const& a_windowComponent
+		, WorldWindowComponent const& a_worldWindowComponent
 		, DirectorComponent const& a_directorComponent
 		, ecs::EntityViewList<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
 	)
@@ -37,7 +37,7 @@ namespace vob::aoe::common
 			, glm::inverse(viewMatrix)
 		);
 
-        const auto& window = a_windowComponent.getWindow();
+        const auto& window = a_worldWindowComponent.getWindow();
         auto const windowSize = window.getSize();
 		auto const projectionMatrix = glm::perspective(
 			glm::radians(cameraComponent.fov)

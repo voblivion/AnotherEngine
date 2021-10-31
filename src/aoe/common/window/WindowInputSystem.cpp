@@ -1,12 +1,16 @@
-#include <vob/aoe/common/window/GlfwInputSystem.h>
+#include <vob/aoe/common/window/WindowInputSystem.h>
+
+#include <vob/aoe/common/window/WorldWindowComponent.h>
+#include <vob/aoe/common/input/WorldInputComponent.h>
+
+#include <vob/aoe/core/ecs/WorldDataProvider.h>
 
 
 using namespace vob::aoe::common;
 
-
 namespace
 {
-	inline void processEvent(KeyEvent const& a_keyEvent, InputComponent& a_worldInput)
+	inline void processEvent(KeyEvent const& a_keyEvent, WorldInputComponent& a_worldInput)
 	{
 		if (a_keyEvent.m_action == KeyEvent::Action::Repeat)
 		{
@@ -22,14 +26,14 @@ namespace
 		}
 	}
 
-	inline void processEvent(MouseMoveEvent const& a_mouseMoveEvent, InputComponent& a_worldInput)
+	inline void processEvent(MouseMoveEvent const& a_mouseMoveEvent, WorldInputComponent& a_worldInput)
 	{
 		a_worldInput.m_mouse.m_move +=
 			vob::aoe::vec2{ a_mouseMoveEvent.m_position } - a_worldInput.m_mouse.m_position;
 		a_worldInput.m_mouse.m_position = a_mouseMoveEvent.m_position;
 	}
 
-	inline void processEvent(MouseButtonEvent const& a_mouseButtonEvent, InputComponent& a_worldInput)
+	inline void processEvent(MouseButtonEvent const& a_mouseButtonEvent, WorldInputComponent& a_worldInput)
 	{
 		auto const button = toButton(a_mouseButtonEvent.m_button);
 		if (button != Mouse::Button::Unknown)
@@ -40,20 +44,20 @@ namespace
 		}
 	}
 
-	inline void processEvent(MouseScrollEvent const& a_mouseScrollEvent, InputComponent& a_textInput)
+	inline void processEvent(MouseScrollEvent const& a_mouseScrollEvent, WorldInputComponent& a_textInput)
 	{
 		// TODO
 	}
 
-	inline void processEvent(TextEvent const& a_textEvent, InputComponent& a_textInput)
+	inline void processEvent(TextEvent const& a_textEvent, WorldInputComponent& a_textInput)
 	{
 		// TODO?
 	}
 
-	inline void processEvent(MouseEnterEvent const& a_mouseEnterEvent, InputComponent& a_textInput)
+	inline void processEvent(MouseEnterEvent const& a_mouseEnterEvent, WorldInputComponent& a_textInput)
 	{}
 
-	inline void resetFrameState(InputComponent& a_worldInput)
+	inline void resetFrameState(WorldInputComponent& a_worldInput)
 	{
 		a_worldInput.m_mouse.m_move = {};
 
@@ -68,7 +72,7 @@ namespace
 		}
 	}
 
-	inline void processEvents(IWindow& a_window, InputComponent& a_worldInput)
+	inline void processEvents(IWindow& a_window, WorldInputComponent& a_worldInput)
 	{
 		a_window.pollEvents();
 		for (auto const& polledEvent : a_window.getPolledEvents())
@@ -79,7 +83,7 @@ namespace
 		}
 	}
 
-	inline void updateHoverState(IWindow& a_window, InputComponent& a_worldInput)
+	inline void updateHoverState(IWindow& a_window, WorldInputComponent& a_worldInput)
 	{
 		auto isActive = a_window.isHovered();
 		auto wasActive = a_worldInput.m_mouse.m_hover.m_isActive;
@@ -88,24 +92,24 @@ namespace
 	}
 }
 
-GlfwInputSystem::GlfwInputSystem(ecs::WorldDataProvider& a_wdp)
-	: m_worldWindowComponent{ *a_wdp.getWorldComponent<WindowComponent>() }
-	, m_worldInput{ *a_wdp.getWorldComponent<InputComponent>() }
+WindowInputSystem::WindowInputSystem(ecs::WorldDataProvider& a_wdp)
+	: m_worldWindowComponent{ *a_wdp.getWorldComponent<WorldWindowComponent>() }
+	, m_worldInputComponent{ *a_wdp.getWorldComponent<WorldInputComponent>() }
 	, m_worldStop{ a_wdp.getStopBool() }
 {}
 
-void GlfwInputSystem::update() const
+void WindowInputSystem::update() const
 {
 	auto& window = m_worldWindowComponent.getWindow();
 
-	resetFrameState(m_worldInput);
+	resetFrameState(m_worldInputComponent);
 
 	if (window.shouldClose())
 	{
 		m_worldStop = true;
 	}
 
-	processEvents(window, m_worldInput);
+	processEvents(window, m_worldInputComponent);
 
-	updateHoverState(window, m_worldInput);
+	updateHoverState(window, m_worldInputComponent);
 }

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <variant>
+#include <vector>
 
 #include <vob/aoe/common/render/OpenGl.h>
 

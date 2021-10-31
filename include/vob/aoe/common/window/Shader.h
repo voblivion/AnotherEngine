@@ -1,8 +1,10 @@
 #pragma once
 
-#include <string>
-#include <GL/glew.h>
 #include <vob/aoe/core/standard/ADynamicType.h>
+
+#include <GL/glew.h>
+
+#include <string>
 
 namespace vob::aoe::common
 {

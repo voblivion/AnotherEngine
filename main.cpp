@@ -4,10 +4,10 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
-#include "vob/aoe/common/window/WindowComponent.h"
-#include "vob/aoe/common/time/TimeComponent.h"
-#include "vob/aoe/common/window/InputComponent.h"
-#include "vob/aoe/common/window/CursorComponent.h"
+#include "vob/aoe/common/window/WorldWindowComponent.h"
+#include "vob/aoe/common/time/WorldTimeComponent.h"
+#include "vob/aoe/common/input/WorldInputComponent.h"
+#include "vob/aoe/common/window/WorldCursorComponent.h"
 #include "vob/aoe/common/render/DirectorComponent.h"
 #include "vob/aoe/common/physic/WorldPhysicComponent.h"
 #include "vob/aoe/common/physic/DefaultDynamicsWorldHolder.h"
@@ -17,9 +17,9 @@
 #include "vob/aoe/common/render/RenderSystem.h"
 #include "vob/aoe/common/space/MoveSystem.h"
 #include "vob/aoe/common/time/TimeSystem.h"
-#include "vob/aoe/common/window/GlfwCursorSystem.h"
-#include "vob/aoe/common/window/GlfwInputSystem.h"
-#include "vob/aoe/common/window/SimpleControllerSystem.h"
+#include "vob/aoe/common/window/WindowCursorSystem.h"
+#include "vob/aoe/common/window/WindowInputSystem.h"
+#include "vob/aoe/common/todo/SimpleControllerSystem.h"
 #include "vob/aoe/common/render/DefaultDirectorSystem.h"
 #include "vob/aoe/common/time/LifetimeSystem.h"
 #include "vob/aoe/common/map/HierarchySystem.h"
@@ -41,7 +41,7 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 {
 	// Prepare world components
 	aoe::ecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
-	t_worldComponents.addComponent<aoe::common::WindowComponent>(a_window);
+	t_worldComponents.addComponent<aoe::common::WorldWindowComponent>(a_window);
 	t_worldComponents.addComponent<aoe::common::SceneRenderComponent>(
 		a_data.renderTextureResourceManager
 		, glm::ivec2{ g_width, g_height }
@@ -62,9 +62,9 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 		a_data.database
 		, a_data.postProcessShaderProgramResourceManager
 	);
-	t_worldComponents.addComponent<aoe::common::TimeComponent>();
-	t_worldComponents.addComponent<aoe::common::InputComponent>();
-	t_worldComponents.addComponent<aoe::common::CursorComponent>();
+	t_worldComponents.addComponent<aoe::common::WorldTimeComponent>();
+	t_worldComponents.addComponent<aoe::common::WorldInputComponent>();
+	t_worldComponents.addComponent<aoe::common::WorldCursorComponent>();
 	t_worldComponents.addComponent<aoe::common::DirectorComponent>();
 	auto dynamicsWorldHolder = aoe::type::Cloneable<aoe::common::ADynamicsWorldHolder>(a_data.dynamicTypeCloner);
 	dynamicsWorldHolder.init<aoe::common::DefaultDynamicsWorldHolder>();
@@ -82,8 +82,8 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	// Register Systems
 	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
 	auto const moveSystemId = world->addSystem<aoe::common::MoveSystem>();
-	auto const glfwInputSystemId = world->addSystem<aoe::common::GlfwInputSystem>();
-	auto const glfwCursorSystemId = world->addSystem<aoe::common::GlfwCursorSystem>();
+	auto const windowInputSystemId = world->addSystem<aoe::common::WindowInputSystem>();
+	auto const windowCursorSystemId = world->addSystem<aoe::common::WindowCursorSystem>();
 	auto const simpleControllerSystemId = world->addSystem<aoe::common::SimpleControllerSystem>();
 	auto const renderSystemId = world->addSystem<aoe::common::GameRenderSystem>();
 	auto const testSystemId = world->addSystem<aoe::common::TestSystem>();
@@ -97,8 +97,8 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	// Set schedule
 	world->setSchedule({ {
 		{timeSystemId,					{}}
-		, {glfwInputSystemId,			{}}
-		, {glfwCursorSystemId,			{}}
+		, {windowInputSystemId,			{}}
+		, {windowCursorSystemId,		{}}
 		, {simpleControllerSystemId,	{}}
 		, {moveSystemId,				{}}
 		, {testSystemId,				{}}

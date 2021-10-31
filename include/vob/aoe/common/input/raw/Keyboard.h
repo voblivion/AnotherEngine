@@ -1,11 +1,14 @@
 #pragma once
 
-#include <array>
+#include <vob/aoe/common/input/raw/Switch.h>
 
 #include <vob/sta/enum_map.h>
-#include <vob/aoe/common/window/Switch.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+#include <array>
+
 
 namespace vob::aoe::common
 {

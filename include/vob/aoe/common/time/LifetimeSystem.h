@@ -15,7 +15,7 @@ namespace vob::aoe::common
 		// Constructors
 		explicit LifetimeSystem(ecs::WorldDataProvider& a_wdp)
 			: m_unspawnManager{ a_wdp.getUnspawnManager() }
-			, m_worldTime{ *a_wdp.getWorldComponent<TimeComponent const>() }
+			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
 			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 		{}
 
@@ -25,7 +25,7 @@ namespace vob::aoe::common
 			for(auto const& t_entity : m_entities)
 			{
 				auto& t_lifetime = t_entity.getComponent<LifetimeComponent>();
-				t_lifetime.m_remainingTime -= m_worldTime.m_elapsedTime.value;
+				t_lifetime.m_remainingTime -= m_worldTimeComponent.m_elapsedTime.value;
 				if(t_lifetime.m_remainingTime <= 0)
 				{
 					m_unspawnManager.unspawn(t_entity.getId());
@@ -36,7 +36,7 @@ namespace vob::aoe::common
 	private:
 		// Attributes
 		ecs::SystemUnspawnManager& m_unspawnManager;
-		TimeComponent const& m_worldTime;
+		WorldTimeComponent const& m_worldTimeComponent;
 		ecs::EntityViewList<LifetimeComponent> const& m_entities;
 	};
 }

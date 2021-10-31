@@ -2,7 +2,7 @@
 
 #include <vob/aoe/core/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 
 namespace vob::aoe::common
@@ -12,17 +12,17 @@ namespace vob::aoe::common
 	public:
 		// Constructor
 		explicit BufferSwapper(ecs::WorldDataProvider& a_wdp)
-			: m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
+			: m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 		{}
 
 		// Methods
 		void run() const
 		{
-			m_windowComponent.getWindow().swapBuffer();
+			m_worldWindowComponent.getWindow().swapBuffer();
 		}
 
 	private:
 		// Attributes
-		WindowComponent& m_windowComponent;
+		WorldWindowComponent& m_worldWindowComponent;
 	};
 }

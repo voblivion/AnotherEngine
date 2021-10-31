@@ -8,12 +8,12 @@
 
 namespace vob::aoe::common
 {
-	class WindowComponent final
+	class WorldWindowComponent final
 		: public ecs::AComponent
 	{
 	public:
 		// Constructor
-		explicit WindowComponent(common::IWindow& a_window)
+		explicit WorldWindowComponent(common::IWindow& a_window)
 			: m_window{ a_window }
 		{}
 

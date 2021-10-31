@@ -4,7 +4,7 @@
 #include <vob/aoe/api.h>
 #include <vob/aoe/common/space/VelocityComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/time/TimeComponent.h>
+#include <vob/aoe/common/time/WorldTimeComponent.h>
 #include <glm/gtc/quaternion.hpp>
 
 namespace vob::aoe::common
@@ -18,8 +18,7 @@ namespace vob::aoe::common
 		>;
 
 		explicit MoveSystem(ecs::WorldDataProvider& a_worldDataProvider)
-			: m_worldTime{ *a_worldDataProvider.getWorldComponent<
-				TimeComponent>() }
+			: m_worldTimeComponent{ *a_worldDataProvider.getWorldComponent<WorldTimeComponent>() }
 			, m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
 
@@ -38,7 +37,7 @@ namespace vob::aoe::common
 		}
 
 	private:
-		TimeComponent& m_worldTime;
+		WorldTimeComponent& m_worldTimeComponent;
 		ecs::EntityViewList<TransformComponent, VelocityComponent const> const& m_entities;
 	};
 }

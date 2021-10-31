@@ -2,7 +2,7 @@
 
 #include <vob/aoe/core/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 namespace vob::aoe::common
 {
@@ -18,13 +18,13 @@ namespace vob::aoe::common
 	public:
 		// Constructor
 		explicit DefaultFramebufferInitializer(ecs::WorldDataProvider& a_wdp)
-			: m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
+			: m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 		{}
 
 		// Operators
 		bool run() const
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, m_windowComponent.getWindow().getDefaultFramebufferId());
+			glBindFramebuffer(GL_FRAMEBUFFER, m_worldWindowComponent.getWindow().getDefaultFramebufferId());
 			glClearColor(
 				static_cast<float>(t_r) / 255
 				, static_cast<float>(t_g) / 255
@@ -42,13 +42,13 @@ namespace vob::aoe::common
 				glClear(GL_COLOR_BUFFER_BIT);
             }
 
-            auto const windowSize = m_windowComponent.getWindow().getSize();
+            auto const windowSize = m_worldWindowComponent.getWindow().getSize();
             glViewport(0, 0, windowSize.x, windowSize.y);
 			return true;
 		}
 
 	private:
 		// Attributes
-		WindowComponent& m_windowComponent;
+		WorldWindowComponent& m_worldWindowComponent;
 	};
 }

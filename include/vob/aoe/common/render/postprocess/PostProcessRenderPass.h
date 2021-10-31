@@ -14,7 +14,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit PostProcessRenderPass(ecs::WorldDataProvider& a_wdp)
 			: m_postProcessRenderComponent{ a_wdp.getWorldComponentRef<PostProcessRenderComponent>() }
-			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
+			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
 			, m_sceneRenderComponent{ a_wdp.getWorldComponentRef<SceneRenderComponent>() }
 		{
@@ -39,7 +39,7 @@ namespace vob::aoe::common
 			}
 
             shaderProgram.use();
-            const auto& window = m_windowComponent.getWindow();
+            const auto& window = m_worldWindowComponent.getWindow();
             auto const windowSize = window.getSize();
 			shaderProgram.setUniform(
 				shaderProgram.getWindowSizeLocation()
@@ -118,7 +118,7 @@ namespace vob::aoe::common
 		mutable float m_brightness = 0.0f;
 		mutable float m_saturation = 0.0f;
 		PostProcessRenderComponent& m_postProcessRenderComponent;
-		WindowComponent& m_windowComponent;
+		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
 		SceneRenderComponent& m_sceneRenderComponent;
 	};

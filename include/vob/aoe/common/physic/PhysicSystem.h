@@ -7,7 +7,7 @@
 #include <vob/aoe/common/render/debugscene/DebugMesh.h>
 #include <vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/time/TimeComponent.h>
+#include <vob/aoe/common/time/WorldTimeComponent.h>
 #include <LinearMath/btIDebugDraw.h>
 
 namespace vob::aoe::common
@@ -90,7 +90,7 @@ namespace vob::aoe::common
 			: m_worldPhysicComponent{
 				*a_wdp.getWorldComponent<WorldPhysicComponent>() }
 			, m_worldTimeComponent{
-				*a_wdp.getWorldComponent<TimeComponent>() }
+				*a_wdp.getWorldComponent<WorldTimeComponent>() }
 			, m_debugSceneRenderComponent{
 				*a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{
@@ -236,7 +236,7 @@ namespace vob::aoe::common
 
 	private:
 		WorldPhysicComponent& m_worldPhysicComponent;
-		TimeComponent& m_worldTimeComponent;
+		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
 		ecs::EntityViewList<

@@ -7,7 +7,7 @@
 #include <vob/sta/enum_map.h>
 
 #include <vob/aoe/common/space/Vector.h>
-#include <vob/aoe/common/window/Switch.h>
+#include <vob/aoe/common/input/raw/Switch.h>
 
 namespace vob::aoe::common
 {

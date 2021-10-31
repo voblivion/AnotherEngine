@@ -7,7 +7,7 @@
 #include <vob/aoe/common/render/Utils.h>
 #include <vob/aoe/common/render/model/ModelRenderComponent.h>
 #include <vob/aoe/common/render/model/ModelComponent.h>
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 namespace vob::aoe::common
 {
@@ -25,7 +25,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit ModelRenderPass(ecs::WorldDataProvider& a_wdp)
 			: m_modelRenderComponent{ a_wdp.getWorldComponentRef<ModelRenderComponent>() }
-			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
+			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
 			, m_cameramanEntityList{ a_wdp.getEntityViewList(*this, CameramanComponents{}) }
 			, m_modelEntityList{ a_wdp.getEntityViewList(*this, ModelComponents{}) }
@@ -44,7 +44,7 @@ namespace vob::aoe::common
 
 			if (!initSceneShaderProgram(
 				shaderProgram
-				, m_windowComponent
+				, m_worldWindowComponent
 				, m_directorComponent
 				, m_cameramanEntityList
 			))
@@ -112,7 +112,7 @@ namespace vob::aoe::common
 	//private:
 		// Attributes
 		ModelRenderComponent& m_modelRenderComponent;
-		WindowComponent& m_windowComponent;
+		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
 		ecs::EntityViewList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
 		ecs::EntityViewList<TransformComponent const, ModelComponent const> const& m_modelEntityList;

@@ -5,7 +5,7 @@
 #include <vob/aoe/common/render/OpenGl.h>
 #include <vob/aoe/common/render/Utils.h>
 #include <vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h>
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 namespace vob::aoe::common
 {
@@ -19,7 +19,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit DebugSceneRenderPass(ecs::WorldDataProvider& a_wdp)
 			: m_debugSceneRenderComponent{ a_wdp.getWorldComponentRef<DebugSceneRenderComponent>() }
-			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent>() }
+			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
 			, m_cameramanEntityList{ a_wdp.getEntityViewList(*this, CameramanComponents{}) }
 		{}
@@ -38,7 +38,7 @@ namespace vob::aoe::common
 
 			if (!initSceneShaderProgram(
 				shaderProgram
-				, m_windowComponent
+				, m_worldWindowComponent
 				, m_directorComponent
 				, m_cameramanEntityList
 			))
@@ -57,7 +57,7 @@ namespace vob::aoe::common
 	private:
 		// Attributes
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
-		WindowComponent& m_windowComponent;
+		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
 		ecs::EntityViewList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
 	};

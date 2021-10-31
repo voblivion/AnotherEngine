@@ -6,8 +6,8 @@
 #include <vob/aoe/common/render/gui/elements/EmptyElement.h>
 #include <vob/aoe/common/render/gui/elements/TextElement.h>
 #include <vob/aoe/common/render/gui/CanvasComponent.h>
-#include <vob/aoe/common/time/TimeComponent.h>
-#include <vob/aoe/common/window/WindowComponent.h>
+#include <vob/aoe/common/time/WorldTimeComponent.h>
+#include <vob/aoe/common/window/WorldWindowComponent.h>
 
 namespace vob::aoe::common
 {
@@ -18,8 +18,8 @@ namespace vob::aoe::common
 		// Constructor
 		explicit GuiRenderPass(ecs::WorldDataProvider& a_wdp)
 			: m_guiRenderComponent{ a_wdp.getWorldComponentRef<GuiRenderComponent>() }
-			, m_windowComponent{ a_wdp.getWorldComponentRef<WindowComponent const>() }
-			, m_worldTimeComponent{ a_wdp.getWorldComponentRef<TimeComponent const>() }
+			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent const>() }
+			, m_worldTimeComponent{ a_wdp.getWorldComponentRef<WorldTimeComponent const>() }
 			, m_canvasEntityList{ a_wdp.getEntityViewList(*this, CanvasComponents{}) }
 		{}
 
@@ -48,7 +48,7 @@ namespace vob::aoe::common
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
             // TODO
-			auto const& window = m_windowComponent.getWindow();
+			auto const& window = m_worldWindowComponent.getWindow();
 			auto const windowSize = vec2{ window.getSize() };
 			shaderProgram.setViewSize(windowSize);
 
@@ -84,8 +84,8 @@ namespace vob::aoe::common
 	private:
 		mutable float t = 0.0f;
 		GuiRenderComponent& m_guiRenderComponent;
-		WindowComponent const& m_windowComponent;
-		TimeComponent const& m_worldTimeComponent;
+		WorldWindowComponent const& m_worldWindowComponent;
+		WorldTimeComponent const& m_worldTimeComponent;
 		ecs::EntityViewList<CanvasComponent const> const& m_canvasEntityList;
 	};
 }

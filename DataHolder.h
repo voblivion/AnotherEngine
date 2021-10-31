@@ -25,7 +25,7 @@
 #include "vob/aoe/common/space/LocalTransformSystem.h"
 #include "vob/aoe/common/test/TestComponent.h"
 #include "vob/aoe/common/render/CameraComponent.h"
-#include "vob/aoe/common/window/SimpleControllerComponent.h"
+#include "vob/aoe/common/todo/SimpleControllerComponent.h"
 #include "vob/aoe/common/space/VelocityComponent.h"
 #include "vob/aoe/common/space/TransformComponent.h"
 #include "vob/aoe/common/physic/RigidBodyComponent.h"

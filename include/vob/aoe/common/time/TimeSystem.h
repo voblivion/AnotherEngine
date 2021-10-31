@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/common/time/TimeComponent.h>
+#include <vob/aoe/common/time/WorldTimeComponent.h>
 #include <vob/aoe/core/ecs/WorldDataProvider.h>
 
 
@@ -18,6 +18,6 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		TimeComponent& m_worldTime;
+		WorldTimeComponent& m_worldTimeComponent;
 	};
 }

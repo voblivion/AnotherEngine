@@ -1,18 +1,19 @@
 #pragma once
 
+#include <vob/aoe/api.h>
+
+#include <vob/aoe/common/data/filesystem/Text.h>
 #include <vob/aoe/common/render/OpenGl.h>
+#include <vob/aoe/common/render/OpenGl.h>
+
+#include <vob/aoe/core/data/ADatabase.h>
+#include <vob/aoe/core/type/Primitive.h>
+#include <vob/aoe/core/visitor/Utils.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <vob/aoe/api.h>
-
-#include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/visitor/Utils.h>
-
-#include <vob/aoe/common/data/filesystem/Text.h>
-#include <vob/aoe/common/render/OpenGl.h>
-#include <vob/aoe/core/type/Primitive.h>
 
 namespace vob::aoe::common
 {

@@ -10,7 +10,7 @@ using namespace vob::sta::literals;
 
 namespace vob::aoe::common
 {
-	struct TimeComponent final
+	struct WorldTimeComponent final
 		: ecs::AComponent
 	{
 		// Attributes
