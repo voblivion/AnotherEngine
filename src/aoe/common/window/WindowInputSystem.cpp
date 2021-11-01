@@ -17,7 +17,7 @@ namespace
 			return;
 		}
 
-		auto const key = toKey(a_keyEvent.m_keyCode);
+		auto const key = keyFromGlfw(a_keyEvent.m_keyCode);
 		if (key != Keyboard::Key::Unknown)
 		{
 			auto& keyState = a_worldInput.m_keyboard.m_keys[key];
@@ -35,7 +35,7 @@ namespace
 
 	inline void processEvent(MouseButtonEvent const& a_mouseButtonEvent, WorldInputComponent& a_worldInput)
 	{
-		auto const button = toButton(a_mouseButtonEvent.m_button);
+		auto const button = mouseButtonFromGlfw(a_mouseButtonEvent.m_button);
 		if (button != Mouse::Button::Unknown)
 		{
 			auto& buttonState = a_worldInput.m_mouse.m_buttons[button];
@@ -61,14 +61,14 @@ namespace
 	{
 		a_worldInput.m_mouse.m_move = {};
 
-		for (auto& key : a_worldInput.m_keyboard.m_keys)
+		for (auto key : a_worldInput.m_keyboard.m_keys)
 		{
-			key.m_changed = false;
+			key.second.get().m_changed = false;
 		}
 
-		for (auto& button : a_worldInput.m_mouse.m_buttons)
+		for (auto button : a_worldInput.m_mouse.m_buttons)
 		{
-			button.m_changed = false;
+			button.second.get().m_changed = false;
 		}
 	}
 
@@ -89,6 +89,67 @@ namespace
 		auto wasActive = a_worldInput.m_mouse.m_hover.m_isActive;
 		a_worldInput.m_mouse.m_hover.m_changed = isActive != wasActive;
 		a_worldInput.m_mouse.m_hover.m_isActive = isActive;
+	}
+
+	inline void updateGamepad(std::size_t a_gamepadIndex, Gamepad& a_gamepad)
+	{
+		if (!glfwJoystickPresent(static_cast<int>(a_gamepadIndex)))
+		{
+			if (a_gamepad.m_state.m_isActive)
+			{
+				a_gamepad.m_name = {};
+			}
+			a_gamepad.m_state.update(false);
+			return;
+		}
+
+		if (!glfwJoystickIsGamepad(static_cast<int>(a_gamepadIndex)))
+		{
+			if (a_gamepad.m_state.m_isActive)
+			{
+				a_gamepad.m_name = {};
+			}
+			a_gamepad.m_state.update(false);
+			return;
+		}
+
+		GLFWgamepadstate state;
+		if (glfwGetGamepadState(static_cast<int>(a_gamepadIndex), &state) == GLFW_FALSE)
+		{
+			if (a_gamepad.m_state.m_isActive)
+			{
+				a_gamepad.m_name = {};
+			}
+			a_gamepad.m_state.update(false);
+			return;
+		}
+
+		if (!a_gamepad.m_state.m_isActive)
+		{
+			a_gamepad.m_name = glfwGetGamepadName(static_cast<int>(a_gamepadIndex));
+		}
+		a_gamepad.m_state.update(true);
+
+		for (auto buttonEntry : a_gamepad.m_buttons)
+		{
+			auto isActive = state.buttons[gamepadButtonToGlfw(buttonEntry.first)] == GLFW_PRESS;
+			auto& button = buttonEntry.second.get();
+			button.m_changed = button.m_isActive != isActive;
+			button.m_isActive = isActive;
+		}
+
+		for (auto axisEntry : a_gamepad.m_axes)
+		{
+			axisEntry.second.get() = state.axes[gamepadAxisToGlfw(axisEntry.first)];
+		}
+	}
+
+	inline void updateGamepads(WorldInputComponent& a_worldInput)
+	{
+		for (auto i = 0u; i < a_worldInput.m_gamepads.size(); ++i)
+		{
+			updateGamepad(i, a_worldInput.m_gamepads[i]);
+		}
 	}
 }
 
@@ -112,4 +173,6 @@ void WindowInputSystem::update() const
 	processEvents(window, m_worldInputComponent);
 
 	updateHoverState(window, m_worldInputComponent);
+
+	updateGamepads(m_worldInputComponent);
 }

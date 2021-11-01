@@ -6,7 +6,7 @@ namespace vob::aoe::common
 	struct CameraComponent final
 		: public ecs::AComponent
 	{
-		float fov{ 50.0f };
+		float fov{ 70.0f };
 		float nearClip{ 0.1f };
 		float farClip{ 1000.0f };
 	};

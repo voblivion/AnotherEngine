@@ -2,6 +2,7 @@
 #include <vob/sta/vector_map.h>
 #include <vob/random/perlin.h>
 #include <GL/glew.h>
+#define GLFW_DLL
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
 #include "vob/aoe/common/window/WorldWindowComponent.h"
@@ -160,13 +161,22 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	{
 		auto& player = systemSpawnManager.spawn(*playerArk);
 
-		auto playerCameraArk = a_data.database.find<aoe::ecs::ComponentManager>(3);
-		if (playerCameraArk != nullptr)
+		auto playerNeckArk = a_data.database.find<aoe::ecs::ComponentManager>(10);
+		if (playerNeckArk != nullptr)
 		{
-			auto playerCamera = *playerCameraArk;
-			auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
+			auto playerNeck = *playerNeckArk;
+			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
 			hierarchy->m_parent = aoe::ecs::EntityHandle{ player };
-			systemSpawnManager.spawn(playerCamera);
+			auto& neck = systemSpawnManager.spawn(playerNeck);
+
+			auto playerCameraArk = a_data.database.find<aoe::ecs::ComponentManager>(3);
+			if (playerCameraArk != nullptr)
+			{
+				auto playerCamera = *playerCameraArk;
+				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
+				hierarchy->m_parent = aoe::ecs::EntityHandle{ neck };
+				systemSpawnManager.spawn(playerCamera);
+			}
 		}
 
 		auto canvas = player.getComponent<aoe::common::CanvasComponent>();
@@ -197,23 +207,25 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 				auto s = static_cast<std::uint32_t>(vertices.size());
 				triangles.emplace_back(s, s + 1, s + 2);
 
-				constexpr auto e = 1.0f;
+				constexpr auto sc = 2.0f;
+
+				constexpr auto e = 4.0f;
 
 				auto a = static_cast<float>(i);
 				auto b = static_cast<float>(j);
 				auto c = a + 1.0f;
 				auto d = b + 1.0f;
 
-				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, b/e), b }, n, glm::vec2{ 0.0f, 0.0f });
-				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
-				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
+				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, b/e), b }, n, glm::vec2{ 0.0f, 0.0f });
+				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
+				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
 
 				s = static_cast<std::uint32_t>(vertices.size());
 				triangles.emplace_back(s, s + 1, s + 2);
 
-				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, d/e), d }, n, glm::vec2{ 1.0f, 1.0f });
-				vertices.emplace_back(glm::vec3{ c, rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
-				vertices.emplace_back(glm::vec3{ a, rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
+				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, d/e), d }, n, glm::vec2{ 1.0f, 1.0f });
+				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
+				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
 			}
 		}
 
@@ -224,6 +236,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 
 		auto rbc = ground.getComponent<aoe::common::RigidBodyComponent>();
 		static_cast<aoe::common::ModelShape&>(*rbc->m_collisionShape).setModel(mc->m_model);
+		rbc->m_physicMaterial = std::make_shared<aoe::common::PhysicMaterial>();
 
 		systemSpawnManager.spawn(std::move(ground));
 	}
@@ -286,33 +299,56 @@ std::unique_ptr<aoe::ecs::World> createEditorWorld(aoe::DataHolder& a_data)
 
 static_assert(aoe::vis::FreeAcceptVisitable<aoe::vis::EditorVisitor, int>);
 
+
+void glfwErrorCallback(int code, const char* description)
+{
+	__debugbreak();
+}
+
+char const* xinputMapping = "78696e70757401000000000000000000,XInput Gamepad (GLFW)"
+	",platform:Windows,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7"
+	",leftstick:b8,rightstick:b9,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:a4"
+	",righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,";
+
 int main()
 {
 	// Create data
 	aoe::DataHolder data;
 
 	// Create game window
-	glfwInit();
+	glfwSetErrorCallback(glfwErrorCallback);
+	if (!glfwInit())
+	{
+		return EXIT_FAILURE;
+	}
+	// TMP: xinput mapping not there by default?
+	if (!glfwUpdateGamepadMappings(xinputMapping))
+	{
+		return EXIT_FAILURE;
+	}
 	std::cout << glfwGetVersionString() << std::endl;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_REFRESH_RATE, 0);
-	aoe::common::Window window{ g_width, g_height, "An Other Engine", nullptr, nullptr };
-	glfwMakeContextCurrent(window.getNativeHandle());
-	glfwSwapInterval(0);
-	glEnable(GL_MULTISAMPLE);
 
-	// Create game world
-	auto world = createGameWorld(data, window);
+	{
+		aoe::common::Window window{ g_width, g_height, "An Other Engine", nullptr, nullptr };
+		glfwMakeContextCurrent(window.getNativeHandle());
+		glfwSwapInterval(0);
+		glEnable(GL_MULTISAMPLE);
 
-	// Init with default map
-	initGameWorldDefaultMap(data, *world);
-	// initGameWorldGuiMap(data, *world);
+		// Create game world
+		auto world = createGameWorld(data, window);
 
-	// Run game
-	world->start();
+		// Init with default map
+		initGameWorldDefaultMap(data, *world);
+		// initGameWorldGuiMap(data, *world);
+
+		// Run game
+		world->start();
+	}
 
 	// Destroy game window
 	glfwTerminate();

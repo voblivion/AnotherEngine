@@ -1,10 +1,11 @@
 #pragma once
 
-#include <vob/aoe/common/input/raw/Switch.h>
+#include <vob/aoe/common/input/physical/Switch.h>
 
 #include <vob/sta/enum_map.h>
 
 #include <GL/glew.h>
+#define GLFW_DLL
 #include <GLFW/glfw3.h>
 
 #include <array>
@@ -12,8 +13,9 @@
 
 namespace vob::aoe::common
 {
-	struct Keyboard
+	class Keyboard
 	{
+	public:
 		enum class Key
 		{
 			Unknown = -1
@@ -121,10 +123,10 @@ namespace vob::aoe::common
 			, Count
 		};
 
-		sta::enum_map<Key, Switch, Key::A, Key::Count> m_keys;
+		sta::enum_map<Key, Key::A, Key::Count, Switch> m_keys{};
 	};
 
-	inline Keyboard::Key toKey(int a_glfwKeyId)
+	inline Keyboard::Key keyFromGlfw(int a_glfwKeyId)
 	{
 		constexpr std::array<Keyboard::Key, GLFW_KEY_MENU + 1 - GLFW_KEY_SPACE> s_source{
 			Keyboard::Key::Space // 32 GLFW_KEY_SPACE
@@ -450,6 +452,6 @@ namespace vob::aoe::common
 			return Keyboard::Key::Unknown;
 		}
 
-		return s_source[a_glfwKeyId - GLFW_KEY_SPACE];
+		return s_source[static_cast<std::size_t>(a_glfwKeyId) - GLFW_KEY_SPACE];
 	}
 }

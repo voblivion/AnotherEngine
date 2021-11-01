@@ -114,4 +114,10 @@ namespace vob::aoe::vis
 	{
 		return ContainerHolder<ContainerType, FactoryType>{ a_container, std::move(a_factory) };
 	}
+
+	template <typename ContainerType, typename FactoryType>
+	ContainerHolder<ContainerType, FactoryType> cth(ContainerType& a_container, FactoryType a_factory)
+	{
+		return ContainerHolder<ContainerType, FactoryType>{ a_container, std::move(a_factory) };
+	}
 }

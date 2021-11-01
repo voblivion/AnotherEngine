@@ -15,7 +15,8 @@ namespace vob::aoe::common
 			: m_dynamicsWorldHolder{ std::move(a_dynamicsWorldHolder) }
 		{}
 
-		bool m_pause{ false };
+		bool m_pause = false;
+		bool m_displayDebug = false;
 		type::Cloneable<ADynamicsWorldHolder> m_dynamicsWorldHolder;
 	};
 }

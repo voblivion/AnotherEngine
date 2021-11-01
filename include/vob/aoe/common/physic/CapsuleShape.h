@@ -19,24 +19,24 @@ namespace vob::aoe::common
 		}
 
 		template <typename VisitorType>
-		void accept(VisitorType& a_visitor) { acceptImpl(a_visitor, *this); }
+		void accept(VisitorType& a_visitor)
+		{
+			auto t_radius = btScalar{ 0.5f };
+			a_visitor.visit(vis::makeNameValuePair("Radius", t_radius));
+			auto t_height = btScalar{ 1.0f };
+			a_visitor.visit(vis::makeNameValuePair("Height", t_height));
+
+			m_shape = btCapsuleShape(t_radius, t_height);
+		}
 
 		template <typename VisitorType>
-		void accept(VisitorType& a_visitor) const { acceptImpl(a_visitor, *this); }
+		void accept(VisitorType& a_visitor) const
+		{
+			static_assert(false && "TODO");
+		}
 
 	private:
 		// Attributes
 		btCapsuleShape m_shape{ 0.5f, 1.0f };
-
-        template <typename VisitorType, typename Self>
-        static void acceptImpl(VisitorType& a_visitor, Self& a_this)
-        {
-            auto t_radius = btScalar{ 0.5f };
-            a_visitor.visit(vis::makeNameValuePair("Radius", t_radius));
-            auto t_height = btScalar{ 1.0f };
-            a_visitor.visit(vis::makeNameValuePair("Height", t_height));
-
-            a_this.m_shape = btCapsuleShape(t_radius, t_height);
-        }
 	};
 }

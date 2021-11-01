@@ -13,7 +13,7 @@ namespace vob::aoe::ecs
 			t_worldWorker.update();
 			m_data.update();
             // TODO : remove this, no need to sleep
-			Sleep(5);
+			Sleep(2);
 		}
 		t_worldWorker.stop();
 	}

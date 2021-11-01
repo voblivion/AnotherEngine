@@ -89,7 +89,7 @@ namespace vob::aoe::common
 			glBindVertexArray(m_vao);
 			glDrawElements(
 				GL_LINES
-				, static_cast<std::uint32_t>(m_lines.size())
+				, static_cast<std::uint32_t>(m_lines.size()) * 2
 				, GL_UNSIGNED_INT
 				, nullptr
 			);

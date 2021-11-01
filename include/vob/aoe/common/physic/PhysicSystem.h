@@ -66,7 +66,7 @@ namespace vob::aoe::common
 
 		int getDebugMode() const override
 		{
-			return DBG_DrawWireframe | DBG_FastWireframe | DBG_DrawAabb;
+			return DBG_DrawWireframe |  DBG_FastWireframe | DBG_DrawAabb;
 		}
 
 		std::uint32_t t_debugMode{ 1 };
@@ -116,17 +116,20 @@ namespace vob::aoe::common
 					auto t_matrix = btTransform{};
 					t_rigidBody.m_motionState->getWorldTransform(t_matrix);
 
-					t_transform.m_matrix = toGlmMat4(t_matrix);
-
+					t_transform.m_matrix = toGlmMat4(t_rigidBody.m_motionState->m_graphicsWorldTrans);
+					
 					constexpr auto g_physicLimitSquared = g_physicLimit * g_physicLimit;
 					ignorable_assert(squaredLength(getTranslation(t_transform.m_matrix)) < g_physicLimitSquared);
 				}
 			}
 
-			DebugDrawer t_debugDrawer{ m_debugSceneRenderComponent.m_debugMesh };
-			t_dynamicsWorld.setDebugDrawer(&t_debugDrawer);
-			t_dynamicsWorld.debugDrawWorld();
-			t_dynamicsWorld.setDebugDrawer(nullptr);
+			if (m_worldPhysicComponent.m_displayDebug)
+			{
+				DebugDrawer t_debugDrawer{ m_debugSceneRenderComponent.m_debugMesh };
+				t_dynamicsWorld.setDebugDrawer(&t_debugDrawer);
+				t_dynamicsWorld.debugDrawWorld();
+				t_dynamicsWorld.setDebugDrawer(nullptr);
+			}
 		}
 
 		void onEntityAdded(ecs::Entity const& a_entity) const
@@ -152,7 +155,8 @@ namespace vob::aoe::common
 				// Initialize motion state
 				auto const t_transform = a_entity.getComponent<TransformComponent>();
 				auto const t_matrix = toBtTransform(t_transform->m_matrix);
-				t_rigidBody->m_motionState = std::make_shared<btDefaultMotionState>(t_matrix);
+				auto const t_offset = toBtTransform(glm::translate(mat4{ 1.0f }, t_rigidBody->m_offset));
+				t_rigidBody->m_motionState = std::make_shared<btDefaultMotionState>(t_matrix, t_offset);
 
 				// Compute inertia
 				auto const t_mass = t_rigidBody != nullptr
@@ -235,6 +239,7 @@ namespace vob::aoe::common
 		}
 
 	private:
+		
 		WorldPhysicComponent& m_worldPhysicComponent;
 		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;

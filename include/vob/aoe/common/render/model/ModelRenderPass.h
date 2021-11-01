@@ -52,7 +52,7 @@ namespace vob::aoe::common
 				return;
 			}
 
-			const glm::vec3 lightPosition{ 10 * std::sin(t), 0, 0 };
+			const glm::vec3 lightPosition{ 32 + 16 * std::sin(t), 16, 32 + 16 * std::cos(t) };
 			shaderProgram.setUniform(shaderProgram.getLightPositionUniformLocation(), lightPosition);
 			t += 0.002f;
 

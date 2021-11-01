@@ -9,10 +9,10 @@ namespace vob::aoe::common
 	struct PhysicMaterial final
 		: public type::ADynamicType
 	{
-		btScalar m_restitution{ 0.0f };
+		btScalar m_restitution{ 0.2f };
 		btScalar m_friction{ 0.5f };
-		btScalar m_rollingFriction{ 0.0f };
-		btScalar m_spinningFriction{ 0.0f };
+		btScalar m_rollingFriction{ 0.3f };
+		btScalar m_spinningFriction{ 0.1f };
 		btScalar m_contactStiffness{ 9.99999984e+17f };
 		btScalar m_contactDamping{ 0.1f };
 	};

@@ -30,6 +30,7 @@
 #include "vob/aoe/common/space/TransformComponent.h"
 #include "vob/aoe/common/physic/RigidBodyComponent.h"
 #include "vob/aoe/common/physic/SphereShape.h"
+#include "vob/aoe/common/physic/CompoundShape.h"
 #include "vob/aoe/common/physic/BoxShape.h"
 #include "vob/aoe/common/physic/CylinderShape.h"
 #include "vob/aoe/common/physic/ModelShape.h"
@@ -209,6 +210,12 @@ namespace vob::aoe
 				dynamicTypeCloner.registerType<common::SphereShape>();
 				registerVisitableDynamicType<common::ModelShape, common::ACollisionShape>("vob::aoe::common::ModelShape"_id);
 				dynamicTypeCloner.registerType<common::ModelShape>();
+				registerVisitableDynamicType<
+					common::CompoundShape
+					, common::ACollisionShape
+					, type::Cloner<> const&
+				>("vob::aoe::common::CompoundShape"_id, dynamicTypeCloner);
+				dynamicTypeCloner.registerType<common::CompoundShape>();
 
 				registerVisitableDynamicType<common::PhysicMaterial, type::ADynamicType>("vob::aoe::common::PhysicMaterial"_id);
 			}

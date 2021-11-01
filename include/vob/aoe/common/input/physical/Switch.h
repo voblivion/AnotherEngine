@@ -12,5 +12,11 @@ namespace vob::aoe::common
 		{
 			return m_isActive;
 		}
+
+		void update(bool isActive)
+		{
+			m_changed = m_isActive != isActive;
+			m_isActive = isActive;
+		}
 	};
 }

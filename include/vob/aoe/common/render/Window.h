@@ -5,6 +5,9 @@
 
 #include <vob/aoe/common/render/IWindow.h>
 
+#define GLFW_DLL
+#include <GLFW/glfw3.h>
+
 
 namespace vob::aoe::common
 {

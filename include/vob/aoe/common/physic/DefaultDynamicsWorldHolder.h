@@ -17,7 +17,10 @@ namespace vob::aoe::common
 			return m_dynamicsWorld;
 		}
 
-		DefaultDynamicsWorldHolder() = default;
+		DefaultDynamicsWorldHolder()
+		{
+			auto& t = m_dynamicsWorld.getSolverInfo();
+		}
 
 		DefaultDynamicsWorldHolder(DefaultDynamicsWorldHolder const& a_other)
 			: m_collisionConfiguration{ a_other.m_collisionConfiguration }

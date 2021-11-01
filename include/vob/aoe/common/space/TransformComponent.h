@@ -30,6 +30,7 @@ namespace vob::aoe::vis
 		vec3 rotation;
 		a_visitor.visit(vis::makeNameValuePair("Rotation", rotation));
 
+		a_this.m_matrix = mat4{ 1.0f };
 		a_this.m_matrix = glm::translate(a_this.m_matrix, position);
 		a_this.m_matrix *= mat4{ quat{ rotation } };
 	}
