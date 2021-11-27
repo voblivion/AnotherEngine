@@ -4,7 +4,7 @@
 #include <vob/aoe/ecs/Entity.h>
 #include <vob/aoe/ecs/EntityView.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	struct EntityHandle
 	{

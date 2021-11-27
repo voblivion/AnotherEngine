@@ -6,7 +6,7 @@
 #include <vob/aoe/api.h>
 #include <vob/aoe/ecs/EntityId.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	class SystemUnspawnManager
 	{

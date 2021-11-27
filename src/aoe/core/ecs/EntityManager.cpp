@@ -1,7 +1,7 @@
 #include <vob/aoe/ecs/EntityManager.h>
 
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	// Public
 	EntityManager::EntityManager()

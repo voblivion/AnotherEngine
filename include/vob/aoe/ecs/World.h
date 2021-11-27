@@ -8,13 +8,13 @@
 #include <vob/aoe/core/sync/ATask.h>
 #include <vob/aoe/core/sync/MultiThreadWorker.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	namespace detail
 	{
 		template <typename SystemType>
 		class SystemTask final
-			: public sync::ATask
+			: public aoe::sync::ATask
 		{
 		public:
 			// Constructors
@@ -54,7 +54,7 @@ namespace vob::aoe::aoecs
 			return m_tasks.size() - 1;
 		}
 
-		void setSchedule(sync::MultiThreadSchedule a_schedule)
+		void setSchedule(aoe::sync::MultiThreadSchedule a_schedule)
 		{
 			m_schedule = std::move(a_schedule);
 		}
@@ -68,8 +68,8 @@ namespace vob::aoe::aoecs
 
 	private:
 		// Attributes
-		sync::TaskList m_tasks;
+		aoe::sync::TaskList m_tasks;
 		WorldData m_data;
-		sync::MultiThreadSchedule m_schedule;
+		aoe::sync::MultiThreadSchedule m_schedule;
 	};
 }

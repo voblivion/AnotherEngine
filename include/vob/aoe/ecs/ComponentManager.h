@@ -17,30 +17,30 @@
 #include <unordered_set>
 
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	class CloneAComponentFactory
 	{
 	public:
-		explicit CloneAComponentFactory(type::dynamic_type_clone_copier const& a_cloner)
+		explicit CloneAComponentFactory(aoe::type::dynamic_type_clone_copier const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
-		type::dynamic_type_clone<AComponent> operator()() const
+		aoe::type::dynamic_type_clone<AComponent> operator()() const
 		{
-			return type::dynamic_type_clone<AComponent>{ m_cloner };
+			return aoe::type::dynamic_type_clone<AComponent>{ m_cloner };
 		}
 
 	private:
-		type::dynamic_type_clone_copier const& m_cloner;
+		aoe::type::dynamic_type_clone_copier const& m_cloner;
 	};
 
 	class VOB_AOE_API ComponentManager
-		: public type::ADynamicType
+		: public aoe::type::ADynamicType
 	{
 	public:
 		// Constructors
-		explicit ComponentManager(type::dynamic_type_clone_copier const& a_cloner)
+		explicit ComponentManager(aoe::type::dynamic_type_clone_copier const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
@@ -67,13 +67,13 @@ namespace vob::aoe::aoecs
 		{
 			auto const t_typeIndex = std::type_index{ typeid(ComponentType) };
 			assert(!hasComponent(t_typeIndex));
-			type::dynamic_type_clone<AComponent> component{ m_cloner };
+			aoe::type::dynamic_type_clone<AComponent> component{ m_cloner };
 			auto& result = component.init<ComponentType>(std::forward<Args>(a_args)...);
 			m_components.emplace(std::move(component));
 			return result;
 		}
 
-		void addComponent(type::dynamic_type_clone<AComponent> a_component)
+		void addComponent(aoe::type::dynamic_type_clone<AComponent> a_component)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(a_component) };
 			assert(!hasComponent(t_typeIndex));
@@ -126,7 +126,7 @@ namespace vob::aoe::aoecs
         template <typename VisitorType>
         void accept(VisitorType& a_visitor)
         {
-            a_visitor.visit(vis::makeContainerHolder(
+            a_visitor.visit(aoe::vis::makeContainerHolder(
                 m_components
                 , aoecs::CloneAComponentFactory{ m_cloner }
             ));
@@ -143,8 +143,8 @@ namespace vob::aoe::aoecs
 		struct PolymorphicComponentEqual
 		{
 			bool operator()(
-				type::dynamic_type_clone<AComponent> const& a_lhs
-				, type::dynamic_type_clone<AComponent> const& a_rhs
+				aoe::type::dynamic_type_clone<AComponent> const& a_lhs
+				, aoe::type::dynamic_type_clone<AComponent> const& a_rhs
 			) const
 			{
 				auto& lhs = *a_lhs;
@@ -153,7 +153,7 @@ namespace vob::aoe::aoecs
 			}
 		};
 
-		mistd::vector_set<type::dynamic_type_clone<AComponent>, PolymorphicComponentEqual> m_components;
-		std::reference_wrapper<type::dynamic_type_clone_copier const> m_cloner;
+		mistd::vector_set<aoe::type::dynamic_type_clone<AComponent>, PolymorphicComponentEqual> m_components;
+		std::reference_wrapper<aoe::type::dynamic_type_clone_copier const> m_cloner;
 	};
 }

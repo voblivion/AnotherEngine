@@ -6,7 +6,7 @@
 #include <vob/aoe/ecs/EntityId.h>
 
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	namespace detail
 	{

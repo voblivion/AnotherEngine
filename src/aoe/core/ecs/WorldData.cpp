@@ -1,7 +1,7 @@
 #include <vob/aoe/ecs/WorldData.h>
 
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	WorldData::WorldData(ComponentManager a_worldComponents)
 		: m_worldComponents{ std::move(a_worldComponents) }

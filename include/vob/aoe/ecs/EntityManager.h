@@ -15,7 +15,7 @@
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	using EntityMap = std::unordered_map<EntityId, std::unique_ptr<Entity>>;
 
@@ -229,7 +229,7 @@ namespace vob::aoe::aoecs
 	};
 
 	struct ASystemEntityList
-		: public type::ADynamicType
+		: public aoe::type::ADynamicType
 	{
 		// Methods
 		virtual void onEntityAdded(Entity& a_entity) = 0;

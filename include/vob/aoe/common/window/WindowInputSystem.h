@@ -5,7 +5,7 @@
 #include <iomanip>
 
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	class WorldDataProvider;
 }

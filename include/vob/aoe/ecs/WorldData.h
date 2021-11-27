@@ -3,7 +3,7 @@
 #include <vob/aoe/ecs/EntityManager.h>
 #include <vob/aoe/ecs/ComponentManager.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	struct WorldData
 	{

@@ -4,7 +4,7 @@
 #include <vob/aoe/ecs/ComponentManager.h>
 #include <vob/aoe/ecs/EntityId.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	class Entity final
 		: public ComponentManager

@@ -1,6 +1,6 @@
 #include <vob/aoe/ecs/SystemSpawnManager.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	// Public
 	SystemSpawnManager::SystemSpawnManager(std::vector<std::unique_ptr<Entity>>& a_frameSpawns)

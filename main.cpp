@@ -42,10 +42,10 @@ using namespace mishs::literals;
 const std::uint32_t g_width = 2048u;
 const std::uint32_t g_height = 1024u;
 
-std::unique_ptr<aoe::aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
+std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
 {
 	// Prepare world components
-	aoe::aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
 	t_worldComponents.addComponent<aoe::common::WorldWindowComponent>(a_window);
 	t_worldComponents.addComponent<aoe::common::SceneRenderComponent>(
 		a_data.renderTextureResourceManager
@@ -82,7 +82,7 @@ std::unique_ptr<aoe::aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe:
 	);
 
 	// Create world
-	auto world = std::make_unique<aoe::aoecs::World>(std::move(t_worldComponents));
+	auto world = std::make_unique<aoecs::World>(std::move(t_worldComponents));
 
 	// Register Systems
 	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
@@ -119,14 +119,14 @@ std::unique_ptr<aoe::aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe:
 	return std::move(world);
 }
 
-void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world)
+void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 {
     auto& cloner = a_data.dynamicTypeCloner;
     auto& database = a_data.database;
     auto& worldData = a_world.getData();
     auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
 
-	aoe::aoecs::ComponentManager canvasArk{ cloner };
+	aoecs::ComponentManager canvasArk{ cloner };
 	auto& canvasComponent = canvasArk.addComponent<aoe::common::CanvasComponent>(cloner);
 
 	auto& guiMeshResourceManager = a_data.guiMeshResourceManager;
@@ -147,7 +147,7 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world)
 
 vob::aoe::vis::EditorVisitor* leakingEditorVisitor = nullptr;
 
-void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world)
+void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 {
 	auto& worldData = a_world.getData();
 	auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
@@ -160,25 +160,25 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world
 		, a_data.dynamicTypeCloner
 	};
 
-	auto playerArk = a_data.database.find<aoe::aoecs::ComponentManager>(2);
+	auto playerArk = a_data.database.find<aoecs::ComponentManager>(2);
 	if (playerArk != nullptr)
 	{
 		auto& player = systemSpawnManager.spawn(*playerArk);
 
-		auto playerNeckArk = a_data.database.find<aoe::aoecs::ComponentManager>(10);
+		auto playerNeckArk = a_data.database.find<aoecs::ComponentManager>(10);
 		if (playerNeckArk != nullptr)
 		{
 			auto playerNeck = *playerNeckArk;
 			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
-			hierarchy->m_parent = aoe::aoecs::EntityHandle{ player };
+			hierarchy->m_parent = aoecs::EntityHandle{ player };
 			auto& neck = systemSpawnManager.spawn(playerNeck);
 
-			auto playerCameraArk = a_data.database.find<aoe::aoecs::ComponentManager>(3);
+			auto playerCameraArk = a_data.database.find<aoecs::ComponentManager>(3);
 			if (playerCameraArk != nullptr)
 			{
 				auto playerCamera = *playerCameraArk;
 				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
-				hierarchy->m_parent = aoe::aoecs::EntityHandle{ neck };
+				hierarchy->m_parent = aoecs::EntityHandle{ neck };
 				systemSpawnManager.spawn(playerCamera);
 			}
 		}
@@ -188,7 +188,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world
 	}
 
 	auto const groundPath = std::filesystem::path{ "data/archetypes/grass.json" };
-	auto groundArk = a_data.database.find<aoe::aoecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
+	auto groundArk = a_data.database.find<aoecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
 	if (groundArk != nullptr)
 	{
 		auto ground = *groundArk;
@@ -305,7 +305,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world
 	}
 
 	//// Load model
-	//auto modelArk = a_data.database.find<aoe::aoecs::ComponentManager>(4);
+	//auto modelArk = a_data.database.find<aoecs::ComponentManager>(4);
 	//if (modelArk != nullptr)
 	//{
 	//	{
@@ -314,7 +314,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world
 	//}
 
 	//// Load ground
-	//auto groundArk = a_data.database.find<aoe::aoecs::ComponentManager>(5);
+	//auto groundArk = a_data.database.find<aoecs::ComponentManager>(5);
 	//if (groundArk != nullptr)
 	//{
 	//	{
@@ -350,10 +350,10 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world
 	//}
 }
 
-std::unique_ptr<aoe::aoecs::World> createEditorWorld(aoe::DataHolder& a_data)
+std::unique_ptr<aoecs::World> createEditorWorld(aoe::DataHolder& a_data)
 {
 	// Prepare world components
-	aoe::aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
 	return nullptr;
 }
 

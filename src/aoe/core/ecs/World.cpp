@@ -3,11 +3,11 @@
 // TODO : remove this, no need to sleep
 #include <windows.h>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	void World::start()
 	{
-		sync::MultiThreadWorker t_worldWorker{m_tasks, m_schedule};
+		aoe::sync::MultiThreadWorker t_worldWorker{m_tasks, m_schedule};
 		while (!m_data.m_shouldStop)
 		{
 			t_worldWorker.update();

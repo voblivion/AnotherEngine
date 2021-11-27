@@ -114,10 +114,12 @@ namespace vob::aoe
 			// Register data loaders
 			registerDatabaseLoaders();
 
-			// Register dynamic types
+			// Register basic dynamic types
 			{
 				typeRegistry.register_type<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
-				registerDynamicType<aoecs::AComponent>("vob::aoe::aoecs::AComponent"_id);
+
+				typeRegistry.register_type<aoecs::component>("vob::aoecs::component"_id);
+				registerDynamicType<aoecs::AComponent>("vob::aoecs::AComponent"_id);
 				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
 				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
 				registerDynamicType<common::ACollisionShape>("vob::aoe::common::ACollisionShape"_id);
@@ -171,7 +173,7 @@ namespace vob::aoe
 					, type::ADynamicType
 					, type::dynamic_type_clone_copier const&
 				>(
-					"vob::aoe::aoecs::ComponentManager"_id
+					"vob::aoecs::ComponentManager"_id
 					, dynamicTypeCloner
 					);
 				registerVisitableDynamicType<

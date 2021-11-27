@@ -9,7 +9,7 @@
 // TMP
 #include <iostream>
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	struct ResourceAccess
 	{
@@ -34,21 +34,21 @@ namespace vob::aoe::aoecs
 namespace std
 {
 	template <>
-	struct hash<vob::aoe::aoecs::ResourceAccess>
+	struct hash<vob::aoecs::ResourceAccess>
 	{
 		std::size_t operator()(
-			vob::aoe::aoecs::ResourceAccess const& a_resourceAccess
+			vob::aoecs::ResourceAccess const& a_resourceAccess
 		) const noexcept
 		{
 			return hash<std::type_index>{}(a_resourceAccess.m_resourceTypeIndex)
-				^ ~(hash<vob::aoe::aoecs::ResourceAccess::AccessType>{}(
+				^ ~(hash<vob::aoecs::ResourceAccess::AccessType>{}(
 					a_resourceAccess.m_accessType)
 				);
 		}
 	};
 }
 
-namespace vob::aoe::aoecs
+namespace vob::aoecs
 {
 	template <typename Type>
 	ResourceAccess makeResourceAccess()
