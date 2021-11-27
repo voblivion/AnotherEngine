@@ -2,13 +2,13 @@
 
 #include <vector>
 
-#include <vob/aoe/core/ecs/WorldData.h>
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
-#include <vob/aoe/core/ecs/ComponentManager.h>
+#include <vob/aoe/ecs/WorldData.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/ComponentManager.h>
 #include <vob/aoe/core/sync/ATask.h>
 #include <vob/aoe/core/sync/MultiThreadWorker.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	namespace detail
 	{

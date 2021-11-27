@@ -1,11 +1,14 @@
 #pragma once
 
-#include <vob/sta/string_id.h>
+#include <vob/misc/hash/string_id.h>
+#include <vob/misc/hash/string_id_literals.h>
 #include <unordered_map>
 
-#include "vob/aoe/core/ecs/ComponentManager.h"
-#include "vob/aoe/core/type/TypeRegistry.h"
-#include "vob/aoe/core/type/TypeFactory.h"
+#include "vob/aoe/ecs/ComponentManager.h"
+
+#include <vob/misc/type/factory.h>
+#include <vob/misc/type/registry.h>
+
 #include <vob/aoe/core/visitor/Standard.h>
 #include <vob/aoe/core/visitor/StringId.h>
 
@@ -49,7 +52,7 @@
 #include "vob/aoe/core/visitor/JsonWriter.h"
 #include <vob/aoe/common/render/gui/elements/SplitElement.h>
 using namespace vob;
-using namespace sta::literals;
+using namespace vob::mishs::literals;
 
 namespace vob::aoe
 {
@@ -113,8 +116,8 @@ namespace vob::aoe
 
 			// Register dynamic types
 			{
-				typeRegistry.registerType<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
-				registerDynamicType<ecs::AComponent>("vob::aoe::ecs::AComponent"_id);
+				typeRegistry.register_type<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
+				registerDynamicType<aoecs::AComponent>("vob::aoe::aoecs::AComponent"_id);
 				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
 				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
 				registerDynamicType<common::ACollisionShape>("vob::aoe::common::ACollisionShape"_id);
@@ -164,11 +167,11 @@ namespace vob::aoe
 					, guiShaderProgramResourceManager
 					);
 				registerVisitableDynamicType<
-					ecs::ComponentManager
+					aoecs::ComponentManager
 					, type::ADynamicType
-					, type::Cloner<> const&
+					, type::dynamic_type_clone_copier const&
 				>(
-					"vob::aoe::ecs::ComponentManager"_id
+					"vob::aoe::aoecs::ComponentManager"_id
 					, dynamicTypeCloner
 					);
 				registerVisitableDynamicType<
@@ -179,7 +182,7 @@ namespace vob::aoe
 					"vob::aoe::common::TextElement"_id
 					, guiMeshResourceManager
 				);
-				dynamicTypeCloner.registerType<common::TextElement>();
+				dynamicTypeCloner.register_type<common::TextElement>();
 				registerVisitableDynamicType<
 					common::TextInputElement
 					, common::AStandardElement
@@ -188,34 +191,34 @@ namespace vob::aoe
 					"vob::aoe::common::TextInputElement"_id
 					, guiMeshResourceManager
 				);
-				dynamicTypeCloner.registerType<common::TextInputElement>();
+				dynamicTypeCloner.register_type<common::TextInputElement>();
 				registerVisitableDynamicType<
 					common::SplitElement
 					, common::AStandardElement
-					, type::Cloner<> const&
+					, type::dynamic_type_clone_copier const&
 				>(
 					"vob::aoe::common::SplitElement"_id
 					, dynamicTypeCloner
 				);
-				dynamicTypeCloner.registerType<common::SplitElement>();
+				dynamicTypeCloner.register_type<common::SplitElement>();
 
 				// TODO since they will be handles, shapes should inherit from ADynamicType...
 				registerVisitableDynamicType<common::BoxShape, common::ACollisionShape>("vob::aoe::common::BoxShape"_id);
-				dynamicTypeCloner.registerType<common::BoxShape>();
+				dynamicTypeCloner.register_type<common::BoxShape>();
 				registerVisitableDynamicType<common::CapsuleShape, common::ACollisionShape>("vob::aoe::common::CapsuleShape"_id);
-				dynamicTypeCloner.registerType<common::CapsuleShape>();
+				dynamicTypeCloner.register_type<common::CapsuleShape>();
 				registerVisitableDynamicType<common::CylinderShape, common::ACollisionShape>("vob::aoe::common::CylinderShape"_id);
-				dynamicTypeCloner.registerType<common::CylinderShape>();
+				dynamicTypeCloner.register_type<common::CylinderShape>();
 				registerVisitableDynamicType<common::SphereShape, common::ACollisionShape>("vob::aoe::common::SphereShape"_id);
-				dynamicTypeCloner.registerType<common::SphereShape>();
+				dynamicTypeCloner.register_type<common::SphereShape>();
 				registerVisitableDynamicType<common::ModelShape, common::ACollisionShape>("vob::aoe::common::ModelShape"_id);
-				dynamicTypeCloner.registerType<common::ModelShape>();
+				dynamicTypeCloner.register_type<common::ModelShape>();
 				registerVisitableDynamicType<
 					common::CompoundShape
 					, common::ACollisionShape
-					, type::Cloner<> const&
+					, type::dynamic_type_clone_copier const&
 				>("vob::aoe::common::CompoundShape"_id, dynamicTypeCloner);
-				dynamicTypeCloner.registerType<common::CompoundShape>();
+				dynamicTypeCloner.register_type<common::CompoundShape>();
 
 				registerVisitableDynamicType<common::PhysicMaterial, type::ADynamicType>("vob::aoe::common::PhysicMaterial"_id);
 			}
@@ -230,21 +233,21 @@ namespace vob::aoe
 				registerComponent<common::VelocityComponent>("vob::aoe::common::VelocityComponent"_id);
 				registerComponent<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
 				registerComponent<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
-				registerComponent<common::RigidBodyComponent, type::Cloner<> const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
+				registerComponent<common::RigidBodyComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
 				registerComponent<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
 				registerComponent<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
-				registerComponent<common::CanvasComponent, type::Cloner<> const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
+				registerComponent<common::CanvasComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
 				// registerComponent<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
 				// registerComponent<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
 			}
 		}
 
-		type::TypeRegistry typeRegistry;
-		type::TypeFactory<type::ADynamicType> dynamicTypeFactory{ typeRegistry };
-		type::TypeFactory<btCollisionShape> btCollisionShapeFactory{ typeRegistry };
+		misty::pmr::registry typeRegistry;
+		misty::pmr::factory<type::ADynamicType> dynamicTypeFactory{ typeRegistry };
+		misty::pmr::factory<btCollisionShape> btCollisionShapeFactory{ typeRegistry };
 
-		type::Cloner<> dynamicTypeCloner{};
-		type::Cloner<btCollisionShape> btCollisionShapeCloner{};
+		misty::pmr::clone_copier<type::ADynamicType> dynamicTypeCloner{};
+		misty::pmr::clone_copier<btCollisionShape> btCollisionShapeCloner{};
 		// aoe::ins::InstanceAllocationSizer instanceAllocationSizer{ typeRegistry, typeFactory, allocator };
 		common::FileSystemIndexer fileSystemIndexer;
 		common::FileSystemDatabase database{
@@ -284,50 +287,50 @@ namespace vob::aoe
 		}
 
 		template <typename DynamicType, typename BaseType = type::ADynamicType>
-		void registerDynamicType(vob::sta::string_id const a_id)
+		void registerDynamicType(vob::mishs::string_id const a_id)
 		{
-			typeRegistry.registerType<DynamicType, BaseType>(a_id);
+			typeRegistry.register_type<DynamicType, BaseType>(a_id);
 		}
 
 		template <typename DataType, typename BaseType = type::ADynamicType>
-		void registerDataType(vob::sta::string_id const a_id)
+		void registerDataType(vob::mishs::string_id const a_id)
 		{
 			registerDynamicType<DataType, BaseType>(a_id);
 		}
 
 		template <typename VisitableDynamicType, typename BaseType = type::ADynamicType
 			, typename... Args>
-			void registerVisitableDynamicType(vob::sta::string_id const a_id, Args&&... a_args)
+			void registerVisitableDynamicType(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
 			registerDynamicType<VisitableDynamicType, BaseType>(a_id);
 
 			auto& applicator = jsonVisitorLoader.getDynamicTypeApplicator();
-			applicator.registerType<VisitableDynamicType>();
+			applicator.register_type<VisitableDynamicType>();
 
-			// instanceAllocationSizer.registerType<VisitableDynamicType>();
+			// instanceAllocationSizer.register_type<VisitableDynamicType>();
 
-			dynamicTypeFactory.addFactory<VisitableDynamicType, Args...>(std::forward<Args>(a_args)...);
+			dynamicTypeFactory.add_type<VisitableDynamicType, Args...>(std::forward<Args>(a_args)...);
 		}
 
 		template <typename VisitableBtCollisionShape, typename BaseType = btCollisionShape
 			, typename... Args>
-			void registerVisitableBtCollisionShape(vob::sta::string_id const a_id, Args&&... a_args)
+			void registerVisitableBtCollisionShape(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
 			registerDynamicType<VisitableBtCollisionShape, BaseType>(a_id);
 
 			auto& applicator = jsonVisitorLoader.getBtCollisionShapeApplicator();
-			applicator.registerType<VisitableBtCollisionShape>();
+			applicator.register_type<VisitableBtCollisionShape>();
 
-			// instanceAllocationSizer.registerType<VisitableDynamicType>();
+			// instanceAllocationSizer.register_type<VisitableDynamicType>();
 
-			btCollisionShapeFactory.addFactory<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
+			btCollisionShapeFactory.add_type<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
 		}
 
 		template <typename ComponentType, typename... Args>
-		void registerComponent(vob::sta::string_id const a_id, Args&&... a_args)
+		void registerComponent(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
-			registerVisitableDynamicType<ComponentType, ecs::AComponent, Args...>(a_id, std::forward<Args>(a_args)...);
-			dynamicTypeCloner.registerType<ComponentType>();
+			registerVisitableDynamicType<ComponentType, aoecs::AComponent, Args...>(a_id, std::forward<Args>(a_args)...);
+			dynamicTypeCloner.register_type<ComponentType>();
 		}
 	};
 }

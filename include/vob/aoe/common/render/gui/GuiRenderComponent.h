@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
-#include <vob/aoe/core/ecs/Component.h>
+#include <vob/aoe/ecs/Component.h>
 #include <vob/aoe/core/data/ADatabase.h>
 
 #include <vob/aoe/common/render/gui/GuiShaderProgram.h>
@@ -13,7 +13,7 @@
 namespace vob::aoe::common
 {
 	struct GuiRenderComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		std::shared_ptr<GraphicResourceHandle<GuiShaderProgram> const> m_shaderProgram;

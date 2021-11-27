@@ -1,5 +1,8 @@
 #include <vob/aoe/common/render/gui/elements/TextInputElement.h>
 
+#include <string_view>
+
+
 namespace vob::aoe::common
 {
     bool TextInputElement::onEvent(WindowEvent const& a_event, GuiTransform a_transform)
@@ -211,25 +214,25 @@ namespace vob::aoe::common
         if (halfSecondsSinceCursorUpdate % 2 == 0)
         {
             a_shaderProgram.setRenderType(GuiRenderType::QuadFill);
-            a_shaderProgram.setOuterCornerRadius(vec4{});
+            a_shaderProgram.setOuterCornerRadius(glm::vec4{});
             a_shaderProgram.setElementPosition(
                 a_transform.m_position + m_cursorTransform.first
             );
             a_shaderProgram.setElementSize(m_cursorTransform.second);
-            a_shaderProgram.setColor(vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+            a_shaderProgram.setColor(glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
             a_renderContext.m_quad->render();
         }
 
         TextElement::renderContent(a_shaderProgram, a_renderContext, a_transform);
     }
 
-    void TextInputElement::insert(u32 a_unicode)
+    void TextInputElement::insert(char32_t a_unicode)
     {
         auto tmp = std::min(m_selectionStart, m_selectionEnd);
         m_selectionEnd = std::max(m_selectionStart, m_selectionEnd);
         m_selectionStart = tmp;
         erase(m_selectionEnd - m_selectionStart);
-        m_text.insert(m_selectionEnd++, a_unicode);
+        m_text.insert(m_text.begin() + (m_selectionEnd++), a_unicode);
         m_selectionStart = m_selectionEnd;
         m_hasChanged = true;
         m_needsCursorUpdate = true;
@@ -245,20 +248,20 @@ namespace vob::aoe::common
 
     size_t TextInputElement::prevWordStart() const
     {
-        auto text = sta::utf8_string_view{ m_text }.substr(0, m_selectionEnd);
+        auto text = std::u32string_view{ m_text }.substr(0, m_selectionEnd);
         auto wordEnd = text.find_last_not_of(g_spaceCode) + 1;
         text = text.substr(0, wordEnd);
         auto wordStart = text.find_last_of(g_spaceCode);
-        return wordStart == sta::utf8_string_view::npos ? 0 : wordStart;
+        return wordStart == std::u32string_view::npos ? 0 : wordStart;
     }
 
     size_t TextInputElement::nextWordStart() const
     {
-        auto text = sta::utf8_string_view{ m_text }.substr(m_selectionEnd);
+        auto text = std::u32string_view{ m_text }.substr(m_selectionEnd);
         auto wordEnd = std::min(text.size(), text.find_first_of(g_spaceCode));
         text = text.substr(wordEnd);
         auto wordStart = text.find_first_not_of(g_spaceCode);
-        return wordStart == sta::utf8_string_view::npos
+        return wordStart == std::u32string_view::npos
             ? m_text.size()
             : m_selectionEnd + wordEnd + wordStart;
     }

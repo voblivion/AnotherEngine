@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/OpenGl.h>
 #include <vob/aoe/common/render/worldcomponents/SceneRenderComponent.h>
@@ -11,7 +11,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit SceneFramebufferInitializer(ecs::WorldDataProvider& a_wdp)
+		explicit SceneFramebufferInitializer(aoecs::WorldDataProvider& a_wdp)
             : m_sceneRenderComponent{ a_wdp.getWorldComponentRef<SceneRenderComponent>() }
 		{}
 

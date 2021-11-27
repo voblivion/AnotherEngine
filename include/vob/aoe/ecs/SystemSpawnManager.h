@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/core/ecs/Entity.h>
+#include <vob/aoe/ecs/Entity.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	class VOB_AOE_API SystemSpawnManager
 	{

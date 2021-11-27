@@ -3,13 +3,13 @@
 #include <typeindex>
 #include <unordered_set>
 
-#include <vob/aoe/core/ecs/EntityManager.h>
-#include <vob/aoe/core/ecs/WorldData.h>
+#include <vob/aoe/ecs/EntityManager.h>
+#include <vob/aoe/ecs/WorldData.h>
 #include <vob/aoe/core/type/ADynamicType.h>
 // TMP
 #include <iostream>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	struct ResourceAccess
 	{
@@ -34,21 +34,21 @@ namespace vob::aoe::ecs
 namespace std
 {
 	template <>
-	struct hash<vob::aoe::ecs::ResourceAccess>
+	struct hash<vob::aoe::aoecs::ResourceAccess>
 	{
 		std::size_t operator()(
-			vob::aoe::ecs::ResourceAccess const& a_resourceAccess
+			vob::aoe::aoecs::ResourceAccess const& a_resourceAccess
 		) const noexcept
 		{
 			return hash<std::type_index>{}(a_resourceAccess.m_resourceTypeIndex)
-				^ ~(hash<vob::aoe::ecs::ResourceAccess::AccessType>{}(
+				^ ~(hash<vob::aoe::aoecs::ResourceAccess::AccessType>{}(
 					a_resourceAccess.m_accessType)
 				);
 		}
 	};
 }
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	template <typename Type>
 	ResourceAccess makeResourceAccess()

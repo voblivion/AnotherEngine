@@ -1,7 +1,8 @@
 #include <vob/aoe/common/render/model/ModelLoader.h>
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 #include <assimp/postprocess.h>
+#include <assimp/pbrmaterial.h>
 #include <vob/aoe/core/data/LoaderUtils.h>
 #include <assimp/scene.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
@@ -39,6 +40,7 @@ namespace vob::aoe::common
 					toGlmVec3(a_meshData.mVertices[k])
 					, toGlmVec3(a_meshData.mNormals[k])
 					, toGlmVec2(a_meshData.mTextureCoords[0][k])
+					, toGlmVec3(a_meshData.mTangents[k])
 				};
 				t_vertices.emplace_back(t);
 			}
@@ -110,18 +112,28 @@ namespace vob::aoe::common
 
 		Material material;
 
-		aiString diffusePathStr;
-		if (a_materialData.GetTexture(aiTextureType_DIFFUSE, 0, &diffusePathStr) == aiReturn_SUCCESS)
+		std::cout << a_loadingDataPath << std::endl;
+
+		aiString albedoRelativePathStr;
+		if (a_materialData.GetTexture(aiTextureType_DIFFUSE, 0, &albedoRelativePathStr) == aiReturn_SUCCESS)
 		{
-			auto const diffusePath = common::pathFromFilePath(diffusePathStr.C_Str(), a_loadingDataPath);
-			a_database.find(a_fileSystemIndexer.getId(diffusePath), material.m_diffuse);
+			auto const albedoRelativePath = common::pathFromFilePath(albedoRelativePathStr.C_Str(), a_loadingDataPath);
+			a_database.find(a_fileSystemIndexer.getId(albedoRelativePath), material.m_albedo);
 		}
 
-		aiString specularPathStr;
-		if (a_materialData.GetTexture(aiTextureType_SPECULAR, 0, &specularPathStr) == aiReturn_SUCCESS)
+		aiString normalRelativePathStr;
+		if (a_materialData.GetTexture(aiTextureType_NORMALS, 0, &normalRelativePathStr) == aiReturn_SUCCESS)
 		{
-			auto const specularPath = common::pathFromFilePath(specularPathStr.C_Str(), a_loadingDataPath);
-			 a_database.find(a_fileSystemIndexer.getId(specularPath), material.m_specular);
+			auto const normalRelativePath = common::pathFromFilePath(normalRelativePathStr.C_Str(), a_loadingDataPath);
+			a_database.find(a_fileSystemIndexer.getId(normalRelativePath), material.m_normal);
+		}
+
+		aiString metallicRoughnessRelativePathStr;
+		if (a_materialData.GetTexture(aiTextureType_UNKNOWN, 0, &metallicRoughnessRelativePathStr) == aiReturn_SUCCESS)
+		{
+			auto const metallicRoughnessRelativePath = common::pathFromFilePath(
+				metallicRoughnessRelativePathStr.C_Str(), a_loadingDataPath);
+			a_database.find(a_fileSystemIndexer.getId(metallicRoughnessRelativePath), material.m_metallicRoughness);
 		}
 
 		return material;
@@ -174,7 +186,7 @@ namespace vob::aoe::common
 	{
 		auto const scene = a_importer.ReadFile(
 			a_path.generic_string()
-			, aiProcess_Triangulate | aiProcess_FlipUVs
+			, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace
 		);
 
 		return (scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) ? nullptr : scene;

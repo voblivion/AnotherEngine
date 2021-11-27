@@ -2,13 +2,13 @@
 
 #include <glm/glm.hpp>
 
-#include <vob/aoe/core/ecs/Component.h>
+#include <vob/aoe/ecs/Component.h>
 
 
 namespace vob::aoe::common
 {
 	struct LocalTransformComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		glm::mat4 m_matrix{ 1.0f };

@@ -1,5 +1,5 @@
 #pragma once
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/CameraComponent.h>
 #include <vob/aoe/common/render/DirectorComponent.h>
@@ -9,13 +9,13 @@ namespace vob::aoe::common
 {
 	struct DefaultDirectorSystem
 	{
-		using CameraComponents = ecs::ComponentTypeList<
+		using CameraComponents = aoecs::ComponentTypeList<
 			TransformComponent const
 			, CameraComponent const
 		>;
 
 		// Constructor
-		explicit DefaultDirectorSystem(ecs::WorldDataProvider& a_wdp)
+		explicit DefaultDirectorSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_directorComponent{ *a_wdp.getWorldComponent<DirectorComponent>() }
 			, m_cameraList{ a_wdp.getEntityViewList(*this, CameraComponents{}) }
 		{}
@@ -34,7 +34,7 @@ namespace vob::aoe::common
 
 		// Attributes
 		DirectorComponent& m_directorComponent;
-		ecs::EntityViewList<
+		aoecs::EntityViewList<
 			TransformComponent const
 			, CameraComponent const
 		> const& m_cameraList;

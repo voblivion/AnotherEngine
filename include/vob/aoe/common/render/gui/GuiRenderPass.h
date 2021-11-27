@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/gui/GuiRenderComponent.h>
 #include <vob/aoe/common/render/gui/elements/EmptyElement.h>
@@ -13,10 +13,10 @@ namespace vob::aoe::common
 {
 	class GuiRenderPass
 	{
-		using CanvasComponents = ecs::ComponentTypeList<CanvasComponent const>;
+		using CanvasComponents = aoecs::ComponentTypeList<CanvasComponent>;
 	public:
 		// Constructor
-		explicit GuiRenderPass(ecs::WorldDataProvider& a_wdp)
+		explicit GuiRenderPass(aoecs::WorldDataProvider& a_wdp)
 			: m_guiRenderComponent{ a_wdp.getWorldComponentRef<GuiRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent const>() }
 			, m_worldTimeComponent{ a_wdp.getWorldComponentRef<WorldTimeComponent const>() }
@@ -49,7 +49,7 @@ namespace vob::aoe::common
 
             // TODO
 			auto const& window = m_worldWindowComponent.getWindow();
-			auto const windowSize = vec2{ window.getSize() };
+			auto const windowSize = glm::vec2{ window.getSize() };
 			shaderProgram.setViewSize(windowSize);
 
 			auto& quad = m_guiRenderComponent.m_guiRenderContext.m_quad;
@@ -61,21 +61,21 @@ namespace vob::aoe::common
 
 			for (auto const canvas : m_canvasEntityList)
 			{
-				auto const& canvasComponent = canvas.getComponent<CanvasComponent>();
+				auto& canvasComponent = canvas.getComponent<CanvasComponent>();
 				if (canvasComponent.m_rootElement != nullptr)
 				{
 					for (auto const& event : window.getPolledEvents())
 					{
 						canvasComponent.m_rootElement->onEvent(
 							event,
-							GuiTransform { vec2{ 0.0f, 0.0f }, windowSize }
+							GuiTransform { glm::vec2{ 0.0f, 0.0f }, windowSize }
 						);
 					}
 
 					canvasComponent.m_rootElement->render(
 						shaderProgram
 						, m_guiRenderComponent.m_guiRenderContext
-						, GuiTransform{ vec2{ 0.0f, 0.0f }, windowSize }
+						, GuiTransform{ glm::vec2{ 0.0f, 0.0f }, windowSize }
 					);
 				}
 			}
@@ -86,6 +86,6 @@ namespace vob::aoe::common
 		GuiRenderComponent& m_guiRenderComponent;
 		WorldWindowComponent const& m_worldWindowComponent;
 		WorldTimeComponent const& m_worldTimeComponent;
-		ecs::EntityViewList<CanvasComponent const> const& m_canvasEntityList;
+		aoecs::EntityViewList<CanvasComponent> const& m_canvasEntityList;
 	};
 }

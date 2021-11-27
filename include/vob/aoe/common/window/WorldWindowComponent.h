@@ -3,13 +3,13 @@
 #include <vector>
 #include <functional>
 
-#include "vob/aoe/core/ecs/Component.h"
+#include "vob/aoe/ecs/Component.h"
 #include <vob/aoe/common/render/IWindow.h>
 
 namespace vob::aoe::common
 {
 	class WorldWindowComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 	public:
 		// Constructor

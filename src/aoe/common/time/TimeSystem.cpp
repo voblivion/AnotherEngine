@@ -3,7 +3,7 @@
 namespace vob::aoe::common
 {
 	// Public
-	TimeSystem::TimeSystem(ecs::WorldDataProvider& a_worldDataProvider)
+	TimeSystem::TimeSystem(aoecs::WorldDataProvider& a_worldDataProvider)
 		: m_worldTimeComponent{ *a_worldDataProvider.getWorldComponent<WorldTimeComponent>() }
 	{}
 
@@ -14,7 +14,7 @@ namespace vob::aoe::common
 		{
 			m_worldTimeComponent.m_frameDuration = currentTime
 				- m_worldTimeComponent.m_frameStartTime;
-			m_worldTimeComponent.m_elapsedTime = m_worldTimeComponent.m_frameDuration.count();
+			m_worldTimeComponent.m_elapsedTime = m_worldTimeComponent.m_frameDuration;
 		}
 		m_worldTimeComponent.m_frameStartTime = currentTime;
 	}

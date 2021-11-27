@@ -2,10 +2,12 @@
 
 #include <memory>
 
-#include <vob/sta/memory.h>
+#include <vob/misc/std/polymorphic_ptr.h>
+#include <vob/misc/std/polymorphic_ptr_util.h>
 
 #include <vob/aoe/core/type/Traits.h>
 #include <vob/aoe/core/type/Applicator.h>
+
 
 namespace vob::aoe::type
 {
@@ -23,11 +25,11 @@ namespace vob::aoe::type
         {
             void operator()(
 				Type const& a_source
-                , sta::polymorphic_ptr<PolymorphicBaseType>& a_target
+                , mistd::polymorphic_ptr<PolymorphicBaseType>& a_target
                 , AllocatorType const& a_allocator
                 ) const
             {
-				a_target = sta::allocate_polymorphic<Type>(a_allocator, a_source);
+				a_target = mistd::polymorphic_ptr_util::allocate<Type>(a_allocator, a_source);
             }
         };
 
@@ -40,23 +42,23 @@ namespace vob::aoe::type
 
 		#pragma region Methods
         template <typename Type>
-        sta::polymorphic_ptr<Type> clone(sta::polymorphic_ptr<Type> const& a_source) const
+		mistd::polymorphic_ptr<Type> clone(mistd::polymorphic_ptr<Type> const& a_source) const
         {
             static_assert(std::is_base_of_v<PolymorphicBaseType, Type>);
             if (a_source == nullptr)
             {
-                return nullptr;
+				return nullptr;
             }
 
-            sta::polymorphic_ptr<PolymorphicBaseType> target = nullptr;
+			mistd::polymorphic_ptr<PolymorphicBaseType> target = nullptr;
             m_applicator.apply(*a_source, target, m_allocator);
-            return sta::polymorphic_pointer_cast<Type>(target);
+            return mistd::polymorphic_ptr_util::cast<Type>(std::move(target));
         }
 
         template <typename Type, typename... Args>
         auto create(Args&&... a_args) const
         {
-            return sta::allocate_polymorphic<Type>(m_allocator, std::forward<Args>(a_args)...);
+            return mistd::polymorphic_ptr_util::allocate<Type>(m_allocator, std::forward<Args>(a_args)...);
         }
 
         template <typename Type>
@@ -81,7 +83,7 @@ namespace vob::aoe::type
 			PolymorphicBaseType const
 			, ApplicatorAllocatorType
 			, DoClone
-			, sta::polymorphic_ptr<PolymorphicBaseType>&
+			, mistd::polymorphic_ptr<PolymorphicBaseType>&
 			, AllocatorType const&
 		> m_applicator;
     };
@@ -148,7 +150,7 @@ namespace vob::aoe::type
 		}
 
 		template <typename OtherType>
-		void reset(sta::polymorphic_ptr<OtherType> a_ptr)
+		void reset(mistd::polymorphic_ptr<OtherType> a_ptr)
 		{
 			m_ptr = std::move(a_ptr);
 		}
@@ -193,7 +195,7 @@ namespace vob::aoe::type
 
 	private:
 		std::reference_wrapper<Cloner const> m_cloner;
-		sta::polymorphic_ptr<Type> m_ptr = nullptr;
+		mistd::polymorphic_ptr<Type> m_ptr = nullptr;
 
 
 		template <

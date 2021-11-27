@@ -67,7 +67,7 @@ namespace vob::aoe::common
 
 	struct TextEvent
 	{
-		std::uint32_t m_unicode;
+		char32_t m_unicode;
 	};
 
 	struct MouseMoveEvent

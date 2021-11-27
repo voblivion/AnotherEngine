@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/Component.h>
+#include <vob/aoe/ecs/Component.h>
 #include <vob/aoe/core/visitor/Standard.h>
 
 #include <vob/aoe/common/render/Material.h>
@@ -10,7 +10,7 @@
 namespace vob::aoe::common
 {
 	struct ModelComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		std::shared_ptr<common::GraphicResourceHandle<common::StaticModel> const> m_model;

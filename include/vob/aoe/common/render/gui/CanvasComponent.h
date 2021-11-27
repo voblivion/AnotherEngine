@@ -5,14 +5,14 @@
 namespace vob::aoe::common
 {
 	struct CanvasComponent
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
-		type::Cloneable<AElement> m_rootElement;
-		vec2 m_size{ 2048.f, 1024.f };
+		type::dynamic_type_clone<AElement> m_rootElement;
+		glm::vec2 m_size{ 2048.f, 1024.f };
 
 		// Constructor
-		explicit CanvasComponent(type::Cloner<> const& a_cloner)
+		explicit CanvasComponent(type::dynamic_type_clone_copier const& a_cloner)
 			: m_rootElement{ a_cloner }
 		{}
 

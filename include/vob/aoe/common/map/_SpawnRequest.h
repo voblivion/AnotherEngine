@@ -1,7 +1,7 @@
 #pragma once
 
 // #include <vob/aoe/core/standard/ADynamicType.h>
-#include <vob/aoe/core/ecs/ComponentManager.h>
+#include <vob/aoe/ecs/ComponentManager.h>
 
 /*namespace vob::aoe::common
 {
@@ -9,8 +9,8 @@
 		: public type::ADynamicType
 	{
 		// Attributes
-		std::shared_ptr<ecs::ComponentManager const> m_archetype;
-		ecs::ComponentManager m_overrides;
+		std::shared_ptr<aoecs::ComponentManager const> m_archetype;
+		aoecs::ComponentManager m_overrides;
 
 		// Constructor
 		explicit SpawnRequest(sta::Allocator<std::byte>& a_allocator)

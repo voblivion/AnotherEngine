@@ -2,8 +2,6 @@
 
 #include <array>
 
-#include <vob/aoe/core/type/Primitive.h>
-
 #include <vob/aoe/common/render/OpenGl.h>
 
 namespace vob::aoe::common
@@ -11,8 +9,8 @@ namespace vob::aoe::common
 	struct GuiVertex
 	{
 #pragma region Attributes
-		vec2 m_position;
-		vec2 m_textureCoords;
+		glm::vec2 m_position;
+		glm::vec2 m_textureCoords;
 #pragma endregion
 	};
 
@@ -74,7 +72,7 @@ namespace vob::aoe::common
 			glDeleteVertexArrays(1, &m_vao);
 		}
 
-		void setVertices(GuiVertex const* const a_first, u32 const a_count) const
+		void setVertices(GuiVertex const* const a_first, std::uint32_t const a_count) const
 		{
 			m_vertexCount = a_count;
 			glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
@@ -91,7 +89,7 @@ namespace vob::aoe::common
 	private:
 #pragma region Attributes
 		mutable bool m_isReady = false;
-		mutable u32 m_vertexCount = 0;
+		mutable std::uint32_t m_vertexCount = 0;
 		mutable GraphicObjectId m_vao INIT_GRAPHIC_OBJECT;
 		mutable GraphicObjectId m_vbo INIT_GRAPHIC_OBJECT;
 #pragma endregion

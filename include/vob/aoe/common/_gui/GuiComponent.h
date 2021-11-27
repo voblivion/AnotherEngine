@@ -1,6 +1,6 @@
 //#pragma once
 //
-//#include <vob/aoe/core/ecs/Component.h>
+//#include <vob/aoe/ecs/Component.h>
 //#include <vob/aoe/core/visitor/Aggregate.h>
 //
 //#include <vob/aoe/common/space/Vector.h>
@@ -9,7 +9,7 @@
 //namespace vob::aoe::common::gui
 //{
 //	struct GuiComponent final
-//		: public vis::Aggregate<GuiComponent, ecs::AComponent>
+//		: public vis::Aggregate<GuiComponent, aoecs::AComponent>
 //	{
 //		// Attributes
 //		vec2 m_size{};
@@ -21,7 +21,7 @@
 //		{}
 //
 //		// Methods
-//		friend class vis::Aggregate<GuiComponent, ecs::AComponent>;
+//		friend class vis::Aggregate<GuiComponent, aoecs::AComponent>;
 //		template <typename VisitorType, typename ThisType>
 //		static void makeVisit(VisitorType& a_visitor, ThisType& a_this)
 //		{

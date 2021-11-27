@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 #include <vob/aoe/common/data/filesystem/AFileSystemLoader.h>
 #include <vob/aoe/common/data/filesystem/FileSystemIndexer.h>

@@ -2,11 +2,11 @@
 
 #include <deque>
 
-#include <vob/aoe/core/ecs/Entity.h>
-#include <vob/aoe/core/ecs/EntityId.h>
+#include <vob/aoe/ecs/Entity.h>
+#include <vob/aoe/ecs/EntityId.h>
 
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	namespace detail
 	{
@@ -17,7 +17,7 @@ namespace vob::aoe::ecs
 		class SystemEntityViewImpl<>
 		{
 		public:
-			explicit SystemEntityViewImpl(Entity const&) {}
+			explicit SystemEntityViewImpl(Entity&) {}
 
 			static void get() {}
 		};
@@ -32,7 +32,7 @@ namespace vob::aoe::ecs
 			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity& a_entity)
 				: Base{ a_entity }
 				, m_component{ *a_entity.getComponent<ComponentType>() }
 			{}
@@ -57,7 +57,7 @@ namespace vob::aoe::ecs
 			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity& a_entity)
 				: Base{ a_entity }
 				, m_component{ a_entity.getComponent<ComponentType>() }
 			{}
@@ -82,7 +82,7 @@ namespace vob::aoe::ecs
 			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity& a_entity)
 				: Base{ a_entity }
 				, m_component{ *a_entity.getComponent<ComponentType>() }
 			{}
@@ -107,7 +107,7 @@ namespace vob::aoe::ecs
 			using Base = SystemEntityViewImpl<ComponentTypes...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(Entity const& a_entity)
+			explicit SystemEntityViewImpl(Entity& a_entity)
 				: Base{ a_entity }
 				, m_component{ a_entity.getComponent<ComponentType>() }
 			{}
@@ -131,7 +131,7 @@ namespace vob::aoe::ecs
 	{
 	public:
 		// Constructors
-		explicit EntityView(Entity const& a_entity)
+		explicit EntityView(Entity& a_entity)
 			: m_id{ a_entity.getId() }
 			, m_impl{ a_entity }
 #ifndef NDEBUG
@@ -156,7 +156,7 @@ namespace vob::aoe::ecs
 		EntityId m_id;
 		detail::SystemEntityViewImpl<ComponentTypes...> m_impl;
 #ifndef NDEBUG
-		Entity const* m_entity = nullptr;
+		Entity* m_entity = nullptr;
 #endif
 	};
 }

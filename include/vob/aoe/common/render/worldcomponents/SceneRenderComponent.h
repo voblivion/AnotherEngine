@@ -7,7 +7,7 @@
 namespace vob::aoe::common
 {
 	struct SceneRenderComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Constructors
 		template <typename... TArgs>

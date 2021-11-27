@@ -1,6 +1,6 @@
 //#pragma once
 //
-//#include <vob/aoe/core/ecs/WorldDataProvider.h>
+//#include <vob/aoe/ecs/WorldDataProvider.h>
 //
 //
 //namespace vob::aoe::common::gui

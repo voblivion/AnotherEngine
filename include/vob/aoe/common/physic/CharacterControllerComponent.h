@@ -1,5 +1,5 @@
 #pragma once
-#include "vob/aoe/core/ecs/Component.h"
+#include "vob/aoe/ecs/Component.h"
 #include <optional>
 #include <bullet/BulletDynamics/Character/btKinematicCharacterController.h>
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
@@ -9,7 +9,7 @@
 namespace vob::aoe::common
 {
 	struct CharacterControllerComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		std::optional<btKinematicCharacterController> m_kinematic;
 		btPairCachingGhostObject m_ghost;

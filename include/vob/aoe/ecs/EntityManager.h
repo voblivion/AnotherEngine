@@ -6,14 +6,16 @@
 #include <optional>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/core/ecs/Entity.h>
-#include <vob/aoe/core/ecs/EntityId.h>
-#include <vob/aoe/core/ecs/EntityView.h>
-#include <vob/aoe/core/ecs/SystemSpawnManager.h>
-#include <vob/aoe/core/ecs/SystemUnspawnManager.h>
-#include <vob/aoe/core/ecs/EntityHandle.h>
+#include <vob/aoe/ecs/Entity.h>
+#include <vob/aoe/ecs/EntityId.h>
+#include <vob/aoe/ecs/EntityView.h>
+#include <vob/aoe/ecs/SystemSpawnManager.h>
+#include <vob/aoe/ecs/SystemUnspawnManager.h>
+#include <vob/aoe/ecs/EntityHandle.h>
 
-namespace vob::aoe::ecs
+#include <vob/aoe/core/type/ADynamicType.h>
+
+namespace vob::aoe::aoecs
 {
 	using EntityMap = std::unordered_map<EntityId, std::unique_ptr<Entity>>;
 
@@ -25,7 +27,7 @@ namespace vob::aoe::ecs
 		private:
 			template <typename S>
 			static auto test(int)
-				-> decltype(std::declval<S>().onEntityAdded(std::declval<Entity const&>()), std::true_type{})
+				-> decltype(std::declval<S>().onEntityAdded(std::declval<Entity&>()), std::true_type{})
 			{
 				return std::true_type{};
 			}
@@ -42,14 +44,14 @@ namespace vob::aoe::ecs
 
 		template <typename SystemType
 			, std::enable_if_t<hasOnEntityAddedV<SystemType>>* = nullptr>
-		void callOnEntityAdded(SystemType& a_system, Entity const& a_entity)
+		void callOnEntityAdded(SystemType& a_system, Entity& a_entity)
 		{
 			a_system.onEntityAdded(a_entity);
 		}
 
 		template <typename SystemType
 			, std::enable_if_t<!hasOnEntityAddedV<SystemType>>* = nullptr>
-		void callOnEntityAdded(SystemType& a_system, Entity const& a_entity)
+		void callOnEntityAdded(SystemType& a_system, Entity& a_entity)
 		{
 
 		}
@@ -60,7 +62,7 @@ namespace vob::aoe::ecs
 		private:
 			template <typename S>
 			static auto test(int)
-				-> decltype(std::declval<S>().onEntityRemoved(std::declval<Entity const&>()), std::true_type{})
+				-> decltype(std::declval<S>().onEntityRemoved(std::declval<Entity&>()), std::true_type{})
 			{
 				return std::true_type{};
 			}
@@ -77,7 +79,7 @@ namespace vob::aoe::ecs
 
 		template <typename SystemType
 			, std::enable_if_t<hasOnEntityRemovedV<SystemType>>* = nullptr>
-		void callOnEntityRemoved(SystemType& a_system, Entity const& a_entity)
+		void callOnEntityRemoved(SystemType& a_system, Entity& a_entity)
 		{
 			a_system.onEntityRemoved(a_entity);
 		}
@@ -132,7 +134,7 @@ namespace vob::aoe::ecs
 		std::unordered_map<EntityId, std::size_t> m_entityIndexes;
 
 		// Methods
-		void add(Entity const& a_entity)
+		void add(Entity& a_entity)
 		{
 			m_entityIndexes.emplace(a_entity.getId(), m_list.size());
 			m_list.emplace_back(a_entity);
@@ -217,7 +219,7 @@ namespace vob::aoe::ecs
 			: m_entities{ a_entities }
 		{}
 
-		bool operator()(ecs::EntityHandle const& a_entityHandle) const
+		bool operator()(aoecs::EntityHandle const& a_entityHandle) const
 		{
 			return m_entities.find(a_entityHandle) != nullptr;
 		}
@@ -230,8 +232,8 @@ namespace vob::aoe::ecs
 		: public type::ADynamicType
 	{
 		// Methods
-		virtual void onEntityAdded(Entity const& a_entity) = 0;
-		virtual void onEntityRemoved(Entity const& a_entity) = 0;
+		virtual void onEntityAdded(Entity& a_entity) = 0;
+		virtual void onEntityRemoved(Entity& a_entity) = 0;
 	};
 
 	template <typename SystemType, typename... ComponentTypes>
@@ -258,7 +260,7 @@ namespace vob::aoe::ecs
 		}
 
 		// Methods
-		virtual void onEntityAdded(Entity const& a_entity) override
+		virtual void onEntityAdded(Entity& a_entity) override
 		{
 			if (detail::SystemEntityTester<ComponentTypes...>::test(a_entity))
 			{
@@ -267,7 +269,7 @@ namespace vob::aoe::ecs
 			}
 		}
 
-		virtual void onEntityRemoved(Entity const& a_entity) override
+		virtual void onEntityRemoved(Entity& a_entity) override
 		{
 			auto t_entity = m_entityList.find(a_entity.getId());
 			if(t_entity != nullptr)

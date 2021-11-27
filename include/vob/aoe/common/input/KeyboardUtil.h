@@ -1,133 +1,16 @@
 #pragma once
 
-#include <vob/aoe/common/input/physical/Switch.h>
-
-#include <vob/sta/enum_map.h>
+#include <vob/aoe/common/input/Keyboard.h>
 
 #include <GL/glew.h>
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 
-#include <array>
 
-
-namespace vob::aoe::common
+namespace vob::aoe::common::KeyboardUtil
 {
-	class Keyboard
-	{
-	public:
-		enum class Key
-		{
-			Unknown = -1
-			, A = 0
-			, B
-			, C
-			, D
-			, E
-			, F
-			, G
-			, H
-			, I
-			, J
-			, K
-			, L
-			, M
-			, N
-			, O
-			, P
-			, Q
-			, R
-			, S
-			, T
-			, U
-			, V
-			, W
-			, X
-			, Y
-			, Z
-			, Num0
-			, Num1
-			, Num2
-			, Num3
-			, Num4
-			, Num5
-			, Num6
-			, Num7
-			, Num8
-			, Num9
-			, Escape
-			, LControl
-			, LShift
-			, LAlt
-			, LSystem
-			, RControl
-			, RShift
-			, RAlt
-			, RSystem
-			, Menu
-			, LBracket
-			, RBracket
-			, Semicolon
-			, Comma
-			, Period
-			, Quote
-			, Slash
-			, Backslash
-			, Tilde
-			, Equal
-			, Hyphen
-			, Space
-			, Enter
-			, Backspace
-			, Tab
-			, PageUp
-			, PageDown
-			, End
-			, Home
-			, Insert
-			, Delete
-			, Add
-			, Subtract
-			, Multiply
-			, Divide
-			, Left
-			, Right
-			, Up
-			, Down
-			, Numpad0
-			, Numpad1
-			, Numpad2
-			, Numpad3
-			, Numpad4
-			, Numpad5
-			, Numpad6
-			, Numpad7
-			, Numpad8
-			, Numpad9
-			, F1
-			, F2
-			, F3
-			, F4
-			, F5
-			, F6
-			, F7
-			, F8
-			, F9
-			, F10
-			, F11
-			, F12
-			, F13
-			, F14
-			, F15
-			, Pause
-			, Count
-		};
-
-		sta::enum_map<Key, Key::A, Key::Count, Switch> m_keys{};
-	};
-
-	inline Keyboard::Key keyFromGlfw(int a_glfwKeyId)
-	{
+    inline Keyboard::Key keyFromGlfw(int a_glfwKeyId)
+    {
 		constexpr std::array<Keyboard::Key, GLFW_KEY_MENU + 1 - GLFW_KEY_SPACE> s_source{
 			Keyboard::Key::Space // 32 GLFW_KEY_SPACE
 			, Keyboard::Key::Unknown // 33
@@ -453,5 +336,105 @@ namespace vob::aoe::common
 		}
 
 		return s_source[static_cast<std::size_t>(a_glfwKeyId) - GLFW_KEY_SPACE];
-	}
+    }
 }
+
+
+/* **************** CPP ***************** */
+
+/* cpp/img -> sta/img */ namespace vob::staim {}
+/* cpp/json -> sta/json */ namespace vob::stajs {}
+/* cpp/random -> sta/random */ namespace vob::starn {}
+/* cpp/zlib -> sta/compress */ namespace vob::stazp {}
+
+/* cpp/sta -> ? */
+/*
+* UTILITY
+* ----------------
+* tuple
+* utility
+* 
+* TYPE
+* ----------------
+* integer
+* measure
+* physic_measure
+* reflection
+* enum
+* type_traits
+* 
+* ALGORITHM
+* ----------------
+* algorithm
+* fnv1a
+* huffman
+* 
+* MEMORY
+* ----------------
+* memory
+* memory_resource
+* 
+* DEBUG
+* ----------------
+* error
+* debug_break
+* ignorable_assert
+* 
+* STREAM
+* ----------------
+* stream_reader
+* stream_writer
+* 
+* STRING
+* ----------------
+* bounded_string
+* string_id
+* string_view
+* unicode
+* 
+* CONTAINER
+* ----------------
+* bounded_vector
+* vector_map
+* vector_set
+* enum_map
+* 
+* 
+* 
+* library -> ?
+* platform -> ?
+* 
+* no_copy -> x
+* compiler -> x
+* 
+*/
+
+
+/* **************** AOE/CORE **************** */
+
+/* aoe/core/sync		-> sta/sync */		namespace vob::stasn {}
+/* aoe/core/type		-> sta/type */		namespace vob::statp {}
+/* aoe/core/visitor		-> sta/visitor */	namespace vob::stavs {}
+
+/* aoe/core/data		-> aoe/data */		namespace vob::aoedt {}
+/* aoe/core/ecs			-> aoe/ecs */		namespace vob::aoecs {}
+
+/* aoe/core/resource	-> x */
+/* aoe/core/utils		-> x */
+
+/* **************** AOE/COMMON **************** */
+
+/* aoe/common/data		-> aoe/data */		namespace vob::aoedt {} // data
+/* aoe/common/input		-> aoe/input */		namespace vob::aoein {} // input
+/* aoe/common/map		-> aoe/map */		namespace vob::aoema {} // map
+/* aoe/common/physic	-> aoe/physic */	namespace vob::aoeph {} // physic
+/* aoe/common/render	-> aoe/render */	namespace vob::aoere {} // render
+/* aoe/common/seria.	-> aoe/seria. */	namespace vob::aoesr {} // serialization
+/* aoe/common/space		-> aoe/space */		namespace vob::aoesp {} // space
+/* aoe/common/time		-> aoe/time */		namespace vob::aoeti {} // time
+/* aoe/common/window	-> aoe/window */	namespace vob::aoewi {} // window
+
+/* aoe/common/driver	-> ? */
+/* aoe/common/editor	-> ? */
+
+/* aoe/common/test		-> x */

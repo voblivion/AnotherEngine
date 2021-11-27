@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vob/aoe/core/type/TypeRegistry.h>
-#include <vob/aoe/core/type/TypeFactory.h>
+#include <vob/misc/type/registry.h>
+#include <vob/misc/type/factory.h>
+
 #include <vob/aoe/core/visitor/Applicator.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 
@@ -13,13 +14,13 @@ namespace vob::aoe::common
 	struct FileSystemVisitorContext
 	{
 		using Self = FileSystemVisitorContext<VisitorType>;
-		using DynamicTypeApplicator = vis::Applicator<type::ADynamicType, VisitorType<Self>>;
-		using btCollisionShapeApplicator = vis::Applicator<btCollisionShape, VisitorType<Self>>;
+		using DynamicTypeApplicator = vis::Applicator<false, VisitorType<Self>>;
+		using btCollisionShapeApplicator = vis::Applicator<false, VisitorType<Self>>;
 
 		FileSystemVisitorContext(
-			type::TypeRegistry const& a_typeRegistry
-			, type::TypeFactory<type::ADynamicType> const& a_dynamicTypeFactory
-			, type::TypeFactory<btCollisionShape> const& a_btCollisionShapeFactory
+			misty::pmr::registry const& a_typeRegistry
+			, misty::pmr::factory<type::ADynamicType> const& a_dynamicTypeFactory
+			, misty::pmr::factory<btCollisionShape> const& a_btCollisionShapeFactory
 			, FileSystemIndexer& a_fileSystemIndexer
 			, DynamicTypeApplicator const& a_dynamicTypeApplicator
 			, btCollisionShapeApplicator const& a_btCollisionShapeApplicator
@@ -36,9 +37,9 @@ namespace vob::aoe::common
 			, m_database{ a_database }
 		{}
 
-		type::TypeRegistry const& m_typeRegistry;
-		type::TypeFactory<type::ADynamicType> const& m_dynamicTypeFactory;
-		type::TypeFactory<btCollisionShape> const& m_btCollisionShapeFactory;
+		misty::pmr::registry const& m_typeRegistry;
+		misty::pmr::factory<type::ADynamicType> const& m_dynamicTypeFactory;
+		misty::pmr::factory<btCollisionShape> const& m_btCollisionShapeFactory;
 		FileSystemIndexer& m_fileSystemIndexer;
 		DynamicTypeApplicator const& m_dynamicTypeApplicator;
 		btCollisionShapeApplicator const& m_btCollisionShapeApplicator;

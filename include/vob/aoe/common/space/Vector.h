@@ -3,7 +3,6 @@
 #include <glm/geometric.hpp>
 
 #include <vob/aoe/core/visitor/Utils.h>
-#include <vob/aoe/core/type/Primitive.h>
 
 namespace vob::aoe::common
 {

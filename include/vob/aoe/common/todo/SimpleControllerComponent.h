@@ -1,20 +1,20 @@
 #pragma once
 
-#include "vob/aoe/core/ecs/Component.h"
-#include "vob/aoe/core/ecs/EntityId.h"
-#include "vob/aoe/core/ecs/ComponentManager.h"
+#include "vob/aoe/ecs/Component.h"
+#include "vob/aoe/ecs/EntityId.h"
+#include "vob/aoe/ecs/ComponentManager.h"
 #include <vob/aoe/common/time/Chrono.h>
 
 
 namespace vob::aoe::common
 {
 	struct SimpleControllerComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		glm::vec3 m_orientation{ 0.0f };
 		glm::vec3 m_headOrientation{ 0.0f };
-		std::shared_ptr<ecs::ComponentManager const> m_bullet;
+		std::shared_ptr<aoecs::ComponentManager const> m_bullet;
 		TimePoint m_lastBulletTime{};
 		float m_fallVelocity = 0.0f;
 		TimePoint m_lastJumpTime{};

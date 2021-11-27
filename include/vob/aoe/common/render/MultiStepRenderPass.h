@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 namespace vob::aoe::common
 {
@@ -11,7 +11,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit MultiStepRenderPass(ecs::WorldDataProvider& a_wdp)
+		explicit MultiStepRenderPass(aoecs::WorldDataProvider& a_wdp)
 			: m_steps{ TSteps{ a_wdp }... }
 		{}
 

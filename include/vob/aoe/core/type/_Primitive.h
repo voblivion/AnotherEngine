@@ -5,15 +5,12 @@
 
 #include <glm/glm.hpp>
 
-#include <vob/sta/string_id.h>
-#include <vob/sta/unicode.h>
+#include <vob/misc/hash/string_id.h>
+
 
 namespace vob::aoe
 {
 	// C++ primitive types
-	using u8char = char; // TODO c++20 -> char8_t
-	using u8string = std::basic_string<u8char>;
-	using u8string_view = std::basic_string_view<u8char>;
 	using byte = std::byte;
 
 	using u8 = std::uint8_t;
@@ -77,7 +74,4 @@ namespace vob::aoe
 
 	using rgb_color = vec<3, u8>;
 	using rgba_color = vec<4, u8>;
-
-	// String types
-	using string_id = sta::string_id;
 }

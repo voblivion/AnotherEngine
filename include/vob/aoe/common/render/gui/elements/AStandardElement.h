@@ -28,14 +28,14 @@ namespace vob::aoe::common
 	{
 	public:
 		// Attributes
-		vec4 m_outerCornerRadius{ 0.0f };
-		vec4 m_innerCornerRadius{ 0.0f };
-		vec4 m_borderWidth{ 0.0f };
-		vec4 m_margin{ 0.0f }; // TODO should propagate surrounding elements margins, maybe?
-		vec4 m_padding{ 0.0f };
-		vec4 m_borderColor{ 0.0f };
+		glm::vec4 m_outerCornerRadius{ 0.0f };
+		glm::vec4 m_innerCornerRadius{ 0.0f };
+		glm::vec4 m_borderWidth{ 0.0f };
+		glm::vec4 m_margin{ 0.0f }; // TODO should propagate surrounding elements margins, maybe?
+		glm::vec4 m_padding{ 0.0f };
+		glm::vec4 m_borderColor{ 0.0f };
 		std::shared_ptr<GraphicResourceHandle<Texture> const> m_borderTexture;
-		vec4 m_backgroundColor{ 0.0f };
+		glm::vec4 m_backgroundColor{ 0.0f };
 		std::shared_ptr<GraphicResourceHandle<Texture> const> m_backgroundTexture;
 
 		// Methods
@@ -45,12 +45,12 @@ namespace vob::aoe::common
 			, GuiTransform a_transform
 		) const final override
 		{
-			auto const topLeftMargin = vec2{ m_margin.x, m_margin.y };
-			auto const bottomRightMargin = vec2{ m_margin.z, m_margin.w };
-			auto const topLeftBorderWidth = vec2{ m_borderWidth.x, m_borderWidth.y };
-			auto const bottomRightBorderWidth = vec2{ m_borderWidth.z, m_borderWidth.w };
-			auto const topLeftPadding = vec2{ m_padding.x, m_padding.y };
-			auto const bottomRightPadding = vec2{ m_padding.z, m_padding.w };
+			auto const topLeftMargin = glm::vec2{ m_margin.x, m_margin.y };
+			auto const bottomRightMargin = glm::vec2{ m_margin.z, m_margin.w };
+			auto const topLeftBorderWidth = glm::vec2{ m_borderWidth.x, m_borderWidth.y };
+			auto const bottomRightBorderWidth = glm::vec2{ m_borderWidth.z, m_borderWidth.w };
+			auto const topLeftPadding = glm::vec2{ m_padding.x, m_padding.y };
+			auto const bottomRightPadding = glm::vec2{ m_padding.z, m_padding.w };
 
 			auto const borderQuadPosition = a_transform.m_position + topLeftMargin;
 			auto const borderQuadSize = a_transform.m_size - topLeftMargin - bottomRightMargin;

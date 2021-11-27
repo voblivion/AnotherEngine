@@ -1,9 +1,9 @@
-#include <vob/aoe/core/ecs/World.h>
+#include <vob/aoe/ecs/World.h>
 
 // TODO : remove this, no need to sleep
 #include <windows.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	void World::start()
 	{

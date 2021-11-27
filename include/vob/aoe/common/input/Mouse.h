@@ -2,10 +2,10 @@
 
 #include <array>
 
-#include <vob/sta/enum_map.h>
+#include <vob/misc/std/enum_map.h>
 
 #include <vob/aoe/common/space/Vector.h>
-#include <vob/aoe/common/input/physical/Switch.h>
+#include <vob/aoe/common/input/Switch.h>
 
 namespace vob::aoe::common
 {
@@ -29,10 +29,10 @@ namespace vob::aoe::common
 			, X2 = M5
 		};
 
-		vec2 m_position = {};
-		vec2 m_move = {};
+		glm::vec2 m_position = {};
+		glm::vec2 m_move = {};
 		Switch m_hover = {};
-		sta::enum_map<Button, Button::M1, Button::Count, Switch> m_buttons{};
+		mistd::enum_map<Button, Button::M1, Button::Count, Switch> m_buttons{};
 	};
 
 	inline Mouse::Button mouseButtonFromGlfw(int a_glfwMouseButtonId)

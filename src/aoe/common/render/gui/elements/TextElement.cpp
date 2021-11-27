@@ -2,7 +2,7 @@
 
 namespace vob::aoe::common
 {
-    void TextElement::setText(sta::utf8_string a_text)
+    void TextElement::setText(std::pmr::u32string a_text)
     {
         m_text = std::move(a_text);
         m_hasChanged = true;
@@ -45,7 +45,7 @@ namespace vob::aoe::common
                     {
                         m_hasChanged = true;
                         auto relativePos = m_mousePos - a_transform.m_position;
-                        std::optional<sta::unicode> previousCode = std::nullopt;
+                        std::optional<char32_t> previousCode = std::nullopt;
                         auto index = getIndexAtPos(
                             *m_font
                             , m_text
@@ -72,10 +72,10 @@ namespace vob::aoe::common
                 {
                     auto const mouseMoveEvent =
                         static_cast<MouseMoveEvent const&>(a_event);
-                    m_mousePos = vec2{ mouseMoveEvent.m_position };
+                    m_mousePos = glm::vec2{ mouseMoveEvent.m_position };
 
                     auto relativePos = m_mousePos - a_transform.m_position;
-                    std::optional<sta::unicode> previousCode = std::nullopt;
+                    std::optional<char32_t> previousCode = std::nullopt;
                     if (m_isSelecting)
                     {
                         m_selectionEnd = getIndexAtPos(
@@ -112,8 +112,8 @@ namespace vob::aoe::common
 
         if (needsTextMeshUpdate(a_transform))
         {
-            std::optional<vec2> cursor = std::nullopt;
-            std::optional<sta::unicode> previousCode = std::nullopt;
+            std::optional<glm::vec2> cursor = std::nullopt;
+            std::optional<char32_t> previousCode = std::nullopt;
 
             auto vertices = createTextMesh(
                 *m_font
@@ -125,7 +125,7 @@ namespace vob::aoe::common
                 , cursor
                 , previousCode
             );
-            m_preSelectionMesh->setVertices(vertices.data(), static_cast<u32>(vertices.size()));
+            m_preSelectionMesh->setVertices(vertices.data(), static_cast<std::uint32_t>(vertices.size()));
             vertices = createTextMesh(
                 *m_font
                 , m_text
@@ -136,7 +136,7 @@ namespace vob::aoe::common
                 , cursor
                 , previousCode
             );
-            m_selectionMesh->setVertices(vertices.data(), static_cast<u32>(vertices.size()));
+            m_selectionMesh->setVertices(vertices.data(), static_cast<std::uint32_t>(vertices.size()));
             vertices = createTextMesh(
                 *m_font
                 , m_text
@@ -147,7 +147,7 @@ namespace vob::aoe::common
                 , cursor
                 , previousCode
             );
-            m_postSelectionMesh->setVertices(vertices.data(), static_cast<u32>(vertices.size()));
+            m_postSelectionMesh->setVertices(vertices.data(), static_cast<std::uint32_t>(vertices.size()));
             m_hasChanged = false;
             m_lastRenderedSize = a_transform.m_size;
         }
@@ -161,7 +161,7 @@ namespace vob::aoe::common
         a_shaderProgram.setColor(m_color);
         m_preSelectionMesh.resource()->render();
 
-        a_shaderProgram.setColor(vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+        a_shaderProgram.setColor(glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
         m_selectionMesh.resource()->render();
 
         a_shaderProgram.setColor(m_color);

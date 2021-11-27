@@ -42,7 +42,7 @@ namespace vob::aoe::vis
 			std::shared_ptr<common::Font const> a_font
 			, data::ADatabase& a_database
 			, common::IGraphicResourceManager<common::GuiMesh>& a_guiMeshResourceManager
-			, type::Cloner<>& a_cloner)
+			, type::dynamic_type_clone_copier& a_cloner)
 			: m_font{ a_font }
 			, m_database{ a_database }
 			, m_guiMeshResourceManager{ a_guiMeshResourceManager }
@@ -53,7 +53,7 @@ namespace vob::aoe::vis
 
 		template <typename ValueType>
 		EditionInterface generateEditionInterface(
-			type::Cloneable<common::AElement>& a_root
+			type::dynamic_type_clone<common::AElement>& a_root
 			, ValueType& a_value
 		)
 		{
@@ -110,7 +110,7 @@ namespace vob::aoe::vis
 					, m_guiMeshResourceManager
 				);
 				name.setFont(m_font);
-				name.setText(u8string{ a_nameValuePair.m_name });
+				name.setText(std::pmr::u32string{ a_nameValuePair.m_name });
 			}
 
 			visit(a_nameValuePair.m_value);
@@ -133,7 +133,7 @@ namespace vob::aoe::vis
 		std::shared_ptr<common::Font const> m_font;
 		data::ADatabase& m_database;
 		common::IGraphicResourceManager<common::GuiMesh>& m_guiMeshResourceManager;
-		type::Cloner<>& m_cloner;
+		type::dynamic_type_clone_copier& m_cloner;
 		common::SplitElement* m_listSplit = nullptr;
 		common::SplitElement* m_attributeSplit = nullptr;
 		EditionInterface m_editionInterface;

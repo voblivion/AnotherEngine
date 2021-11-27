@@ -1,6 +1,6 @@
-#include <vob/aoe/core/ecs/SystemUnspawnManager.h>
+#include <vob/aoe/ecs/SystemUnspawnManager.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	// Public
 	SystemUnspawnManager::SystemUnspawnManager(std::vector<EntityId>& a_frameUnspawns)

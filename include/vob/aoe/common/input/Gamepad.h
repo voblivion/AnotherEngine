@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vob/aoe/common/input/physical/Switch.h>
+#include <vob/aoe/common/input/Switch.h>
 
-#include <vob/sta/enum_map.h>
+#include <vob/misc/std/enum_map.h>
 
 #include <GL/glew.h>
 #define GLFW_DLL
@@ -85,8 +85,8 @@ namespace vob::aoe::common
 
         Switch m_state{};
         std::string_view m_name{};
-        sta::enum_map<Button, Button::A, Button::Count, Switch> m_buttons{};
-        sta::enum_map<Axis, Axis::LX, Axis::Count, float> m_axes{};
+        mistd::enum_map<Button, Button::A, Button::Count, Switch> m_buttons{};
+        mistd::enum_map<Axis, Axis::LX, Axis::Count, float> m_axes{};
     };
 
     inline Gamepad::Button gamepadButtonFromGlfw(int a_glfwGamepadButtonId)

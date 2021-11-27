@@ -12,10 +12,10 @@
 #include <vob/aoe/common/time/WorldTimeComponent.h>
 #include <vob/aoe/common/physic/RigidBodyComponent.h>
 #include <vob/aoe/common/physic/WorldPhysicComponent.h>
-#include <vob/aoe/common/input/physical/Keyboard.h>
-#include <vob/aoe/common/input/physical/Mouse.h>
+#include <vob/aoe/common/input/Keyboard.h>
+#include <vob/aoe/common/input/Mouse.h>
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -33,7 +33,7 @@ namespace vob::aoe::common
 {
 	class SimpleControllerSystem
 	{
-		using Components = ecs::ComponentTypeList<
+		using Components = aoecs::ComponentTypeList<
 			TransformComponent
 			, VelocityComponent
 			, SimpleControllerComponent
@@ -41,7 +41,7 @@ namespace vob::aoe::common
 			, HierarchyComponent const
 		>;
 	public:
-		explicit SimpleControllerSystem(ecs::WorldDataProvider& a_wdp)
+		explicit SimpleControllerSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_worldInput{ *a_wdp.getWorldComponent<WorldInputComponent const>() }
 			, m_worldCursor{ *a_wdp.getWorldComponent<WorldCursorComponent>() }
 			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
@@ -69,18 +69,18 @@ namespace vob::aoe::common
 				auto& rigidBody = entity.getComponent<RigidBodyComponent>();
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
-					DebugVertex{ transform.m_matrix[3], vec3{1.0f, 0.0f, 0.0f} }
-					, DebugVertex{ vec3{ transform.m_matrix[3] } + vec3{1.0f, 0.0f, 0.0f}, vec3{1.0f, 0.0f, 0.0f} }
+					DebugVertex{ transform.m_matrix[3], glm::vec3{1.0f, 0.0f, 0.0f} }
+					, DebugVertex{ glm::vec3{ transform.m_matrix[3] } + glm::vec3{1.0f, 0.0f, 0.0f}, glm::vec3{1.0f, 0.0f, 0.0f} }
 				);
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
-					DebugVertex{ transform.m_matrix[3], vec3{0.0f, 1.0f, 0.0f} }
-					, DebugVertex{ vec3{ transform.m_matrix[3] } + vec3{0.0f, 1.0f, 0.0f}, vec3{0.0f, 1.0f, 0.0f} }
+					DebugVertex{ transform.m_matrix[3], glm::vec3{0.0f, 1.0f, 0.0f} }
+					, DebugVertex{ glm::vec3{ transform.m_matrix[3] } + glm::vec3{0.0f, 1.0f, 0.0f}, glm::vec3{0.0f, 1.0f, 0.0f} }
 				);
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
-					DebugVertex{ transform.m_matrix[3], vec3{0.0f, 0.0f, 1.0f} }
-					, DebugVertex{ vec3{ transform.m_matrix[3] } + vec3{0.0f, 0.0f, 1.0f}, vec3{0.0f, 0.0f, 1.0f} }
+					DebugVertex{ transform.m_matrix[3], glm::vec3{0.0f, 0.0f, 1.0f} }
+					, DebugVertex{ glm::vec3{ transform.m_matrix[3] } + glm::vec3{0.0f, 0.0f, 1.0f}, glm::vec3{0.0f, 0.0f, 1.0f} }
 				);
 
 				// Compute local required movement
@@ -123,11 +123,11 @@ namespace vob::aoe::common
 					t_linearVelocity *= linearSpeed;// / directionLength;
 				}
 				
-				sta::acceleration_measure<float> const gravity{ -9.81f * 2.0f };
-				sta::speed_measure<float> const addedVerticalSpeed = gravity * m_worldTimeComponent.m_elapsedTime;
+				misph::measure_acceleration const gravity{ -9.81f * 2.0f };
+				misph::measure_velocity const addedVerticalSpeed = gravity * m_worldTimeComponent.m_elapsedTime;
 
 				t_linearVelocity.y = simpleController.m_fallVelocity;
-				t_linearVelocity.y += addedVerticalSpeed.value;
+				t_linearVelocity.y += addedVerticalSpeed.get_value();
 				t_linearVelocity.y = std::max(-10.0f, t_linearVelocity.y); // human's terminal velocity = 55m/s
 
 				bool canJump = false;
@@ -143,8 +143,8 @@ namespace vob::aoe::common
 						m_worldPhysicComponent.m_dynamicsWorldHolder->getDynamicsWorld();
 					t_dynamicsWorld.rayTest(from, to, res);
 					m_debugSceneRenderComponent.m_debugMesh.addLine(
-						DebugVertex{ toGlmVec3(from), vec3{1.0f, 0.0f, 1.0f} }
-						, DebugVertex{ toGlmVec3(to), vec3{1.0f, 0.0f, 1.0f} }
+						DebugVertex{ toGlmVec3(from), glm::vec3{1.0f, 0.0f, 1.0f} }
+						, DebugVertex{ toGlmVec3(to), glm::vec3{1.0f, 0.0f, 1.0f} }
 					);
 					if (res.hasHit())
 					{
@@ -205,12 +205,14 @@ namespace vob::aoe::common
 						auto const t_rigidBody = t_bullet.getComponent<RigidBodyComponent>();
 						glm::vec3 t_localVelocity{ 0.0f, 0.0f, -8.0f };
 						t_rigidBody->m_linearVelocity = glm::vec3{
-							glm::quat{ simpleController.m_orientation } * glm::vec4{ t_localVelocity, 1.0f }
+							glm::quat{ simpleController.m_orientation }
+							* glm::quat{ simpleController.m_headOrientation}
+							* glm::vec4{ t_localVelocity, 1.0f }
 						};
 
 						// Initial position
 						auto const t_transform = t_bullet.getComponent<TransformComponent>();
-						t_transform->m_matrix = transform.m_matrix;
+						t_transform->m_matrix = glm::translate(transform.m_matrix, glm::vec3{ 0.0f, 1.5f, 0.0f });
 						t_transform->m_matrix = glm::translate(t_transform->m_matrix, t_rigidBody->m_linearVelocity / 10.0f);
 
 						m_systemSpawnManager.spawn(std::move(t_bullet));
@@ -233,13 +235,13 @@ namespace vob::aoe::common
 					// Compute new orientation
 
 					auto& euler = simpleController.m_orientation;
-					euler.y += m_worldTimeComponent.m_elapsedTime.value
+					euler.y += m_worldTimeComponent.m_elapsedTime.get_value()
 						* -m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RX] * 2;
 					//	* -m_worldInput.m_mouse.m_move.x;
 					euler.y = std::fmod(euler.y, 2 * glm::pi<float>());
 
 					auto& headEuler = simpleController.m_headOrientation;
-					headEuler.x += m_worldTimeComponent.m_elapsedTime.value
+					headEuler.x += m_worldTimeComponent.m_elapsedTime.get_value()
 						* -m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RY] * 2;
 
 					auto& hierarchy = entity.getComponent<HierarchyComponent>();
@@ -283,14 +285,14 @@ namespace vob::aoe::common
 		WorldPhysicComponent& m_worldPhysicComponent;
 		// TMP
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
-		ecs::EntityViewList<
+		aoecs::EntityViewList<
 			TransformComponent
 			, VelocityComponent
 			, SimpleControllerComponent
 			, RigidBodyComponent
 			, HierarchyComponent const
 		> const& m_entities;
-		ecs::EntityViewList<HierarchyComponent const, LocalTransformComponent> const& m_heads;
-		ecs::SystemSpawnManager& m_systemSpawnManager;
+		aoecs::EntityViewList<HierarchyComponent const, LocalTransformComponent> const& m_heads;
+		aoecs::SystemSpawnManager& m_systemSpawnManager;
 	};
 }

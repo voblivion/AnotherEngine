@@ -2,7 +2,7 @@
 
 #include <vob/aoe/common/render/gui/elements/AElement.h>
 #include <vob/aoe/common/render/gui/elements/AStandardElement.h>
-#include <vob/aoe/core/type/Clone.h>
+
 
 namespace vob::aoe::common
 {
@@ -24,12 +24,12 @@ namespace vob::aoe::common
         Side m_firstSide = Side::Top;
         float m_firstSideSize = 0.0f;
 
-        type::Cloneable<AElement> m_firstChildElement;
-        type::Cloneable<AElement> m_secondChildElement;
+		type::dynamic_type_clone<AElement> m_firstChildElement;
+		type::dynamic_type_clone<AElement> m_secondChildElement;
 #pragma endregion
 
 #pragma region Constructors
-		explicit SplitElement(type::Cloner<> const& a_cloner)
+		explicit SplitElement(type::dynamic_type_clone_copier const& a_cloner)
 			: m_firstChildElement{ a_cloner }
 			, m_secondChildElement{ a_cloner }
 		{}

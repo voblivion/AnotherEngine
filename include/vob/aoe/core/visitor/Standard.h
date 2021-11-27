@@ -7,21 +7,22 @@
 #include <vector>
 #include <variant>
 
-#include <vob/sta/ignorable_assert.h>
-#include <vob/sta/memory.h>
-#include <vob/sta/unicode.h>
-#include <vob/sta/vector_map.h>
-#include <vob/sta/vector_set.h>
-
 #include <vob/aoe/core/visitor/Utils.h>
-#include <vob/aoe/core/type/Factory.h>
-#include <vob/aoe/core/type/Variant.h>
-#include <vob/aoe/core/type/TypeRegistry.h>
-#include <vob/aoe/core/type/Traits.h>
-#include <vob/aoe/core/type/TypeFactory.h>
+#include <vob/aoe/core/visitor/Factory.h>
+#include <vob/aoe/core/visitor/Variant.h>
+#include <vob/aoe/core/type/ADynamicType.h>
 // TODO why is this here ? hmm... ready dynamic types --'
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <vob/sta/enum.h>
+
+#include <vob/misc/type/clone.h>
+
+#include <vob/misc/hash/string_id.h>
+
+#include <vob/misc/std/ignorable_assert.h>
+#include <vob/misc/std/polymorphic_ptr.h>
+#include <vob/misc/std/vector_map.h>
+#include <vob/misc/std/vector_set.h>
+#include <vob/misc/std/enum_traits.h>
 
 
 #include <iostream>
@@ -52,7 +53,7 @@ namespace vob::aoe::vis
 	template <typename VisitorType, typename KeyType, typename ValueType
 		, typename HashType, typename KeyEqType, typename AllocatorType
 		
-		, typename Factory = type::Factory<std::pair<KeyType, ValueType>>>
+		, typename Factory = Factory<std::pair<KeyType, ValueType>>>
 	void accept(
 		VisitorType& a_visitor
 		, std::unordered_map<KeyType, ValueType, HashType, KeyEqType, AllocatorType>& a_map
@@ -94,12 +95,12 @@ namespace vob::aoe::vis
 #define BLOCK_VISIT_VECTOR_MAP
 #ifdef BLOCK_VISIT_VECTOR_MAP
 	template <
-		typename VisitorType, typename KeyType, typename ValueType, typename AllocatorType
+		typename VisitorType, typename KeyType, typename ValueType, typename KeyEqual, typename AllocatorType
 		
 	>
 	void accept(
 		VisitorType& a_visitor
-		, sta::vector_map<KeyType, ValueType, AllocatorType> const& a_map
+		, mistd::vector_map<KeyType, ValueType, KeyEqual, AllocatorType> const& a_map
 	)
 	{
 		SizeTag t_size{ a_map.size() };
@@ -112,13 +113,13 @@ namespace vob::aoe::vis
 	}
 
 	template <
-		typename VisitorType, typename KeyType, typename ValueType, typename AllocatorType
+		typename VisitorType, typename KeyType, typename ValueType, typename KeyEqual, typename AllocatorType
 		
-		, typename Factory = type::Factory<std::pair<KeyType, ValueType>>
+		, typename Factory = Factory<std::pair<KeyType, ValueType>>
 	>
 	void accept(
 		VisitorType& a_visitor
-		, sta::vector_map<KeyType, ValueType, AllocatorType>& a_map
+		, mistd::vector_map<KeyType, ValueType, KeyEqual, AllocatorType>& a_map
 		, Factory a_defaultFactory = {}
 	)
 	{
@@ -142,7 +143,7 @@ namespace vob::aoe::vis
 	>
 	void accept(
 		VisitorType& a_visitor
-		, sta::vector_set<KeyType, EqualType, AllocatorType> const& a_set
+		, mistd::vector_set<KeyType, EqualType, AllocatorType> const& a_set
 	)
 	{
 		SizeTag t_size{ a_set.size() };
@@ -157,11 +158,11 @@ namespace vob::aoe::vis
 	template <
 		typename VisitorType, typename KeyType, typename EqualType, typename AllocatorType
 		
-		, typename Factory = type::Factory<KeyType>
+		, typename Factory = Factory<KeyType>
 	>
 	void accept(
 		VisitorType& a_visitor
-		, sta::vector_set<KeyType, EqualType, AllocatorType>& a_map
+		, mistd::vector_set<KeyType, EqualType, AllocatorType>& a_map
 		, Factory a_defaultFactory = {})
 	{
 		SizeTag t_size{};
@@ -180,7 +181,7 @@ namespace vob::aoe::vis
 #ifdef BLOCK_VISIT_VECTOR
 	template <
 		typename VisitorType, typename ValueType, typename AllocatorType
-		, typename Factory = type::Factory<ValueType>
+		, typename Factory = Factory<ValueType>
 	>
 	void accept(
 		VisitorType& a_visitor
@@ -199,6 +200,7 @@ namespace vob::aoe::vis
 		}
 	}
 #endif
+
 #define BLOCK_VISIT_ARRAY
 #ifdef BLOCK_VISIT_ARRAY
 	template <
@@ -249,14 +251,14 @@ namespace vob::aoe::vis
 	template <typename VisitorType, typename... Types>
 	void accept(VisitorType& a_visitor, std::variant<Types...>& a_variant)
 	{
-		accept(a_visitor, a_variant, type::VariantFactory<Types...>{});
+		accept(a_visitor, a_variant, VariantFactory<Types...>{});
 	}
 #endif
 
 #define BLOCK_VISIT_CONTAINER_ITEM
 #ifdef BLOCK_VISIT_CONTAINER_ITEM
-	template <typename VisitorType, typename ContainerType
-		, typename ConstructorType, enforce(!std::is_const_v<ContainerType>)>
+	template <typename VisitorType, typename ContainerType, typename ConstructorType>
+	requires (!std::is_const_v<ContainerType>)
 	void accept(
 		VisitorType& a_visitor
 		, ContainerHolder<ContainerType, ConstructorType> a_pair
@@ -265,8 +267,8 @@ namespace vob::aoe::vis
 		accept(a_visitor, a_pair.m_container, a_pair.m_factory);
 	}
 
-	template <typename VisitorType, typename ContainerType
-		, typename ConstructorType, enforce(std::is_const_v<ContainerType>)>
+	template <typename VisitorType, typename ContainerType, typename ConstructorType>
+	requires std::is_const_v<ContainerType>
 	void accept(
 		VisitorType& a_visitor
 		, ContainerHolder<ContainerType&, ConstructorType> a_pair
@@ -279,9 +281,9 @@ namespace vob::aoe::vis
 #define BLOCK_VISIT_POINTER
 #ifdef BLOCK_VISIT_POINTER
 	template <typename VisitorType>
-	sta::string_id readTypeId(
+	mishs::string_id readTypeId(
 		VisitorType& a_visitor
-		, sta::string_id const a_defaultId
+		, mishs::string_id const a_defaultId
 	)
 	{
 		auto t_id = a_defaultId;
@@ -290,7 +292,7 @@ namespace vob::aoe::vis
 	}
 
 	template <typename VisitorType>
-	void writeTypeId(VisitorType& a_visitor, sta::string_id const a_id)
+	void writeTypeId(VisitorType& a_visitor, mishs::string_id const a_id)
 	{
 		auto const& t_typeRegistry = a_visitor.getContext().m_typeRegistry;
 
@@ -353,21 +355,21 @@ namespace vob::aoe::vis
 	{
 		auto const& typeFactory = TypeFactoryGetter<BaseType>()(a_visitor);
 		auto const& typeRegistry = a_visitor.getContext().m_typeRegistry;
-		auto voidTypeId = typeRegistry.template getId<void>();
+		auto voidTypeId = typeRegistry.template find_id<void>();
 		auto id = readTypeId(a_visitor, voidTypeId);
 
-		a_ptr = typeFactory.template createShared<BaseType>(id);
+		a_ptr = typeFactory.template create_shared<BaseType>(id);
 
 		ignorable_assert(id == voidTypeId || a_ptr != nullptr);
 		visitData(a_visitor, a_ptr);
 	}
 
 	template <typename VisitorType, typename BaseType>
-	void accept(VisitorType& a_visitor, sta::polymorphic_ptr<BaseType>& a_ptr)
+	void accept(VisitorType& a_visitor, mistd::polymorphic_ptr<BaseType>& a_ptr)
 	{
 		auto const& typeFactory = TypeFactoryGetter<BaseType>()(a_visitor);
 		auto const& typeRegistry = a_visitor.getContext().m_typeRegistry;
-		auto voidTypeId = typeRegistry.template getId<void>();
+		auto voidTypeId = typeRegistry.template find_id<void>();
 		auto id = readTypeId(a_visitor, voidTypeId);
 
 		a_ptr = typeFactory.template create<BaseType>(id);
@@ -441,6 +443,19 @@ namespace vob::aoe::vis
 		visitData(a_visitor, a_ptr);
 	}*/
 #endif
+
+#pragma region BLOCK_VISIT_CLONE
+	template <typename TVisitor, typename TValue, typename TCloneCopier>
+	void accept(
+		TVisitor& a_visitor,
+		misty::clone<TValue, TCloneCopier>& a_clone)
+	{
+		mistd::polymorphic_ptr<TValue> ptr;
+		accept(a_visitor, ptr);
+		a_clone.reset(std::move(ptr));
+	}
+#pragma endregion
+
 #pragma region Filesystem
 	template <typename VisitorType>
 	void accept(
@@ -460,15 +475,9 @@ namespace vob::aoe::vis
 		, EnumType& a_value
 	)
 	{
-		auto all = sta::enum_value_name_pairs<EnumType>;
-		for (auto a : all)
-		{
-			std::cout << a.second << std::endl;
-		}
-
 		std::string valueRepresentation;
 		a_visitor.visit(valueRepresentation);
-		a_value = sta::enum_cast<EnumType>(valueRepresentation).value_or(a_value);
+		a_value = mistd::enum_traits<EnumType>::cast(valueRepresentation).value_or(a_value);
 	}
 
     template <typename VisitorType, typename ValueType>

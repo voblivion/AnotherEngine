@@ -1,5 +1,5 @@
 #pragma once
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/SceneFramebufferInitializer.h>
 #include <vob/aoe/common/render/model/ModelRenderPass.h>
@@ -17,7 +17,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit RenderSystem(ecs::WorldDataProvider& a_wdp)
+		explicit RenderSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_renderPass{ a_wdp }
 		{}
 
@@ -35,7 +35,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit GameRenderSystem(ecs::WorldDataProvider& a_wdp)
+		explicit GameRenderSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_sceneFramebufferInitializer{ a_wdp }
 			, m_modelRenderPass{ a_wdp }
 			, m_debugSceneRenderPass{ a_wdp }

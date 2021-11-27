@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "vob/aoe/core/ecs/Component.h"
+#include "vob/aoe/ecs/Component.h"
 #include <bullet/BulletDynamics/Dynamics/btRigidBody.h>
 #include "AMotionState.h"
 #include <vob/aoe/common/physic/ACollisionShape.h>
@@ -13,26 +13,26 @@
 namespace vob::aoe::common
 {
 	struct RigidBodyComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		btScalar m_mass{ 0.0 };
-		type::Cloneable<ACollisionShape> m_collisionShape;
-		vec3 m_linearFactor{ 1.0f };
-		vec3 m_angularFactor{ 1.0f };
+		type::dynamic_type_clone<ACollisionShape> m_collisionShape;
+		glm::vec3 m_linearFactor{ 1.0f };
+		glm::vec3 m_angularFactor{ 1.0f };
 		std::shared_ptr<PhysicMaterial const> m_physicMaterial;
 
-		vec3 m_linearVelocity{ 0.0f };
-		quat m_angularVelocity{ vec3{ 0.0f } };
+		glm::vec3 m_linearVelocity{ 0.0f };
+		glm::quat m_angularVelocity{ glm::vec3{ 0.0f } };
 
-		vec3 m_offset{ 0.0f };
+		glm::vec3 m_offset{ 0.0f };
 
 		// shared but different from one entity in the world to another
 		std::shared_ptr<btRigidBody> m_rigidBody;
 		std::shared_ptr<btDefaultMotionState> m_motionState;
 
 		// Constructor
-		explicit RigidBodyComponent(type::Cloner<> const& a_cloner)
+		explicit RigidBodyComponent(type::dynamic_type_clone_copier const& a_cloner)
 			: m_collisionShape{ a_cloner }
 		{}
 	};

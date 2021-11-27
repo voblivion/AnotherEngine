@@ -25,7 +25,7 @@ namespace vob::aoe::common
         template <typename VisitorType, typename Self>
         static void accept(VisitorType& a_visitor, Self& a_this)
         {
-            auto t_halfExtent = vec3{ 0.5f, 0.5f, 0.5f };
+            auto t_halfExtent = glm::vec3{ 0.5f, 0.5f, 0.5f };
             a_visitor.visit(vis::nvp("HalfExtent", t_halfExtent));
             a_this.m_shape = btCylinderShape(common::toBtVector(t_halfExtent));
         }

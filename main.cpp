@@ -1,6 +1,6 @@
 
-#include <vob/sta/vector_map.h>
-#include <vob/random/perlin.h>
+#include <vob/misc/std/vector_map.h>
+#include <vob/_todo_/random/perlin.h>
 #include <GL/glew.h>
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
@@ -12,7 +12,7 @@
 #include "vob/aoe/common/render/DirectorComponent.h"
 #include "vob/aoe/common/physic/WorldPhysicComponent.h"
 #include "vob/aoe/common/physic/DefaultDynamicsWorldHolder.h"
-#include "vob/aoe/core/ecs/World.h"
+#include "vob/aoe/ecs/World.h"
 #include "vob/aoe/common/physic/PhysicSystem.h"
 #include "vob/aoe/common/test/TestSystem.h"
 #include "vob/aoe/common/render/RenderSystem.h"
@@ -29,19 +29,23 @@
 #include <vob/aoe/common/render/SceneFramebufferInitializer.h>
 #include <regex>
 #include <memory_resource>
+#include <vob/misc/hash/string_id_literals.h>
+#include <vob/misc/physics/measure_literals.h>
 
 #include <vob/aoe/common/editor/EditorVisitor.h>
 
+
 using namespace vob;
-using namespace sta::literals;
+using namespace misph::literals;
+using namespace mishs::literals;
 
 const std::uint32_t g_width = 2048u;
 const std::uint32_t g_height = 1024u;
 
-std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
+std::unique_ptr<aoe::aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
 {
 	// Prepare world components
-	aoe::ecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoe::aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
 	t_worldComponents.addComponent<aoe::common::WorldWindowComponent>(a_window);
 	t_worldComponents.addComponent<aoe::common::SceneRenderComponent>(
 		a_data.renderTextureResourceManager
@@ -67,7 +71,7 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	t_worldComponents.addComponent<aoe::common::WorldInputComponent>();
 	t_worldComponents.addComponent<aoe::common::WorldCursorComponent>();
 	t_worldComponents.addComponent<aoe::common::DirectorComponent>();
-	auto dynamicsWorldHolder = aoe::type::Cloneable<aoe::common::ADynamicsWorldHolder>(a_data.dynamicTypeCloner);
+	auto dynamicsWorldHolder = aoe::type::dynamic_type_clone<aoe::common::ADynamicsWorldHolder>(a_data.dynamicTypeCloner);
 	dynamicsWorldHolder.init<aoe::common::DefaultDynamicsWorldHolder>();
 	t_worldComponents.addComponent<aoe::common::WorldPhysicComponent>(std::move(dynamicsWorldHolder));
 	t_worldComponents.addComponent<aoe::common::GuiRenderComponent>(
@@ -78,7 +82,7 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	);
 
 	// Create world
-	auto world = std::make_unique<aoe::ecs::World>(std::move(t_worldComponents));
+	auto world = std::make_unique<aoe::aoecs::World>(std::move(t_worldComponents));
 
 	// Register Systems
 	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
@@ -115,14 +119,14 @@ std::unique_ptr<aoe::ecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::c
 	return std::move(world);
 }
 
-void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
+void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world)
 {
     auto& cloner = a_data.dynamicTypeCloner;
     auto& database = a_data.database;
     auto& worldData = a_world.getData();
     auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
 
-	aoe::ecs::ComponentManager canvasArk{ cloner };
+	aoe::aoecs::ComponentManager canvasArk{ cloner };
 	auto& canvasComponent = canvasArk.addComponent<aoe::common::CanvasComponent>(cloner);
 
 	auto& guiMeshResourceManager = a_data.guiMeshResourceManager;
@@ -132,9 +136,9 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	splitElement.m_firstSide = aoe::common::SplitElement::Side::Right;
 
 	auto& textInputElement = splitElement.m_firstChildElement.init<aoe::common::TextInputElement>(guiMeshResourceManager);
-	textInputElement.m_borderColor = aoe::vec4{ 1.0f };
-	textInputElement.m_borderWidth = aoe::vec4{ 1.f, 15.f, 25.f, 125.f };
-	textInputElement.setText("Bonjour");
+	textInputElement.m_borderColor = glm::vec4{ 1.0f };
+	textInputElement.m_borderWidth = glm::vec4{ 1.f, 15.f, 25.f, 125.f };
+	textInputElement.setText(U"Bonjour");
 	textInputElement.setSize(32);
 	textInputElement.setFont(database.find<aoe::common::Font>(a_data.fileSystemIndexer.getId("data/font.fnt")));
 
@@ -143,7 +147,7 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 
 vob::aoe::vis::EditorVisitor* leakingEditorVisitor = nullptr;
 
-void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
+void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::aoecs::World& a_world)
 {
 	auto& worldData = a_world.getData();
 	auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
@@ -156,25 +160,25 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 		, a_data.dynamicTypeCloner
 	};
 
-	auto playerArk = a_data.database.find<aoe::ecs::ComponentManager>(2);
+	auto playerArk = a_data.database.find<aoe::aoecs::ComponentManager>(2);
 	if (playerArk != nullptr)
 	{
 		auto& player = systemSpawnManager.spawn(*playerArk);
 
-		auto playerNeckArk = a_data.database.find<aoe::ecs::ComponentManager>(10);
+		auto playerNeckArk = a_data.database.find<aoe::aoecs::ComponentManager>(10);
 		if (playerNeckArk != nullptr)
 		{
 			auto playerNeck = *playerNeckArk;
 			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
-			hierarchy->m_parent = aoe::ecs::EntityHandle{ player };
+			hierarchy->m_parent = aoe::aoecs::EntityHandle{ player };
 			auto& neck = systemSpawnManager.spawn(playerNeck);
 
-			auto playerCameraArk = a_data.database.find<aoe::ecs::ComponentManager>(3);
+			auto playerCameraArk = a_data.database.find<aoe::aoecs::ComponentManager>(3);
 			if (playerCameraArk != nullptr)
 			{
 				auto playerCamera = *playerCameraArk;
 				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
-				hierarchy->m_parent = aoe::ecs::EntityHandle{ neck };
+				hierarchy->m_parent = aoe::aoecs::EntityHandle{ neck };
 				systemSpawnManager.spawn(playerCamera);
 			}
 		}
@@ -184,7 +188,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	}
 
 	auto const groundPath = std::filesystem::path{ "data/archetypes/grass.json" };
-	auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
+	auto groundArk = a_data.database.find<aoe::aoecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
 	if (groundArk != nullptr)
 	{
 		auto ground = *groundArk;
@@ -202,30 +206,89 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 		{
 			for (auto j = 0; j < sizeY; ++j)
 			{
-				auto n = glm::vec3{ 0.0f, 1.0f, 0.0f };
-
 				auto s = static_cast<std::uint32_t>(vertices.size());
 				triangles.emplace_back(s, s + 1, s + 2);
 
-				constexpr auto sc = 2.0f;
+				constexpr auto bs = float(64)/sizeX;
+				constexpr auto sc = float(sizeX)/8;
 
 				constexpr auto e = 4.0f;
 
-				auto a = static_cast<float>(i);
-				auto b = static_cast<float>(j);
-				auto c = a + 1.0f;
-				auto d = b + 1.0f;
+				auto x0 = static_cast<float>(i);
+				auto y0 = static_cast<float>(j);
+				auto x1 = x0 + 1.0f;
+				auto y1 = y0 + 1.0f;
+				auto xn = x0 - 1.0f;
+				auto yn = y0 - 1.0f;
+				auto x2 = x1 + 1.0f;
+				auto y2 = y1 + 1.0f;
 
-				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, b/e), b }, n, glm::vec2{ 0.0f, 0.0f });
-				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
-				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
+				auto p = [bs, sc, e](float x, float y)
+				{
+					return glm::vec3{ bs * x, sc * rng::perlin(x/32, y/32), bs * y };
+				};
+
+				auto p0 = p(x0, y0);
+				auto p1 = p(x1, y0);
+				auto p2 = p(x0, y1);
+				auto p3 = p(x1, y1);
+
+				auto p01 = p(xn, y0);
+				auto p10 = p(x2, y0);
+				auto p02 = p(x0, yn);
+				auto p13 = p(x1, yn);
+				auto p23 = p(xn, y1);
+				auto p32 = p(x2, y1);
+				auto p20 = p(x0, y2);
+				auto p31 = p(x1, y2);
+
+				auto f = [](auto p0, auto p1, auto p2)
+				{
+					auto faceNormal = glm::cross(p1-p0, p2-p0);
+					return faceNormal;
+				};
+
+				auto n = [&f](auto p0, auto p1, auto p2, auto p3, auto p4)
+				{
+					auto averageNormal =
+						glm::normalize(f(p0, p1, p2) + f(p0, p2, p3) + f(p0, p3, p4) + f(p0, p4, p1));
+					return -averageNormal;
+				};
+				
+				auto n0 = n(p0, p1, p2, p01, p02);
+				auto n1 = n(p1, p10, p3, p0, p13);
+				auto n2 = n(p2, p3, p20, p23, p0);
+				auto n3 = n(p3, p32, p31, p2, p1);
+				/*n0 = glm::normalize(f(p1, p2, p01) + f(p01, p02, p1));
+				n0 = glm::normalize(f(p10, p3, p0) + f(p0, p13, p10));
+				n0 = glm::normalize(f(p3, p20, p23) + f(p23, p0, p3));
+				n0 = glm::normalize(f(p32, p31, p2) + f(p2, p1, p32));
+
+				n1 = f(p1, p3, p0);
+				n2 = f(p3, p2, p1);
+				n3 = f(p2, p0, p3);
+				n1 = n0;
+				n2 = n0;
+				n3 = n0;*/
+
+				auto tc0 = glm::vec2{ 0.0f, 0.0f };
+				auto tc1 = glm::vec2{ 0.0f, 1.0f };
+				auto tc2 = glm::vec2{ 1.0f, 0.0f };
+				auto tc3 = glm::vec2{ 1.0f, 1.0f };
+
+				auto t0 = glm::vec3{1.0f, 0.0f, 0.0f};
+				auto t3 = glm::vec3{1.0f, 0.0f, 0.0f};
+
+				vertices.emplace_back(p0, n0, tc0, t0);
+				vertices.emplace_back(p1, n1, tc1, t0);
+				vertices.emplace_back(p2, n2, tc2, t0);
 
 				s = static_cast<std::uint32_t>(vertices.size());
 				triangles.emplace_back(s, s + 1, s + 2);
 
-				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, d/e), d }, n, glm::vec2{ 1.0f, 1.0f });
-				vertices.emplace_back(glm::vec3{ c, sc *rng::perlin(c/e, b/e), b }, n, glm::vec2{ 1.0f, 0.0f });
-				vertices.emplace_back(glm::vec3{ a, sc *rng::perlin(a/e, d/e), d }, n, glm::vec2{ 0.0f, 1.0f });
+				vertices.emplace_back(p3, n3, tc3, t3);
+				vertices.emplace_back(p2, n2, tc2, t3);
+				vertices.emplace_back(p1, n1, tc1, t3);
 			}
 		}
 
@@ -242,7 +305,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	}
 
 	//// Load model
-	//auto modelArk = a_data.database.find<aoe::ecs::ComponentManager>(4);
+	//auto modelArk = a_data.database.find<aoe::aoecs::ComponentManager>(4);
 	//if (modelArk != nullptr)
 	//{
 	//	{
@@ -251,7 +314,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	//}
 
 	//// Load ground
-	//auto groundArk = a_data.database.find<aoe::ecs::ComponentManager>(5);
+	//auto groundArk = a_data.database.find<aoe::aoecs::ComponentManager>(5);
 	//if (groundArk != nullptr)
 	//{
 	//	{
@@ -287,10 +350,10 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoe::ecs::World& a_world)
 	//}
 }
 
-std::unique_ptr<aoe::ecs::World> createEditorWorld(aoe::DataHolder& a_data)
+std::unique_ptr<aoe::aoecs::World> createEditorWorld(aoe::DataHolder& a_data)
 {
 	// Prepare world components
-	aoe::ecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoe::aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
 	return nullptr;
 }
 

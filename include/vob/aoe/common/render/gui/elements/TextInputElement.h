@@ -29,16 +29,16 @@ namespace vob::aoe::common
 		}
 
 	private:
-		void insert(u32 a_unicode);
+		void insert(char32_t a_unicode);
 		void erase(std::size_t a_count);
 
 		size_t prevWordStart() const;
 		size_t nextWordStart() const;
 
 		mutable bool m_needsCursorUpdate = true;
-		mutable std::pair<vec2, vec2> m_cursorTransform = {};
+		mutable std::pair<glm::vec2, glm::vec2> m_cursorTransform = {};
 		mutable TimePoint m_lastCursorUpdateTime = {};
-		ivec2 m_mousePosition = {};
+		glm::ivec2 m_mousePosition = {};
 		bool m_isMouseLeftDown = false;
 	};
 }

@@ -4,7 +4,8 @@
 
 #include <vob/aoe/core/data/Id.h>
 #include <vob/aoe/core/type/ADynamicType.h>
-#include <vob/aoe/core/type/TypeRegistry.h>
+
+#include <vob/misc/type/registry.h>
 
 
 namespace vob::aoe::data
@@ -13,7 +14,7 @@ namespace vob::aoe::data
 	{
 	public:
 		// Constructors
-		explicit ADatabase(type::TypeRegistry& a_typeRegistry)
+		explicit ADatabase(misty::pmr::registry& a_typeRegistry)
 			: m_typeRegistry{ a_typeRegistry }
 		{}
 
@@ -23,7 +24,7 @@ namespace vob::aoe::data
 		template <typename DataType>
 		std::shared_ptr<DataType> find(Id const a_id)
 		{
-			return m_typeRegistry.fastCast<DataType>(findDynamic(a_id));
+			return m_typeRegistry.fast_cast<DataType>(findDynamic(a_id));
 		}
 
 		template <typename DataType>
@@ -38,6 +39,6 @@ namespace vob::aoe::data
 
 	private:
 		// Attributes
-		type::TypeRegistry& m_typeRegistry;
+		misty::pmr::registry& m_typeRegistry;
 	};
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/CameraComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
@@ -13,7 +13,7 @@ namespace vob::aoe::common
 		TSceneShaderProgram const& a_sceneShaderProgram
 		, WorldWindowComponent const& a_worldWindowComponent
 		, DirectorComponent const& a_directorComponent
-		, ecs::EntityViewList<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
+		, aoecs::EntityViewList<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
 	)
     {
 		if (!a_sceneShaderProgram.isReady())

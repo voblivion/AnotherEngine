@@ -2,7 +2,6 @@
 
 #include <array>
 
-#include <vob/aoe/core/type/Primitive.h>
 #include <vob/aoe/core/visitor/Traits.h>
 
 namespace vob::aoe::common // TODO : change to ::gui
@@ -148,7 +147,7 @@ namespace vob::aoe::common // TODO : change to ::gui
             : m_values{ a_left, a_top, a_right, a_bottom }
         {}
 
-        vec4 get(float a_transformSize, float a_fontSize) const
+        glm::vec4 get(float a_transformSize, float a_fontSize) const
         {
             return {
                 m_values[0].get(a_transformSize, a_fontSize)

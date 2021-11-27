@@ -1,7 +1,7 @@
 #pragma once
 
 #include <unordered_set>
-#include <vob/aoe/core/ecs/WorldData.h>
+#include <vob/aoe/ecs/WorldData.h>
 // TMP
 #include <iostream>
 

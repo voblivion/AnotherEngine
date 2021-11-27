@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vob/misc/hash/string_id.h>
+
 #include <cassert>
 #include <memory>
 #include <optional>
@@ -7,7 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <vob/sta/string_id.h>
 
 namespace vob::aoe::type
 {
@@ -15,7 +16,7 @@ namespace vob::aoe::type
 	{
 		struct TypeData
 		{
-			std::uint64_t m_id;
+			mishs::string_id m_id;
 			std::size_t m_fastCastIndex;
 		};
 
@@ -23,7 +24,7 @@ namespace vob::aoe::type
 		// Constructors
 		TypeRegistry()
 		{
-			m_typeData.emplace(typeid(void), TypeData{ 0, 0 });
+			m_typeData.emplace(typeid(void), TypeData{ mishs::string_id{ 0 }, 0 });
 			m_idToTypeIndex.emplace(0, typeid(void));
 			m_types.emplace_back(
 				std::make_pair(std::type_index{ typeid(void) }, 0));
@@ -35,7 +36,7 @@ namespace vob::aoe::type
 			, m_idToTypeIndex{ a_allocator }
 			, m_types{ a_allocator }
 		{
-			m_typeData.emplace(typeid(void), TypeData{ 0, 0 });
+			m_typeData.emplace(typeid(void), TypeData{ mishs::string_id{ 0 }, 0 });
 			m_idToTypeIndex.emplace(0, typeid(void));
 			m_types.emplace_back(
 				std::make_pair(std::type_index{ typeid(void) }, 0));
@@ -53,28 +54,25 @@ namespace vob::aoe::type
 			return isRegistered(typeid(Type));
 		}
 
-		bool isUsed(std::uint64_t const a_id) const
+		bool isUsed(mishs::string_id const a_id) const
 		{
 			return m_idToTypeIndex.find(a_id) != m_idToTypeIndex.end();
 		}
 
 		template <typename Type>
-		void registerType(sta::string_id const a_id)
+		void registerType(mishs::string_id const a_id)
 		{
 			assert(!isRegistered<Type>() && !isUsed(a_id));
 			m_typeData.emplace(typeid(Type), TypeData{ a_id, m_types.size() });
 			m_idToTypeIndex.emplace(a_id, typeid(Type));
-			m_types.emplace_back(typeid(Type)
-				, m_typeData[typeid(void)].m_fastCastIndex);
+			m_types.emplace_back(typeid(Type), m_typeData[typeid(void)].m_fastCastIndex);
 		}
 
 		template <typename Type, typename Base>
-		void registerType(std::uint64_t const a_id)
+		void registerType(mishs::string_id const a_id)
 		{
 			static_assert(std::is_base_of_v<Base, Type>);
-			assert(!isRegistered<Type>());
-			assert(isRegistered<Base>());
-			assert(!isUsed(a_id));
+			assert(!isRegistered<Type>() && !isUsed(a_id) && isRegistered<Base>());
 			m_typeData.emplace(typeid(Type), TypeData{ a_id, m_types.size() });
 			m_idToTypeIndex.emplace(a_id, typeid(Type));
 			m_types.emplace_back(typeid(Type)
@@ -98,13 +96,13 @@ namespace vob::aoe::type
 		}
 
 		template <typename Base>
-		bool isBaseOf(std::uint64_t const a_id)
+		bool isBaseOf(mishs::string_id const a_id)
 		{
 			assert(isUsed(a_id));
 			return isBaseOf<Base>(m_idToTypeIndex.find(a_id)->second);
 		}
 
-        std::type_index const* findTypeIndex(std::uint64_t const a_id) const
+        std::type_index const* findTypeIndex(mishs::string_id const a_id) const
         {
 			auto it = m_idToTypeIndex.find(a_id);
 			return it != m_idToTypeIndex.end() ? &it->second : nullptr;
@@ -114,7 +112,7 @@ namespace vob::aoe::type
         {
             assert(isRegistered(a_typeIndex));
 			auto it = m_typeData.find(a_typeIndex);
-			return it != m_typeData.end() ? it->second.m_id : 0;
+			return it != m_typeData.end() ? it->second.m_id : mishs::string_id{ 0 };
         }
 
 		template <typename Type>
@@ -155,9 +153,9 @@ namespace vob::aoe::type
 
 	private:
 		// Attributes
-		std::unordered_map<std::type_index, TypeData> m_typeData;
-		std::unordered_map<sta::string_id, std::type_index> m_idToTypeIndex;
-		std::vector<std::pair<std::type_index, std::size_t>> m_types;
+		std::pmr::unordered_map<std::type_index, TypeData> m_typeData;
+		std::pmr::unordered_map<mishs::string_id, std::type_index, mishs::string_id_hash> m_idToTypeIndex;
+		std::pmr::vector<std::pair<std::type_index, std::size_t>> m_types;
 
 		// Methods
 		bool isBaseOf(std::size_t const a_baseTypeIndex

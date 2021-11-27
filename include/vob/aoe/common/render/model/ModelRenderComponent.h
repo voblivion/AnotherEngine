@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/ecs/Component.h>
+#include <vob/aoe/ecs/Component.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/Manager.h>
 #include <vob/aoe/common/render/model/ModelShaderProgram.h>
@@ -13,7 +13,7 @@
 namespace vob::aoe::common
 {
 	struct ModelRenderComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
 		glm::vec3 m_ambientColor{ 0.25f, 0.25f, 0.25f };

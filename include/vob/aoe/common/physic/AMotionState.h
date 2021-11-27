@@ -1,6 +1,5 @@
 #pragma once
 #include "vob/aoe/core/type/ADynamicType.h"
-#include "vob/aoe/core/type/TypeRegistry.h"
 #include <bullet/LinearMath/btMotionState.h>
 
 

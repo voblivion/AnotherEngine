@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/EntityManager.h>
-#include <vob/aoe/core/ecs/ComponentManager.h>
+#include <vob/aoe/ecs/EntityManager.h>
+#include <vob/aoe/ecs/ComponentManager.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	struct WorldData
 	{

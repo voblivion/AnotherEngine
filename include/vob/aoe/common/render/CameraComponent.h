@@ -1,10 +1,10 @@
 #pragma once
-#include <vob/aoe/core/ecs/Component.h>
+#include <vob/aoe/ecs/Component.h>
 
 namespace vob::aoe::common
 {
 	struct CameraComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		float fov{ 70.0f };
 		float nearClip{ 0.1f };

@@ -2,9 +2,12 @@
 
 #include <vob/aoe/common/window/WorldWindowComponent.h>
 #include <vob/aoe/common/input/WorldInputComponent.h>
+#include <vob/aoe/common/input/KeyboardUtil.h>
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
+#include <vob/misc/std/enum_traits.h>
+#include <iostream>
 
 using namespace vob::aoe::common;
 
@@ -17,9 +20,10 @@ namespace
 			return;
 		}
 
-		auto const key = keyFromGlfw(a_keyEvent.m_keyCode);
+		auto const key = KeyboardUtil::keyFromGlfw(a_keyEvent.m_keyCode);
 		if (key != Keyboard::Key::Unknown)
 		{
+			std::cout << vob::mistd::enum_traits<Keyboard::Key>::cast(key).value_or("") << std::endl;
 			auto& keyState = a_worldInput.m_keyboard.m_keys[key];
 			keyState.m_changed = true;
 			keyState.m_isActive = a_keyEvent.m_action == KeyEvent::Action::Press;
@@ -29,7 +33,7 @@ namespace
 	inline void processEvent(MouseMoveEvent const& a_mouseMoveEvent, WorldInputComponent& a_worldInput)
 	{
 		a_worldInput.m_mouse.m_move +=
-			vob::aoe::vec2{ a_mouseMoveEvent.m_position } - a_worldInput.m_mouse.m_position;
+			glm::vec2{ a_mouseMoveEvent.m_position } - a_worldInput.m_mouse.m_position;
 		a_worldInput.m_mouse.m_position = a_mouseMoveEvent.m_position;
 	}
 
@@ -61,14 +65,14 @@ namespace
 	{
 		a_worldInput.m_mouse.m_move = {};
 
-		for (auto key : a_worldInput.m_keyboard.m_keys)
+		for (auto& key : a_worldInput.m_keyboard.m_keys)
 		{
-			key.second.get().m_changed = false;
+			key.m_changed = false;
 		}
 
-		for (auto button : a_worldInput.m_mouse.m_buttons)
+		for (auto& button : a_worldInput.m_mouse.m_buttons)
 		{
-			button.second.get().m_changed = false;
+			button.m_changed = false;
 		}
 	}
 
@@ -130,30 +134,33 @@ namespace
 		}
 		a_gamepad.m_state.update(true);
 
-		for (auto buttonEntry : a_gamepad.m_buttons)
+		for (auto i = 0; i != a_gamepad.m_buttons.size(); ++i)
 		{
-			auto isActive = state.buttons[gamepadButtonToGlfw(buttonEntry.first)] == GLFW_PRESS;
-			auto& button = buttonEntry.second.get();
-			button.m_changed = button.m_isActive != isActive;
-			button.m_isActive = isActive;
+			auto button = Gamepad::Button(a_gamepad.m_buttons.begin_value + i);
+			auto isActive = state.buttons[gamepadButtonToGlfw(button)] == GLFW_PRESS;
+			auto& buttonState = a_gamepad.m_buttons[i];
+			buttonState.m_changed = buttonState.m_isActive != isActive;
+			buttonState.m_isActive = isActive;
 		}
 
-		for (auto axisEntry : a_gamepad.m_axes)
+		for (auto i = 0; i != a_gamepad.m_axes.size(); ++i)
 		{
-			axisEntry.second.get() = state.axes[gamepadAxisToGlfw(axisEntry.first)];
+			auto axis = Gamepad::Axis{ a_gamepad.m_axes.begin_value + i };
+			auto& axisState = a_gamepad.m_axes[i];
+			axisState = state.axes[gamepadAxisToGlfw(axis)];
 		}
 	}
 
 	inline void updateGamepads(WorldInputComponent& a_worldInput)
 	{
-		for (auto i = 0u; i < a_worldInput.m_gamepads.size(); ++i)
+		for (auto i = 0; i < a_worldInput.m_gamepads.size(); ++i)
 		{
 			updateGamepad(i, a_worldInput.m_gamepads[i]);
 		}
 	}
 }
 
-WindowInputSystem::WindowInputSystem(ecs::WorldDataProvider& a_wdp)
+WindowInputSystem::WindowInputSystem(aoecs::WorldDataProvider& a_wdp)
 	: m_worldWindowComponent{ *a_wdp.getWorldComponent<WorldWindowComponent>() }
 	, m_worldInputComponent{ *a_wdp.getWorldComponent<WorldInputComponent>() }
 	, m_worldStop{ a_wdp.getStopBool() }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 #include <vob/aoe/api.h>
 #include <vob/aoe/common/space/VelocityComponent.h>
 #include <vob/aoe/common/space/TransformComponent.h>
@@ -12,12 +12,12 @@ namespace vob::aoe::common
 	class MoveSystem final
 	{
 	public:
-		using Components = ecs::ComponentTypeList<
+		using Components = aoecs::ComponentTypeList<
 			TransformComponent
 			, VelocityComponent const
 		>;
 
-		explicit MoveSystem(ecs::WorldDataProvider& a_worldDataProvider)
+		explicit MoveSystem(aoecs::WorldDataProvider& a_worldDataProvider)
 			: m_worldTimeComponent{ *a_worldDataProvider.getWorldComponent<WorldTimeComponent>() }
 			, m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
@@ -38,6 +38,6 @@ namespace vob::aoe::common
 
 	private:
 		WorldTimeComponent& m_worldTimeComponent;
-		ecs::EntityViewList<TransformComponent, VelocityComponent const> const& m_entities;
+		aoecs::EntityViewList<TransformComponent, VelocityComponent const> const& m_entities;
 	};
 }

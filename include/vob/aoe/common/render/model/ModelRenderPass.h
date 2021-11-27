@@ -1,5 +1,5 @@
 #pragma once
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/CameraComponent.h>
 #include <vob/aoe/common/render/DirectorComponent.h>
@@ -9,26 +9,30 @@
 #include <vob/aoe/common/render/model/ModelComponent.h>
 #include <vob/aoe/common/window/WorldWindowComponent.h>
 
+// DEBUG
+#include <vob/aoe/common/input/WorldInputComponent.h>
+
 namespace vob::aoe::common
 {
 	class ModelRenderPass
 	{
-		using CameramanComponents = ecs::ComponentTypeList<
+		using CameramanComponents = aoecs::ComponentTypeList<
 			TransformComponent const
 			, CameraComponent const
 		>;
-		using ModelComponents = ecs::ComponentTypeList<
+		using ModelComponents = aoecs::ComponentTypeList<
 			TransformComponent const
 			, ModelComponent const
 		>;
 	public:
 		// Constructor
-		explicit ModelRenderPass(ecs::WorldDataProvider& a_wdp)
+		explicit ModelRenderPass(aoecs::WorldDataProvider& a_wdp)
 			: m_modelRenderComponent{ a_wdp.getWorldComponentRef<ModelRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
 			, m_cameramanEntityList{ a_wdp.getEntityViewList(*this, CameramanComponents{}) }
 			, m_modelEntityList{ a_wdp.getEntityViewList(*this, ModelComponents{}) }
+			, m_worldInputComponent{ a_wdp.getWorldComponentRef<WorldInputComponent>() }
 		{}
 
 		void run() const
@@ -52,9 +56,9 @@ namespace vob::aoe::common
 				return;
 			}
 
-			const glm::vec3 lightPosition{ 32 + 16 * std::sin(t), 16, 32 + 16 * std::cos(t) };
+			const glm::vec3 lightPosition{ 32 + 32 * std::sin(t), 32, 32 + 32 * std::cos(t) };
 			shaderProgram.setUniform(shaderProgram.getLightPositionUniformLocation(), lightPosition);
-			t += 0.002f;
+			t += 0.01f;
 
 			auto const ambientColor = m_modelRenderComponent.m_ambientColor;
 			shaderProgram.setUniform(shaderProgram.getAmbientColorUniformLocation(), ambientColor);
@@ -62,6 +66,16 @@ namespace vob::aoe::common
 			m_modelRenderComponent.m_staticModelResourceManager.update();
 			m_modelRenderComponent.m_renderTextureResourceManager.update();
 			m_modelRenderComponent.m_textureResourceManager.update();
+
+			// DEBUG
+			Switch r = m_worldInputComponent.m_keyboard.m_keys[Keyboard::Key::R];
+			if (r.m_changed && r.m_isActive)
+			{
+				m_debugMode = static_cast<DebugMode>((static_cast<int>(m_debugMode) + 1)
+					% static_cast<int>(DebugMode::Count));
+			}
+			shaderProgram.setUniform(
+				shaderProgram.getUniformLocation("u_debugMode"), static_cast<int>(m_debugMode));
 
 			for (auto const& modelEntity : m_modelEntityList)
 			{
@@ -85,19 +99,30 @@ namespace vob::aoe::common
 					auto& material = model.m_materials[mesh.getMaterialIndex()];
 
 					glActiveTexture(GL_TEXTURE0 + 0);
-					if (material.m_diffuse != nullptr && (*material.m_diffuse)->isReady())
+					if (material.m_albedo != nullptr && (*material.m_albedo)->isReady())
 					{
-						(*material.m_diffuse)->bind(GL_TEXTURE_2D);
+						(*material.m_albedo)->bind(GL_TEXTURE_2D);
 					}
 					else
 					{
 						glBindTexture(GL_TEXTURE_2D, 0);
 					}
 
-					glActiveTexture(GL_TEXTURE0 + 1);
-					if (material.m_specular != nullptr && (*material.m_specular)->isReady())
+					glActiveTexture(GL_TEXTURE1);
+					if (material.m_normal != nullptr && (*material.m_normal)->isReady())
 					{
-						(*material.m_specular)->bind(GL_TEXTURE_2D);
+						(*material.m_normal)->bind(GL_TEXTURE_2D);
+					}
+					else
+					{
+						glBindTexture(GL_TEXTURE_2D, 0);
+					}
+
+					glActiveTexture(GL_TEXTURE2);
+					if (material.m_metallicRoughness != nullptr
+						&& (*material.m_metallicRoughness)->isReady())
+					{
+						(*material.m_metallicRoughness)->bind(GL_TEXTURE_2D);
 					}
 					else
 					{
@@ -114,10 +139,21 @@ namespace vob::aoe::common
 		ModelRenderComponent& m_modelRenderComponent;
 		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
-		ecs::EntityViewList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
-		ecs::EntityViewList<TransformComponent const, ModelComponent const> const& m_modelEntityList;
+		aoecs::EntityViewList<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
+		aoecs::EntityViewList<TransformComponent const, ModelComponent const> const& m_modelEntityList;
 
+		// DEBUG
 		mutable float t = 0;
+		enum class DebugMode
+		{
+			Default = 0,
+			Normals,
+			TangentNormals,
+			
+			Count
+		};
+		mutable DebugMode m_debugMode = DebugMode::Default;
+		WorldInputComponent& m_worldInputComponent;
 	};
 
 }

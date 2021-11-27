@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/type/Applicator.h>
+#include <vob/misc/type/applicator.h>
 
 namespace vob::aoe::vis
 {
@@ -23,15 +23,10 @@ namespace vob::aoe::vis
 	template <typename VisitorType>
 	using ApplyVisitor = typename ApplyVisitorHolder<VisitorType>::Type;
 
-	template <
-		typename PolymorphicBaseType
-		, typename VisitorType
-		, typename AllocatorType = std::pmr::polymorphic_allocator<PolymorphicBaseType>
-	>
-	using Applicator = type::Applicator<
-		PolymorphicBaseType
-		, AllocatorType
-		, ApplyVisitorHolder<VisitorType>::template Type
+	template <bool t_const, typename VisitorType>
+	using Applicator = misty::pmr::applicator<
+		ApplyVisitorHolder<VisitorType>::template Type
+		, t_const
 		, VisitorType&
 	>;
 }

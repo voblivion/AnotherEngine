@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 #include <vob/aoe/common/physic/CharacterControllerComponent.h>
 #include <vob/aoe/common/physic/RigidBodyComponent.h>
 #include <vob/aoe/common/physic/WorldPhysicComponent.h>
@@ -77,16 +77,16 @@ namespace vob::aoe::common
 
 	struct PhysicSystem
 	{
-		using RigidBodyComponents = ecs::ComponentTypeList<
+		using RigidBodyComponents = aoecs::ComponentTypeList<
 			TransformComponent
 			, RigidBodyComponent
 		>;
-		using CharacterComponents = ecs::ComponentTypeList<
+		using CharacterComponents = aoecs::ComponentTypeList<
 			TransformComponent
 			, CharacterControllerComponent
 		>;
 			
-		explicit PhysicSystem(ecs::WorldDataProvider& a_wdp)
+		explicit PhysicSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_worldPhysicComponent{
 				*a_wdp.getWorldComponent<WorldPhysicComponent>() }
 			, m_worldTimeComponent{
@@ -106,7 +106,7 @@ namespace vob::aoe::common
 
 			if (!m_worldPhysicComponent.m_pause)
 			{
-				t_dynamicsWorld.stepSimulation(m_worldTimeComponent.m_elapsedTime.value);
+				t_dynamicsWorld.stepSimulation(m_worldTimeComponent.m_elapsedTime.get_value());
 
 				for (auto& t_rigidBodyEntity : m_rigidBodyEntities)
 				{
@@ -132,7 +132,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityAdded(ecs::Entity const& a_entity) const
+		void onEntityAdded(aoecs::Entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -155,7 +155,7 @@ namespace vob::aoe::common
 				// Initialize motion state
 				auto const t_transform = a_entity.getComponent<TransformComponent>();
 				auto const t_matrix = toBtTransform(t_transform->m_matrix);
-				auto const t_offset = toBtTransform(glm::translate(mat4{ 1.0f }, t_rigidBody->m_offset));
+				auto const t_offset = toBtTransform(glm::translate(glm::mat4{ 1.0f }, t_rigidBody->m_offset));
 				t_rigidBody->m_motionState = std::make_shared<btDefaultMotionState>(t_matrix, t_offset);
 
 				// Compute inertia
@@ -221,7 +221,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityRemoved(ecs::Entity const& a_entity) const
+		void onEntityRemoved(aoecs::Entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -244,11 +244,11 @@ namespace vob::aoe::common
 		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
-		ecs::EntityViewList<
+		aoecs::EntityViewList<
 			TransformComponent
 			, RigidBodyComponent
 		> const& m_rigidBodyEntities;
-		ecs::EntityViewList<
+		aoecs::EntityViewList<
 			TransformComponent
 			, CharacterControllerComponent
 		> const& m_characterEntities;

@@ -1,6 +1,6 @@
 #pragma once
 #include "vob/aoe/common/space/TransformComponent.h"
-#include "vob/aoe/core/ecs/WorldDataProvider.h"
+#include "vob/aoe/ecs/WorldDataProvider.h"
 #include "TestComponent.h"
 
 
@@ -8,12 +8,12 @@ namespace vob::aoe::common
 {
 	struct TestSystem
 	{
-		using Components = ecs::ComponentTypeList<
+		using Components = aoecs::ComponentTypeList<
 			TransformComponent
 			, TestComponent
 		>;
 
-		explicit TestSystem(ecs::WorldDataProvider& a_worldDataProvider)
+		explicit TestSystem(aoecs::WorldDataProvider& a_worldDataProvider)
 			: m_entities{ a_worldDataProvider.getEntityViewList(*this, Components{}) }
 		{}
 
@@ -41,7 +41,7 @@ namespace vob::aoe::common
 			}*/
 		}
 
-		ecs::EntityViewList<
+		aoecs::EntityViewList<
 			TransformComponent
 			, TestComponent
 		> const& m_entities;

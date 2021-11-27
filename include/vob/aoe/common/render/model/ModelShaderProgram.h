@@ -28,14 +28,6 @@ namespace vob::aoe::common
 		{
 			return m_modelNormal;
 		}
-		auto getMaterialDiffuseUniformLocation() const
-		{
-			return m_materialDiffuse;
-		}
-		auto getMaterialSpecularUniformLocation() const
-		{
-			return m_materialSpecular;
-		}
 		void create() const
 		{
 			SceneShaderProgram::create();
@@ -45,11 +37,9 @@ namespace vob::aoe::common
 			}
 
 			m_ambientColor = getUniformLocation("u_ambientColor");
-			m_lightPosition = getUniformLocation("u_lightPosition");
+			m_lightPosition = getUniformLocation("u_lightPos");
 			m_model = getUniformLocation("u_model");
 			m_modelNormal = getUniformLocation("u_modelNormal");
-			m_materialDiffuse = getUniformLocation("u_material.m_diffuse");
-			m_materialSpecular = getUniformLocation("u_material.m_specular");
 		}
 
 	private:

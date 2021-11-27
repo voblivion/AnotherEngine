@@ -1,17 +1,17 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/Component.h>
-#include <vob/aoe/core/ecs/EntityHandle.h>
+#include <vob/aoe/ecs/Component.h>
+#include <vob/aoe/ecs/EntityHandle.h>
 #include <vob/aoe/core/visitor/Traits.h>
 
 namespace vob::aoe::common
 {
 	struct HierarchyComponent final
-		: public ecs::AComponent
+		: public aoecs::AComponent
 	{
 		// Attributes
-		ecs::EntityHandle m_parent;
-		std::vector<ecs::EntityHandle> m_children;
+		aoecs::EntityHandle m_parent;
+		std::vector<aoecs::EntityHandle> m_children;
 	};
 }
 

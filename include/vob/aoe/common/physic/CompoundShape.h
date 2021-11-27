@@ -5,8 +5,6 @@
 #include <vob/aoe/common/physic/Utils.h>
 
 #include <vob/aoe/core/visitor/Utils.h>
-#include <vob/aoe/core/type/Clone.h>
-#include <vob/aoe/core/type/Primitive.h>
 
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCompoundShape.h>
@@ -22,24 +20,24 @@ namespace vob::aoe::common
         class Child
         {
         public:
-            mat4 m_localMatrix{ 1.0f };
-            type::Cloneable<ACollisionShape> m_collisionShape;
+            glm::mat4 m_localMatrix{ 1.0f };
+            type::dynamic_type_clone<ACollisionShape> m_collisionShape;
 
-            explicit Child(type::Cloner<> const& a_cloner)
+            explicit Child(type::dynamic_type_clone_copier const& a_cloner)
                 : m_collisionShape{ a_cloner }
             {}
 
             template <typename VisitorType>
             void accept(VisitorType& a_visitor)
             {
-                vec3 position;
+                glm::vec3 position;
                 a_visitor.visit(vis::makeNameValuePair("LocalPosition", position));
-                vec3 rotation;
+                glm::vec3 rotation;
                 a_visitor.visit(vis::makeNameValuePair("LocalRotation", rotation));
 
-                m_localMatrix = mat4{ 1.0f };
+                m_localMatrix = glm::mat4{ 1.0f };
                 m_localMatrix = glm::translate(m_localMatrix, position);
-                m_localMatrix *= mat4{ quat{ rotation } };
+                m_localMatrix *= glm::mat4{ glm::quat{ rotation } };
                 a_visitor.visit(vis::nvp("Shape", m_collisionShape));
             }
 
@@ -52,7 +50,7 @@ namespace vob::aoe::common
 
         struct ChildFactory
         {
-            type::Cloner<> const& m_cloner;
+            type::dynamic_type_clone_copier const& m_cloner;
 
             Child operator()() const
             {
@@ -63,7 +61,7 @@ namespace vob::aoe::common
 
     public:
         // Constructors
-        explicit CompoundShape(type::Cloner<> const& a_cloner)
+        explicit CompoundShape(type::dynamic_type_clone_copier const& a_cloner)
             : m_cloner{ a_cloner }
         {}
         CompoundShape(CompoundShape const& a_other)
@@ -115,7 +113,7 @@ namespace vob::aoe::common
         }
 
     private:
-        type::Cloner<> const& m_cloner;
+        type::dynamic_type_clone_copier const& m_cloner;
         std::pmr::vector<Child> m_children;
         btCompoundShape m_shape{};
 

@@ -20,9 +20,9 @@ namespace vob::aoe::common
 
 		// Constructors
 		explicit VisitorLoader(
-			type::TypeRegistry const& a_typeRegistry
-			, type::TypeFactory<type::ADynamicType> const& a_dynamicTypeFactory
-			, type::TypeFactory<btCollisionShape> const& a_btCollisionShapeFactory
+			misty::pmr::registry const& a_typeRegistry
+			, misty::pmr::factory<type::ADynamicType> const& a_dynamicTypeFactory
+			, misty::pmr::factory<btCollisionShape> const& a_btCollisionShapeFactory
 			, FileSystemIndexer& a_fileSystemIndexer
 			, data::ADatabase& a_database
 		)
@@ -71,12 +71,12 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		type::TypeRegistry const& m_typeRegistry;
-		type::TypeFactory<type::ADynamicType> const& m_dynamicTypeFactory;
-		type::TypeFactory<btCollisionShape> const& m_btCollisionShapeFactory;
+		misty::pmr::registry const& m_typeRegistry;
+		misty::pmr::factory<type::ADynamicType> const& m_dynamicTypeFactory;
+		misty::pmr::factory<btCollisionShape> const& m_btCollisionShapeFactory;
 		FileSystemIndexer& m_fileSystemIndexer;
-		vis::Applicator<type::ADynamicType, Visitor> m_dynamicTypeApplicator;
-		vis::Applicator<btCollisionShape, Visitor> m_btCollisionShapeApplicator;
+		vis::Applicator<false, Visitor> m_dynamicTypeApplicator;
+		vis::Applicator<false, Visitor> m_btCollisionShapeApplicator;
 		data::ADatabase& m_database;
 
 		// Methods

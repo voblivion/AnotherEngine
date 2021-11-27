@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 #include <vob/aoe/common/data/filesystem/FileSystemDatabase.h>
 #include <vob/aoe/common/render/gui/text/Font.h>
@@ -215,7 +215,7 @@ namespace vob::aoe::common
 			}
 			else if (a_tokenName.compare("file") == 0)
 			{
-				u8string filePathStr;
+				std::pmr::string filePathStr;
 				parse(a_tokenValue, filePathStr);
 				auto const filePath = pathFromFilePath(filePathStr, a_fontPath);
 
@@ -263,7 +263,9 @@ namespace vob::aoe::common
 		{
 			if (a_tokenName.compare("id") == 0)
 			{
-				parse(a_tokenValue, a_character.m_id);
+				std::uint32_t id;
+				parse(a_tokenValue, id);
+				a_character.m_id = static_cast<char32_t>(id);
 			}
 			else if (a_tokenName.compare("x") == 0)
 			{
@@ -321,11 +323,15 @@ namespace vob::aoe::common
 		{
 			if (a_tokenName.compare("first") == 0)
 			{
-				parse(a_tokenValue, a_kerning.m_sequence.first);
+				std::uint32_t id;
+				parse(a_tokenValue, id);
+				a_kerning.m_sequence.m_first = static_cast<char32_t>(id);
 			}
 			else if (a_tokenName.compare("second") == 0)
 			{
-				parse(a_tokenValue, a_kerning.m_sequence.second);
+				std::uint32_t id;
+				parse(a_tokenValue, id);
+				a_kerning.m_sequence.m_second = static_cast<char32_t>(id);
 			}
 			else if (a_tokenName.compare("amount") == 0)
 			{
@@ -346,10 +352,10 @@ namespace vob::aoe::common
 		, fs::path const& a_fontPath
 	)
 	{
-		u8string tokenName;
+		std::pmr::string tokenName;
 		if (std::getline(a_inputStream, tokenName, '='))
 		{
-			u8string tokenValue;
+			std::pmr::string tokenValue;
 			if (a_inputStream.peek() == '"')
 			{
 				a_inputStream.ignore(1);
@@ -412,7 +418,7 @@ namespace vob::aoe::common
 			Font font;
 			std::ifstream file{ a_path, std::ios::in };
 			std::istringstream line{};
-			auto token = u8string{};
+			auto token = std::pmr::string{};
 
 			if (!readNamedLine(file, "info", line)
 				|| !parseLine<InfoLineTokenParser>(line, font, m_database, a_path)
@@ -446,7 +452,7 @@ namespace vob::aoe::common
 				{
 					return nullptr;
 				}
-				if (character.m_id == sta::invalid_unicode)
+				if (character.m_id == 0xFFFF)
 				{
 					ignorable_assert(false && "invalid character");
 					return nullptr;
@@ -470,8 +476,7 @@ namespace vob::aoe::common
 					return nullptr;
 				}
 
-				if (kerning.m_sequence.first == sta::invalid_unicode
-					|| kerning.m_sequence.second == sta::invalid_unicode)
+				if (kerning.m_sequence.m_first == 0xFFFF || kerning.m_sequence.m_second == 0xFFFF)
 				{
 					ignorable_assert(false && "invalid kerning");
 					return nullptr;

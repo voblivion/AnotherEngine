@@ -1,15 +1,15 @@
 #pragma once
 
+#include <vob/aoe/core/type/ADynamicType.h>
+
+#include <vob/misc/std/ignorable_assert.h>
+#include <vob/misc/std/same_const.h>
+
 #include <cassert>
 #include <memory>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
-
-#include <vob/sta/ignorable_assert.h>
-#include <vob/sta/type_traits.h>
-
-#include <vob/aoe/core/type/ADynamicType.h>
 
 namespace vob::aoe::type
 {
@@ -44,7 +44,7 @@ namespace vob::aoe::type
 			// Methods
 			void apply(PolymorphicBaseType* a_object, Args&&... a_args) const override
 			{
-				using _Type = sta::same_const_t<PolymorphicBaseType, Type>;
+				using _Type = mistd::same_const_t<PolymorphicBaseType, Type>;
 				auto& t_object = *static_cast<_Type*>(a_object);
 				m_functor(t_object, std::forward<Args>(a_args)...);
 			}

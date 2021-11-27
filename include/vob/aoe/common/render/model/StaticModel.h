@@ -14,7 +14,8 @@ namespace vob::aoe::common
 	{
 		glm::vec3 m_position;
 		glm::vec3 m_normal;
-		glm::vec2 m_textureCoordinates;
+		glm::vec2 m_texCoords;
+		glm::vec3 m_tangent;
 	};
 
 	class VOB_AOE_API StaticMesh final
@@ -87,7 +88,11 @@ namespace vob::aoe::common
 
 			glEnableVertexAttribArray(2);
 			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex)
-				, reinterpret_cast<void*>(offsetof(Vertex, m_textureCoordinates)));
+				, reinterpret_cast<void*>(offsetof(Vertex, m_texCoords)));
+
+			glEnableVertexAttribArray(3);
+			glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex)
+				, reinterpret_cast<void*>(offsetof(Vertex, m_tangent)));
 
 			glBindVertexArray(0);
 			m_isReady = true;

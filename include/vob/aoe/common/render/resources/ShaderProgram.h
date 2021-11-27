@@ -7,7 +7,6 @@
 #include <vob/aoe/common/render/OpenGl.h>
 
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/type/Primitive.h>
 #include <vob/aoe/core/visitor/Utils.h>
 
 #include <glm/glm.hpp>
@@ -34,7 +33,11 @@ namespace vob::aoe::common
 		{
 			return glGetUniformLocation(m_programId, a_uniformName);
 		}
-		void setUniform(UniformLocation a_uniformLocation, u32 const a_value) const
+		void setUniform(UniformLocation a_uniformLocation, std::int32_t const a_value) const
+		{
+			glUniform1i(a_uniformLocation, a_value);
+		}
+		void setUniform(UniformLocation a_uniformLocation, std::uint32_t const a_value) const
 		{
 			glUniform1ui(a_uniformLocation, a_value);
 		}
@@ -42,27 +45,27 @@ namespace vob::aoe::common
 		{
 			glUniform1f(a_uniformLocation, a_value);
 		}
-		void setUniform(UniformLocation a_uniformLocation, vec1 const& a_vector) const
+		void setUniform(UniformLocation a_uniformLocation, glm::vec1 const& a_vector) const
 		{
 			glUniform1f(a_uniformLocation, a_vector.x);
 		}
-		void setUniform(UniformLocation a_uniformLocation, vec2 const& a_vector) const
+		void setUniform(UniformLocation a_uniformLocation, glm::vec2 const& a_vector) const
 		{
 			glUniform2f(a_uniformLocation, a_vector.x, a_vector.y);
 		}
-		void setUniform(UniformLocation a_uniformLocation, vec3 const& a_vector) const
+		void setUniform(UniformLocation a_uniformLocation, glm::vec3 const& a_vector) const
 		{
 			glUniform3f(a_uniformLocation, a_vector.x, a_vector.y, a_vector.z);
 		}
-		void setUniform(UniformLocation a_uniformLocation, vec4 const& a_vector) const
+		void setUniform(UniformLocation a_uniformLocation, glm::vec4 const& a_vector) const
 		{
 			glUniform4f(a_uniformLocation, a_vector.x, a_vector.y, a_vector.z, a_vector.w);
 		}
-		void setUniform(UniformLocation a_uniformLocation, mat3 const& a_matrix) const
+		void setUniform(UniformLocation a_uniformLocation, glm::mat3 const& a_matrix) const
 		{
 			glUniformMatrix3fv(a_uniformLocation, 1, false, glm::value_ptr(a_matrix));
 		}
-		void setUniform(UniformLocation a_uniformLocation, mat4 const& a_matrix) const
+		void setUniform(UniformLocation a_uniformLocation, glm::mat4 const& a_matrix) const
 		{
 			glUniformMatrix4fv(a_uniformLocation, 1, false, glm::value_ptr(a_matrix));
 		}

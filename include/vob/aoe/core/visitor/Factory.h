@@ -3,7 +3,7 @@
 #include <utility>
 #include <typeindex>
 
-namespace vob::aoe::type
+namespace vob::aoe::vis
 {
 	template <typename ValueType>
 	struct Factory

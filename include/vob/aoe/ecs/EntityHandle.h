@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/EntityId.h>
-#include <vob/aoe/core/ecs/Entity.h>
-#include <vob/aoe/core/ecs/EntityView.h>
+#include <vob/aoe/ecs/EntityId.h>
+#include <vob/aoe/ecs/Entity.h>
+#include <vob/aoe/ecs/EntityView.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	struct EntityHandle
 	{
@@ -18,7 +18,7 @@ namespace vob::aoe::ecs
 			: m_id{ a_id }
 		{}
 		
-		explicit EntityHandle(ecs::Entity const& a_entity)
+		explicit EntityHandle(aoecs::Entity const& a_entity)
 			: m_id{ a_entity.getId() }
 		{}
 

@@ -22,8 +22,8 @@ namespace vob::aoe::common
 			auto file = std::ifstream{ a_path, std::ios::binary | std::ios::in };
 
 			return std::make_unique<Text>(
-				std::istreambuf_iterator<u8char>(file)
-				, std::istreambuf_iterator<u8char>{}
+				std::istreambuf_iterator<char>(file)
+				, std::istreambuf_iterator<char>{}
 			);
 		}
 #pragma endregion

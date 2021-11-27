@@ -2,7 +2,7 @@
 
 #include <vob/aoe/api.h>
 #include <vob/aoe/common/time/WorldTimeComponent.h>
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 
 namespace vob::aoe::common
@@ -11,7 +11,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructors
-		explicit TimeSystem(ecs::WorldDataProvider& a_worldDataProvider);
+		explicit TimeSystem(aoecs::WorldDataProvider& a_worldDataProvider);
 
 		// Methods
 		void update() const;

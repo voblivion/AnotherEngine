@@ -1,44 +1,46 @@
 #pragma once
 
+#include <vob/aoe/api.h>
+#include <vob/aoe/ecs/Component.h>
+#include <vob/aoe/core/visitor/Utils.h>
+#include <vob/aoe/core/visitor/Traits.h>
+
+#include <vob/aoe/core/type/ADynamicType.h>
+
+#include <vob/misc/type/clone.h>
+#include <vob/misc/std/vector_map.h>
+#include <vob/misc/std/vector_set.h>
+
 #include <algorithm>
 #include <cassert>
 #include <typeindex>
 #include <unordered_set>
 
-#include <vob/sta/vector_map.h>
-#include <vob/sta/vector_set.h>
 
-#include <vob/aoe/api.h>
-#include <vob/aoe/core/ecs/Component.h>
-#include <vob/aoe/core/visitor/Utils.h>
-#include "vob/aoe/core/type/Clone.h"
-#include <vob/aoe/core/visitor/Traits.h>
-
-
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	class CloneAComponentFactory
 	{
 	public:
-		explicit CloneAComponentFactory(type::Cloner<> const& a_cloner)
+		explicit CloneAComponentFactory(type::dynamic_type_clone_copier const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
-		type::Cloneable<AComponent> operator()() const
+		type::dynamic_type_clone<AComponent> operator()() const
 		{
-			return type::Cloneable<AComponent>{ m_cloner };
+			return type::dynamic_type_clone<AComponent>{ m_cloner };
 		}
 
 	private:
-		type::Cloner<> const& m_cloner;
+		type::dynamic_type_clone_copier const& m_cloner;
 	};
 
 	class VOB_AOE_API ComponentManager
-		: public vis::Visitable<ComponentManager, type::ADynamicType>
+		: public type::ADynamicType
 	{
 	public:
 		// Constructors
-		explicit ComponentManager(type::Cloner<> const& a_cloner)
+		explicit ComponentManager(type::dynamic_type_clone_copier const& a_cloner)
 			: m_cloner{ a_cloner }
 		{}
 
@@ -65,13 +67,13 @@ namespace vob::aoe::ecs
 		{
 			auto const t_typeIndex = std::type_index{ typeid(ComponentType) };
 			assert(!hasComponent(t_typeIndex));
-			type::Cloneable<AComponent> component{ m_cloner };
+			type::dynamic_type_clone<AComponent> component{ m_cloner };
 			auto& result = component.init<ComponentType>(std::forward<Args>(a_args)...);
 			m_components.emplace(std::move(component));
 			return result;
 		}
 
-		void addComponent(type::Cloneable<AComponent> a_component)
+		void addComponent(type::dynamic_type_clone<AComponent> a_component)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(a_component) };
 			assert(!hasComponent(t_typeIndex));
@@ -84,7 +86,26 @@ namespace vob::aoe::ecs
 		}
 
 		template <typename ComponentType>
-		ComponentType* getComponent() const
+		ComponentType const* getComponent() const
+		{
+			auto const t_it = std::find_if(
+				m_components.begin()
+				, m_components.end()
+				, [](auto const& a_component)
+				{
+					return typeid(*a_component) == typeid(std::remove_const_t<ComponentType>);
+				}
+			);
+
+			if (t_it != m_components.end())
+			{
+				return static_cast<ComponentType const*>(t_it->get());
+			}
+			return nullptr;
+		}
+
+		template <typename ComponentType>
+		ComponentType* getComponent()
 		{
 			auto const t_it = std::find_if(
 				m_components.begin()
@@ -102,22 +123,28 @@ namespace vob::aoe::ecs
 			return nullptr;
 		}
 
-        template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        template <typename VisitorType>
+        void accept(VisitorType& a_visitor)
         {
             a_visitor.visit(vis::makeContainerHolder(
-                a_this.m_components
-                , ecs::CloneAComponentFactory{ a_this.m_cloner }
+                m_components
+                , aoecs::CloneAComponentFactory{ m_cloner }
             ));
         }
+
+		template <typename VisitorType>
+		void accept(VisitorType& a_visitor) const
+		{
+			a_visitor.visit(m_components);
+		}
 
 	private:
 		// Attributes
 		struct PolymorphicComponentEqual
 		{
 			bool operator()(
-				type::Cloneable<AComponent> const& a_lhs
-				, type::Cloneable<AComponent> const& a_rhs
+				type::dynamic_type_clone<AComponent> const& a_lhs
+				, type::dynamic_type_clone<AComponent> const& a_rhs
 			) const
 			{
 				auto& lhs = *a_lhs;
@@ -126,7 +153,7 @@ namespace vob::aoe::ecs
 			}
 		};
 
-		sta::vector_set<type::Cloneable<AComponent>, PolymorphicComponentEqual> m_components;
-		std::reference_wrapper<type::Cloner<> const> m_cloner;
+		mistd::vector_set<type::dynamic_type_clone<AComponent>, PolymorphicComponentEqual> m_components;
+		std::reference_wrapper<type::dynamic_type_clone_copier const> m_cloner;
 	};
 }

@@ -3,25 +3,22 @@
 #include <limits>
 #include <tuple>
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 #include <vob/aoe/common/render/gui/text/Font.h>
 #include <vob/aoe/common/render/gui/GuiMesh.h>
 #include <vob/aoe/common/render/resources/Texture.h>
 
-#include <vob/sta/unicode.h>
-
-// TODO : change to std::char8_t when c++20 available
 
 namespace vob::aoe::common
 {
     inline auto preCharacterOffset(
         Font const& a_font
         , FontCharacter const& a_character
-        , std::optional<sta::unicode> a_previousCode
+        , std::optional<char32_t> a_previousCode
     )
     {
-        i32 offset = 0;
+        std::int32_t offset = 0;
         if (a_previousCode.has_value())
         {
             offset += a_font.getKerningAmount(a_previousCode.value(), a_character.m_id);
@@ -35,7 +32,7 @@ namespace vob::aoe::common
         , FontCharacter const& a_character
     )
     {
-        i32 offset = a_font.m_spacing.x + a_character.m_xAdvance;
+        std::int32_t offset = a_font.m_spacing.x + a_character.m_xAdvance;
         //offset += a_font.m_padding.y;
         return offset;
     }
@@ -44,7 +41,7 @@ namespace vob::aoe::common
     {
         TextCursor() = default;
 
-        TextCursor(float a_lineHeight, vec2 a_position)
+        TextCursor(float a_lineHeight, glm::vec2 a_position)
             : m_lineHeight{ a_lineHeight }
             , m_position{ a_position }
         {}
@@ -66,32 +63,32 @@ namespace vob::aoe::common
         }
 
         float m_lineHeight{};
-        vec2 m_position{};
+        glm::vec2 m_position{};
     };
 
-	inline vec2 multiply(vec2 const& a_lhs, vec2 const& a_rhs)
+	inline glm::vec2 multiply(glm::vec2 const& a_lhs, glm::vec2 const& a_rhs)
 	{
-		return vec2{ a_lhs.x * a_rhs.x, a_lhs.y * a_rhs.y };
+		return glm::vec2{ a_lhs.x * a_rhs.x, a_lhs.y * a_rhs.y };
 	}
 
-    inline vec2 divide(vec2 const& a_lhs, vec2 const& a_rhs)
+    inline glm::vec2 divide(glm::vec2 const& a_lhs, glm::vec2 const& a_rhs)
     {
-        return vec2{ a_lhs.x / a_rhs.x, a_lhs.y / a_rhs.y };
+        return glm::vec2{ a_lhs.x / a_rhs.x, a_lhs.y / a_rhs.y };
     }
 
-	constexpr sta::utf8_string_view g_blankChars = " \t\n";
-	constexpr sta::unicode g_spaceCode = sta::utf8_peek(" ");
-	constexpr sta::unicode g_newlineCode = sta::utf8_peek("\n");
-	constexpr sta::unicode g_replacementCode = 0xfffd; // <?>
+	constexpr std::u32string_view g_blankChars = U" \t\n";
+	constexpr char32_t g_spaceCode = U' ';
+	constexpr char32_t g_newlineCode = '\n';
+	constexpr char32_t g_replacementCode = 0xFFFD; // <?>
 
-	inline sta::utf8_string_view peekWord(sta::utf8_string_view a_view)
+	inline std::u32string_view peekWord(std::u32string_view a_view)
     {
         const auto wordCharCount = std::min(a_view.find_first_of(g_blankChars), a_view.size());
         const auto word = a_view.substr(0, wordCharCount);
 		return word;
 	}
 
-	inline sta::utf8_string_view readWord(sta::utf8_string_view& a_view)
+	inline std::u32string_view readWord(std::u32string_view& a_view)
 	{
 		auto word = peekWord(a_view);
 		a_view = a_view.substr(word.size());
@@ -101,8 +98,8 @@ namespace vob::aoe::common
 	inline float getCharWidth(
 		Font const& a_font
         , FontCharacter const& a_character
-        , std::optional<sta::unicode> a_previousCode
-		, vec2 const a_renderRatio
+        , std::optional<char32_t> a_previousCode
+		, glm::vec2 const a_renderRatio
 	)
 	{
         return (preCharacterOffset(a_font, a_character, a_previousCode)
@@ -111,10 +108,10 @@ namespace vob::aoe::common
 
 	inline float getCharWidth(
         Font const& a_font
-        , sta::unicode const a_code
+        , char32_t const a_code
         , FontCharacter const* a_replacementCharacter
-        , std::optional<sta::unicode> a_previousCode
-        , vec2 const a_renderRatio
+        , std::optional<char32_t> a_previousCode
+        , glm::vec2 const a_renderRatio
 	)
 	{
 		auto const* character = a_font.findCharacter(a_code);
@@ -131,10 +128,10 @@ namespace vob::aoe::common
 
 	inline float getWordWidth(
 		Font const& a_font
-        , sta::utf8_string_view a_word
+        , std::u32string_view a_word
         , FontCharacter const* a_replacementCharacter
-        , std::optional<sta::unicode> a_previousCode
-		, vec2 const a_renderRatio
+        , std::optional<char32_t> a_previousCode
+		, glm::vec2 const a_renderRatio
 	)
 	{
 		auto width = 0.0f;
@@ -155,18 +152,18 @@ namespace vob::aoe::common
 	inline void addCharToLine(
 		Font const& a_font
         , FontCharacter const& a_character
-        , std::optional<sta::unicode>& a_previousCode
-        , vec2 const a_renderRatio
+        , std::optional<char32_t>& a_previousCode
+        , glm::vec2 const a_renderRatio
         , TextCursor& a_cursor
         , std::vector<GuiVertex>& a_vertices
 	)
 	{
         a_cursor.advance(preCharacterOffset(a_font, a_character, a_previousCode) * a_renderRatio.x);
 
-		auto const offset = vec2{ a_character.m_offset };
+		auto const offset = glm::vec2{ a_character.m_offset };
 
-		auto const width = vec2{ a_character.m_size.x, 0.0f };
-		auto const height = vec2{ 0.0f, a_character.m_size.y };
+		auto const width = glm::vec2{ a_character.m_size.x, 0.0f };
+		auto const height = glm::vec2{ 0.0f, a_character.m_size.y };
 
 		// TODO: could pre-compute some of these
 		auto const tl = multiply(offset, a_renderRatio) + a_cursor.m_position;
@@ -175,8 +172,8 @@ namespace vob::aoe::common
 		auto const br = multiply(offset + width + height, a_renderRatio) + a_cursor.m_position;
 		
 		auto const sfmlTextureSize = (*a_font.m_pages[a_character.m_page])->m_source.getSize();
-		auto const textureSize = vec2{ sfmlTextureSize.x, sfmlTextureSize.y };
-		auto const position = vec2{ a_character.m_position };
+		auto const textureSize = glm::vec2{ sfmlTextureSize.x, sfmlTextureSize.y };
+		auto const position = glm::vec2{ a_character.m_position };
 
 		// TODO: could pre-compute some of these
 		auto const ttl = divide(position, textureSize);
@@ -201,7 +198,7 @@ namespace vob::aoe::common
         {
             a_characterOp.init(
                 std::declval<TextCursor>()
-                , std::declval<vec2>()
+                , std::declval<glm::vec2>()
             )
         };
     };
@@ -215,10 +212,10 @@ namespace vob::aoe::common
     template <typename CharacterOp>
     inline void tryProcessChar(
         Font const& a_font
-        , sta::unicode a_code
+        , char32_t a_code
         , FontCharacter const* a_replacementCharacter
-        , vec2 a_renderRatio
-        , std::optional<sta::unicode>& a_previousCode
+        , glm::vec2 a_renderRatio
+        , std::optional<char32_t>& a_previousCode
         , TextCursor& a_cursor
         , CharacterOp& a_characterOp
     )
@@ -245,13 +242,13 @@ namespace vob::aoe::common
     template <typename CharacterOp>
     inline void processText(
         Font const& a_font
-        , sta::utf8_string_view a_text
-        , sta::utf8_string_view::size_type a_beginIndex
-        , sta::utf8_string_view::size_type a_endIndex
+        , std::u32string_view a_text
+        , std::u32string_view::size_type a_beginIndex
+        , std::u32string_view::size_type a_endIndex
         , float const a_size
-        , vec2 const a_areaSize
-        , std::optional<vec2> a_cursor
-        , std::optional<sta::unicode>& a_previousCode
+        , glm::vec2 const a_areaSize
+        , std::optional<glm::vec2> a_cursor
+        , std::optional<char32_t>& a_previousCode
         , CharacterOp& a_characterOp
     )
     {
@@ -261,7 +258,7 @@ namespace vob::aoe::common
         }
 
         auto const fontRatio = a_size / a_font.m_size;
-        auto const renderRatio = fontRatio * divide(vec2{ 1.0f, 1.0f }, a_areaSize);
+        auto const renderRatio = fontRatio * divide(glm::vec2{ 1.0f, 1.0f }, a_areaSize);
         auto const replacement = a_font.findCharacter(g_replacementCode);
         auto const base = a_font.m_base * renderRatio.y;
         auto const lineHeight = a_font.m_lineHeight * renderRatio.y;
@@ -271,7 +268,7 @@ namespace vob::aoe::common
         auto text = a_text.substr(a_beginIndex);
         auto cursor = TextCursor{
             lineHeight
-            , a_cursor.value_or(vec2{ 0.0f, (lineHeight + base) / 2.0f })
+            , a_cursor.value_or(glm::vec2{ 0.0f, (lineHeight + base) / 2.0f })
         };
 
         if constexpr (InitAwareTextOp<CharacterOp>)
@@ -315,7 +312,7 @@ namespace vob::aoe::common
                         , a_characterOp
                     );
                 }
-                text = text.substr(textIt, text.end());
+                text = text.substr(std::distance(textBegin, textIt));
             }
 
             if (textIt == textEnd)
@@ -331,7 +328,7 @@ namespace vob::aoe::common
                 text = text.substr(1);
                 ++textIt;
             }
-            else if (g_blankChars.contains(possibleBlank))
+            else if (g_blankChars.find(possibleBlank) != std::u32string_view::npos)
             {
                 auto blankWidth = getCharWidth(
                     a_font
@@ -362,7 +359,7 @@ namespace vob::aoe::common
 
     struct GenerateCharVertices
     {
-        void init(TextCursor a_cursor, vec2 a_renderRatio)
+        void init(TextCursor a_cursor, glm::vec2 a_renderRatio)
         {
             m_cursorPosition = a_cursor.m_position;
         }
@@ -376,8 +373,8 @@ namespace vob::aoe::common
         void operator()(
             Font const& a_font
             , FontCharacter const& a_character
-            , vec2 a_renderRatio
-            , std::optional<sta::unicode> a_previousCode
+            , glm::vec2 a_renderRatio
+            , std::optional<char32_t> a_previousCode
             , TextCursor& a_cursor
         )
         {
@@ -393,18 +390,18 @@ namespace vob::aoe::common
         }
 
         std::vector<GuiVertex>& m_vertices;
-        vec2 m_cursorPosition;
+        glm::vec2 m_cursorPosition;
     };
 
     inline std::vector<GuiVertex> createTextMesh(
         Font const& a_font
-        , sta::utf8_string_view a_text
+        , std::u32string_view a_text
         , std::size_t a_start
         , std::size_t a_end
         , float const a_size
-        , vec2 const a_areaSize
-        , std::optional<vec2>& a_cursor
-        , std::optional<sta::unicode>& a_previousCode
+        , glm::vec2 const a_areaSize
+        , std::optional<glm::vec2>& a_cursor
+        , std::optional<char32_t>& a_previousCode
     )
     {
         std::vector<GuiVertex> vertices;
@@ -429,7 +426,7 @@ namespace vob::aoe::common
 
     struct AdvanceCharWidth
     {
-        void init(TextCursor a_cursor, vec2 a_renderRatio)
+        void init(TextCursor a_cursor, glm::vec2 a_renderRatio)
         {
             m_cursorPosition = a_cursor.m_position;
         }
@@ -444,8 +441,8 @@ namespace vob::aoe::common
         void operator()(
             Font const& a_font
             , FontCharacter const& a_character
-            , vec2 a_renderRatio
-            , std::optional<sta::unicode> a_previousCode
+            , glm::vec2 a_renderRatio
+            , std::optional<char32_t> a_previousCode
             , TextCursor& a_cursor
         )
         {
@@ -455,19 +452,19 @@ namespace vob::aoe::common
             m_lastCharacterPostOffset = (/*a_font.m_padding.z +*/ a_font.m_padding.y + a_font.m_spacing.x) * a_renderRatio.x;
         }
 
-        vec2 m_cursorPosition;
+        glm::vec2 m_cursorPosition;
         float m_lastCharacterPostOffset = 0.0f;
     };
 
-    inline std::pair<vec2, vec2> getCursorTransform(
+    inline std::pair<glm::vec2, glm::vec2> getCursorTransform(
         Font const& a_font
-        , sta::utf8_string_view a_text
+        , std::u32string_view a_text
         , std::size_t a_cursorIndex
         , float const a_size
-        , vec2 const a_areaSize
+        , glm::vec2 const a_areaSize
     )
     {
-        std::optional<sta::unicode> previousCode;
+        std::optional<char32_t> previousCode;
         AdvanceCharWidth op;
         processText(
             a_font
@@ -482,20 +479,20 @@ namespace vob::aoe::common
         );
 
         return std::make_pair(
-            multiply(op.m_cursorPosition - vec2{ op.m_lastCharacterPostOffset, 0.0f }, a_areaSize)
-            , vec2{ 1.0f * a_size / 24.0f, a_font.m_base * a_size / a_font.m_size }
+            multiply(op.m_cursorPosition - glm::vec2{ op.m_lastCharacterPostOffset, 0.0f }, a_areaSize)
+            , glm::vec2{ 1.0f * a_size / 24.0f, a_font.m_base * a_size / a_font.m_size }
         );
     }
 
     struct StoreClosestPos
     {
-        StoreClosestPos(vec2 a_position, float a_size)
+        StoreClosestPos(glm::vec2 a_position, float a_size)
             : m_position{ a_position }
             , m_offset{ 0.0f, a_size / 2.0f }
         {
         }
 
-        void init(TextCursor a_cursor, vec2 a_renderRatio)
+        void init(TextCursor a_cursor, glm::vec2 a_renderRatio)
         {
             m_offset *= a_renderRatio;
             m_position = m_position * a_renderRatio - m_offset;
@@ -517,8 +514,8 @@ namespace vob::aoe::common
         void operator()(
             Font const& a_font
             , FontCharacter const& a_character
-            , vec2 a_renderRatio
-            , std::optional<sta::unicode> a_previousCode
+            , glm::vec2 a_renderRatio
+            , std::optional<char32_t> a_previousCode
             , TextCursor& a_cursor
         )
         {
@@ -533,20 +530,20 @@ namespace vob::aoe::common
             ++m_currentIndex;
         }
 
-        vec2 m_position;
-        vec2 m_offset;
+        glm::vec2 m_position;
+        glm::vec2 m_offset;
         float m_bestDistance = std::numeric_limits<float>::max();
-        sta::utf8_string_view::size_type m_bestIndex = -1;
-        sta::utf8_string_view::size_type m_currentIndex = 0;
+        std::u32string_view::size_type m_bestIndex = -1;
+        std::u32string_view::size_type m_currentIndex = 0;
     };
 
     inline auto getIndexAtPos(
         Font const& a_font
-        , sta::utf8_string_view a_text
-        , vec2 a_position
+        , std::u32string_view a_text
+        , glm::vec2 a_position
         , float const a_size
-        , vec2 const a_areaSize
-        , std::optional<sta::unicode>& a_previousCode
+        , glm::vec2 const a_areaSize
+        , std::optional<char32_t>& a_previousCode
     )
     {
         StoreClosestPos op{ a_position, a_size };

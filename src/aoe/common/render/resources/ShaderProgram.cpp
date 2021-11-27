@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include <vob/sta/ignorable_assert.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 
 namespace vob::aoe::common

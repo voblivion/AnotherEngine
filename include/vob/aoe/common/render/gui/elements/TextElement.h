@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vob/sta/unicode.h>
-
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/common/render/gui/elements/AElement.h>
@@ -35,7 +33,7 @@ namespace vob::aoe::common
 			, GuiTransform const a_transform
 		) const override;
 
-		void setText(sta::utf8_string a_text);
+		void setText(std::pmr::u32string a_text);
 
         auto const& getFont() const;
 		void setFont(std::shared_ptr<aoe::common::Font const> a_font);
@@ -50,7 +48,8 @@ namespace vob::aoe::common
 
             std::string text;
             a_visitor.visit(vis::makeNameValuePair("Text", text));
-            a_this.m_text.assign(text);
+			// !TODO : utf8-decode
+            //a_this.m_text.assign(text);
             a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
             a_visitor.visit(vis::makeNameValuePair("Line Height", a_this.m_lineHeight));
             a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
@@ -61,18 +60,18 @@ namespace vob::aoe::common
 	protected:
 		#pragma region Attributes
 		mutable bool m_hasChanged = false;
-		sta::utf8_string m_text;
+		std::pmr::u32string m_text;
         float m_size = 12.0f;
 		std::optional<float> m_lineHeight;
 		std::shared_ptr<Font const> m_font;
-		vec4 m_color{ 1.0f };
-		mutable vec2 m_lastRenderedSize = { 0, 0 };
+		glm::vec4 m_color{ 1.0f };
+		mutable glm::vec2 m_lastRenderedSize = { 0, 0 };
 		GraphicResourceHandle<GuiMesh> m_preSelectionMesh;
 		GraphicResourceHandle<GuiMesh> m_selectionMesh;
 		GraphicResourceHandle<GuiMesh> m_postSelectionMesh;
 		std::size_t m_selectionStart = 0;
 		std::size_t m_selectionEnd = 0;
-		vec2 m_mousePos = {};
+		glm::vec2 m_mousePos = {};
 		bool m_isSelecting = false;
 		#pragma endregion
 

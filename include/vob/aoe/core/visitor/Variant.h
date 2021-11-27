@@ -2,7 +2,7 @@
 
 #include <variant>
 
-namespace vob::aoe::type
+namespace vob::aoe::vis
 {
 	template <typename... VariantTypes>
 	struct VariantFactory

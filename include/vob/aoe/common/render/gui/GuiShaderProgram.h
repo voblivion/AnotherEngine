@@ -1,11 +1,11 @@
 #pragma once
 #include <vob/aoe/common/render/resources/ShaderProgram.h>
 #include <vob/aoe/common/render/resources/SceneShaderProgram.h>
-#include <vob/aoe/core/type/Primitive.h>
+
 
 namespace vob::aoe::common
 {
-	enum class GuiRenderType : u32
+	enum class GuiRenderType : std::uint32_t
 	{
 		QuadFill = 0
 		, QuadStroke = 1
@@ -41,42 +41,42 @@ namespace vob::aoe::common
 			m_color = getUniformLocation("u_color");
 		}
 
-		void setViewSize(vec2 const& a_viewSize) const
+		void setViewSize(glm::vec2 const& a_viewSize) const
 		{
 			setUniform(m_viewSize, a_viewSize);
 		}
 
 		void setRenderType(GuiRenderType a_renderType) const
 		{
-			setUniform(m_renderType, static_cast<u32>(a_renderType));
+			setUniform(m_renderType, static_cast<std::uint32_t>(a_renderType));
 		}
 
-		void setElementPosition(vec2 const& a_elementPosition) const
+		void setElementPosition(glm::vec2 const& a_elementPosition) const
 		{
 			setUniform(m_elementPosition, a_elementPosition);
 		}
 
-		void setElementSize(vec2 const& a_elementSize) const
+		void setElementSize(glm::vec2 const& a_elementSize) const
 		{
 			setUniform(m_elementSize, a_elementSize);
 		}
 
-		void setOuterCornerRadius(vec4 const& a_outerCornerRadius) const
+		void setOuterCornerRadius(glm::vec4 const& a_outerCornerRadius) const
 		{
 			setUniform(m_outerCornerRadius, a_outerCornerRadius);
 		}
 
-		void setInnerCornerRadius(vec4 const& a_innerCornerRadius) const
+		void setInnerCornerRadius(glm::vec4 const& a_innerCornerRadius) const
 		{
 			setUniform(m_innerCornerRadius, a_innerCornerRadius);
 		}
 
-		void setStrokeWidth(vec4 const& a_strokeWidth) const
+		void setStrokeWidth(glm::vec4 const& a_strokeWidth) const
 		{
 			setUniform(m_strokeWidth, a_strokeWidth);
 		}
 
-		void setColor(vec4 const& a_color) const
+		void setColor(glm::vec4 const& a_color) const
 		{
 			setUniform(m_color, a_color);
 		}

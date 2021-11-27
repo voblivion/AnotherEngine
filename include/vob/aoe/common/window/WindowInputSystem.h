@@ -5,7 +5,7 @@
 #include <iomanip>
 
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	class WorldDataProvider;
 }
@@ -18,7 +18,7 @@ namespace vob::aoe::common
 	class VOB_AOE_API WindowInputSystem
 	{
 	public:
-		explicit WindowInputSystem(ecs::WorldDataProvider& a_wdp);
+		explicit WindowInputSystem(aoecs::WorldDataProvider& a_wdp);
 
 		void update() const;
 

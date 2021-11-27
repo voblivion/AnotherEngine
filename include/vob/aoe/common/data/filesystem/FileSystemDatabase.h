@@ -15,7 +15,7 @@ namespace vob::aoe::common
 	public:
 		// Constructor
 		explicit FileSystemDatabase(
-			type::TypeRegistry& a_typeRegistry
+			misty::pmr::registry& a_typeRegistry
 			, FileSystemIndexer& a_indexer
 		)
 			: ADatabase{ a_typeRegistry }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/postprocess/PostProcessRenderComponent.h>
 #include <vob/aoe/common/render/worldcomponents/SceneRenderComponent.h>
@@ -12,7 +12,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit PostProcessRenderPass(ecs::WorldDataProvider& a_wdp)
+		explicit PostProcessRenderPass(aoecs::WorldDataProvider& a_wdp)
 			: m_postProcessRenderComponent{ a_wdp.getWorldComponentRef<PostProcessRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
@@ -43,7 +43,7 @@ namespace vob::aoe::common
             auto const windowSize = window.getSize();
 			shaderProgram.setUniform(
 				shaderProgram.getWindowSizeLocation()
-				, vec2{ windowSize }
+				, glm::vec2{ windowSize }
 			);
 
 			for (auto const& event : window.getPolledEvents())

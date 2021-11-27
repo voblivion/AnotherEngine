@@ -1,7 +1,7 @@
-#include <vob/aoe/core/ecs/Entity.h>
+#include <vob/aoe/ecs/Entity.h>
 
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	// Public
 	Entity::Entity(EntityId const a_id

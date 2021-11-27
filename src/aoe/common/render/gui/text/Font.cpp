@@ -7,7 +7,7 @@ namespace vob::aoe::common
         template <typename ContinuousCharacterSetList>
         auto findContinuousCharacterSet(
             ContinuousCharacterSetList& a_continuousCharacterSetList
-            , sta::unicode const a_unicode
+            , char32_t const a_unicode
         )
         {
             return std::upper_bound(
@@ -24,7 +24,7 @@ namespace vob::aoe::common
         template <typename ContinuousCharacterSet>
         FontCharacter const* findCharacterInSet(
             ContinuousCharacterSet& a_continuousCharacterSet
-            , sta::unicode const a_unicode
+            , char32_t const a_unicode
         )
         {
             auto const offsetInSet = a_unicode - a_continuousCharacterSet.first;
@@ -36,7 +36,7 @@ namespace vob::aoe::common
         }
     }
 
-    FontCharacter const* Font::findCharacter(sta::unicode const a_unicode) const
+    FontCharacter const* Font::findCharacter(char32_t const a_unicode) const
     {
         auto const continuousCharacterSetIt = findContinuousCharacterSet(
             m_continuousCharacterSetList
@@ -127,14 +127,12 @@ namespace vob::aoe::common
         }
     }
 
-    i32 Font::getKerningAmount(
-        sta::unicode const a_firstCode
-        , sta::unicode const a_secondCode
+    std::int32_t Font::getKerningAmount(
+        char32_t const a_firstCode
+        , char32_t const a_secondCode
     ) const
     {
-        auto const kerningIt = m_kerningAmounts.find(
-            std::make_pair(a_firstCode, a_secondCode)
-        );
+        auto const kerningIt = m_kerningAmounts.find(CharacterSequence{ a_firstCode, a_secondCode });
         if (kerningIt != m_kerningAmounts.end())
         {
             return kerningIt->second;
@@ -144,6 +142,6 @@ namespace vob::aoe::common
 
     void Font::setKerning(FontKerning a_kerning)
     {
-        m_kerningAmounts[a_kerning.m_sequence] = a_kerning.m_amount;
+        m_kerningAmounts.emplace(a_kerning.m_sequence, a_kerning.m_amount);
     }
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vob/aoe/core/type/ADynamicType.h>
-
 #include <vob/aoe/common/render/gui/GuiRenderContext.h>
 #include <vob/aoe/common/render/gui/GuiTransform.h>
 #include <vob/aoe/common/render/gui/GuiShaderProgram.h>
 #include <vob/aoe/common/render/IWindow.h>
+
+#include <vob/aoe/core/type/ADynamicType.h>
 
 namespace vob::aoe::common
 {
@@ -13,7 +13,9 @@ namespace vob::aoe::common
 		: public type::ADynamicType
 	{
 	public:
-		// Methods
+
+		virtual ~AElement() = default;
+
 		virtual void render(
 			GuiShaderProgram const& a_shaderProgram
 			, GuiRenderContext& a_renderContext

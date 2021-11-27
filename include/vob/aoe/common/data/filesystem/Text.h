@@ -1,8 +1,9 @@
 #pragma once
 
-#include <vob/aoe/core/type/Primitive.h>
-
 #include <vob/aoe/core/type/ADynamicType.h>
+
+#include <string>
+
 
 namespace vob::aoe::common
 {
@@ -14,6 +15,6 @@ namespace vob::aoe::common
 			: m_string{ std::forward<Args>(a_args)... }
 		{}
 
-		u8string m_string;
+		std::pmr::string m_string;
 	};
 }

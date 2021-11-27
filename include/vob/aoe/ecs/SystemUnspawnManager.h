@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/core/ecs/EntityId.h>
+#include <vob/aoe/ecs/EntityId.h>
 
-namespace vob::aoe::ecs
+namespace vob::aoe::aoecs
 {
 	class SystemUnspawnManager
 	{

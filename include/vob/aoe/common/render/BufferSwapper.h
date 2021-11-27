@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/core/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/window/WorldWindowComponent.h>
 
@@ -11,7 +11,7 @@ namespace vob::aoe::common
 	{
 	public:
 		// Constructor
-		explicit BufferSwapper(ecs::WorldDataProvider& a_wdp)
+		explicit BufferSwapper(aoecs::WorldDataProvider& a_wdp)
 			: m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 		{}
 
