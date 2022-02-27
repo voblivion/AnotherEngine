@@ -1,6 +1,5 @@
 //#pragma once
 //
-//#include <vob/aoe/ecs/Component.h>
 //#include <vob/aoe/core/visitor/Aggregate.h>
 //
 //#include <vob/aoe/common/space/Vector.h>
@@ -9,7 +8,7 @@
 //namespace vob::aoe::common::gui
 //{
 //	struct GuiComponent final
-//		: public vis::Aggregate<GuiComponent, aoecs::AComponent>
+//		: public vis::Aggregate<GuiComponent>
 //	{
 //		// Attributes
 //		vec2 m_size{};

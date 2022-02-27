@@ -1,12 +1,11 @@
 #pragma once
 
 #include <vob/aoe/common/physic/ADynamicsWorldHolder.h>
-#include <vob/aoe/ecs/Component.h>
+
 
 namespace vob::aoe::common
 {
 	class WorldPhysicComponent final
-		: public aoecs::AComponent
 	{
 	public:
 		explicit WorldPhysicComponent(

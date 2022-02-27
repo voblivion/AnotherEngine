@@ -1,17 +1,17 @@
 #pragma once
 
-#include <vob/aoe/common/map/HierarchyComponent.h>
-#include <vob/aoe/common/space/LocalTransformComponent.h>
+#include <vob/aoe/common/map/Hierarchycomponent.h>
+#include <vob/aoe/common/space/LocalTransformcomponent.h>
 #include <vob/aoe/common/render/debugscene/DebugMesh.h>
-#include <vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h>
-#include <vob/aoe/common/space/VelocityComponent.h>
-#include <vob/aoe/common/todo/SimpleControllerComponent.h>
-#include <vob/aoe/common/input/WorldInputComponent.h>
-#include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/window/WorldCursorComponent.h>
-#include <vob/aoe/common/time/WorldTimeComponent.h>
-#include <vob/aoe/common/physic/RigidBodyComponent.h>
-#include <vob/aoe/common/physic/WorldPhysicComponent.h>
+#include <vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h>
+#include <vob/aoe/common/space/Velocitycomponent.h>
+#include <vob/aoe/common/todo/SimpleControllercomponent.h>
+#include <vob/aoe/common/input/WorldInputcomponent.h>
+#include <vob/aoe/common/space/Transformcomponent.h>
+#include <vob/aoe/common/window/WorldCursorcomponent.h>
+#include <vob/aoe/common/time/WorldTimecomponent.h>
+#include <vob/aoe/common/physic/RigidBodycomponent.h>
+#include <vob/aoe/common/physic/WorldPhysiccomponent.h>
 #include <vob/aoe/common/input/Keyboard.h>
 #include <vob/aoe/common/input/Mouse.h>
 

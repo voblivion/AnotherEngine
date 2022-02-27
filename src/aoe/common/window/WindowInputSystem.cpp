@@ -1,7 +1,7 @@
 #include <vob/aoe/common/window/WindowInputSystem.h>
 
-#include <vob/aoe/common/window/WorldWindowComponent.h>
-#include <vob/aoe/common/input/WorldInputComponent.h>
+#include <vob/aoe/common/window/WorldWindowcomponent.h>
+#include <vob/aoe/common/input/WorldInputcomponent.h>
 #include <vob/aoe/common/input/KeyboardUtil.h>
 
 #include <vob/aoe/ecs/WorldDataProvider.h>

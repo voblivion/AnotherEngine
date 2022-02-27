@@ -46,7 +46,7 @@ namespace vob::aoecs
 			{
 				t_listHolder->onEntityAdded(*t_entity);
 			}
-			m_entities.emplace(t_entity->getId(), std::move(t_entity));
+			m_entities.emplace(t_entity->get_id(), std::move(t_entity));
 		}
 		m_frameSpawns.clear();
 	}

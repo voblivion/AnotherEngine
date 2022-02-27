@@ -4,8 +4,8 @@
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/window/WorldCursorComponent.h>
-#include <vob/aoe/common/window/WorldWindowComponent.h>
+#include <vob/aoe/common/window/WorldCursorcomponent.h>
+#include <vob/aoe/common/window/WorldWindowcomponent.h>
 
 #include <iomanip>
 

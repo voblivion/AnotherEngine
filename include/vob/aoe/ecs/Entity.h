@@ -1,26 +1,23 @@
 #pragma once
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/ecs/ComponentManager.h>
-#include <vob/aoe/ecs/EntityId.h>
+#include <vob/aoe/ecs/component_manager.h>
+#include <vob/aoe/ecs/entity_id.h>
 
 namespace vob::aoecs
 {
-	class Entity final
-		: public ComponentManager
+	class entity final
+		: public component_manager
 	{
 	public:
 		// Constructors
-		VOB_AOE_API explicit Entity(
-			EntityId const a_id
-			, ComponentManager a_componentManager
-		);
+		VOB_AOE_API explicit entity(entity_id const a_id, component_manager a_componentManager);
 
 		// Methods
-		VOB_AOE_API EntityId getId() const;
+		VOB_AOE_API entity_id get_id() const;
 
 	private:
 		// Attributes
-		EntityId const m_id;
+		entity_id const m_id;
 	};
 }

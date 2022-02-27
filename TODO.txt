@@ -1,0 +1,20 @@
+Features
+[ ][ ] Input
+[ ][ ] Action?
+[ ][ ] PawnDriver
+[ ][ ] Navigation Gym Map
+[ ][ ] Character Model
+[ ][ ] Save Game / Settings
+[ ][ ] Interaction
+[ ][ ] Debug Controller?
+
+Bugs
+[ ][ ] Fix compound shape offset
+[ ][ ] Fix jump in ground (quantization?)
+[ ][ ] Rotate head only (bone?)
+[ ][ ] Fix debug rendering
+
+----
+
+[ ][ ] Welcome window -> do not show again + admin commands?
+[ ][ ] Map Review -> search by author

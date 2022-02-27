@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vob/aoe/core/visitor/Standard.h>
-#include <vob/aoe/core/visitor/Traits.h>
-
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/resources/Texture.h>
+
+#include <vob/misc/visitor/name_value_pair.h>
+
 
 namespace vob::aoe::common
 {
@@ -18,13 +18,15 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ThisType>
-	visitIfType<common::Material, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	requires std::is_same_v<std::remove_cvref_t<ThisType>, aoe::common::Material>
+	bool accept(VisitorType& a_visitor, ThisType& a_this)
 	{
-		a_visitor.visit(vis::makeNameValuePair("Albedo Texture", a_this.m_albedo));
-		a_visitor.visit(vis::makeNameValuePair("Normal Texture", a_this.m_normal));
-		a_visitor.visit(vis::makeNameValuePair("MetallicRoughness Texture", a_this.m_metallicRoughness));
+		a_visitor.visit(misvi::nvp("Albedo Texture", a_this.m_albedo));
+		a_visitor.visit(misvi::nvp("Normal Texture", a_this.m_normal));
+		a_visitor.visit(misvi::nvp("MetallicRoughness Texture", a_this.m_metallicRoughness));
+		return true;
 	}
 }

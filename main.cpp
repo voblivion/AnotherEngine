@@ -5,12 +5,12 @@
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
-#include "vob/aoe/common/window/WorldWindowComponent.h"
-#include "vob/aoe/common/time/WorldTimeComponent.h"
-#include "vob/aoe/common/input/WorldInputComponent.h"
-#include "vob/aoe/common/window/WorldCursorComponent.h"
-#include "vob/aoe/common/render/DirectorComponent.h"
-#include "vob/aoe/common/physic/WorldPhysicComponent.h"
+#include "vob/aoe/common/window/WorldWindowcomponent.h"
+#include "vob/aoe/common/time/WorldTimecomponent.h"
+#include "vob/aoe/common/input/WorldInputcomponent.h"
+#include "vob/aoe/common/window/WorldCursorcomponent.h"
+#include "vob/aoe/common/render/Directorcomponent.h"
+#include "vob/aoe/common/physic/WorldPhysiccomponent.h"
 #include "vob/aoe/common/physic/DefaultDynamicsWorldHolder.h"
 #include "vob/aoe/ecs/World.h"
 #include "vob/aoe/common/physic/PhysicSystem.h"
@@ -31,6 +31,7 @@
 #include <memory_resource>
 #include <vob/misc/hash/string_id_literals.h>
 #include <vob/misc/physics/measure_literals.h>
+#include <vob/misc/visitor/is_visitable.h>
 
 #include <vob/aoe/common/editor/EditorVisitor.h>
 
@@ -45,7 +46,7 @@ const std::uint32_t g_height = 1024u;
 std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
 {
 	// Prepare world components
-	aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoecs::component_manager t_worldComponents{ a_data.componentHolderCloner };
 	t_worldComponents.addComponent<aoe::common::WorldWindowComponent>(a_window);
 	t_worldComponents.addComponent<aoe::common::SceneRenderComponent>(
 		a_data.renderTextureResourceManager
@@ -100,21 +101,25 @@ std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 	auto const localTransformSystemId = world->addSystem<aoe::common::LocalTransformSystem>();
 
 	// Set schedule
-	world->setSchedule({ {
-		{timeSystemId,					{}}
-		, {windowInputSystemId,			{}}
-		, {windowCursorSystemId,		{}}
-		, {simpleControllerSystemId,	{}}
-		, {moveSystemId,				{}}
-		, {testSystemId,				{}}
-		, {defaultDirectorSystemId,     {}}
-		, {localTransformSystemId,		{}}
-		, {renderSystemId,			    {}}
-		, {physicSystemId,				{}}
-		, {lifetimeSystemId,			{}}
-	//  , {guiRenderSystemId,			{}}
-		, {hierarchySystemId,			{}}
-	} });
+	world->setSchedule({
+		mismt::thread_schedule{
+			{windowInputSystemId, {timeSystemId}}
+			, {windowCursorSystemId, {}}
+			, {renderSystemId, {localTransformSystemId}}
+		},
+		mismt::thread_schedule{
+			{timeSystemId,					{}}
+			, {simpleControllerSystemId,	{windowCursorSystemId}}
+			, {moveSystemId,				{}}
+			, {testSystemId,				{}}
+			, {defaultDirectorSystemId,     {}}
+			, {localTransformSystemId,		{}}
+			, {physicSystemId,				{renderSystemId}}
+			, {lifetimeSystemId,			{}}
+		//  , {guiRenderSystemId,			{}}
+			, {hierarchySystemId,			{}}
+		}
+	});
 
 	return std::move(world);
 }
@@ -126,7 +131,7 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::World& a_world)
     auto& worldData = a_world.getData();
     auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
 
-	aoecs::ComponentManager canvasArk{ cloner };
+	aoecs::component_manager canvasArk{ a_data.componentHolderCloner };
 	auto& canvasComponent = canvasArk.addComponent<aoe::common::CanvasComponent>(cloner);
 
 	auto& guiMeshResourceManager = a_data.guiMeshResourceManager;
@@ -160,25 +165,25 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 		, a_data.dynamicTypeCloner
 	};
 
-	auto playerArk = a_data.database.find<aoecs::ComponentManager>(2);
+	auto playerArk = a_data.database.find<aoecs::component_manager>(2);
 	if (playerArk != nullptr)
 	{
 		auto& player = systemSpawnManager.spawn(*playerArk);
 
-		auto playerNeckArk = a_data.database.find<aoecs::ComponentManager>(10);
+		auto playerNeckArk = a_data.database.find<aoecs::component_manager>(10);
 		if (playerNeckArk != nullptr)
 		{
 			auto playerNeck = *playerNeckArk;
 			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
-			hierarchy->m_parent = aoecs::EntityHandle{ player };
+			hierarchy->m_parent = aoecs::entity_handle{ player };
 			auto& neck = systemSpawnManager.spawn(playerNeck);
 
-			auto playerCameraArk = a_data.database.find<aoecs::ComponentManager>(3);
+			auto playerCameraArk = a_data.database.find<aoecs::component_manager>(3);
 			if (playerCameraArk != nullptr)
 			{
 				auto playerCamera = *playerCameraArk;
 				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
-				hierarchy->m_parent = aoecs::EntityHandle{ neck };
+				hierarchy->m_parent = aoecs::entity_handle{ neck };
 				systemSpawnManager.spawn(playerCamera);
 			}
 		}
@@ -188,7 +193,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 	}
 
 	auto const groundPath = std::filesystem::path{ "data/archetypes/grass.json" };
-	auto groundArk = a_data.database.find<aoecs::ComponentManager>(a_data.fileSystemIndexer.getId(groundPath));
+	auto groundArk = a_data.database.find<aoecs::component_manager>(a_data.fileSystemIndexer.getId(groundPath));
 	if (groundArk != nullptr)
 	{
 		auto ground = *groundArk;
@@ -305,7 +310,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 	}
 
 	//// Load model
-	//auto modelArk = a_data.database.find<aoecs::ComponentManager>(4);
+	//auto modelArk = a_data.database.find<aoecs::component_manager>(4);
 	//if (modelArk != nullptr)
 	//{
 	//	{
@@ -314,7 +319,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 	//}
 
 	//// Load ground
-	//auto groundArk = a_data.database.find<aoecs::ComponentManager>(5);
+	//auto groundArk = a_data.database.find<aoecs::component_manager>(5);
 	//if (groundArk != nullptr)
 	//{
 	//	{
@@ -353,15 +358,12 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 std::unique_ptr<aoecs::World> createEditorWorld(aoe::DataHolder& a_data)
 {
 	// Prepare world components
-	aoecs::ComponentManager t_worldComponents{ a_data.dynamicTypeCloner };
+	aoecs::component_manager t_worldComponents{ a_data.componentHolderCloner };
 	return nullptr;
 }
 
 #include <filesystem>
 #include <unordered_map>
-
-static_assert(aoe::vis::FreeAcceptVisitable<aoe::vis::EditorVisitor, int>);
-
 
 void glfwErrorCallback(int code, const char* description)
 {
@@ -416,3 +418,12 @@ int main()
 	// Destroy game window
 	glfwTerminate();
 }
+
+/*
+	Raw/Physical input -> Logical input -> Action input
+
+	Action input:
+	- dynamic level? game -> map<ActionId, LogicalInput>?
+
+
+*/

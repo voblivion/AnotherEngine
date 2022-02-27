@@ -10,6 +10,9 @@
 #include <vob/aoe/common/render/gui/text/TextUtils.h>
 #include <vob/aoe/common/render/gui/elements/AStandardElement.h>
 
+#include <vob/misc/visitor/name_value_pair.h>
+
+
 namespace vob::aoe::common
 {
 	class VOB_AOE_API TextElement
@@ -42,19 +45,20 @@ namespace vob::aoe::common
 		#pragma endregion
 
         template <typename VisitorType, typename ThisType>
-        static void accept(VisitorType& a_visitor, ThisType& a_this)
+        static bool accept(VisitorType& a_visitor, ThisType& a_this)
         {
 			AStandardElement::accept(a_visitor, a_this);
 
             std::string text;
-            a_visitor.visit(vis::makeNameValuePair("Text", text));
+            a_visitor.visit(misvi::nvp("Text", text));
 			// !TODO : utf8-decode
             //a_this.m_text.assign(text);
-            a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
-            a_visitor.visit(vis::makeNameValuePair("Line Height", a_this.m_lineHeight));
-            a_visitor.visit(vis::makeNameValuePair("Font", a_this.m_font));
-            a_visitor.visit(vis::makeNameValuePair("Color", a_this.m_color));
+            a_visitor.visit(misvi::nvp("Size", a_this.m_size));
+            a_visitor.visit(misvi::nvp("Line Height", a_this.m_lineHeight));
+            a_visitor.visit(misvi::nvp("Font", a_this.m_font));
+            a_visitor.visit(misvi::nvp("Color", a_this.m_color));
             a_this.m_hasChanged = true;
+			return true;
         }
 
 	protected:

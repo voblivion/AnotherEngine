@@ -3,7 +3,7 @@
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
 #include <vob/aoe/common/render/OpenGl.h>
-#include <vob/aoe/common/render/worldcomponents/SceneRenderComponent.h>
+#include <vob/aoe/common/render/worldcomponents/SceneRendercomponent.h>
 
 namespace vob::aoe::common
 {

@@ -4,10 +4,10 @@
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/resources/RenderTexture.h>
 
+
 namespace vob::aoe::common
 {
 	struct SceneRenderComponent final
-		: public aoecs::AComponent
 	{
 		// Constructors
 		template <typename... TArgs>

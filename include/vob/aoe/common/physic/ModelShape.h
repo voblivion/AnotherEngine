@@ -2,13 +2,15 @@
 
 #include "ACollisionShape.h"
 
-#include <memory>
+#include <vob/aoe/common/render/model/StaticModel.h>
+
+#include <vob/misc/visitor/name_value_pair.h>
 
 #include <bullet/BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btStridingMeshInterface.h>
 
-#include <vob/aoe/common/render/model/StaticModel.h>
+#include <memory>
 
 
 namespace vob::aoe::common
@@ -150,9 +152,10 @@ namespace vob::aoe::common
         }
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
-            a_visitor.visit(vis::nvp("Model", a_this.m_stridingMesh.m_model));
+            a_visitor.visit(misvi::nvp("Model", a_this.m_stridingMesh.m_model));
+            return true;
         }
 
     private:

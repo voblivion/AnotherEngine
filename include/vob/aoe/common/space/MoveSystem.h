@@ -2,9 +2,9 @@
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
 #include <vob/aoe/api.h>
-#include <vob/aoe/common/space/VelocityComponent.h>
-#include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/time/WorldTimeComponent.h>
+#include <vob/aoe/common/space/Velocitycomponent.h>
+#include <vob/aoe/common/space/Transformcomponent.h>
+#include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <glm/gtc/quaternion.hpp>
 
 namespace vob::aoe::common

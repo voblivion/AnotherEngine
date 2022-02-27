@@ -1,19 +1,18 @@
 #pragma once
 
-#include <vob/misc/std/ignorable_assert.h>
-
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/ecs/Component.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/Manager.h>
 #include <vob/aoe/common/render/model/ModelShaderProgram.h>
 #include <vob/aoe/common/render/model/StaticModel.h>
 #include <vob/aoe/common/render/resources/RenderTexture.h>
 
+#include <vob/misc/std/ignorable_assert.h>
+
+
 namespace vob::aoe::common
 {
 	struct ModelRenderComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		glm::vec3 m_ambientColor{ 0.25f, 0.25f, 0.25f };

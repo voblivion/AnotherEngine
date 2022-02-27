@@ -80,17 +80,18 @@ namespace vob::aoe::common
 		}
 
         template <typename VisitorType, typename Self>
-		static void accept(VisitorType& a_visitor, Self& a_this)
+		static bool accept(VisitorType& a_visitor, Self& a_this)
         {
-            a_visitor.visit(vis::makeNameValuePair("Outer Corner Radius", a_this.m_outerCornerRadius));
-            a_visitor.visit(vis::makeNameValuePair("Inner Corner Radius", a_this.m_innerCornerRadius));
-            a_visitor.visit(vis::makeNameValuePair("Border Width", a_this.m_borderWidth));
-            a_visitor.visit(vis::makeNameValuePair("Margin", a_this.m_margin));
-            a_visitor.visit(vis::makeNameValuePair("Padding", a_this.m_padding));
-            a_visitor.visit(vis::makeNameValuePair("Border Color", a_this.m_borderColor));
-            a_visitor.visit(vis::makeNameValuePair("Border Texture", a_this.m_borderTexture));
-            a_visitor.visit(vis::makeNameValuePair("Background Color", a_this.m_backgroundColor));
-            a_visitor.visit(vis::makeNameValuePair("Background Texture", a_this.m_backgroundTexture));
+            a_visitor.visit(misvi::nvp("Outer Corner Radius", a_this.m_outerCornerRadius));
+            a_visitor.visit(misvi::nvp("Inner Corner Radius", a_this.m_innerCornerRadius));
+            a_visitor.visit(misvi::nvp("Border Width", a_this.m_borderWidth));
+            a_visitor.visit(misvi::nvp("Margin", a_this.m_margin));
+            a_visitor.visit(misvi::nvp("Padding", a_this.m_padding));
+            a_visitor.visit(misvi::nvp("Border Color", a_this.m_borderColor));
+            a_visitor.visit(misvi::nvp("Border Texture", a_this.m_borderTexture));
+            a_visitor.visit(misvi::nvp("Background Color", a_this.m_backgroundColor));
+            a_visitor.visit(misvi::nvp("Background Texture", a_this.m_backgroundTexture));
+			return true;
 		}
 	protected:
 		// Methods

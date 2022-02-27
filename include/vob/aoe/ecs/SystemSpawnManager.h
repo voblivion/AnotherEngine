@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/ecs/Entity.h>
+#include <vob/aoe/ecs/entity.h>
 
 namespace vob::aoecs
 {
@@ -12,15 +12,15 @@ namespace vob::aoecs
 	{
 	public:
 		// Constructors
-		explicit SystemSpawnManager(std::vector<std::unique_ptr<Entity>>& a_frameSpawns);
+		explicit SystemSpawnManager(std::vector<std::unique_ptr<entity>>& a_frameSpawns);
 
 		// Methods
-		Entity& spawn(ComponentManager a_componentManager);
+		entity& spawn(component_manager a_componentManager);
 
 	private:
 		// Attributes
-		EntityId m_nextEntityId{};
+		entity_id m_nextEntityId{};
 		std::mutex m_mutex{};
-		std::vector<std::unique_ptr<Entity>>& m_frameSpawns;
+		std::vector<std::unique_ptr<entity>>& m_frameSpawns;
 	};
 }

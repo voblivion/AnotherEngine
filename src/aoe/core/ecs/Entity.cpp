@@ -1,16 +1,15 @@
-#include <vob/aoe/ecs/Entity.h>
+#include <vob/aoe/ecs/entity.h>
 
 
 namespace vob::aoecs
 {
 	// Public
-	Entity::Entity(EntityId const a_id
-		, ComponentManager a_componentManager)
-		: ComponentManager{ std::move(a_componentManager) }
+	entity::entity(entity_id const a_id, component_manager a_componentManager)
+		: component_manager{ std::move(a_componentManager) }
 		, m_id { a_id }
 	{}
 
-	EntityId Entity::getId() const
+	entity_id entity::get_id() const
 	{
 		return m_id;
 	}

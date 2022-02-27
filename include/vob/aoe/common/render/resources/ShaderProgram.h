@@ -7,7 +7,8 @@
 #include <vob/aoe/common/render/OpenGl.h>
 
 #include <vob/aoe/core/data/ADatabase.h>
-#include <vob/aoe/core/visitor/Utils.h>
+
+#include <vob/misc/visitor/name_value_pair.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -78,10 +79,11 @@ namespace vob::aoe::common
 
 
         template <typename VisitorType, typename Self>
-		static void accept(VisitorType& a_visitor, Self& a_this)
+		static bool accept(VisitorType& a_visitor, Self& a_this)
         {
-            a_visitor.visit(vis::makeNameValuePair("Vertex Shader Source", a_this.m_vertexShaderSource));
-            a_visitor.visit(vis::makeNameValuePair("Fragment Shader Source", a_this.m_fragmentShaderSource));
+            a_visitor.visit(misvi::nvp("Vertex Shader Source", a_this.m_vertexShaderSource));
+            a_visitor.visit(misvi::nvp("Fragment Shader Source", a_this.m_fragmentShaderSource));
+			return true;
 		}
 
 	private:

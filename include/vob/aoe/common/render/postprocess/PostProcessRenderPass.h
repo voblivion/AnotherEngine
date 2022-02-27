@@ -2,8 +2,8 @@
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/render/postprocess/PostProcessRenderComponent.h>
-#include <vob/aoe/common/render/worldcomponents/SceneRenderComponent.h>
+#include <vob/aoe/common/render/postprocess/PostProcessRendercomponent.h>
+#include <vob/aoe/common/render/worldcomponents/SceneRendercomponent.h>
 
 
 namespace vob::aoe::common

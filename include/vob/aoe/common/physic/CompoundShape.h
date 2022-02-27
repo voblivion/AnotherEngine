@@ -4,7 +4,8 @@
 
 #include <vob/aoe/common/physic/Utils.h>
 
-#include <vob/aoe/core/visitor/Utils.h>
+#include <vob/misc/visitor/container.h> 
+#include <vob/misc/visitor/name_value_pair.h> 
 
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCompoundShape.h>
@@ -28,23 +29,25 @@ namespace vob::aoe::common
             {}
 
             template <typename VisitorType>
-            void accept(VisitorType& a_visitor)
+            bool accept(VisitorType& a_visitor)
             {
                 glm::vec3 position;
-                a_visitor.visit(vis::makeNameValuePair("LocalPosition", position));
+                a_visitor.visit(misvi::nvp("LocalPosition", position));
                 glm::vec3 rotation;
-                a_visitor.visit(vis::makeNameValuePair("LocalRotation", rotation));
+                a_visitor.visit(misvi::nvp("LocalRotation", rotation));
 
                 m_localMatrix = glm::mat4{ 1.0f };
                 m_localMatrix = glm::translate(m_localMatrix, position);
                 m_localMatrix *= glm::mat4{ glm::quat{ rotation } };
-                a_visitor.visit(vis::nvp("Shape", m_collisionShape));
+                a_visitor.visit(misvi::nvp("Shape", m_collisionShape));
+                return true;
             }
 
             template <typename VisitorType>
-            void accept(VisitorType& a_visitor) const
+            bool accept(VisitorType& a_visitor) const
             {
                 static_assert(false && "TODO");
+                return true;
             }
         };
 
@@ -93,23 +96,26 @@ namespace vob::aoe::common
         }
 
         template <typename VisitorType>
-        void accept(VisitorType& a_visitor)
+        bool accept(VisitorType& a_visitor)
         {
             auto enableDynamicAabbTree = true;
-            a_visitor.visit(vis::nvp("EnableDynamicAabbTree", enableDynamicAabbTree));
+            a_visitor.visit(misvi::nvp("EnableDynamicAabbTree", enableDynamicAabbTree));
 
-            auto containerHolder = vis::cth(m_children, ChildFactory{ m_cloner });
-            a_visitor.visit(vis::nvp("Children", containerHolder));
+            auto containerHolder = misvi::ctn(m_children, ChildFactory{ m_cloner });
+            a_visitor.visit(misvi::nvp("Children", containerHolder));
 
             // TODO: why does it not work? seems like copy operator is buggy
             // m_shape = btCompoundShape(enableDynamicAabbTree, static_cast<int>(m_children.size()));
             addChildrenToShape();
+
+            return true;
         }
 
         template <typename VisitorType>
-        void accept(VisitorType& a_visitor) const
+        bool accept(VisitorType& a_visitor) const
         {
             static_assert(false && "TODO");
+            return true;
         }
 
     private:

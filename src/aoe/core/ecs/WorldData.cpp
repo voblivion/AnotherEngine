@@ -3,7 +3,7 @@
 
 namespace vob::aoecs
 {
-	WorldData::WorldData(ComponentManager a_worldComponents)
+	WorldData::WorldData(component_manager a_worldComponents)
 		: m_worldComponents{ std::move(a_worldComponents) }
 	{}
 

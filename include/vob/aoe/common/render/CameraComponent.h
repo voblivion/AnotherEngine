@@ -1,10 +1,9 @@
 #pragma once
-#include <vob/aoe/ecs/Component.h>
+
 
 namespace vob::aoe::common
 {
 	struct CameraComponent final
-		: public aoecs::AComponent
 	{
 		float fov{ 70.0f };
 		float nearClip{ 0.1f };
@@ -12,13 +11,15 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ThisType>
-	visitIfType<common::CameraComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	requires std::is_same_v<std::remove_cvref_t<ThisType>, aoe::common::CameraComponent>
+	bool accept(VisitorType& a_visitor, ThisType& a_this)
 	{
 		a_visitor.visit(nvp("FOV", a_this.fov));
 		a_visitor.visit(nvp("Near Clip", a_this.nearClip));
 		a_visitor.visit(nvp("Far Clip", a_this.farClip));
+		return true;
 	}
 }

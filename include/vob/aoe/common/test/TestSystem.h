@@ -1,7 +1,7 @@
 #pragma once
-#include "vob/aoe/common/space/TransformComponent.h"
+#include "vob/aoe/common/space/Transformcomponent.h"
 #include "vob/aoe/ecs/WorldDataProvider.h"
-#include "TestComponent.h"
+#include "Testcomponent.h"
 
 
 namespace vob::aoe::common

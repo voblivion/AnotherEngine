@@ -1,15 +1,14 @@
 #pragma once
 
-#include <vector>
-#include <functional>
-
-#include "vob/aoe/ecs/Component.h"
 #include <vob/aoe/common/render/IWindow.h>
+
+#include <functional>
+#include <vector>
+
 
 namespace vob::aoe::common
 {
 	class WorldWindowComponent final
-		: public aoecs::AComponent
 	{
 	public:
 		// Constructor

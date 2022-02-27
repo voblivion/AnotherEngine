@@ -1,6 +1,7 @@
 #pragma once
 
-#include <vob/aoe/core/visitor/Utils.h>
+#include <vob/aoe/common/data/filesystem/FileSystemIndexer.h>
+
 #include <glm/ext/quaternion_float.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -14,20 +15,22 @@ namespace vob::aoe::common
 	}
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType>
-	void accept(VisitorType& a_visitor, glm::quat& a_quaternion)
+	bool accept(VisitorType& a_visitor, glm::quat& a_quaternion)
 	{
 		glm::vec3 t_eulerAngles{};
 		a_visitor.visit(t_eulerAngles);
 		a_quaternion = glm::quat{ t_eulerAngles };
+		return true;
 	}
 
 	template <typename VisitorType>
-	void accept(VisitorType& a_visitor, glm::quat const& a_quaternion)
+	bool accept(VisitorType& a_visitor, glm::quat const& a_quaternion)
 	{
 		auto const t_eulerAngles = glm::eulerAngles(a_quaternion);
 		a_visitor.visit(t_eulerAngles);
+		return true;
 	}
 }

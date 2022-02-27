@@ -1,5 +1,4 @@
 #pragma once
-#include "vob/aoe/ecs/Component.h"
 #include <optional>
 #include <bullet/BulletDynamics/Character/btKinematicCharacterController.h>
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
@@ -9,7 +8,6 @@
 namespace vob::aoe::common
 {
 	struct CharacterControllerComponent final
-		: public aoecs::AComponent
 	{
 		std::optional<btKinematicCharacterController> m_kinematic;
 		btPairCachingGhostObject m_ghost;
@@ -18,10 +16,12 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ThisType>
-	visitIfType<common::CharacterControllerComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	requires std::is_same_v<std::remove_cvref_t<ThisType>, aoe::common::CharacterControllerComponent>
+	bool accept(VisitorType& a_visitor, ThisType& a_this)
 	{
+		return true;
 	}
 }

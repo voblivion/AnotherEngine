@@ -4,7 +4,7 @@
 #include <vob/aoe/common/input/physical/Keyboard.h>
 #include <vob/aoe/common/input/physical/Mouse.h>
 
-#include <vob/aoe/common/input/WorldInputComponent.h>
+#include <vob/aoe/common/input/WorldInputcomponent.h>
 
 #include <variant>
 

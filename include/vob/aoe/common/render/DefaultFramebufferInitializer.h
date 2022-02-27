@@ -2,7 +2,7 @@
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/window/WorldWindowComponent.h>
+#include <vob/aoe/common/window/WorldWindowcomponent.h>
 
 namespace vob::aoe::common
 {

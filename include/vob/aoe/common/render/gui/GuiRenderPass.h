@@ -2,12 +2,12 @@
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/render/gui/GuiRenderComponent.h>
+#include <vob/aoe/common/render/gui/GuiRendercomponent.h>
 #include <vob/aoe/common/render/gui/elements/EmptyElement.h>
 #include <vob/aoe/common/render/gui/elements/TextElement.h>
-#include <vob/aoe/common/render/gui/CanvasComponent.h>
-#include <vob/aoe/common/time/WorldTimeComponent.h>
-#include <vob/aoe/common/window/WorldWindowComponent.h>
+#include <vob/aoe/common/render/gui/Canvascomponent.h>
+#include <vob/aoe/common/time/WorldTimecomponent.h>
+#include <vob/aoe/common/window/WorldWindowcomponent.h>
 
 namespace vob::aoe::common
 {

@@ -1,19 +1,17 @@
 #pragma once
 
-#include <vob/misc/std/ignorable_assert.h>
-
-#include <vob/aoe/ecs/Component.h>
-#include <vob/aoe/core/data/ADatabase.h>
-
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/postprocess/PostProcessShaderProgram.h>
 #include <vob/aoe/common/render/postprocess/PostProcessQuad.h>
+
+#include <vob/aoe/core/data/ADatabase.h>
+
+#include <vob/misc/std/ignorable_assert.h>
 
 
 namespace vob::aoe::common
 {
 	struct PostProcessRenderComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		std::shared_ptr<GraphicResourceHandle<PostProcessShaderProgram> const> m_shaderProgram;

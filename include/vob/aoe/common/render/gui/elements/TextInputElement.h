@@ -23,9 +23,10 @@ namespace vob::aoe::common
 			, GuiTransform a_transform) const override;
 
         template <typename VisitorType, typename ThisType>
-		static void accept(VisitorType& a_visitor, ThisType& a_this)
+		static bool accept(VisitorType& a_visitor, ThisType& a_this)
 		{
 			TextElement::accept(a_visitor, a_this);
+			return true;
 		}
 
 	private:

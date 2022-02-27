@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
-#include <vob/aoe/common/map/HierarchyComponent.h>
+#include <vob/aoe/common/map/Hierarchycomponent.h>
 
 
 namespace vob::aoe::common
@@ -15,11 +15,11 @@ namespace vob::aoe::common
 			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 		{}
 
-		void onEntityAdded(aoecs::Entity& a_entity) const
+		void onEntityAdded(aoecs::entity& a_entity) const
 		{
 			auto const hierarchy = a_entity.getComponent<HierarchyComponent>();
 			auto const parent = m_entities.find(hierarchy->m_parent);
-			ignorable_assert(!hierarchy->m_parent.isValid() || parent != nullptr);
+			ignorable_assert(!hierarchy->m_parent.is_valid() || parent != nullptr);
 			if(parent != nullptr)
 			{
 				auto& parentHierarchy = parent->getComponent<HierarchyComponent>();
@@ -31,12 +31,12 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityRemoved(aoecs::Entity& a_entity) const
+		void onEntityRemoved(aoecs::entity& a_entity) const
 		{
 			auto& hierarchy = *a_entity.getComponent<HierarchyComponent>();
 
 			// Remove from parent hierarchy
-			if (hierarchy.m_parent.isValid())
+			if (hierarchy.m_parent.is_valid())
 			{
 				auto const parent = m_entities.find(hierarchy.m_parent);
 				assert(parent != nullptr);
@@ -44,7 +44,7 @@ namespace vob::aoe::common
 				auto const it = std::find(
 					parentHierarchy.m_children.begin()
 					, parentHierarchy.m_children.end()
-					, aoecs::EntityHandle{ a_entity }
+					, aoecs::entity_handle{ a_entity }
 				);
 				ignorable_assert(it != parentHierarchy.m_children.end());
 				if (it != parentHierarchy.m_children.end())
@@ -65,7 +65,7 @@ namespace vob::aoe::common
 			hierarchy.m_children.clear();
 		}
 
-		void update() {}
+		void update() const {}
 
 	private:
 		aoecs::SystemUnspawnManager& m_systemUnspawnManager;

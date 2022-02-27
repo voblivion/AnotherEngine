@@ -2,7 +2,6 @@
 
 #include <array>
 
-#include <vob/aoe/core/visitor/Traits.h>
 
 namespace vob::aoe::common // TODO : change to ::gui
 {
@@ -123,10 +122,11 @@ namespace vob::aoe::common // TODO : change to ::gui
         }
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
             a_visitor.visit(makeNameValuePair("Value", a_this.m_value));
             a_visitor.visit(makeNameValuePair("Type", a_this.m_type));
+            return true;
         }
 
     private:
@@ -161,9 +161,10 @@ namespace vob::aoe::common // TODO : change to ::gui
         Value& operator[](int i) { return m_values[i]; }
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
             accept(a_visitor, a_this.m_values);
+            return true;
         }
 
     private:

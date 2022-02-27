@@ -1,31 +1,32 @@
 #pragma once
 
-#include <vector>
-
 #include <vob/aoe/ecs/WorldData.h>
 #include <vob/aoe/ecs/WorldDataProvider.h>
-#include <vob/aoe/ecs/ComponentManager.h>
-#include <vob/aoe/core/sync/ATask.h>
-#include <vob/aoe/core/sync/MultiThreadWorker.h>
+#include <vob/aoe/ecs/component_manager.h>
+#include <vob/misc/multithread/basic_task.h>
+#include <vob/misc/multithread/worker.h>
+
+#include <vector>
+
 
 namespace vob::aoecs
 {
 	namespace detail
 	{
 		template <typename SystemType>
-		class SystemTask final
-			: public aoe::sync::ATask
+		class system_task final
+			: public mismt::basic_task
 		{
 		public:
 			// Constructors
-			explicit SystemTask(WorldData& a_worldData)
+			explicit system_task(WorldData& a_worldData)
 				: m_worldDataProvider{ a_worldData }
 				, m_system{ m_worldDataProvider }
 			{}
 
 		protected:
 			// Methods
-			virtual void doUpdate() override
+			virtual void execute() const override
 			{
 				m_system.update();
 			}
@@ -41,7 +42,7 @@ namespace vob::aoecs
 	{
 	public:
 		// Constructors
-		explicit World(ComponentManager a_worldComponents)
+		explicit World(component_manager a_worldComponents)
 			: m_data{ std::move(a_worldComponents) }
 		{}
 
@@ -49,17 +50,16 @@ namespace vob::aoecs
 		template <typename SystemType>
 		std::size_t addSystem()
 		{
-			using Task = detail::SystemTask<SystemType>;
-			m_tasks.emplace_back(std::make_unique<Task>(m_data));
+			m_tasks.emplace_back(std::make_unique<detail::system_task<SystemType>>(m_data));
 			return m_tasks.size() - 1;
 		}
 
-		void setSchedule(aoe::sync::MultiThreadSchedule a_schedule)
+		void setSchedule(mismt::schedule a_schedule)
 		{
 			m_schedule = std::move(a_schedule);
 		}
+
 		VOB_AOE_API void start();
-		VOB_AOE_API void step();
 
 		WorldData& getData()
 		{
@@ -68,8 +68,8 @@ namespace vob::aoecs
 
 	private:
 		// Attributes
-		aoe::sync::TaskList m_tasks;
+		mismt::task_list m_tasks;
 		WorldData m_data;
-		aoe::sync::MultiThreadSchedule m_schedule;
+		mismt::schedule m_schedule;
 	};
 }

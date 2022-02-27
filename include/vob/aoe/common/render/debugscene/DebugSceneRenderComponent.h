@@ -1,16 +1,17 @@
 #pragma once
-#include <vob/aoe/ecs/Component.h>
-#include <vob/aoe/core/data/ADatabase.h>
 
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/debugscene/DebugMesh.h>
 #include <vob/aoe/common/render/debugscene/DebugSceneShaderProgram.h>
+
+#include <vob/aoe/core/data/ADatabase.h>
+
 #include <vob/misc/std/ignorable_assert.h>
+
 
 namespace vob::aoe::common
 {
 	struct DebugSceneRenderComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		DebugMesh m_debugMesh{};

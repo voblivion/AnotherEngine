@@ -10,13 +10,13 @@ namespace vob::aoe::common
 	class GraphicResourceHandle;
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
     template <typename VisitorType, typename ResourceType>
-	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType>& a_this);
+	bool accept(VisitorType& a_visitor, aoe::common::GraphicResourceHandle<ResourceType>& a_this);
 
     template <typename VisitorType, typename ResourceType>
-	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType> const& a_this);
+	bool accept(VisitorType& a_visitor, aoe::common::GraphicResourceHandle<ResourceType> const& a_this);
 }
 
 namespace vob::aoe::common
@@ -26,10 +26,10 @@ namespace vob::aoe::common
 		: public type::ADynamicType
     {
         template <typename VisitorType, typename OtherResourceT>
-        friend void vis::accept(VisitorType&, GraphicResourceHandle<OtherResourceT>&);
+        friend bool vob::misvi::accept(VisitorType&, GraphicResourceHandle<OtherResourceT>&);
 
         template <typename VisitorType, typename OtherResourceT>
-        friend void vis::accept(VisitorType&, GraphicResourceHandle<OtherResourceT> const&);
+        friend bool vob::misvi::accept(VisitorType&, GraphicResourceHandle<OtherResourceT> const&);
 
 	public:
 		// TODO : where is my allocator ?
@@ -128,17 +128,17 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ResourceType>
-	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType>& a_this)
+	bool accept(VisitorType& a_visitor, vob::aoe::common::GraphicResourceHandle<ResourceType>& a_this)
 	{
-		a_visitor.visit(*a_this.m_resource);
+		return a_visitor.visit(*a_this.m_resource);
 	}
 
 	template <typename VisitorType, typename ResourceType>
-	void accept(VisitorType& a_visitor, common::GraphicResourceHandle<ResourceType> const& a_this)
+	bool accept(VisitorType& a_visitor, vob::aoe::common::GraphicResourceHandle<ResourceType> const& a_this)
 	{
-		a_visitor.visit(*a_this.m_resource);
+		return a_visitor.visit(*a_this.m_resource);
 	}
 }

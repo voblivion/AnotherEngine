@@ -1,16 +1,16 @@
 #pragma once
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/render/CameraComponent.h>
-#include <vob/aoe/common/render/DirectorComponent.h>
+#include <vob/aoe/common/render/Cameracomponent.h>
+#include <vob/aoe/common/render/Directorcomponent.h>
 #include <vob/aoe/common/render/OpenGl.h>
 #include <vob/aoe/common/render/Utils.h>
-#include <vob/aoe/common/render/model/ModelRenderComponent.h>
-#include <vob/aoe/common/render/model/ModelComponent.h>
-#include <vob/aoe/common/window/WorldWindowComponent.h>
+#include <vob/aoe/common/render/model/ModelRendercomponent.h>
+#include <vob/aoe/common/render/model/Modelcomponent.h>
+#include <vob/aoe/common/window/WorldWindowcomponent.h>
 
 // DEBUG
-#include <vob/aoe/common/input/WorldInputComponent.h>
+#include <vob/aoe/common/input/WorldInputcomponent.h>
 
 namespace vob::aoe::common
 {

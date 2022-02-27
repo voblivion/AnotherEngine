@@ -8,9 +8,8 @@
 
 #include <vob/misc/std/json.h>
 
-#include <vob/aoe/core/visitor/Standard.h>
-#include <vob/aoe/core/visitor/Traits.h>
-#include <vob/aoe/core/visitor/Utils.h>
+#include <vob/misc/visitor/name_value_pair.h>
+
 
 namespace vob::aoe::vis
 {

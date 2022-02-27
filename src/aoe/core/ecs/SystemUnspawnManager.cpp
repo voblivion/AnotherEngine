@@ -3,11 +3,11 @@
 namespace vob::aoecs
 {
 	// Public
-	SystemUnspawnManager::SystemUnspawnManager(std::vector<EntityId>& a_frameUnspawns)
+	SystemUnspawnManager::SystemUnspawnManager(std::vector<entity_id>& a_frameUnspawns)
 		: m_frameUnspawns{ a_frameUnspawns }
 	{}
 
-	void SystemUnspawnManager::unspawn(EntityId const a_id)
+	void SystemUnspawnManager::unspawn(entity_id const a_id)
 	{
 		std::lock_guard<std::mutex> t_lock{ m_mutex };
 		m_frameUnspawns.emplace_back(a_id);

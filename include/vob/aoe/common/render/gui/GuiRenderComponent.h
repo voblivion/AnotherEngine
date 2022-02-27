@@ -1,19 +1,18 @@
 #pragma once
 
-#include <vob/misc/std/ignorable_assert.h>
-
-#include <vob/aoe/ecs/Component.h>
-#include <vob/aoe/core/data/ADatabase.h>
-
 #include <vob/aoe/common/render/gui/GuiShaderProgram.h>
 #include <vob/aoe/common/render/GraphicResourceHandle.h>
 #include <vob/aoe/common/render/gui/GuiRenderContext.h>
 #include <vob/aoe/common/render/gui/GuiMesh.h>
 
+#include <vob/aoe/core/data/ADatabase.h>
+
+#include <vob/misc/std/ignorable_assert.h>
+
+
 namespace vob::aoe::common
 {
 	struct GuiRenderComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		std::shared_ptr<GraphicResourceHandle<GuiShaderProgram> const> m_shaderProgram;

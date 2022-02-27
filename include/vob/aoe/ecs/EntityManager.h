@@ -6,18 +6,18 @@
 #include <optional>
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/ecs/Entity.h>
-#include <vob/aoe/ecs/EntityId.h>
-#include <vob/aoe/ecs/EntityView.h>
+#include <vob/aoe/ecs/entity.h>
+#include <vob/aoe/ecs/entity_id.h>
+#include <vob/aoe/ecs/entity_view.h>
 #include <vob/aoe/ecs/SystemSpawnManager.h>
 #include <vob/aoe/ecs/SystemUnspawnManager.h>
-#include <vob/aoe/ecs/EntityHandle.h>
+#include <vob/aoe/ecs/entity_handle.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
 namespace vob::aoecs
 {
-	using EntityMap = std::unordered_map<EntityId, std::unique_ptr<Entity>>;
+	using EntityMap = std::unordered_map<entity_id, std::unique_ptr<entity>>;
 
 	namespace detail
 	{
@@ -27,7 +27,7 @@ namespace vob::aoecs
 		private:
 			template <typename S>
 			static auto test(int)
-				-> decltype(std::declval<S>().onEntityAdded(std::declval<Entity&>()), std::true_type{})
+				-> decltype(std::declval<S>().onEntityAdded(std::declval<entity&>()), std::true_type{})
 			{
 				return std::true_type{};
 			}
@@ -44,14 +44,14 @@ namespace vob::aoecs
 
 		template <typename SystemType
 			, std::enable_if_t<hasOnEntityAddedV<SystemType>>* = nullptr>
-		void callOnEntityAdded(SystemType& a_system, Entity& a_entity)
+		void callOnEntityAdded(SystemType& a_system, entity& a_entity)
 		{
 			a_system.onEntityAdded(a_entity);
 		}
 
 		template <typename SystemType
 			, std::enable_if_t<!hasOnEntityAddedV<SystemType>>* = nullptr>
-		void callOnEntityAdded(SystemType& a_system, Entity& a_entity)
+		void callOnEntityAdded(SystemType& a_system, entity& a_entity)
 		{
 
 		}
@@ -62,7 +62,7 @@ namespace vob::aoecs
 		private:
 			template <typename S>
 			static auto test(int)
-				-> decltype(std::declval<S>().onEntityRemoved(std::declval<Entity&>()), std::true_type{})
+				-> decltype(std::declval<S>().onEntityRemoved(std::declval<entity&>()), std::true_type{})
 			{
 				return std::true_type{};
 			}
@@ -79,14 +79,14 @@ namespace vob::aoecs
 
 		template <typename SystemType
 			, std::enable_if_t<hasOnEntityRemovedV<SystemType>>* = nullptr>
-		void callOnEntityRemoved(SystemType& a_system, Entity& a_entity)
+		void callOnEntityRemoved(SystemType& a_system, entity& a_entity)
 		{
 			a_system.onEntityRemoved(a_entity);
 		}
 
 		template <typename SystemType
 			, std::enable_if_t<!hasOnEntityRemovedV<SystemType>>* = nullptr>
-		void callOnEntityRemoved(SystemType& a_system, Entity const& a_entity)
+		void callOnEntityRemoved(SystemType& a_system, entity const& a_entity)
 		{
 
 		}
@@ -97,7 +97,7 @@ namespace vob::aoecs
 		template <>
 		struct SystemEntityTester<>
 		{
-			static bool test(Entity const& a_entity)
+			static bool test(entity const& a_entity)
 			{
 				return true;
 			}
@@ -106,7 +106,7 @@ namespace vob::aoecs
 		template <typename ComponentType, typename... ComponentTypes>
 		struct SystemEntityTester<ComponentType, ComponentTypes...>
 		{
-			static bool test(Entity const& a_entity)
+			static bool test(entity const& a_entity)
 			{
 				return a_entity.hasComponent<std::remove_const_t<ComponentType>>()
 					&& SystemEntityTester<ComponentTypes...>::test(a_entity);
@@ -116,7 +116,7 @@ namespace vob::aoecs
 		template <typename ComponentType, typename... ComponentTypes>
 		struct SystemEntityTester<ComponentType*, ComponentTypes...>
 		{
-			static bool test(Entity const& a_entity)
+			static bool test(entity const& a_entity)
 			{
 				return SystemEntityTester<ComponentTypes...>::test(a_entity);
 			}
@@ -131,16 +131,16 @@ namespace vob::aoecs
 
 		// Attributes
 		std::deque<EntityViewType> m_list;
-		std::unordered_map<EntityId, std::size_t> m_entityIndexes;
+		std::unordered_map<entity_id, std::size_t> m_entityIndexes;
 
 		// Methods
-		void add(Entity& a_entity)
+		void add(entity& a_entity)
 		{
-			m_entityIndexes.emplace(a_entity.getId(), m_list.size());
+			m_entityIndexes.emplace(a_entity.get_id(), m_list.size());
 			m_list.emplace_back(a_entity);
 		}
 
-		void remove(EntityId const a_id)
+		void remove(entity_id const a_id)
 		{
 			// todo : pass it ?
 			auto t_it = m_entityIndexes.find(a_id);
@@ -193,13 +193,13 @@ namespace vob::aoecs
 			return m_list.end();
 		}
 
-		EntityViewType const* find(EntityHandle const& a_handle) const
+		EntityViewType const* find(entity_handle const& a_handle) const
 		{
 			// todo : return it ?
 			return find(a_handle.m_id);
 		}
 
-		EntityViewType const* find(EntityId const a_id) const
+		EntityViewType const* find(entity_id const a_id) const
 		{
 			// todo : return it ? optional ?
 			auto const t_it = m_entityIndexes.find(a_id);
@@ -219,7 +219,7 @@ namespace vob::aoecs
 			: m_entities{ a_entities }
 		{}
 
-		bool operator()(aoecs::EntityHandle const& a_entityHandle) const
+		bool operator()(aoecs::entity_handle const& a_entityHandle) const
 		{
 			return m_entities.find(a_entityHandle) != nullptr;
 		}
@@ -232,8 +232,8 @@ namespace vob::aoecs
 		: public aoe::type::ADynamicType
 	{
 		// Methods
-		virtual void onEntityAdded(Entity& a_entity) = 0;
-		virtual void onEntityRemoved(Entity& a_entity) = 0;
+		virtual void onEntityAdded(entity& a_entity) = 0;
+		virtual void onEntityRemoved(entity& a_entity) = 0;
 	};
 
 	template <typename SystemType, typename... ComponentTypes>
@@ -260,7 +260,7 @@ namespace vob::aoecs
 		}
 
 		// Methods
-		virtual void onEntityAdded(Entity& a_entity) override
+		virtual void onEntityAdded(entity& a_entity) override
 		{
 			if (detail::SystemEntityTester<ComponentTypes...>::test(a_entity))
 			{
@@ -269,13 +269,13 @@ namespace vob::aoecs
 			}
 		}
 
-		virtual void onEntityRemoved(Entity& a_entity) override
+		virtual void onEntityRemoved(entity& a_entity) override
 		{
-			auto t_entity = m_entityList.find(a_entity.getId());
+			auto t_entity = m_entityList.find(a_entity.get_id());
 			if(t_entity != nullptr)
 			{
 				detail::callOnEntityRemoved(m_system, a_entity);
-				m_entityList.remove(a_entity.getId());
+				m_entityList.remove(a_entity.get_id());
 			}
 		}
 	};
@@ -311,10 +311,10 @@ namespace vob::aoecs
 		EntityMap m_entities;
 		std::deque<std::unique_ptr<ASystemEntityList>> m_systemEntityLists;
 
-		std::vector<std::unique_ptr<Entity>> m_frameSpawns;
+		std::vector<std::unique_ptr<entity>> m_frameSpawns;
 		SystemSpawnManager m_systemSpawnManager;
 
-		std::vector<EntityId> m_frameUnspawns;
+		std::vector<entity_id> m_frameUnspawns;
 		SystemUnspawnManager m_systemUnspawnManager;
 
 		// Methods

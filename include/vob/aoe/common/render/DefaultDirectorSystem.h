@@ -1,9 +1,9 @@
 #pragma once
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
-#include <vob/aoe/common/render/CameraComponent.h>
-#include <vob/aoe/common/render/DirectorComponent.h>
-#include <vob/aoe/common/space/TransformComponent.h>
+#include <vob/aoe/common/render/Cameracomponent.h>
+#include <vob/aoe/common/render/Directorcomponent.h>
+#include <vob/aoe/common/space/Transformcomponent.h>
 
 namespace vob::aoe::common
 {

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vob/aoe/ecs/Component.h>
-
 
 namespace vob::aoe::common
 {
@@ -10,7 +8,6 @@ namespace vob::aoe::common
 	const auto g_up = glm::vec3{ 0.0f, 0.0f, 1.0f };
 
 	struct TransformComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		glm::mat4 m_matrix{ 1.0f };
@@ -19,18 +16,20 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ThisType>
-	visitIfType<common::TransformComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	requires std::is_same_v<std::remove_cvref_t<ThisType>, aoe::common::TransformComponent>
+	bool accept(VisitorType& a_visitor, ThisType& a_this)
 	{
 		glm::vec3 position;
-		a_visitor.visit(vis::makeNameValuePair("Position", position));
+		a_visitor.visit(misvi::nvp("Position", position));
 		glm::vec3 rotation;
-		a_visitor.visit(vis::makeNameValuePair("Rotation", rotation));
+		a_visitor.visit(misvi::nvp("Rotation", rotation));
 
 		a_this.m_matrix = glm::mat4{ 1.0f };
 		a_this.m_matrix = glm::translate(a_this.m_matrix, position);
 		a_this.m_matrix *= glm::mat4{ glm::quat{ rotation } };
+		return true;
 	}
 }

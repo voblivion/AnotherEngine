@@ -3,7 +3,9 @@
 #include "ACollisionShape.h"
 #include <bullet/BulletCollision/CollisionShapes/btSphereShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <vob/aoe/core/visitor/Utils.h>
+
+#include <vob/misc/visitor/name_value_pair.h>
+
 
 
 namespace vob::aoe::common
@@ -19,11 +21,12 @@ namespace vob::aoe::common
 		}
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
             auto t_radius = btScalar{ 1.0f };
-            a_visitor.visit(vis::makeNameValuePair("Radius", t_radius));
+            a_visitor.visit(misvi::nvp("Radius", t_radius));
             a_this.m_shape = btSphereShape(t_radius);
+			return true;
         }
 
 	public: // TODO -> how to make accept friend ?

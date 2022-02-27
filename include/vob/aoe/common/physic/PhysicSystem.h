@@ -1,13 +1,13 @@
 #pragma once
 
 #include <vob/aoe/ecs/WorldDataProvider.h>
-#include <vob/aoe/common/physic/CharacterControllerComponent.h>
-#include <vob/aoe/common/physic/RigidBodyComponent.h>
-#include <vob/aoe/common/physic/WorldPhysicComponent.h>
+#include <vob/aoe/common/physic/CharacterControllercomponent.h>
+#include <vob/aoe/common/physic/RigidBodycomponent.h>
+#include <vob/aoe/common/physic/WorldPhysiccomponent.h>
 #include <vob/aoe/common/render/debugscene/DebugMesh.h>
-#include <vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h>
-#include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/time/WorldTimeComponent.h>
+#include <vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h>
+#include <vob/aoe/common/space/Transformcomponent.h>
+#include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <LinearMath/btIDebugDraw.h>
 
 namespace vob::aoe::common
@@ -132,7 +132,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityAdded(aoecs::Entity& a_entity) const
+		void onEntityAdded(aoecs::entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -221,7 +221,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityRemoved(aoecs::Entity& a_entity) const
+		void onEntityRemoved(aoecs::entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)

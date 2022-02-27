@@ -2,7 +2,8 @@
 
 #include <glm/geometric.hpp>
 
-#include <vob/aoe/core/visitor/Utils.h>
+#include <vob/misc/visitor/name_value_pair.h>
+
 
 namespace vob::aoe::common
 {
@@ -22,7 +23,7 @@ namespace vob::aoe::common
 	}
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <glm::length_t t_component
 		, typename VisitorType, glm::length_t t_length, typename Type, glm::qualifier t_qualifier>
@@ -40,11 +41,11 @@ namespace vob::aoe::vis
 		, std::string_view const a_componentName
 	)
 	{
-		a_visitor.visit(vis::makeNameValuePair(a_componentName, a_vector[t_component]));
+		a_visitor.visit(misvi::nvp(a_componentName, a_vector[t_component]));
 	}
 
 	template <typename VisitorType, glm::length_t t_length, typename Type, glm::qualifier t_qualifier>
-	void accept(
+	bool accept(
 		VisitorType& a_visitor
 		, glm::vec<t_length, Type, t_qualifier>& a_vector
 	)
@@ -53,6 +54,7 @@ namespace vob::aoe::vis
 		tryVisitVectorComponent<1>(a_visitor, a_vector, "Y");
 		tryVisitVectorComponent<2>(a_visitor, a_vector, "Z");
 		tryVisitVectorComponent<3>(a_visitor, a_vector, "W");
+		return true;
 	}
 
 	template <glm::length_t t_component
@@ -71,11 +73,11 @@ namespace vob::aoe::vis
 			, std::string_view const a_componentName
 		)
 	{
-		a_visitor.visit(vis::makeNameValuePair(a_componentName, a_vector[t_component]));
+		a_visitor.visit(misvi::nvp(a_componentName, a_vector[t_component]));
 	}
 
 	template <typename VisitorType, glm::length_t t_length, typename Type, glm::qualifier t_qualifier>
-	void accept(
+	bool accept(
 		VisitorType& a_visitor
 		, glm::vec<t_length, Type, t_qualifier> const& a_vector
 	)
@@ -84,5 +86,6 @@ namespace vob::aoe::vis
 		tryVisitVectorComponent<1>(a_visitor, a_vector, "Y");
 		tryVisitVectorComponent<2>(a_visitor, a_vector, "Z");
 		tryVisitVectorComponent<3>(a_visitor, a_vector, "W");
+		return true;
 	}
 }

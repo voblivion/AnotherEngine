@@ -1,19 +1,22 @@
 #pragma once
 
-#include <memory>
-
-#include "vob/aoe/ecs/Component.h"
-#include <bullet/BulletDynamics/Dynamics/btRigidBody.h>
 #include "AMotionState.h"
-#include <vob/aoe/common/physic/ACollisionShape.h>
 #include "DefaultMotionState.h"
 #include "PhysicMaterial.h"
-#include <vob/aoe/common/physic/BulletShapes.h>
+#include "ACollisionShape.h"
+#include "BulletShapes.h"
+
+
+#include <vob/misc/visitor/name_value_pair.h>
+
+#include <bullet/BulletDynamics/Dynamics/btRigidBody.h>
+
+#include <memory>
+
 
 namespace vob::aoe::common
 {
 	struct RigidBodyComponent final
-		: public aoecs::AComponent
 	{
 		// Attributes
 		btScalar m_mass{ 0.0 };
@@ -38,16 +41,18 @@ namespace vob::aoe::common
 	};
 }
 
-namespace vob::aoe::vis
+namespace vob::misvi
 {
 	template <typename VisitorType, typename ThisType>
-	visitIfType<common::RigidBodyComponent, ThisType> accept(VisitorType& a_visitor, ThisType& a_this)
+	requires std::is_same_v<std::remove_cvref_t<ThisType>, aoe::common::RigidBodyComponent>
+	bool accept(VisitorType& a_visitor, ThisType& a_this)
 	{
-		a_visitor.visit(vis::nvp("Mass", a_this.m_mass));
-		a_visitor.visit(vis::nvp("Shape", a_this.m_collisionShape));
-		a_visitor.visit(vis::nvp("LinearFactor", a_this.m_linearFactor));
-		a_visitor.visit(vis::nvp("AngularFactor", a_this.m_angularFactor));
-		a_visitor.visit(vis::nvp("PhysicMaterial", a_this.m_physicMaterial));
-		a_visitor.visit(vis::nvp("Offset", a_this.m_offset));
+		a_visitor.visit(misvi::nvp("Mass", a_this.m_mass));
+		a_visitor.visit(misvi::nvp("Shape", a_this.m_collisionShape));
+		a_visitor.visit(misvi::nvp("LinearFactor", a_this.m_linearFactor));
+		a_visitor.visit(misvi::nvp("AngularFactor", a_this.m_angularFactor));
+		a_visitor.visit(misvi::nvp("PhysicMaterial", a_this.m_physicMaterial));
+		a_visitor.visit(misvi::nvp("Offset", a_this.m_offset));
+		return true;
 	}
 }

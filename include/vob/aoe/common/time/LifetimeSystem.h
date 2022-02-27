@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/common/time/LifetimeComponent.h>
-#include <vob/aoe/common/time/WorldTimeComponent.h>
+#include <vob/aoe/common/time/Lifetimecomponent.h>
+#include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <vob/aoe/ecs/WorldDataProvider.h>
 
 

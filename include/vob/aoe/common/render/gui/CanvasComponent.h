@@ -2,10 +2,12 @@
 
 #include <vob/aoe/common/render/gui/elements/AElement.h>
 
+#include <vob/misc/visitor/name_value_pair.h>
+
+
 namespace vob::aoe::common
 {
 	struct CanvasComponent
-		: public aoecs::AComponent
 	{
 		// Attributes
 		type::dynamic_type_clone<AElement> m_rootElement;
@@ -17,10 +19,11 @@ namespace vob::aoe::common
 		{}
 
 		template <typename VisitorType, typename ThisType>
-		static void accept(VisitorType& a_visitor, ThisType& a_this)
+		static bool accept(VisitorType& a_visitor, ThisType& a_this)
         {
-            a_visitor.visit(vis::makeNameValuePair("Root Element", a_this.m_rootElement));
-            a_visitor.visit(vis::makeNameValuePair("Size", a_this.m_size));
+            a_visitor.visit(misvi::nvp("Root Element", a_this.m_rootElement));
+            a_visitor.visit(misvi::nvp("Size", a_this.m_size));
+			return true;
 		}
 	};
 }

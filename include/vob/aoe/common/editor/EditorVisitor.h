@@ -4,6 +4,9 @@
 #include <vob/aoe/common/render/gui/elements/TextInputElement.h>
 #include <vob/aoe/common/render/gui/elements/SplitElement.h>
 
+#include "vob/misc/visitor/name_value_pair.h"
+#include "vob/misc/visitor/is_visitable.h"
+
 
 namespace vob::aoe::vis
 {
@@ -88,7 +91,7 @@ namespace vob::aoe::vis
 		}
 
 		template <typename ValueType>
-		void visit(vis::NameValuePair<ValueType> a_nameValuePair)
+		void visit(misvi::name_value_pair<ValueType> a_nameValuePair)
 		{
 			// new vertical split
 			{
@@ -117,14 +120,14 @@ namespace vob::aoe::vis
 		}
 
 		template <typename ValueType>
-		requires FreeAcceptVisitable<EditorVisitor, ValueType> && (!std::is_arithmetic_v<ValueType>)
+		requires misvi::is_visitable_free<EditorVisitor, ValueType> && (!std::is_arithmetic_v<ValueType>)
 		void visit(ValueType& a_object)
 		{
 			accept(*this, a_object);
 		}
 
 		template <typename ValueType>
-		requires StaticAcceptVisitable<EditorVisitor, ValueType>
+		requires misvi::is_visitable_static<EditorVisitor, ValueType>
 		void visit(ValueType& a_object)
 		{
 			ValueType::accept(*this, a_object);

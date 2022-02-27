@@ -1,9 +1,11 @@
 #pragma once
 
 #include "ACollisionShape.h"
+
+#include <vob/misc/visitor/name_value_pair.h>
+
 #include <bullet/BulletCollision/CollisionShapes/btCapsuleShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <vob/aoe/core/visitor/Utils.h>
 
 
 namespace vob::aoe::common
@@ -19,20 +21,22 @@ namespace vob::aoe::common
 		}
 
 		template <typename VisitorType>
-		void accept(VisitorType& a_visitor)
+		bool accept(VisitorType& a_visitor)
 		{
 			auto t_radius = btScalar{ 0.5f };
-			a_visitor.visit(vis::makeNameValuePair("Radius", t_radius));
+			a_visitor.visit(misvi::nvp("Radius", t_radius));
 			auto t_height = btScalar{ 1.0f };
-			a_visitor.visit(vis::makeNameValuePair("Height", t_height));
+			a_visitor.visit(misvi::nvp("Height", t_height));
 
 			m_shape = btCapsuleShape(t_radius, t_height);
+			return true;
 		}
 
 		template <typename VisitorType>
-		void accept(VisitorType& a_visitor) const
+		bool accept(VisitorType& a_visitor) const
 		{
 			static_assert(false && "TODO");
+			return true;
 		}
 
 	private:

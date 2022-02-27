@@ -3,6 +3,8 @@
 #include <vob/aoe/common/render/gui/elements/AElement.h>
 #include <vob/aoe/common/render/gui/elements/AStandardElement.h>
 
+#include <vob/misc/visitor/name_value_pair.h>
+
 
 namespace vob::aoe::common
 {
@@ -77,14 +79,15 @@ namespace vob::aoe::common
 #pragma endregion
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
 			AStandardElement::accept(a_visitor, a_this);
 
-            a_visitor.visit(vis::makeNameValuePair("First Side", a_this.m_firstSide));
-            a_visitor.visit(vis::makeNameValuePair("First Side Size", a_this.m_firstSideSize));
-            a_visitor.visit(vis::makeNameValuePair("First Child Element", a_this.m_firstChildElement));
-            a_visitor.visit(vis::makeNameValuePair("Second Child Element", a_this.m_secondChildElement));
+            a_visitor.visit(misvi::nvp("First Side", a_this.m_firstSide));
+            a_visitor.visit(misvi::nvp("First Side Size", a_this.m_firstSideSize));
+            a_visitor.visit(misvi::nvp("First Child Element", a_this.m_firstChildElement));
+            a_visitor.visit(misvi::nvp("Second Child Element", a_this.m_secondChildElement));
+			return true;
         }
 
     private:

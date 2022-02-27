@@ -3,97 +3,71 @@
 #include <fstream>
 #include <memory>
 
-#include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <vob/aoe/common/data/filesystem/AFileSystemLoader.h>
 #include <vob/aoe/common/serialization/FileSystemVisitorContext.h>
 
+#include <vob/misc/visitor/applicator.h>
+
+#include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
+
 namespace vob::aoe::common
 {
-	template <template <typename> typename VisitorWriterType>
+#pragma warning("Should be removed, probably no need for VisitorLoader<json_visitor_loader<context>>")
+	template <typename TVisitor, typename TCanLoad>
 	class VisitorLoader final
 		: public AFileSystemLoader
 	{
 	public:
-		// Aliases
-		using Context = FileSystemVisitorContext<VisitorWriterType>;
-		using Visitor = VisitorWriterType<Context>;
-
 		// Constructors
 		explicit VisitorLoader(
-			misty::pmr::registry const& a_typeRegistry
-			, misty::pmr::factory<type::ADynamicType> const& a_dynamicTypeFactory
-			, misty::pmr::factory<btCollisionShape> const& a_btCollisionShapeFactory
-			, FileSystemIndexer& a_fileSystemIndexer
-			, data::ADatabase& a_database
-		)
-			: m_typeRegistry{ a_typeRegistry }
-			, m_dynamicTypeFactory{ a_dynamicTypeFactory }
-			, m_btCollisionShapeFactory{ a_btCollisionShapeFactory }
+			misty::pmr::factory const& a_factory,
+			TVisitor::applicator a_applicator,
+			FileSystemIndexer& a_fileSystemIndexer,
+			data::ADatabase& a_database,
+			TVisitor::allocator a_allocator = {})
+			: m_factory{ a_factory }
+			, m_applicator{ a_applicator }
 			, m_fileSystemIndexer{ a_fileSystemIndexer }
 			, m_database{ a_database }
+			, m_allocator{ a_allocator }
 		{}
 
 		// Methods
 		bool canLoad(std::filesystem::path const& a_path) const override
 		{
-			// TODO should set extensions that are supported ?
-			std::ifstream file;
-			open(file, a_path);
-
-			const auto context = createContext(a_path);
-			auto visitor = Visitor{ context };
-
-			return visitor.canLoad(file);
+			return TCanLoad{}(a_path);
 		}
 
 		std::shared_ptr<ADynamicType> load(std::filesystem::path const& a_path) const override
 		{
-			std::ifstream file;
-			open(file, a_path);
+			std::ifstream file{ a_path, std::ios::binary | std::ios::in };
 
 			const auto context = createContext(a_path);
-			auto visitor = Visitor{ context };
+			auto visitor = TVisitor{ m_factory, m_applicator, createContext(a_path), m_allocator };
 
 			std::shared_ptr<ADynamicType> t_data;
 			visitor.load(file, t_data);
 			return t_data;
 		}
 
-		auto& getDynamicTypeApplicator()
+		auto& get_applicator()
 		{
-			return m_dynamicTypeApplicator;
-		}
-
-		auto& getBtCollisionShapeApplicator()
-		{
-			return m_btCollisionShapeApplicator;
+			return m_applicator;
 		}
 
 	private:
 		// Attributes
-		misty::pmr::registry const& m_typeRegistry;
-		misty::pmr::factory<type::ADynamicType> const& m_dynamicTypeFactory;
-		misty::pmr::factory<btCollisionShape> const& m_btCollisionShapeFactory;
+		misty::pmr::factory const& m_factory;
+		TVisitor::applicator m_applicator;
 		FileSystemIndexer& m_fileSystemIndexer;
-		vis::Applicator<false, Visitor> m_dynamicTypeApplicator;
-		vis::Applicator<false, Visitor> m_btCollisionShapeApplicator;
 		data::ADatabase& m_database;
+		TVisitor::allocator m_allocator;
 
 		// Methods
-		static void open(std::ifstream& a_file, std::filesystem::path const& a_path)
-		{
-			a_file.open(a_path, std::ios::binary | std::ios::in);
-		}
-
-		Context createContext(std::filesystem::path const& a_path) const
+		FileSystemVisitorContext createContext(std::filesystem::path const& a_path) const
 		{
 			return {
-				m_typeRegistry
-				, m_dynamicTypeFactory
-				, m_btCollisionShapeFactory
-				, m_fileSystemIndexer
-				, m_dynamicTypeApplicator
-				, m_btCollisionShapeApplicator
+				m_fileSystemIndexer
 				, a_path
 				, m_database
 			};

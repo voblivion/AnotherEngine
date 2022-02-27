@@ -1,8 +1,8 @@
 #pragma once
 #include <vob/aoe/ecs/WorldDataProvider.h>
-#include <vob/aoe/common/map/HierarchyComponent.h>
-#include <vob/aoe/common/space/TransformComponent.h>
-#include <vob/aoe/common/space/LocalTransformComponent.h>
+#include <vob/aoe/common/map/Hierarchycomponent.h>
+#include <vob/aoe/common/space/Transformcomponent.h>
+#include <vob/aoe/common/space/LocalTransformcomponent.h>
 
 namespace vob::aoe::common
 {
@@ -24,7 +24,7 @@ namespace vob::aoe::common
 			for (auto const& entity : m_entities)
 			{
 				auto const hierarchy = entity.getComponent<HierarchyComponent>();
-				if (hierarchy.m_parent.isValid())
+				if (hierarchy.m_parent.is_valid())
 				{
 					continue;
 				}

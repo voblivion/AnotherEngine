@@ -3,10 +3,10 @@
 #include "ACollisionShape.h"
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <vob/aoe/core/visitor/Utils.h>
-#include <vob/aoe/core/visitor/Traits.h>
 #include <vob/aoe/common/space/Vector.h>
 #include <vob/aoe/common/physic/Utils.h>
+
+#include <vob/misc/visitor/name_value_pair.h>
 
 
 namespace vob::aoe::common
@@ -22,11 +22,12 @@ namespace vob::aoe::common
 		}
 
         template <typename VisitorType, typename Self>
-        static void accept(VisitorType& a_visitor, Self& a_this)
+        static bool accept(VisitorType& a_visitor, Self& a_this)
         {
             auto t_halfExtent = glm::vec3{ 0.5f, 0.5f, 0.5f };
-            a_visitor.visit(vis::makeNameValuePair("HalfExtent", t_halfExtent));
+            a_visitor.visit(misvi::nvp("HalfExtent", t_halfExtent));
             a_this.m_shape = btBoxShape(common::toBtVector(t_halfExtent));
+			return true;
         }
 
 	private:

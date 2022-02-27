@@ -4,18 +4,15 @@
 #include <vob/misc/hash/string_id_literals.h>
 #include <unordered_map>
 
-#include "vob/aoe/ecs/ComponentManager.h"
+#include "vob/aoe/ecs/component_manager.h"
 
 #include <vob/misc/type/factory.h>
 #include <vob/misc/type/registry.h>
 
-#include <vob/aoe/core/visitor/Standard.h>
-#include <vob/aoe/core/visitor/StringId.h>
-
 #include "vob/aoe/common/render/debugscene/DebugSceneShaderProgram.h"
-#include "vob/aoe/common/render/debugscene/DebugSceneRenderComponent.h"
+#include "vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h"
 #include "vob/aoe/common/render/model/StaticModel.h"
-#include "vob/aoe/common/render/model/ModelComponent.h"
+#include "vob/aoe/common/render/model/Modelcomponent.h"
 #include "vob/aoe/common/render/model/ModelLoader.h"
 #include "vob/aoe/common/render/model/ModelShaderProgram.h"
 #include "vob/aoe/common/render/postprocess/PostProcessShaderProgram.h"
@@ -24,22 +21,22 @@
 #include "vob/aoe/common/render/TextureLoader.h"
 #include <vob/aoe/common/data/filesystem/FileSystemDatabase.h>
 #include "vob/aoe/common/serialization/VisitorFileSystemLoader.h"
-#include "vob/aoe/common/map/HierarchyComponent.h"
+#include "vob/aoe/common/map/Hierarchycomponent.h"
 #include "vob/aoe/common/space/LocalTransformSystem.h"
-#include "vob/aoe/common/test/TestComponent.h"
-#include "vob/aoe/common/render/CameraComponent.h"
-#include "vob/aoe/common/todo/SimpleControllerComponent.h"
-#include "vob/aoe/common/space/VelocityComponent.h"
-#include "vob/aoe/common/space/TransformComponent.h"
-#include "vob/aoe/common/physic/RigidBodyComponent.h"
+#include "vob/aoe/common/test/Testcomponent.h"
+#include "vob/aoe/common/render/Cameracomponent.h"
+#include "vob/aoe/common/todo/SimpleControllercomponent.h"
+#include "vob/aoe/common/space/Velocitycomponent.h"
+#include "vob/aoe/common/space/Transformcomponent.h"
+#include "vob/aoe/common/physic/RigidBodycomponent.h"
 #include "vob/aoe/common/physic/SphereShape.h"
 #include "vob/aoe/common/physic/CompoundShape.h"
 #include "vob/aoe/common/physic/BoxShape.h"
 #include "vob/aoe/common/physic/CylinderShape.h"
 #include "vob/aoe/common/physic/ModelShape.h"
-#include "vob/aoe/common/time/LifetimeComponent.h"
+#include "vob/aoe/common/time/Lifetimecomponent.h"
 #include "vob/aoe/common/physic/CapsuleShape.h"
-#include "vob/aoe/common/physic/CharacterControllerComponent.h"
+#include "vob/aoe/common/physic/CharacterControllercomponent.h"
 #include <vob/aoe/common/render/Manager.h>
 #include <vob/aoe/common/data/filesystem/TextFileSystemLoader.h>
 #include <vob/aoe/common/render/gui/GuiShaderProgram.h>
@@ -48,63 +45,96 @@
 #include <vob/aoe/common/render/gui/elements/TextElement.h>
 #include <vob/aoe/common/render/gui/elements/TextInputElement.h>
 #include <vob/aoe/common/render/gui/GuiMesh.h>
-#include <vob/aoe/common/render/gui/CanvasComponent.h>
-#include "vob/aoe/core/visitor/JsonWriter.h"
+#include <vob/aoe/common/render/gui/Canvascomponent.h>
 #include <vob/aoe/common/render/gui/elements/SplitElement.h>
+
+#include <vob/aoe/ecs/component_holder.h>
+
+#include <vob/misc/visitor/accept.h>
+#include <vob/misc/visitor/json_reader.h>
+
 using namespace vob;
 using namespace vob::mishs::literals;
 
-namespace vob::aoe
+namespace vob::misvi
 {
-	namespace vis
-	{
-		/*template <typename DataType>
-		void accept(
-			vis::JsonWriter<common::FileSystemVisitorContext<vis::JsonWriter>>& a_visitor
-			, data::Handle<DataType>& a_handle
-		)
-		{
-			std::string rawPath;
-			a_visitor.visit(rawPath);
-
-			auto const& context = a_visitor.getContext();
-			auto const path = common::pathFromFilePath(rawPath, context.m_loadingDataPath);
-
-			auto& indexer = a_visitor.getContext().m_fileSystemIndexer;
-			auto id = indexer.getId(path);
-			a_handle.setId(id);
-		}*/
-
-		template <typename DataType>
-		std::enable_if_t<std::is_base_of_v<type::ADynamicType, DataType>> accept(
-			vis::JsonWriter<common::FileSystemVisitorContext<vis::JsonWriter>>& a_visitor
+	template <typename DataType>
+	requires std::is_base_of_v<aoe::type::ADynamicType, DataType>
+	bool accept(
+			misvi::pmr::json_reader<aoe::common::FileSystemVisitorContext>& a_visitor
 			, std::shared_ptr<DataType const>& a_dataPtr
 		)
-		{
-			std::string rawPath;
-			a_visitor.visit(rawPath);
+	{
+		std::string rawPath;
+		a_visitor.visit(rawPath);
 
-			auto const& context = a_visitor.getContext();
-			auto const path = common::pathFromFilePath(rawPath, context.m_loadingDataPath);
+		auto const& context = a_visitor.get_context();
+		auto const path = aoe::common::pathFromFilePath(rawPath, context.m_loadingDataPath);
 
-			auto& indexer = a_visitor.getContext().m_fileSystemIndexer;
-			a_visitor.getContext().m_database.find(indexer.getId(path), a_dataPtr);
-		}
+		auto& indexer = context.m_fileSystemIndexer;
+		context.m_database.find(indexer.getId(path), a_dataPtr);
+		return true;
 	}
+}
+
+namespace vob::aoe
+{
+	struct is_json_file
+	{
+		bool operator()(std::filesystem::path const& a_path) const
+		{
+			return a_path.extension().generic_string() == ".json";
+		}
+	};
+
+	template <typename TContext>
+	struct json_visitor_loader
+	{
+		using allocator = std::pmr::polymorphic_allocator<char>;
+		using applicator = misvi::pmr::applicator<false, misvi::pmr::json_reader<TContext>>;
+
+		json_visitor_loader(
+			misty::pmr::factory const& a_factory,
+			applicator const& a_applicator,
+			TContext a_context,
+			allocator a_allocator = {})
+			: m_jsonVisitor{ a_factory, a_applicator, std::move(a_context), a_allocator }
+		{}
+
+		template <typename TValue>
+		void load(std::istream& a_inputStream, TValue& a_value)
+		{
+			mistd::pmr::json_value json;
+			a_inputStream >> json;
+			m_jsonVisitor.read(json, a_value);
+		}
+
+		misvi::pmr::json_reader<TContext> m_jsonVisitor;
+	};
 
 	struct DataHolder
 	{
 		DataHolder()
 		{
 			// Load indexer
-			std::ifstream fileIndexerFile{ "data/indexer.json" };
-			std::nullptr_t dummyContext = nullptr;
-			vis::JsonWriter<std::nullptr_t> jsonWriter{ dummyContext };
-			std::unordered_map<data::Id, std::filesystem::path> indexToPathMap;
-			jsonWriter.load(fileIndexerFile, indexToPathMap);
-			for (auto const& indexToPathPair : indexToPathMap)
 			{
-				fileSystemIndexer.insert(indexToPathPair.second, indexToPathPair.first);
+				std::ifstream fileIndexerFile{ "data/indexer.json" };
+				std::nullptr_t dummyContext = nullptr;
+				misty::pmr::registry dummyRegistry{};
+				misty::pmr::factory dummyFactory{ dummyRegistry };
+				misvi::pmr::applicator<false, misvi::pmr::json_reader<std::nullptr_t>> dummyApplicator;
+				json_visitor_loader<std::nullptr_t> jsonVisitorLoader{
+					dummyFactory,
+					dummyApplicator,
+					dummyContext
+				};
+				std::unordered_map<data::Id, std::filesystem::path> indexToPathMap;
+
+				jsonVisitorLoader.load(fileIndexerFile, indexToPathMap);
+				for (auto const& indexToPathPair : indexToPathMap)
+				{
+					fileSystemIndexer.insert(indexToPathPair.second, indexToPathPair.first);
+				}
 			}
 
 			//aoe::common::AStandardElement* element = new aoe::common::TextElement{ database, guiMeshResourceManager };
@@ -118,8 +148,8 @@ namespace vob::aoe
 			{
 				typeRegistry.register_type<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
 
-				typeRegistry.register_type<aoecs::component>("vob::aoecs::component"_id);
-				registerDynamicType<aoecs::AComponent>("vob::aoecs::AComponent"_id);
+				typeRegistry.register_type<aoecs::basic_component_holder>("vob::aoecs::basic_component_holder"_id);
+				// registerDynamicType<aoecs::AComponent>("vob::aoecs::AComponent"_id);
 				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
 				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
 				registerDynamicType<common::ACollisionShape>("vob::aoe::common::ACollisionShape"_id);
@@ -169,12 +199,12 @@ namespace vob::aoe
 					, guiShaderProgramResourceManager
 					);
 				registerVisitableDynamicType<
-					aoecs::ComponentManager
+					aoecs::component_manager
 					, type::ADynamicType
-					, type::dynamic_type_clone_copier const&
+					, aoecs::component_holder_cloner const&
 				>(
-					"vob::aoecs::ComponentManager"_id
-					, dynamicTypeCloner
+					"vob::aoecs::component_manager"_id
+					, componentHolderCloner
 					);
 				registerVisitableDynamicType<
 					common::TextElement
@@ -245,10 +275,10 @@ namespace vob::aoe
 		}
 
 		misty::pmr::registry typeRegistry;
-		misty::pmr::factory<type::ADynamicType> dynamicTypeFactory{ typeRegistry };
-		misty::pmr::factory<btCollisionShape> btCollisionShapeFactory{ typeRegistry };
+		misty::pmr::factory factory{ typeRegistry };
 
 		misty::pmr::clone_copier<type::ADynamicType> dynamicTypeCloner{};
+		aoecs::component_holder_cloner componentHolderCloner{};
 		misty::pmr::clone_copier<btCollisionShape> btCollisionShapeCloner{};
 		// aoe::ins::InstanceAllocationSizer instanceAllocationSizer{ typeRegistry, typeFactory, allocator };
 		common::FileSystemIndexer fileSystemIndexer;
@@ -257,7 +287,12 @@ namespace vob::aoe
 			, fileSystemIndexer
 		};
 
-		common::VisitorLoader<vis::JsonWriter> jsonVisitorLoader{ typeRegistry, dynamicTypeFactory, btCollisionShapeFactory, fileSystemIndexer, database };
+		common::VisitorLoader<json_visitor_loader<common::FileSystemVisitorContext>, is_json_file> jsonVisitorLoader{
+			factory,
+			json_visitor_loader<common::FileSystemVisitorContext>::applicator{},
+			fileSystemIndexer,
+			database
+		};
 		common::TextFileSystemLoader textLoader{};
 		common::TextureLoader textureLoader{ textureResourceManager };
 		common::ModelLoader modelLoader{ database, fileSystemIndexer, staticModelResourceManager };
@@ -300,39 +335,39 @@ namespace vob::aoe
 			registerDynamicType<DataType, BaseType>(a_id);
 		}
 
-		template <typename VisitableDynamicType, typename BaseType = type::ADynamicType
-			, typename... Args>
-			void registerVisitableDynamicType(vob::mishs::string_id const a_id, Args&&... a_args)
+		template <typename VisitableDynamicType, typename BaseType = type::ADynamicType, typename... Args>
+		void registerVisitableDynamicType(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
 			registerDynamicType<VisitableDynamicType, BaseType>(a_id);
 
-			auto& applicator = jsonVisitorLoader.getDynamicTypeApplicator();
+			auto& applicator = jsonVisitorLoader.get_applicator();
 			applicator.register_type<VisitableDynamicType>();
 
 			// instanceAllocationSizer.register_type<VisitableDynamicType>();
 
-			dynamicTypeFactory.add_type<VisitableDynamicType, Args...>(std::forward<Args>(a_args)...);
+			factory.add_type<VisitableDynamicType, Args...>(std::forward<Args>(a_args)...);
 		}
 
-		template <typename VisitableBtCollisionShape, typename BaseType = btCollisionShape
-			, typename... Args>
-			void registerVisitableBtCollisionShape(vob::mishs::string_id const a_id, Args&&... a_args)
+		template <typename VisitableBtCollisionShape, typename BaseType = btCollisionShape, typename... Args>
+		void registerVisitableBtCollisionShape(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
 			registerDynamicType<VisitableBtCollisionShape, BaseType>(a_id);
 
-			auto& applicator = jsonVisitorLoader.getBtCollisionShapeApplicator();
+			auto& applicator = jsonVisitorLoader.get_applicator();
 			applicator.register_type<VisitableBtCollisionShape>();
 
 			// instanceAllocationSizer.register_type<VisitableDynamicType>();
 
-			btCollisionShapeFactory.add_type<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
+			factory.add_type<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
 		}
 
-		template <typename ComponentType, typename... Args>
+		template <typename TComponent, typename... Args>
 		void registerComponent(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
-			registerVisitableDynamicType<ComponentType, aoecs::AComponent, Args...>(a_id, std::forward<Args>(a_args)...);
-			dynamicTypeCloner.register_type<ComponentType>();
+			registerVisitableDynamicType<
+				aoecs::component_holder<TComponent>, aoecs::basic_component_holder, Args...
+			>(a_id, std::forward<Args>(a_args)...);
+			componentHolderCloner.register_type<aoecs::component_holder<TComponent>>();
 		}
 	};
 }
