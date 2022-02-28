@@ -11,13 +11,12 @@
 #include <vob/aoe/ecs/entity_view.h>
 #include <vob/aoe/ecs/SystemSpawnManager.h>
 #include <vob/aoe/ecs/SystemUnspawnManager.h>
-#include <vob/aoe/ecs/entity_handle.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
 namespace vob::aoecs
 {
-	using EntityMap = std::unordered_map<entity_id, std::unique_ptr<entity>>;
+	using EntityMap = std::unordered_map<entity_id, std::unique_ptr<entity>, entity_id_hash>;
 
 	namespace detail
 	{
@@ -131,7 +130,7 @@ namespace vob::aoecs
 
 		// Attributes
 		std::deque<EntityViewType> m_list;
-		std::unordered_map<entity_id, std::size_t> m_entityIndexes;
+		std::unordered_map<entity_id, std::size_t, entity_id_hash> m_entityIndexes;
 
 		// Methods
 		void add(entity& a_entity)
@@ -193,12 +192,6 @@ namespace vob::aoecs
 			return m_list.end();
 		}
 
-		EntityViewType const* find(entity_handle const& a_handle) const
-		{
-			// todo : return it ?
-			return find(a_handle.m_id);
-		}
-
 		EntityViewType const* find(entity_id const a_id) const
 		{
 			// todo : return it ? optional ?
@@ -209,23 +202,6 @@ namespace vob::aoecs
 			}
 			return nullptr;
 		}
-	};
-
-	template <typename TEntityList>
-	class EntityHandleChecker
-	{
-	public:
-		explicit EntityHandleChecker(TEntityList const& a_entities)
-			: m_entities{ a_entities }
-		{}
-
-		bool operator()(aoecs::entity_handle const& a_entityHandle) const
-		{
-			return m_entities.find(a_entityHandle) != nullptr;
-		}
-
-	private:
-		TEntityList const& m_entities;
 	};
 
 	struct ASystemEntityList

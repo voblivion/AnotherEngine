@@ -19,7 +19,7 @@ namespace vob::aoecs
 
 	private:
 		// Attributes
-		entity_id m_nextEntityId{};
+		entity_id::value_type m_nextEntityIdValue{};
 		std::mutex m_mutex{};
 		std::vector<std::unique_ptr<entity>>& m_frameSpawns;
 	};

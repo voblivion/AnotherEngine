@@ -11,7 +11,7 @@ namespace vob::aoecs
 	{
 		std::lock_guard<std::mutex> t_lock{ m_mutex };
 		auto& t_entity = m_frameSpawns.emplace_back(
-			std::make_unique<entity>(m_nextEntityId++, a_componentManager)
+			std::make_unique<entity>(entity_id{ m_nextEntityIdValue++ }, a_componentManager)
 		);
 
 		return *t_entity;

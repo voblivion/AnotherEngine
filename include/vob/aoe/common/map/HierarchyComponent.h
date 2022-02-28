@@ -1,14 +1,14 @@
 #pragma once
 
-#include <vob/aoe/ecs/entity_handle.h>
+#include <vob/aoe/ecs/entity_id.h>
 
 namespace vob::aoe::common
 {
 	struct HierarchyComponent final
 	{
 		// Attributes
-		aoecs::entity_handle m_parent;
-		std::vector<aoecs::entity_handle> m_children;
+		aoecs::entity_id m_parent;
+		std::vector<aoecs::entity_id> m_children;
 	};
 }
 

@@ -175,7 +175,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 		{
 			auto playerNeck = *playerNeckArk;
 			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
-			hierarchy->m_parent = aoecs::entity_handle{ player };
+			hierarchy->m_parent = player.get_id();
 			auto& neck = systemSpawnManager.spawn(playerNeck);
 
 			auto playerCameraArk = a_data.database.find<aoecs::component_manager>(3);
@@ -183,7 +183,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 			{
 				auto playerCamera = *playerCameraArk;
 				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
-				hierarchy->m_parent = aoecs::entity_handle{ neck };
+				hierarchy->m_parent = neck.get_id();
 				systemSpawnManager.spawn(playerCamera);
 			}
 		}

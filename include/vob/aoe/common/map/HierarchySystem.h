@@ -23,7 +23,7 @@ namespace vob::aoe::common
 			if(parent != nullptr)
 			{
 				auto& parentHierarchy = parent->getComponent<HierarchyComponent>();
-				parentHierarchy.m_children.emplace_back(a_entity);
+				parentHierarchy.m_children.emplace_back(a_entity.get_id());
 			}
 			else
 			{
@@ -44,7 +44,7 @@ namespace vob::aoe::common
 				auto const it = std::find(
 					parentHierarchy.m_children.begin()
 					, parentHierarchy.m_children.end()
-					, aoecs::entity_handle{ a_entity }
+					, a_entity.get_id()
 				);
 				ignorable_assert(it != parentHierarchy.m_children.end());
 				if (it != parentHierarchy.m_children.end())

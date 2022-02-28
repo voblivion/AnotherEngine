@@ -7,6 +7,6 @@ namespace vob::aoe::common
 {
 	struct DirectorComponent final
 	{
-		aoecs::entity_id m_currentCamera{ aoecs::k_invalid_entity_id };
+		aoecs::entity_id m_currentCamera;
 	};
 }
