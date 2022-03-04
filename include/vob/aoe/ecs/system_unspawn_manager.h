@@ -8,11 +8,11 @@
 
 namespace vob::aoecs
 {
-	class SystemUnspawnManager
+	class system_unspawn_manager
 	{
 	public:
 		// Constructors
-		VOB_AOE_API explicit SystemUnspawnManager(std::vector<entity_id>& a_frameUnspawns);
+		VOB_AOE_API explicit system_unspawn_manager(std::vector<entity_id>& a_frameUnspawns);
 
 		// Methods
 		VOB_AOE_API void unspawn(entity_id const a_id);

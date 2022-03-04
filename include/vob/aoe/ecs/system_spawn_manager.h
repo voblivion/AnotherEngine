@@ -8,11 +8,11 @@
 
 namespace vob::aoecs
 {
-	class VOB_AOE_API SystemSpawnManager
+	class VOB_AOE_API system_spawn_manager
 	{
 	public:
 		// Constructors
-		explicit SystemSpawnManager(
+		explicit system_spawn_manager(
 			std::vector<std::unique_ptr<entity>>& a_frameSpawns, std::vector<entity_id>& a_unusedEntityIds);
 
 		// Methods

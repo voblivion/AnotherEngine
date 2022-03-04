@@ -5,10 +5,10 @@
 
 namespace vob::aoecs
 {
-	struct WorldData
+	struct world_data
 	{
 		// Constructors
-		explicit VOB_AOE_API WorldData(component_manager a_worldComponents);
+		explicit VOB_AOE_API world_data(component_manager a_worldComponents);
 
 		// Methods
 		void update();

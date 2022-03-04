@@ -69,7 +69,7 @@ namespace vob::aoe::common
 		void update() const {}
 
 	private:
-		aoecs::SystemUnspawnManager& m_systemUnspawnManager;
+		aoecs::system_unspawn_manager& m_systemUnspawnManager;
 		aoecs::EntityViewList<HierarchyComponent> const& m_entities;
 	};
 }

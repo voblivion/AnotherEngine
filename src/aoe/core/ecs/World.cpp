@@ -1,11 +1,11 @@
-#include <vob/aoe/ecs/World.h>
+#include <vob/aoe/ecs/world.h>
 
 // TODO : remove this, no need to sleep
 #include <windows.h>
 
 namespace vob::aoecs
 {
-	void World::start()
+	void world::start()
 	{
 		mismt::worker t_worldWorker{ m_tasks, m_schedule };
 		while (!m_data.m_shouldStop)

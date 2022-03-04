@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/ecs/WorldData.h>
+#include <vob/aoe/ecs/world_data.h>
 #include <vob/aoe/ecs/WorldDataProvider.h>
 #include <vob/aoe/ecs/component_manager.h>
 #include <vob/misc/multithread/basic_task.h>
@@ -19,7 +19,7 @@ namespace vob::aoecs
 		{
 		public:
 			// Constructors
-			explicit system_task(WorldData& a_worldData)
+			explicit system_task(world_data& a_worldData)
 				: m_worldDataProvider{ a_worldData }
 				, m_system{ m_worldDataProvider }
 			{}
@@ -38,11 +38,11 @@ namespace vob::aoecs
 		};
 	}
 
-	class World
+	class world
 	{
 	public:
 		// Constructors
-		explicit World(component_manager a_worldComponents)
+		explicit world(component_manager a_worldComponents)
 			: m_data{ std::move(a_worldComponents) }
 		{}
 
@@ -61,7 +61,7 @@ namespace vob::aoecs
 
 		VOB_AOE_API void start();
 
-		WorldData& getData()
+		world_data& getData()
 		{
 			return m_data;
 		}
@@ -69,7 +69,7 @@ namespace vob::aoecs
 	private:
 		// Attributes
 		mismt::task_list m_tasks;
-		WorldData m_data;
+		world_data m_data;
 		mismt::schedule m_schedule;
 	};
 }

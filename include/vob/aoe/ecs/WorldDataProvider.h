@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 #include <vob/aoe/ecs/EntityManager.h>
-#include <vob/aoe/ecs/WorldData.h>
+#include <vob/aoe/ecs/world_data.h>
 #include <vob/aoe/core/type/ADynamicType.h>
 // TMP
 #include <iostream>
@@ -69,7 +69,7 @@ namespace vob::aoecs
 	{
 	public:
 		// Constructors
-		explicit WorldDataProvider(WorldData& a_worldData)
+		explicit WorldDataProvider(world_data& a_worldData)
 			: m_worldData{ a_worldData }
 		{}
 		virtual ~WorldDataProvider() = default;
@@ -112,13 +112,13 @@ namespace vob::aoecs
 			return getEntityViewList<SystemType, ComponentTypes...>(a_system);
 		}
 
-		SystemSpawnManager& getSpawnManager()
+		system_spawn_manager& getSpawnManager()
 		{
 			onGetSpawnManager();
 			return m_worldData.m_entityManager.getSystemSpawnManager();
 		}
 
-		SystemUnspawnManager& getUnspawnManager()
+		system_unspawn_manager& getUnspawnManager()
 		{
 			onGetUnspawnManager();
 			return m_worldData.m_entityManager.getSystemUnspawnManager();
@@ -138,6 +138,6 @@ namespace vob::aoecs
 
 	private:
 		// Attributes
-		WorldData& m_worldData;
+		world_data& m_worldData;
 	};
 }

@@ -293,6 +293,6 @@ namespace vob::aoe::common
 			, HierarchyComponent const
 		> const& m_entities;
 		aoecs::EntityViewList<HierarchyComponent const, LocalTransformComponent> const& m_heads;
-		aoecs::SystemSpawnManager& m_systemSpawnManager;
+		aoecs::system_spawn_manager& m_systemSpawnManager;
 	};
 }

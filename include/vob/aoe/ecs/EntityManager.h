@@ -9,8 +9,8 @@
 #include <vob/aoe/ecs/entity.h>
 #include <vob/aoe/ecs/entity_id.h>
 #include <vob/aoe/ecs/entity_view.h>
-#include <vob/aoe/ecs/SystemSpawnManager.h>
-#include <vob/aoe/ecs/SystemUnspawnManager.h>
+#include <vob/aoe/ecs/system_spawn_manager.h>
+#include <vob/aoe/ecs/system_unspawn_manager.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
@@ -265,9 +265,9 @@ namespace vob::aoecs
 		VOB_AOE_API ~EntityManager();
 
 		//Methods
-		VOB_AOE_API SystemSpawnManager& getSystemSpawnManager();
+		VOB_AOE_API system_spawn_manager& getSystemSpawnManager();
 
-		VOB_AOE_API SystemUnspawnManager& getSystemUnspawnManager();
+		VOB_AOE_API system_unspawn_manager& getSystemUnspawnManager();
 
 		VOB_AOE_API void update();
 
@@ -289,10 +289,10 @@ namespace vob::aoecs
 
 		std::vector<std::unique_ptr<entity>> m_frameSpawns;
 		std::vector<entity_id> m_unusedEntityIds;
-		SystemSpawnManager m_systemSpawnManager;
+		system_spawn_manager m_systemSpawnManager;
 
 		std::vector<entity_id> m_frameUnspawns;
-		SystemUnspawnManager m_systemUnspawnManager;
+		system_unspawn_manager m_systemUnspawnManager;
 
 		// Methods
 		void processSpawns();

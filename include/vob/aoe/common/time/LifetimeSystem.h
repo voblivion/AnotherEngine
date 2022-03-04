@@ -36,7 +36,7 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		aoecs::SystemUnspawnManager& m_unspawnManager;
+		aoecs::system_unspawn_manager& m_unspawnManager;
 		WorldTimeComponent const& m_worldTimeComponent;
 		aoecs::EntityViewList<LifetimeComponent> const& m_entities;
 	};

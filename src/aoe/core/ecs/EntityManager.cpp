@@ -21,12 +21,12 @@ namespace vob::aoecs
 	}
 
 
-	SystemSpawnManager& EntityManager::getSystemSpawnManager()
+	system_spawn_manager& EntityManager::getSystemSpawnManager()
 	{
 		return m_systemSpawnManager;
 	}
 
-	SystemUnspawnManager& EntityManager::getSystemUnspawnManager()
+	system_unspawn_manager& EntityManager::getSystemUnspawnManager()
 	{
 		return m_systemUnspawnManager;
 	}

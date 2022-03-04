@@ -12,7 +12,7 @@
 #include "vob/aoe/common/render/Directorcomponent.h"
 #include "vob/aoe/common/physic/WorldPhysiccomponent.h"
 #include "vob/aoe/common/physic/DefaultDynamicsWorldHolder.h"
-#include "vob/aoe/ecs/World.h"
+#include "vob/aoe/ecs/world.h"
 #include "vob/aoe/common/physic/PhysicSystem.h"
 #include "vob/aoe/common/test/TestSystem.h"
 #include "vob/aoe/common/render/RenderSystem.h"
@@ -43,7 +43,7 @@ using namespace mishs::literals;
 const std::uint32_t g_width = 2048u;
 const std::uint32_t g_height = 1024u;
 
-std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
+std::unique_ptr<aoecs::world> createGameWorld(aoe::DataHolder& a_data, aoe::common::IWindow& a_window)
 {
 	// Prepare world components
 	aoecs::component_manager t_worldComponents{ a_data.componentHolderCloner };
@@ -83,7 +83,7 @@ std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 	);
 
 	// Create world
-	auto world = std::make_unique<aoecs::World>(std::move(t_worldComponents));
+	auto world = std::make_unique<aoecs::world>(std::move(t_worldComponents));
 
 	// Register Systems
 	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
@@ -124,7 +124,7 @@ std::unique_ptr<aoecs::World> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 	return std::move(world);
 }
 
-void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::World& a_world)
+void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
     auto& cloner = a_data.dynamicTypeCloner;
     auto& database = a_data.database;
@@ -152,7 +152,7 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 
 vob::aoe::vis::EditorVisitor* leakingEditorVisitor = nullptr;
 
-void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
+void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
 	auto& worldData = a_world.getData();
 	auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
@@ -355,7 +355,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::World& a_world)
 	//}
 }
 
-std::unique_ptr<aoecs::World> createEditorWorld(aoe::DataHolder& a_data)
+std::unique_ptr<aoecs::world> createEditorWorld(aoe::DataHolder& a_data)
 {
 	// Prepare world components
 	aoecs::component_manager t_worldComponents{ a_data.componentHolderCloner };
@@ -405,14 +405,14 @@ int main()
 		glEnable(GL_MULTISAMPLE);
 
 		// Create game world
-		auto world = createGameWorld(data, window);
+		auto gameWorld = createGameWorld(data, window);
 
 		// Init with default map
-		initGameWorldDefaultMap(data, *world);
-		// initGameWorldGuiMap(data, *world);
+		initGameWorldDefaultMap(data, *gameWorld);
+		// initGameWorldGuiMap(data, *gameWorld);
 
 		// Run game
-		world->start();
+		gameWorld->start();
 	}
 
 	// Destroy game window
