@@ -54,6 +54,7 @@ namespace vob::aoe::common
 			}
 
 			// Request children to be removed
+			// TODO: remove same frame ?
 			for (auto const& childHandle : hierarchy.m_children)
 			{
 				auto const childEntity = m_entities.find(childHandle);

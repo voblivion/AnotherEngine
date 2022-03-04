@@ -5,7 +5,7 @@ namespace vob::aoecs
 {
 	// Public
 	EntityManager::EntityManager()
-		: m_systemSpawnManager{ m_frameSpawns }
+		: m_systemSpawnManager{ m_frameSpawns, m_unusedEntityIds }
 		, m_systemUnspawnManager{ m_frameUnspawns }
 	{}
 
@@ -53,16 +53,17 @@ namespace vob::aoecs
 
 	void EntityManager::processUnspawns()
 	{
-		for (auto const t_id : m_frameUnspawns)
+		for (auto const id : m_frameUnspawns)
 		{
-			auto const t_it = m_entities.find(t_id);
-			if (t_it != m_entities.end())
+			m_unusedEntityIds.emplace_back(id);
+			auto const it = m_entities.find(id);
+			if (it != m_entities.end())
 			{
 				for (auto& t_listHolder : m_systemEntityLists)
 				{
-					t_listHolder->onEntityRemoved(*t_it->second);
+					t_listHolder->onEntityRemoved(*it->second);
 				}
-				m_entities.erase(t_it);
+				m_entities.erase(it);
 			}
 		}
 		m_frameUnspawns.clear();

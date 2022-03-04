@@ -288,6 +288,7 @@ namespace vob::aoecs
 		std::deque<std::unique_ptr<ASystemEntityList>> m_systemEntityLists;
 
 		std::vector<std::unique_ptr<entity>> m_frameSpawns;
+		std::vector<entity_id> m_unusedEntityIds;
 		SystemSpawnManager m_systemSpawnManager;
 
 		std::vector<entity_id> m_frameUnspawns;

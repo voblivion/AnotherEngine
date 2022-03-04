@@ -12,7 +12,8 @@ namespace vob::aoecs
 	{
 	public:
 		// Constructors
-		explicit SystemSpawnManager(std::vector<std::unique_ptr<entity>>& a_frameSpawns);
+		explicit SystemSpawnManager(
+			std::vector<std::unique_ptr<entity>>& a_frameSpawns, std::vector<entity_id>& a_unusedEntityIds);
 
 		// Methods
 		entity& spawn(component_manager a_componentManager);
@@ -20,7 +21,7 @@ namespace vob::aoecs
 	private:
 		// Attributes
 		entity_id::value_type m_nextEntityIdValue{};
-		std::mutex m_mutex{};
 		std::vector<std::unique_ptr<entity>>& m_frameSpawns;
+		std::vector<entity_id>& m_unusedEntityIds;
 	};
 }
