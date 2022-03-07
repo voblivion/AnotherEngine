@@ -9,8 +9,8 @@
 #include <vob/aoe/ecs/entity.h>
 #include <vob/aoe/ecs/entity_id.h>
 #include <vob/aoe/ecs/entity_view.h>
-#include <vob/aoe/ecs/system_spawn_manager.h>
-#include <vob/aoe/ecs/system_unspawn_manager.h>
+#include <vob/aoe/ecs/spawn_manager.h>
+#include <vob/aoe/ecs/unspawn_manager.h>
 
 #include <vob/aoe/core/type/ADynamicType.h>
 
@@ -256,27 +256,25 @@ namespace vob::aoecs
 		}
 	};
 
-	class EntityManager
+	class entity_manager
 	{
 	public:
 		// Constructors
-		VOB_AOE_API explicit EntityManager();
+		VOB_AOE_API explicit entity_manager();
 
-		VOB_AOE_API ~EntityManager();
+		VOB_AOE_API ~entity_manager();
 
 		//Methods
-		VOB_AOE_API system_spawn_manager& getSystemSpawnManager();
+		VOB_AOE_API spawn_manager& get_spawn_manager();
 
-		VOB_AOE_API system_unspawn_manager& getSystemUnspawnManager();
+		VOB_AOE_API unspawn_manager& get_unspawn_manager();
 
 		VOB_AOE_API void update();
 
 		template <typename System, typename... ComponentTypes>
 		EntityViewList<ComponentTypes...> const& getEntityViewList(System& a_system)
 		{
-			auto listHolder = std::make_unique<
-				SystemEntityList<System, ComponentTypes...>
-			>(a_system, m_entities);
+			auto listHolder = std::make_unique<SystemEntityList<System, ComponentTypes...>>(a_system, m_entities);
 			auto& t_entityList = listHolder->m_entityList;
 			m_systemEntityLists.emplace_back(std::move(listHolder));
 			return t_entityList;
@@ -289,14 +287,14 @@ namespace vob::aoecs
 
 		std::vector<std::unique_ptr<entity>> m_frameSpawns;
 		std::vector<entity_id> m_unusedEntityIds;
-		system_spawn_manager m_systemSpawnManager;
+		spawn_manager m_spawnManager;
 
 		std::vector<entity_id> m_frameUnspawns;
-		system_unspawn_manager m_systemUnspawnManager;
+		unspawn_manager m_unspawnManager;
 
 		// Methods
-		void processSpawns();
+		void process_spawns();
 
-		void processUnspawns();
+		void process_unspawns();
 	};
 }

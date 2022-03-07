@@ -110,8 +110,8 @@ namespace vob::aoe::common
 
 				for (auto& t_rigidBodyEntity : m_rigidBodyEntities)
 				{
-					auto& t_transform = t_rigidBodyEntity.getComponent<TransformComponent>();
-					auto& t_rigidBody = t_rigidBodyEntity.getComponent<RigidBodyComponent>();
+					auto& t_transform = t_rigidBodyEntity.get_component<TransformComponent>();
+					auto& t_rigidBody = t_rigidBodyEntity.get_component<RigidBodyComponent>();
 
 					auto t_matrix = btTransform{};
 					t_rigidBody.m_motionState->getWorldTransform(t_matrix);
@@ -144,7 +144,7 @@ namespace vob::aoe::common
 
 			// RigidBody
 			if (auto const t_rigidBody
-				= a_entity.getComponent<RigidBodyComponent>())
+				= a_entity.get_component<RigidBodyComponent>())
 			{
 				if(t_rigidBody->m_collisionShape == nullptr)
 				{
@@ -153,7 +153,7 @@ namespace vob::aoe::common
 				}
 
 				// Initialize motion state
-				auto const t_transform = a_entity.getComponent<TransformComponent>();
+				auto const t_transform = a_entity.get_component<TransformComponent>();
 				auto const t_matrix = toBtTransform(t_transform->m_matrix);
 				auto const t_offset = toBtTransform(glm::translate(glm::mat4{ 1.0f }, t_rigidBody->m_offset));
 				t_rigidBody->m_motionState = std::make_shared<btDefaultMotionState>(t_matrix, t_offset);
@@ -209,7 +209,7 @@ namespace vob::aoe::common
 				t_dynamicsWorld.addRigidBody(&*t_rigidBody->m_rigidBody);
 			}
 			else if(auto const t_characterController
-				= a_entity.getComponent<CharacterControllerComponent>())
+				= a_entity.get_component<CharacterControllerComponent>())
 			{
 				t_characterController->m_kinematic = btKinematicCharacterController{
 					&t_characterController->m_ghost
@@ -231,7 +231,7 @@ namespace vob::aoe::common
 			auto& t_dynamicsWorld =
 				m_worldPhysicComponent.m_dynamicsWorldHolder->getDynamicsWorld();
 
-			auto const t_rigidBody = a_entity.getComponent<RigidBodyComponent>();
+			auto const t_rigidBody = a_entity.get_component<RigidBodyComponent>();
 			if (t_rigidBody != nullptr)
 			{
 				t_dynamicsWorld.removeRigidBody(t_rigidBody->m_rigidBody.get());

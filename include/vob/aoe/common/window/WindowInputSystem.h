@@ -8,6 +8,7 @@
 namespace vob::aoecs
 {
 	class WorldDataProvider;
+	class stop_manager;
 }
 
 namespace vob::aoe::common
@@ -25,6 +26,6 @@ namespace vob::aoe::common
 	private:
 		WorldWindowComponent& m_worldWindowComponent;
 		WorldInputComponent& m_worldInputComponent;
-		bool& m_worldStop;
+		aoecs::stop_manager& m_stopManager;
 	};
 }

@@ -163,7 +163,7 @@ namespace
 WindowInputSystem::WindowInputSystem(aoecs::WorldDataProvider& a_wdp)
 	: m_worldWindowComponent{ *a_wdp.getWorldComponent<WorldWindowComponent>() }
 	, m_worldInputComponent{ *a_wdp.getWorldComponent<WorldInputComponent>() }
-	, m_worldStop{ a_wdp.getStopBool() }
+	, m_stopManager{ a_wdp.getStopManager() }
 {}
 
 void WindowInputSystem::update() const
@@ -174,7 +174,7 @@ void WindowInputSystem::update() const
 
 	if (window.shouldClose())
 	{
-		m_worldStop = true;
+		m_stopManager.set_should_stop(true);
 	}
 
 	processEvents(window, m_worldInputComponent);

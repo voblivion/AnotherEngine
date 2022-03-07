@@ -23,6 +23,6 @@ namespace vob::aoe::common
 	private:
 		WorldWindowComponent& m_worldWindowComponent;
 		WorldCursorComponent const& m_worldCursorComponent;
-		bool& m_worldStop;
+		aoecs::stop_manager& m_stopManager;
 	};
 }

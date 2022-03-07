@@ -10,123 +10,123 @@ namespace vob::aoecs
 {
 	namespace detail
 	{
-		template <typename... ComponentTypes>
-		class SystemEntityViewImpl;
+		template <typename... TComponents>
+		class entity_view_impl;
 
 		template <>
-		class SystemEntityViewImpl<>
+		class entity_view_impl<>
 		{
 		public:
-			explicit SystemEntityViewImpl(entity&) {}
+			explicit entity_view_impl(entity&) {}
 
 			static void get() {}
 		};
 
-		template <typename ComponentType>
+		template <typename TComponent>
 		struct Component {};
 
-		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityViewImpl<ComponentType, ComponentTypes...>
-			: public SystemEntityViewImpl<ComponentTypes...>
+		template <typename TComponent, typename... TComponents>
+		class entity_view_impl<TComponent, TComponents...>
+			: public entity_view_impl<TComponents...>
 		{
-			using Base = SystemEntityViewImpl<ComponentTypes...>;
+			using base = entity_view_impl<TComponents...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(entity& a_entity)
-				: Base{ a_entity }
-				, m_component{ *a_entity.getComponent<ComponentType>() }
+			explicit entity_view_impl(entity& a_entity)
+				: base{ a_entity }
+				, m_component{ *a_entity.get_component<TComponent>() }
 			{}
 
 			// Methods
 
-			ComponentType& get(Component<ComponentType>) const
+			TComponent& get(Component<TComponent>) const
 			{
 				return m_component.get();
 			}
-			using Base::get;
+			using base::get;
 
 		private:
 			// Attributes
-			std::reference_wrapper<ComponentType> m_component;
+			std::reference_wrapper<TComponent> m_component;
 		};
 
-		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityViewImpl<ComponentType*, ComponentTypes...>
-			: public SystemEntityViewImpl<ComponentTypes...>
+		template <typename TComponent, typename... TComponents>
+		class entity_view_impl<TComponent*, TComponents...>
+			: public entity_view_impl<TComponents...>
 		{
-			using Base = SystemEntityViewImpl<ComponentTypes...>;
+			using base = entity_view_impl<TComponents...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(entity& a_entity)
-				: Base{ a_entity }
-				, m_component{ a_entity.getComponent<ComponentType>() }
+			explicit entity_view_impl(entity& a_entity)
+				: base{ a_entity }
+				, m_component{ a_entity.get_component<TComponent>() }
 			{}
 
 			// Methods
 
-			ComponentType* get(Component<ComponentType>) const
+			TComponent* get(Component<TComponent>) const
 			{
 				return m_component;
 			}
-			using Base::get;
+			using base::get;
 
 		private:
 			// Attributes
-			ComponentType* m_component;
+			TComponent* m_component;
 		};
 
-		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityViewImpl<ComponentType const, ComponentTypes...>
-			: public SystemEntityViewImpl<ComponentTypes...>
+		template <typename TComponent, typename... TComponents>
+		class entity_view_impl<TComponent const, TComponents...>
+			: public entity_view_impl<TComponents...>
 		{
-			using Base = SystemEntityViewImpl<ComponentTypes...>;
+			using base = entity_view_impl<TComponents...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(entity& a_entity)
-				: Base{ a_entity }
-				, m_component{ *a_entity.getComponent<ComponentType>() }
+			explicit entity_view_impl(entity& a_entity)
+				: base{ a_entity }
+				, m_component{ *a_entity.get_component<TComponent>() }
 			{}
 
 			// Methods
 
-			ComponentType const& get(Component<ComponentType>) const
+			TComponent const& get(Component<TComponent>) const
 			{
 				return m_component.get();
 			}
-			using Base::get;
+			using base::get;
 
 		private:
 			// Attributes
-			std::reference_wrapper<ComponentType const> m_component;
+			std::reference_wrapper<TComponent const> m_component;
 		};
 
-		template <typename ComponentType, typename... ComponentTypes>
-		class SystemEntityViewImpl<ComponentType const*, ComponentTypes...>
-			: public SystemEntityViewImpl<ComponentTypes...>
+		template <typename TComponent, typename... TComponents>
+		class entity_view_impl<TComponent const*, TComponents...>
+			: public entity_view_impl<TComponents...>
 		{
-			using Base = SystemEntityViewImpl<ComponentTypes...>;
+			using base = entity_view_impl<TComponents...>;
 		public:
 			// Constructors
-			explicit SystemEntityViewImpl(entity& a_entity)
-				: Base{ a_entity }
-				, m_component{ a_entity.getComponent<ComponentType>() }
+			explicit entity_view_impl(entity& a_entity)
+				: base{ a_entity }
+				, m_component{ a_entity.get_component<TComponent>() }
 			{}
 
 			// Methods
 
-			ComponentType const* get(Component<ComponentType>) const
+			TComponent const* get(Component<TComponent>) const
 			{
 				return m_component;
 			}
-			using Base::get;
+			using base::get;
 
 		private:
 			// Attributes
-			ComponentType const* m_component;
+			TComponent const* m_component;
 		};
 	}
 
-	template <typename... ComponentTypes>
+	template <typename... TComponents>
 	class EntityView
 	{
 	public:
@@ -145,16 +145,16 @@ namespace vob::aoecs
 			return m_id;
 		}
 
-		template <typename ComponentType>
-		decltype(auto) getComponent() const
+		template <typename TComponent>
+		decltype(auto) get_component() const
 		{
-			return m_impl.get(detail::Component<ComponentType>{});
+			return m_impl.get(detail::Component<TComponent>{});
 		}
 
 	private:
 		// Attributes
 		entity_id m_id;
-		detail::SystemEntityViewImpl<ComponentTypes...> m_impl;
+		detail::entity_view_impl<TComponents...> m_impl;
 #ifndef NDEBUG
 		entity* m_entity = nullptr;
 #endif

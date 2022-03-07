@@ -3,7 +3,7 @@
 #include <typeindex>
 #include <unordered_set>
 
-#include <vob/aoe/ecs/EntityManager.h>
+#include <vob/aoe/ecs/entity_manager.h>
 #include <vob/aoe/ecs/world_data.h>
 #include <vob/aoe/core/type/ADynamicType.h>
 // TMP
@@ -75,17 +75,17 @@ namespace vob::aoecs
 		virtual ~WorldDataProvider() = default;
 
 		// Methods
-		bool& getStopBool()
+		stop_manager& getStopManager()
 		{
-			onGetStopBool();
-			return m_worldData.m_shouldStop;
+			onGetStopManager();
+			return m_worldData.m_stopManager;
 		}
 
 		template <typename ComponentType>
 		ComponentType* getWorldComponent()
 		{
 			onGetWorldComponent(makeResourceAccess<ComponentType>());
-			return m_worldData.m_worldComponents.getComponent<ComponentType>();
+			return m_worldData.m_worldComponents.get_component<ComponentType>();
 		}
 
 		template <typename ComponentType>
@@ -112,21 +112,21 @@ namespace vob::aoecs
 			return getEntityViewList<SystemType, ComponentTypes...>(a_system);
 		}
 
-		system_spawn_manager& getSpawnManager()
+		spawn_manager& get_spawn_manager()
 		{
 			onGetSpawnManager();
-			return m_worldData.m_entityManager.getSystemSpawnManager();
+			return m_worldData.m_entityManager.get_spawn_manager();
 		}
 
-		system_unspawn_manager& getUnspawnManager()
+		unspawn_manager& get_unspawn_manager()
 		{
 			onGetUnspawnManager();
-			return m_worldData.m_entityManager.getSystemUnspawnManager();
+			return m_worldData.m_entityManager.get_unspawn_manager();
 		}
 
 	protected:
 		// Methods
-		virtual void onGetStopBool() {}
+		virtual void onGetStopManager() {}
 
 		virtual void onGetWorldComponent(ResourceAccess) {}
 

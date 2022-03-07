@@ -23,7 +23,7 @@ namespace vob::aoe::common
 		{
 			for (auto const& entity : m_entities)
 			{
-				auto const hierarchy = entity.getComponent<HierarchyComponent>();
+				auto const hierarchy = entity.get_component<HierarchyComponent>();
 				if (hierarchy.m_parent.is_valid())
 				{
 					continue;
@@ -47,8 +47,8 @@ namespace vob::aoe::common
 		// Methods
 		void updateChildrenTransform(EntityView const& a_entity) const
 		{
-			auto const& hierarchy = a_entity.getComponent<HierarchyComponent>();
-			auto const& transform = a_entity.getComponent<TransformComponent>();
+			auto const& hierarchy = a_entity.get_component<HierarchyComponent>();
+			auto const& transform = a_entity.get_component<TransformComponent>();
 			for (auto const& childHandle : hierarchy.m_children)
 			{
 				auto const& childEntity = m_entities.find(childHandle);
@@ -61,8 +61,8 @@ namespace vob::aoe::common
 
 		void updateTransform(glm::mat4 const& a_parentMatrix, EntityView const& a_entity) const
 		{
-			auto& transform = a_entity.getComponent<TransformComponent>();
-			auto const localTransform = a_entity.getComponent<LocalTransformComponent>();
+			auto& transform = a_entity.get_component<TransformComponent>();
+			auto const localTransform = a_entity.get_component<LocalTransformComponent>();
 			if (localTransform != nullptr)
 			{
 				transform.m_matrix = a_parentMatrix * localTransform->m_matrix;

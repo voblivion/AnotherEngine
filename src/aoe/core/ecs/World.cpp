@@ -8,7 +8,7 @@ namespace vob::aoecs
 	void world::start()
 	{
 		mismt::worker t_worldWorker{ m_tasks, m_schedule };
-		while (!m_data.m_shouldStop)
+		while (!m_data.m_stopManager.should_stop())
 		{
 			t_worldWorker.execute();
 			m_data.update();

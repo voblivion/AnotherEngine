@@ -49,7 +49,7 @@ namespace vob::aoe::common
 			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
 			, m_heads{ a_wdp.getEntityViewList<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(*this) }
 			, m_debugSceneRenderComponent{ *a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
-			, m_systemSpawnManager{ a_wdp.getSpawnManager() }
+			, m_spawnManager{ a_wdp.get_spawn_manager() }
 		{}
 
 
@@ -62,11 +62,11 @@ namespace vob::aoe::common
 		{
 			for (auto const& entity : m_entities)
 			{
-				auto& transform = entity.getComponent<TransformComponent>();
+				auto& transform = entity.get_component<TransformComponent>();
 
 
-				auto& simpleController = entity.getComponent<SimpleControllerComponent>();
-				auto& rigidBody = entity.getComponent<RigidBodyComponent>();
+				auto& simpleController = entity.get_component<SimpleControllerComponent>();
+				auto& rigidBody = entity.get_component<RigidBodyComponent>();
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
 					DebugVertex{ transform.m_matrix[3], glm::vec3{1.0f, 0.0f, 0.0f} }
@@ -202,7 +202,7 @@ namespace vob::aoe::common
 						auto t_bullet = *simpleController.m_bullet;
 
 						// Initial velocity
-						auto const t_rigidBody = t_bullet.getComponent<RigidBodyComponent>();
+						auto const t_rigidBody = t_bullet.get_component<RigidBodyComponent>();
 						glm::vec3 t_localVelocity{ 0.0f, 0.0f, -8.0f };
 						t_rigidBody->m_linearVelocity = glm::vec3{
 							glm::quat{ simpleController.m_orientation }
@@ -211,11 +211,11 @@ namespace vob::aoe::common
 						};
 
 						// Initial position
-						auto const t_transform = t_bullet.getComponent<TransformComponent>();
+						auto const t_transform = t_bullet.get_component<TransformComponent>();
 						t_transform->m_matrix = glm::translate(transform.m_matrix, glm::vec3{ 0.0f, 1.5f, 0.0f });
 						t_transform->m_matrix = glm::translate(t_transform->m_matrix, t_rigidBody->m_linearVelocity / 10.0f);
 
-						m_systemSpawnManager.spawn(std::move(t_bullet));
+						m_spawnManager.spawn(std::move(t_bullet));
 						simpleController.m_lastBulletTime = m_worldTimeComponent.m_frameStartTime;
 					}
 				}
@@ -244,13 +244,13 @@ namespace vob::aoe::common
 					headEuler.x += m_worldTimeComponent.m_elapsedTime.get_value()
 						* -m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RY] * 2;
 
-					auto& hierarchy = entity.getComponent<HierarchyComponent>();
+					auto& hierarchy = entity.get_component<HierarchyComponent>();
 					if (!hierarchy.m_children.empty())
 					{
 						auto head = m_heads.find(hierarchy.m_children[0]);
 						if (head != nullptr)
 						{
-							auto& localTransform = head->getComponent<LocalTransformComponent>();
+							auto& localTransform = head->get_component<LocalTransformComponent>();
 							setRotation(localTransform.m_matrix, glm::quat{ headEuler });
 						}
 					}
@@ -293,6 +293,6 @@ namespace vob::aoe::common
 			, HierarchyComponent const
 		> const& m_entities;
 		aoecs::EntityViewList<HierarchyComponent const, LocalTransformComponent> const& m_heads;
-		aoecs::system_spawn_manager& m_systemSpawnManager;
+		aoecs::spawn_manager& m_spawnManager;
 	};
 }

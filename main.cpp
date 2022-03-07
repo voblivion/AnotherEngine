@@ -86,22 +86,22 @@ std::unique_ptr<aoecs::world> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 	auto world = std::make_unique<aoecs::world>(std::move(t_worldComponents));
 
 	// Register Systems
-	auto const timeSystemId = world->addSystem<aoe::common::TimeSystem>();
-	auto const moveSystemId = world->addSystem<aoe::common::MoveSystem>();
-	auto const windowInputSystemId = world->addSystem<aoe::common::WindowInputSystem>();
-	auto const windowCursorSystemId = world->addSystem<aoe::common::WindowCursorSystem>();
-	auto const simpleControllerSystemId = world->addSystem<aoe::common::SimpleControllerSystem>();
-	auto const renderSystemId = world->addSystem<aoe::common::GameRenderSystem>();
-	auto const testSystemId = world->addSystem<aoe::common::TestSystem>();
-	auto const physicSystemId = world->addSystem<aoe::common::PhysicSystem>();
-	auto const defaultDirectorSystemId = world->addSystem<aoe::common::DefaultDirectorSystem>();
-	auto const lifetimeSystemId = world->addSystem<aoe::common::LifetimeSystem>();
-	// auto const guiRenderSystemId = world->addSystem<aoe::common::gui::RenderSystem>();
-	auto const hierarchySystemId = world->addSystem<aoe::common::HierarchySystem>();
-	auto const localTransformSystemId = world->addSystem<aoe::common::LocalTransformSystem>();
+	auto const timeSystemId = world->add_system<aoe::common::TimeSystem>();
+	auto const moveSystemId = world->add_system<aoe::common::MoveSystem>();
+	auto const windowInputSystemId = world->add_system<aoe::common::WindowInputSystem>();
+	auto const windowCursorSystemId = world->add_system<aoe::common::WindowCursorSystem>();
+	auto const simpleControllerSystemId = world->add_system<aoe::common::SimpleControllerSystem>();
+	auto const renderSystemId = world->add_system<aoe::common::GameRenderSystem>();
+	auto const testSystemId = world->add_system<aoe::common::TestSystem>();
+	auto const physicSystemId = world->add_system<aoe::common::PhysicSystem>();
+	auto const defaultDirectorSystemId = world->add_system<aoe::common::DefaultDirectorSystem>();
+	auto const lifetimeSystemId = world->add_system<aoe::common::LifetimeSystem>();
+	// auto const guiRenderSystemId = world->add_system<aoe::common::gui::RenderSystem>();
+	auto const hierarchySystemId = world->add_system<aoe::common::HierarchySystem>();
+	auto const localTransformSystemId = world->add_system<aoe::common::LocalTransformSystem>();
 
 	// Set schedule
-	world->setSchedule({
+	world->set_schedule({
 		mismt::thread_schedule{
 			{windowInputSystemId, {timeSystemId}}
 			, {windowCursorSystemId, {}}
@@ -128,8 +128,8 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
     auto& cloner = a_data.dynamicTypeCloner;
     auto& database = a_data.database;
-    auto& worldData = a_world.getData();
-    auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
+    auto& worldData = a_world.get_data();
+    auto& systemSpawnManager = worldData.m_entityManager.get_spawn_manager();
 
 	aoecs::component_manager canvasArk{ a_data.componentHolderCloner };
 	auto& canvasComponent = canvasArk.addComponent<aoe::common::CanvasComponent>(cloner);
@@ -154,8 +154,8 @@ vob::aoe::vis::EditorVisitor* leakingEditorVisitor = nullptr;
 
 void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
-	auto& worldData = a_world.getData();
-	auto& systemSpawnManager = worldData.m_entityManager.getSystemSpawnManager();
+	auto& worldData = a_world.get_data();
+	auto& systemSpawnManager = worldData.m_entityManager.get_spawn_manager();
 
 	// Load player
 	leakingEditorVisitor = new aoe::vis::EditorVisitor{
@@ -174,7 +174,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 		if (playerNeckArk != nullptr)
 		{
 			auto playerNeck = *playerNeckArk;
-			auto hierarchy = playerNeck.getComponent<aoe::common::HierarchyComponent>();
+			auto hierarchy = playerNeck.get_component<aoe::common::HierarchyComponent>();
 			hierarchy->m_parent = player.get_id();
 			auto& neck = systemSpawnManager.spawn(playerNeck);
 
@@ -182,13 +182,13 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 			if (playerCameraArk != nullptr)
 			{
 				auto playerCamera = *playerCameraArk;
-				auto hierarchy = playerCamera.getComponent<aoe::common::HierarchyComponent>();
+				auto hierarchy = playerCamera.get_component<aoe::common::HierarchyComponent>();
 				hierarchy->m_parent = neck.get_id();
 				systemSpawnManager.spawn(playerCamera);
 			}
 		}
 
-		auto canvas = player.getComponent<aoe::common::CanvasComponent>();
+		auto canvas = player.get_component<aoe::common::CanvasComponent>();
 		//editionInterface = leakingEditorVisitor->generateEditionInterface(canvas->m_rootElement, stupidData);
 	}
 
@@ -201,7 +201,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 		constexpr int sizeX = 64;
 		constexpr int sizeY = 64;
 		
-		auto mc = ground.getComponent<aoe::common::ModelComponent>();
+		auto mc = ground.get_component<aoe::common::ModelComponent>();
 
 		std::vector<aoe::common::Vertex> vertices;
 		vertices.reserve(3 * sizeX * sizeY * 2 * 2);
@@ -302,7 +302,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 		std::vector<aoe::common::Material> materials = (*mc->m_model)->m_materials;
 		mc->m_model = std::make_shared<aoe::common::GraphicResourceHandle<aoe::common::StaticModel>>(a_data.staticModelResourceManager, meshes, materials);
 
-		auto rbc = ground.getComponent<aoe::common::RigidBodyComponent>();
+		auto rbc = ground.get_component<aoe::common::RigidBodyComponent>();
 		static_cast<aoe::common::ModelShape&>(*rbc->m_collisionShape).setModel(mc->m_model);
 		rbc->m_physicMaterial = std::make_shared<aoe::common::PhysicMaterial>();
 
@@ -324,31 +324,31 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 	//{
 	//	{
 	//		auto ark = *groundArk;
-	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		auto& matrix = ark.get_component<aoe::common::TransformComponent>()->m_matrix;
 	//		matrix *= aoe::common::translation(glm::vec3{ 0.0f, 0.0f, 0.0f });
 	//		systemSpawnManager.spawn(std::move(ark));
 	//	}
 	//	{
 	//		auto ark = *groundArk;
-	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		auto& matrix = ark.get_component<aoe::common::TransformComponent>()->m_matrix;
 	//		matrix *= aoe::common::translation(glm::vec3{ 8.0f, 0.0f, 0.2f });
 	//		systemSpawnManager.spawn(std::move(ark));
 	//	}
 	//	{
 	//		auto ark = *groundArk;
-	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		auto& matrix = ark.get_component<aoe::common::TransformComponent>()->m_matrix;
 	//		matrix *= aoe::common::translation(glm::vec3{ 16.0f, 0.0f, 0.4f });
 	//		systemSpawnManager.spawn(std::move(ark));
 	//	}
 	//	{
 	//		auto ark = *groundArk;
-	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		auto& matrix = ark.get_component<aoe::common::TransformComponent>()->m_matrix;
 	//		matrix *= aoe::common::translation(glm::vec3{ 24.0f, 0.0f, 0.6f });
 	//		systemSpawnManager.spawn(std::move(ark));
 	//	}
 	//	{
 	//		auto ark = *groundArk;
-	//		auto& matrix = ark.getComponent<aoe::common::TransformComponent>()->m_matrix;
+	//		auto& matrix = ark.get_component<aoe::common::TransformComponent>()->m_matrix;
 	//		matrix *= aoe::common::translation(glm::vec3{ -6.0f, 0.0f, 1.0f });
 	//		systemSpawnManager.spawn(std::move(ark));
 	//	}

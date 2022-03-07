@@ -1,7 +1,9 @@
 #pragma once
 
-#include <vob/aoe/ecs/EntityManager.h>
+#include <vob/aoe/api.h>
+#include <vob/aoe/ecs/entity_manager.h>
 #include <vob/aoe/ecs/component_manager.h>
+#include <vob/aoe/ecs/stop_manager.h>
 
 namespace vob::aoecs
 {
@@ -14,8 +16,8 @@ namespace vob::aoecs
 		void update();
 
 		// Attributes
-		bool m_shouldStop = false;
+		stop_manager m_stopManager;
 		component_manager m_worldComponents;
-		EntityManager m_entityManager;
+		entity_manager m_entityManager;
 	};
 }

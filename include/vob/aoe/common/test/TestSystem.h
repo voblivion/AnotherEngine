@@ -21,8 +21,8 @@ namespace vob::aoe::common
 		{
 			/*for(auto& t_entity : m_entities)
 			{
-				auto& t_transform = t_entity.getComponent<TransformComponent>();
-				auto& t_test = t_entity.getComponent<TestComponent>();
+				auto& t_transform = t_entity.get_component<TransformComponent>();
+				auto& t_test = t_entity.get_component<TestComponent>();
 				if (t_test.type == 1)
 				{
 					Quaternion r{ 1.0f, 0.0f, 0.0f, 0.0f };

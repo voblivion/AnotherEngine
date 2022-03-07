@@ -1,15 +1,15 @@
-#include <vob/aoe/ecs/EntityManager.h>
+#include <vob/aoe/ecs/entity_manager.h>
 
 
 namespace vob::aoecs
 {
 	// Public
-	EntityManager::EntityManager()
-		: m_systemSpawnManager{ m_frameSpawns, m_unusedEntityIds }
-		, m_systemUnspawnManager{ m_frameUnspawns }
+	entity_manager::entity_manager()
+		: m_spawnManager{ m_frameSpawns, m_unusedEntityIds }
+		, m_unspawnManager{ m_frameUnspawns }
 	{}
 
-	EntityManager::~EntityManager()
+	entity_manager::~entity_manager()
 	{
 		for (auto& t_entity : m_entities)
 		{
@@ -21,24 +21,24 @@ namespace vob::aoecs
 	}
 
 
-	system_spawn_manager& EntityManager::getSystemSpawnManager()
+	spawn_manager& entity_manager::get_spawn_manager()
 	{
-		return m_systemSpawnManager;
+		return m_spawnManager;
 	}
 
-	system_unspawn_manager& EntityManager::getSystemUnspawnManager()
+	unspawn_manager& entity_manager::get_unspawn_manager()
 	{
-		return m_systemUnspawnManager;
+		return m_unspawnManager;
 	}
 
-	void EntityManager::update()
+	void entity_manager::update()
 	{
-		processUnspawns();
+		process_unspawns();
 
-		processSpawns();
+		process_spawns();
 	}
 
-	void EntityManager::processSpawns()
+	void entity_manager::process_spawns()
 	{
 		for (auto& t_entity : m_frameSpawns)
 		{
@@ -51,7 +51,7 @@ namespace vob::aoecs
 		m_frameSpawns.clear();
 	}
 
-	void EntityManager::processUnspawns()
+	void entity_manager::process_unspawns()
 	{
 		for (auto const id : m_frameUnspawns)
 		{

@@ -1,15 +1,15 @@
-#include <vob/aoe/ecs/system_spawn_manager.h>
+#include <vob/aoe/ecs/spawn_manager.h>
 
 namespace vob::aoecs
 {
 	// Public
-	system_spawn_manager::system_spawn_manager(
+	spawn_manager::spawn_manager(
 		std::vector<std::unique_ptr<entity>>& a_frameSpawns, std::vector<entity_id>& a_unusedEntityIds)
 		: m_frameSpawns{ a_frameSpawns }
 		, m_unusedEntityIds{ a_unusedEntityIds }
 	{}
 
-	entity& system_spawn_manager::spawn(component_manager a_componentManager)
+	entity& spawn_manager::spawn(component_manager a_componentManager)
 	{
 		// TODO : ugly code
 		entity_id const entityId = [this]()

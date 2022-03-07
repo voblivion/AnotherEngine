@@ -26,8 +26,8 @@ namespace vob::aoe::common
 		{
 			for (auto const& entity : m_entities)
 			{
-				/*auto& transform = entity.getComponent<TransformComponent>();
-				auto const& move = entity.getComponent<VelocityComponent>();
+				/*auto& transform = entity.get_component<TransformComponent>();
+				auto const& move = entity.get_component<VelocityComponent>();
 				glm::translate(transform.m_matrix, move.m_linear * m_worldTime.m_elapsedTime.value);
 
 				glm::quat angularMove;

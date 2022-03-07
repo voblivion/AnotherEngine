@@ -87,7 +87,7 @@ namespace vob::aoecs
 		}
 
 		template <typename TComponent>
-		TComponent const* getComponent() const
+		TComponent const* get_component() const
 		{
 			auto const t_it = std::find_if(
 				m_components.begin()
@@ -106,7 +106,7 @@ namespace vob::aoecs
 		}
 
 		template <typename TComponent>
-		TComponent* getComponent()
+		TComponent* get_component()
 		{
 			auto const t_it = std::find_if(
 				m_components.begin()

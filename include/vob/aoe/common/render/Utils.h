@@ -28,8 +28,8 @@ namespace vob::aoe::common
 		{
 			return false;
 		}
-		auto const& transformComponent = cameramanEntity->getComponent<TransformComponent>();
-		auto const& cameraComponent = cameramanEntity->getComponent<CameraComponent>();
+		auto const& transformComponent = cameramanEntity->get_component<TransformComponent>();
+		auto const& cameraComponent = cameramanEntity->get_component<CameraComponent>();
 
 		auto const viewMatrix = transformComponent.m_matrix;
 		a_sceneShaderProgram.setUniform(

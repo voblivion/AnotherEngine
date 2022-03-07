@@ -61,7 +61,7 @@ namespace vob::aoe::common
 
 			for (auto const canvas : m_canvasEntityList)
 			{
-				auto& canvasComponent = canvas.getComponent<CanvasComponent>();
+				auto& canvasComponent = canvas.get_component<CanvasComponent>();
 				if (canvasComponent.m_rootElement != nullptr)
 				{
 					for (auto const& event : window.getPolledEvents())

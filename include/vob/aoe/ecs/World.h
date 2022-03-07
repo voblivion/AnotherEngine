@@ -48,20 +48,20 @@ namespace vob::aoecs
 
 		// Methods
 		template <typename SystemType>
-		std::size_t addSystem()
+		std::size_t add_system()
 		{
 			m_tasks.emplace_back(std::make_unique<detail::system_task<SystemType>>(m_data));
 			return m_tasks.size() - 1;
 		}
 
-		void setSchedule(mismt::schedule a_schedule)
+		void set_schedule(mismt::schedule a_schedule)
 		{
 			m_schedule = std::move(a_schedule);
 		}
 
 		VOB_AOE_API void start();
 
-		world_data& getData()
+		world_data& get_data()
 		{
 			return m_data;
 		}

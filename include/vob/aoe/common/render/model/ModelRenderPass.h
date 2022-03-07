@@ -79,8 +79,8 @@ namespace vob::aoe::common
 
 			for (auto const& modelEntity : m_modelEntityList)
 			{
-				auto const& modelTransformComponent = modelEntity.getComponent<TransformComponent>();
-				auto const& modelModelComponent = modelEntity.getComponent<ModelComponent>();
+				auto const& modelTransformComponent = modelEntity.get_component<TransformComponent>();
+				auto const& modelModelComponent = modelEntity.get_component<ModelComponent>();
 
 				if (modelModelComponent.m_model == nullptr || !(*modelModelComponent.m_model)->isReady())
 				{
