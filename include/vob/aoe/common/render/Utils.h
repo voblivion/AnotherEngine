@@ -13,7 +13,7 @@ namespace vob::aoe::common
 		TSceneShaderProgram const& a_sceneShaderProgram
 		, WorldWindowComponent const& a_worldWindowComponent
 		, DirectorComponent const& a_directorComponent
-		, aoecs::EntityViewList<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
+		, aoecs::entity_view_list<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
 	)
     {
 		if (!a_sceneShaderProgram.isReady())

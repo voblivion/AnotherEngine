@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit DefaultDirectorSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_directorComponent{ *a_wdp.getWorldComponent<DirectorComponent>() }
-			, m_cameraList{ a_wdp.getEntityViewList(*this, CameraComponents{}) }
+			, m_cameraList{ a_wdp.getentity_view_list(*this, CameraComponents{}) }
 		{}
 
 		void update() const
@@ -28,13 +28,13 @@ namespace vob::aoe::common
 
 			if (t_camera == nullptr && !m_cameraList.empty())
 			{
-				m_directorComponent.m_currentCamera = m_cameraList.front().getId();
+				m_directorComponent.m_currentCamera = m_cameraList.front().get_id();
 			}
 		}
 
 		// Attributes
 		DirectorComponent& m_directorComponent;
-		aoecs::EntityViewList<
+		aoecs::entity_view_list<
 			TransformComponent const
 			, CameraComponent const
 		> const& m_cameraList;

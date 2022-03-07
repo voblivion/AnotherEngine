@@ -118,14 +118,14 @@ namespace vob::aoe::common
 		if (a_materialData.GetTexture(aiTextureType_DIFFUSE, 0, &albedoRelativePathStr) == aiReturn_SUCCESS)
 		{
 			auto const albedoRelativePath = common::pathFromFilePath(albedoRelativePathStr.C_Str(), a_loadingDataPath);
-			a_database.find(a_fileSystemIndexer.getId(albedoRelativePath), material.m_albedo);
+			a_database.find(a_fileSystemIndexer.get_id(albedoRelativePath), material.m_albedo);
 		}
 
 		aiString normalRelativePathStr;
 		if (a_materialData.GetTexture(aiTextureType_NORMALS, 0, &normalRelativePathStr) == aiReturn_SUCCESS)
 		{
 			auto const normalRelativePath = common::pathFromFilePath(normalRelativePathStr.C_Str(), a_loadingDataPath);
-			a_database.find(a_fileSystemIndexer.getId(normalRelativePath), material.m_normal);
+			a_database.find(a_fileSystemIndexer.get_id(normalRelativePath), material.m_normal);
 		}
 
 		aiString metallicRoughnessRelativePathStr;
@@ -133,7 +133,7 @@ namespace vob::aoe::common
 		{
 			auto const metallicRoughnessRelativePath = common::pathFromFilePath(
 				metallicRoughnessRelativePathStr.C_Str(), a_loadingDataPath);
-			a_database.find(a_fileSystemIndexer.getId(metallicRoughnessRelativePath), material.m_metallicRoughness);
+			a_database.find(a_fileSystemIndexer.get_id(metallicRoughnessRelativePath), material.m_metallicRoughness);
 		}
 
 		return material;

@@ -72,7 +72,7 @@ namespace vob::misvi
 		auto const path = aoe::common::pathFromFilePath(rawPath, context.m_loadingDataPath);
 
 		auto& indexer = context.m_fileSystemIndexer;
-		context.m_database.find(indexer.getId(path), a_dataPtr);
+		context.m_database.find(indexer.get_id(path), a_dataPtr);
 		return true;
 	}
 }

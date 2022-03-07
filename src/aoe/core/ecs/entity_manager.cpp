@@ -13,9 +13,9 @@ namespace vob::aoecs
 	{
 		for (auto& t_entity : m_entities)
 		{
-			for (auto& t_listHolder : m_systemEntityLists)
+			for (auto& t_listHolder : m_systemEntityViewLists)
 			{
-				t_listHolder->onEntityRemoved(*t_entity.second);
+				t_listHolder->on_entity_removed(*t_entity.second);
 			}
 		}
 	}
@@ -42,9 +42,9 @@ namespace vob::aoecs
 	{
 		for (auto& t_entity : m_frameSpawns)
 		{
-			for (auto& t_listHolder : m_systemEntityLists)
+			for (auto& t_listHolder : m_systemEntityViewLists)
 			{
-				t_listHolder->onEntityAdded(*t_entity);
+				t_listHolder->on_entity_added(*t_entity);
 			}
 			m_entities.emplace(t_entity->get_id(), std::move(t_entity));
 		}
@@ -59,9 +59,9 @@ namespace vob::aoecs
 			auto const it = m_entities.find(id);
 			if (it != m_entities.end())
 			{
-				for (auto& t_listHolder : m_systemEntityLists)
+				for (auto& t_listHolder : m_systemEntityViewLists)
 				{
-					t_listHolder->onEntityRemoved(*it->second);
+					t_listHolder->on_entity_removed(*it->second);
 				}
 				m_entities.erase(it);
 			}

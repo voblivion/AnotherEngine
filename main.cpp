@@ -145,7 +145,7 @@ void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 	textInputElement.m_borderWidth = glm::vec4{ 1.f, 15.f, 25.f, 125.f };
 	textInputElement.setText(U"Bonjour");
 	textInputElement.setSize(32);
-	textInputElement.setFont(database.find<aoe::common::Font>(a_data.fileSystemIndexer.getId("data/font.fnt")));
+	textInputElement.setFont(database.find<aoe::common::Font>(a_data.fileSystemIndexer.get_id("data/font.fnt")));
 
 	systemSpawnManager.spawn(canvasArk);
 }
@@ -193,7 +193,7 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 	}
 
 	auto const groundPath = std::filesystem::path{ "data/archetypes/grass.json" };
-	auto groundArk = a_data.database.find<aoecs::component_manager>(a_data.fileSystemIndexer.getId(groundPath));
+	auto groundArk = a_data.database.find<aoecs::component_manager>(a_data.fileSystemIndexer.get_id(groundPath));
 	if (groundArk != nullptr)
 	{
 		auto ground = *groundArk;

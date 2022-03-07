@@ -46,12 +46,12 @@ namespace vob::aoecs
 		{}
 
 		template <typename TComponent>
-		bool hasComponent() const
+		bool has_component() const
 		{
-			return hasComponent(typeid(component_holder<TComponent>));
+			return has_component(typeid(component_holder<TComponent>));
 		}
 
-		bool hasComponent(std::type_index const a_typeIndex) const
+		bool has_component(std::type_index const a_typeIndex) const
 		{
 			return std::find_if(
 				m_components.begin()
@@ -67,7 +67,7 @@ namespace vob::aoecs
 		TComponent& addComponent(Args&&... a_args)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(component_holder<TComponent>) };
-			assert(!hasComponent(t_typeIndex));
+			assert(!has_component(t_typeIndex));
 			basic_component_holder_clone componentHolder{ m_cloner };
 			auto& result = componentHolder.init<component_holder<TComponent>>(std::forward<Args>(a_args)...);
 			m_components.emplace(std::move(componentHolder));
@@ -77,7 +77,7 @@ namespace vob::aoecs
 		void addComponent(basic_component_holder_clone a_componentHolderClone)
 		{
 			auto const t_typeIndex = std::type_index{ typeid(*a_componentHolderClone) };
-			assert(!hasComponent(t_typeIndex));
+			assert(!has_component(t_typeIndex));
 			m_components.emplace(std::move(a_componentHolderClone));
 		}
 

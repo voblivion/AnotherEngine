@@ -221,7 +221,7 @@ namespace vob::aoe::common
 
 				auto& loader = a_database.getMultiFileSystemLoader();
 				auto& indexer = loader.getIndexer();
-				a_page = a_database.find<GraphicResourceHandle<Texture>>(indexer.getId(filePath));
+				a_page = a_database.find<GraphicResourceHandle<Texture>>(indexer.get_id(filePath));
 			}
 			else
 			{

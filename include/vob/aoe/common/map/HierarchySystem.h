@@ -14,10 +14,10 @@ namespace vob::aoe::common
 
 		explicit HierarchySystem(aoecs::WorldDataProvider& a_wdp)
 			: m_unspawnManager{ a_wdp.get_unspawn_manager() }
-			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
+			, m_entities{ a_wdp.getentity_view_list(*this, Components{}) }
 		{}
 
-		void onEntityAdded(aoecs::entity& a_entity) const
+		void on_entity_added(aoecs::entity& a_entity) const
 		{
 			auto const hierarchy = a_entity.get_component<HierarchyComponent>();
 			auto const parent = m_entities.find(hierarchy->m_parent);
@@ -33,7 +33,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void onEntityRemoved(aoecs::entity& a_entity) const
+		void on_entity_removed(aoecs::entity& a_entity) const
 		{
 			auto& hierarchy = *a_entity.get_component<HierarchyComponent>();
 
@@ -63,7 +63,7 @@ namespace vob::aoe::common
 				assert(childEntity != nullptr);
 				auto& childHierarchy = childEntity->get_component<HierarchyComponent>();
 				childHierarchy.m_parent.reset();
-				m_unspawnManager.unspawn(childEntity->getId());
+				m_unspawnManager.unspawn(childEntity->get_id());
 			}
 			hierarchy.m_children.clear();
 		}
@@ -72,6 +72,6 @@ namespace vob::aoe::common
 
 	private:
 		aoecs::unspawn_manager& m_unspawnManager;
-		aoecs::EntityViewList<HierarchyComponent> const& m_entities;
+		aoecs::entity_view_list<HierarchyComponent> const& m_entities;
 	};
 }

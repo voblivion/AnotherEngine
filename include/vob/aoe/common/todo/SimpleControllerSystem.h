@@ -46,8 +46,8 @@ namespace vob::aoe::common
 			, m_worldCursor{ *a_wdp.getWorldComponent<WorldCursorComponent>() }
 			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
 			, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
-			, m_entities{ a_wdp.getEntityViewList(*this, Components{}) }
-			, m_heads{ a_wdp.getEntityViewList<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(*this) }
+			, m_entities{ a_wdp.getentity_view_list(*this, Components{}) }
+			, m_heads{ a_wdp.getentity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(*this) }
 			, m_debugSceneRenderComponent{ *a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_spawnManager{ a_wdp.get_spawn_manager() }
 		{}
@@ -285,14 +285,14 @@ namespace vob::aoe::common
 		WorldPhysicComponent& m_worldPhysicComponent;
 		// TMP
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
-		aoecs::EntityViewList<
+		aoecs::entity_view_list<
 			TransformComponent
 			, VelocityComponent
 			, SimpleControllerComponent
 			, RigidBodyComponent
 			, HierarchyComponent const
 		> const& m_entities;
-		aoecs::EntityViewList<HierarchyComponent const, LocalTransformComponent> const& m_heads;
+		aoecs::entity_view_list<HierarchyComponent const, LocalTransformComponent> const& m_heads;
 		aoecs::spawn_manager& m_spawnManager;
 	};
 }

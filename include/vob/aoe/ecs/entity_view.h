@@ -127,11 +127,11 @@ namespace vob::aoecs
 	}
 
 	template <typename... TComponents>
-	class EntityView
+	class entity_view
 	{
 	public:
 		// Constructors
-		explicit EntityView(entity& a_entity)
+		explicit entity_view(entity& a_entity)
 			: m_id{ a_entity.get_id() }
 			, m_impl{ a_entity }
 #ifndef NDEBUG
@@ -140,7 +140,7 @@ namespace vob::aoecs
 		{}
 
 		// Methods
-		entity_id getId() const
+		entity_id get_id() const
 		{
 			return m_id;
 		}

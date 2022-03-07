@@ -334,7 +334,7 @@ namespace vob::aoe::vis
 		
 		writeTypeId(
 			a_visitor
-			, t_typeRegistry.getId(std::type_index{ a_ptr != nullptr ? typeid(*a_ptr) : typeid(void) })
+			, t_typeRegistry.get_id(std::type_index{ a_ptr != nullptr ? typeid(*a_ptr) : typeid(void) })
 		);
 
 		visitData(a_visitor, a_ptr);
@@ -348,7 +348,7 @@ namespace vob::aoe::vis
 	)
 	{
 		auto const& t_typeRegistry = a_visitor.getContext().m_typeRegistry;
-		auto t_voidTypeId = t_typeRegistry.template getId<void>();
+		auto t_voidTypeId = t_typeRegistry.template get_id<void>();
 		auto t_id = readTypeId(a_visitor, t_voidTypeId);
 
 		a_ptr = a_typeFactory.template createShared<BaseType>(t_id);
@@ -404,7 +404,7 @@ namespace vob::aoe::vis
 
 		writeTypeId(
 			a_visitor
-			, t_typeRegistry.getId(std::type_index{ a_ptr != nullptr ? typeid(*a_ptr) : typeid(void) })
+			, t_typeRegistry.get_id(std::type_index{ a_ptr != nullptr ? typeid(*a_ptr) : typeid(void) })
 		);
 
 		visitData(a_visitor, a_ptr);

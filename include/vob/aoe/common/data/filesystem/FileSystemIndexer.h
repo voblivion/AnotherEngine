@@ -54,7 +54,7 @@ namespace vob::aoe::common
 			return {};
 		}
 
-		data::Id getId(std::filesystem::path const& a_path)
+		data::Id get_id(std::filesystem::path const& a_path)
 		{
 			if (const auto existingId = findId(a_path))
 			{
