@@ -27,13 +27,14 @@ namespace vob::aoe::common
 	public:
 		// Constructor
 		explicit ModelRenderPass(aoecs::WorldDataProvider& a_wdp)
-			: m_modelRenderComponent{ a_wdp.getWorldComponentRef<ModelRenderComponent>() }
+			: m_worldInputComponent{ a_wdp.getWorldComponentRef<WorldInputComponent const>() }
+			, m_modelRenderComponent{ a_wdp.getWorldComponentRef<ModelRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
-			, m_cameramanEntityList{ a_wdp.getentity_view_list(*this, CameramanComponents{}) }
-			, m_modelEntityList{ a_wdp.getentity_view_list(*this, ModelComponents{}) }
-			, m_worldInputComponent{ a_wdp.getWorldComponentRef<WorldInputComponent>() }
-		{}
+			, m_cameramanEntityList{ a_wdp.get_entity_view_list(*this, CameramanComponents{}) }
+			, m_modelEntityList{ a_wdp.get_entity_view_list(*this, ModelComponents{}) }
+		{
+		}
 
 		void run() const
 		{
@@ -136,6 +137,7 @@ namespace vob::aoe::common
 
 	//private:
 		// Attributes
+		WorldInputComponent const& m_worldInputComponent;
 		ModelRenderComponent& m_modelRenderComponent;
 		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
@@ -153,7 +155,6 @@ namespace vob::aoe::common
 			Count
 		};
 		mutable DebugMode m_debugMode = DebugMode::Default;
-		WorldInputComponent& m_worldInputComponent;
 	};
 
 }

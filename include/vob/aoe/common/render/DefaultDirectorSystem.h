@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		// Constructor
 		explicit DefaultDirectorSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_directorComponent{ *a_wdp.getWorldComponent<DirectorComponent>() }
-			, m_cameraList{ a_wdp.getentity_view_list(*this, CameraComponents{}) }
+			, m_cameraList{ a_wdp.get_entity_view_list(*this, CameraComponents{}) }
 		{}
 
 		void update() const

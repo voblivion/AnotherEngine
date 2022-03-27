@@ -27,6 +27,11 @@
 #include <vob/aoe/common/render/OpenGl.h>
 #include <vob/aoe/common/render/Window.h>
 #include <vob/aoe/common/render/SceneFramebufferInitializer.h>
+
+#include <vob/aoe/input/mapped_inputs_world_component.h>
+#include <vob/aoe/input/physical_inputs_world_component.h>
+#include <vob/aoe/input/mapped_inputs_system.h>
+
 #include <regex>
 #include <memory_resource>
 #include <vob/misc/hash/string_id_literals.h>
@@ -81,6 +86,8 @@ std::unique_ptr<aoecs::world> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 		, a_data.guiMeshResourceManager
 		, a_data.textureResourceManager
 	);
+	t_worldComponents.addComponent<aoein::mapped_inputs_world_component>();
+	t_worldComponents.addComponent<aoein::physical_inputs_world_component>();
 
 	// Create world
 	auto world = std::make_unique<aoecs::world>(std::move(t_worldComponents));
@@ -99,11 +106,14 @@ std::unique_ptr<aoecs::world> createGameWorld(aoe::DataHolder& a_data, aoe::comm
 	// auto const guiRenderSystemId = world->add_system<aoe::common::gui::RenderSystem>();
 	auto const hierarchySystemId = world->add_system<aoe::common::HierarchySystem>();
 	auto const localTransformSystemId = world->add_system<aoe::common::LocalTransformSystem>();
+	auto const mappedInputsSystemId = world->add_system<aoein::mapped_input_system>();
+
 
 	// Set schedule
 	world->set_schedule({
 		mismt::thread_schedule{
 			{windowInputSystemId, {timeSystemId}}
+			, {mappedInputsSystemId, {}}
 			, {windowCursorSystemId, {}}
 			, {renderSystemId, {localTransformSystemId}}
 		},

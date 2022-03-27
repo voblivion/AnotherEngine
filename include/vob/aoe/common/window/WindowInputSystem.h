@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vob/aoe/input/physical_inputs_world_component.h>
+
 #include <vob/aoe/api.h>
 
 #include <iomanip>
@@ -26,6 +28,7 @@ namespace vob::aoe::common
 	private:
 		WorldWindowComponent& m_worldWindowComponent;
 		WorldInputComponent& m_worldInputComponent;
+		aoein::physical_inputs_world_component& m_physicalInputsComponent;
 		aoecs::stop_manager& m_stopManager;
 	};
 }

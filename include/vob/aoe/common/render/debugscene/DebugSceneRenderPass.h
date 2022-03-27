@@ -21,7 +21,7 @@ namespace vob::aoe::common
 			: m_debugSceneRenderComponent{ a_wdp.getWorldComponentRef<DebugSceneRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.getWorldComponentRef<DirectorComponent>() }
-			, m_cameramanEntityList{ a_wdp.getentity_view_list(*this, CameramanComponents{}) }
+			, m_cameramanEntityList{ a_wdp.get_entity_view_list(*this, CameramanComponents{}) }
 		{}
 
 		// Methods

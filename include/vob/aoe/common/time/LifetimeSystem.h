@@ -17,7 +17,7 @@ namespace vob::aoe::common
 		explicit LifetimeSystem(aoecs::WorldDataProvider& a_wdp)
 			: m_unspawnManager{ a_wdp.get_unspawn_manager() }
 			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
-			, m_entities{ a_wdp.getentity_view_list(*this, Components{}) }
+			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
 		{}
 
 		// Methods

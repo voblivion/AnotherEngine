@@ -20,7 +20,7 @@ namespace vob::aoe::common
 			: m_guiRenderComponent{ a_wdp.getWorldComponentRef<GuiRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.getWorldComponentRef<WorldWindowComponent const>() }
 			, m_worldTimeComponent{ a_wdp.getWorldComponentRef<WorldTimeComponent const>() }
-			, m_canvasEntityList{ a_wdp.getentity_view_list(*this, CanvasComponents{}) }
+			, m_canvasEntityList{ a_wdp.get_entity_view_list(*this, CanvasComponents{}) }
 		{}
 
 		// Methods

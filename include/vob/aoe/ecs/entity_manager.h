@@ -273,7 +273,7 @@ namespace vob::aoecs
 		VOB_AOE_API void update();
 
 		template <typename System, typename... ComponentTypes>
-		entity_view_list<ComponentTypes...> const& getentity_view_list(System& a_system)
+		entity_view_list<ComponentTypes...> const& get_entity_view_list(System& a_system)
 		{
 			auto listHolder = std::make_unique<detail::entity_view_list_holder<System, ComponentTypes...>>(
 				a_system, m_entities);

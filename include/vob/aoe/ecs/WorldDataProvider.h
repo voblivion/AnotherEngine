@@ -97,19 +97,19 @@ namespace vob::aoecs
 		}
 
 		template <typename SystemType, typename... ComponentTypes>
-		entity_view_list<ComponentTypes...> const& getentity_view_list(SystemType& a_system)
+		entity_view_list<ComponentTypes...> const& get_entity_view_list(SystemType& a_system)
 		{
 			onGetEntityList({ makeResourceAccess<ComponentTypes>()... });
-			return m_worldData.m_entityManager.getentity_view_list<
+			return m_worldData.m_entityManager.get_entity_view_list<
 				SystemType, ComponentTypes...>(a_system);
 		}
 
 		template <typename SystemType, typename... ComponentTypes>
-		entity_view_list<ComponentTypes...> const& getentity_view_list(
+		entity_view_list<ComponentTypes...> const& get_entity_view_list(
 			SystemType& a_system, ComponentTypeList<ComponentTypes...> const&
 		)
 		{
-			return getentity_view_list<SystemType, ComponentTypes...>(a_system);
+			return get_entity_view_list<SystemType, ComponentTypes...>(a_system);
 		}
 
 		spawn_manager& get_spawn_manager()

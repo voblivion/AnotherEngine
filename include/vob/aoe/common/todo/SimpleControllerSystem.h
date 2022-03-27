@@ -15,7 +15,14 @@
 #include <vob/aoe/common/input/Keyboard.h>
 #include <vob/aoe/common/input/Mouse.h>
 
+#include <vob/aoe/input/mapped_inputs_world_component.h>
+#include <vob/aoe/input/physical_axis_mapping.h>
+#include <vob/aoe/input/physical_switch_mapping.h>
+#include <vob/aoe/input/axis_switch_mapping.h>
+
 #include <vob/aoe/ecs/WorldDataProvider.h>
+
+#include <vob/misc/std/polymorphic_ptr_util.h>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -42,15 +49,58 @@ namespace vob::aoe::common
 		>;
 	public:
 		explicit SimpleControllerSystem(aoecs::WorldDataProvider& a_wdp)
-			: m_worldInput{ *a_wdp.getWorldComponent<WorldInputComponent const>() }
+			: m_mappedInputsComponent{ *a_wdp.getWorldComponent<aoein::mapped_inputs_world_component const>() }
 			, m_worldCursor{ *a_wdp.getWorldComponent<WorldCursorComponent>() }
 			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
 			, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
-			, m_entities{ a_wdp.getentity_view_list(*this, Components{}) }
-			, m_heads{ a_wdp.getentity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(*this) }
+			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
+			, m_heads{
+				a_wdp.get_entity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(
+					*this) }
 			, m_debugSceneRenderComponent{ *a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_spawnManager{ a_wdp.get_spawn_manager() }
-		{}
+		{
+			auto& mapping = a_wdp.getWorldComponentRef<aoein::mapped_inputs_world_component>();
+
+			auto allocator = std::allocator<aoein::basic_axis_mapping>();
+
+			m_lateralMoveMapping = mapping.m_axes.size();
+			mapping.m_axes.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_axis_mapping>(
+				allocator, aoein::physical_axis_reference{ 0, aoein::gamepad::axis::LX }, 0.001f));
+
+			m_longitudinalMoveMapping = mapping.m_axes.size();
+			mapping.m_axes.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_axis_mapping>(
+				allocator, aoein::physical_axis_reference{ 0, aoein::gamepad::axis::LY }, 0.001f));
+
+			m_lateralViewMapping = mapping.m_axes.size();
+			mapping.m_axes.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_axis_mapping>(
+				allocator, aoein::physical_axis_reference{ 0, aoein::gamepad::axis::RX }, 0.001f));
+
+			m_verticalViewMapping = mapping.m_axes.size();
+			mapping.m_axes.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_axis_mapping>(
+				allocator, aoein::physical_axis_reference{ 0, aoein::gamepad::axis::RY }, 0.001f));
+
+			m_pauseMapping = mapping.m_switches.size();
+			mapping.m_switches.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_switch_mapping>(
+				allocator, aoein::physical_switch_reference{ aoein::keyboard::key::P }));
+
+			m_debugDisplayMapping = mapping.m_switches.size();
+			mapping.m_switches.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_switch_mapping>(
+				allocator, aoein::physical_switch_reference{ aoein::keyboard::key::D }));
+
+			m_jumpMapping = mapping.m_switches.size();
+			mapping.m_switches.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_switch_mapping>(
+				allocator, aoein::physical_switch_reference{ 0, aoein::gamepad::button::A }));
+
+			m_shootMapping = mapping.m_switches.size();
+			mapping.m_switches.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::axis_switch_mapping>(
+				allocator,
+				mistd::polymorphic_ptr_util::allocate<aoein::physical_axis_mapping>(
+					allocator, aoein::physical_axis_reference{ 0, aoein::gamepad::axis::RT }, 0.000f),
+				0.9f,
+				0.5f,
+				true));
+		}
 
 
 		static glm::vec3 toVec3(glm::vec4 const v)
@@ -86,28 +136,16 @@ namespace vob::aoe::common
 				// Compute local required movement
 				auto linearSpeed{ 8.0f };
 				glm::vec3 localMove{ 0.0f };
-				localMove.x -= m_worldInput.m_keyboard.m_keys[Keyboard::Key::S];
-				localMove.x += m_worldInput.m_keyboard.m_keys[Keyboard::Key::F];
-				localMove.x = m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::LX];
-				if (std::abs(localMove.x) < 0.001f)
-				{
-					localMove.x = 0.0f;
-				}
-				localMove.z -= m_worldInput.m_keyboard.m_keys[Keyboard::Key::E];
-				localMove.z += m_worldInput.m_keyboard.m_keys[Keyboard::Key::D];
-				localMove.z = m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::LY];
-				if (std::abs(localMove.z) < 0.001f)
-				{
-					localMove.z = 0.0f;
-				}
+				localMove.x = m_mappedInputsComponent.m_axes[m_lateralMoveMapping]->get_value();
+				localMove.z = m_mappedInputsComponent.m_axes[m_longitudinalMoveMapping]->get_value();
 
-				if(m_worldInput.m_keyboard.m_keys[Keyboard::Key::P].m_changed
-					&& m_worldInput.m_keyboard.m_keys[Keyboard::Key::P].m_isActive)
+				if (m_mappedInputsComponent.m_switches[m_pauseMapping]->changed()
+					&& m_mappedInputsComponent.m_switches[m_pauseMapping]->is_pressed())
 				{
 					m_worldPhysicComponent.m_pause = !m_worldPhysicComponent.m_pause;
 				}
-				if (m_worldInput.m_keyboard.m_keys[Keyboard::Key::D].m_changed
-					&& m_worldInput.m_keyboard.m_keys[Keyboard::Key::D].m_isActive)
+				if (m_mappedInputsComponent.m_switches[m_debugDisplayMapping]->changed()
+					&& m_mappedInputsComponent.m_switches[m_debugDisplayMapping]->is_pressed())
 				{
 					m_worldPhysicComponent.m_displayDebug ^= true;
 				}
@@ -167,8 +205,8 @@ namespace vob::aoe::common
 					}
 				}
 
-				auto jumpKey = m_worldInput.m_gamepads[0].m_buttons[Gamepad::Button::A];
-				if (canJump && jumpKey.m_changed && jumpKey.m_isActive)
+				if (canJump && m_mappedInputsComponent.m_switches[m_jumpMapping]->changed()
+					&& m_mappedInputsComponent.m_switches[m_jumpMapping]->is_pressed())
 				{
 					t_linearVelocity.y = 10.0f;
 					simpleController.m_lastJumpTime = m_worldTimeComponent.m_frameStartTime;
@@ -194,7 +232,7 @@ namespace vob::aoe::common
 				}
 
 				// Shoot balls
-				if(m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RT] > 0.7f)
+				if(m_mappedInputsComponent.m_switches[m_shootMapping]->is_pressed())
 				{
 					if (m_worldTimeComponent.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
 					{
@@ -227,22 +265,21 @@ namespace vob::aoe::common
 				if (true)
 				//if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right])
 				{
-					if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right].m_changed)
+					/*if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right].m_changed)
 					{
-						//m_worldCursor.m_state = common::CursorState::Disable;
-					}
+						m_worldCursor.m_state = common::CursorState::Disable;
+					}*/
 
 					// Compute new orientation
 
 					auto& euler = simpleController.m_orientation;
 					euler.y += m_worldTimeComponent.m_elapsedTime.get_value()
-						* -m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RX] * 2;
-					//	* -m_worldInput.m_mouse.m_move.x;
+						* -m_mappedInputsComponent.m_axes[m_lateralViewMapping]->get_value() * 2;
 					euler.y = std::fmod(euler.y, 2 * glm::pi<float>());
 
 					auto& headEuler = simpleController.m_headOrientation;
 					headEuler.x += m_worldTimeComponent.m_elapsedTime.get_value()
-						* -m_worldInput.m_gamepads[0].m_axes[Gamepad::Axis::RY] * 2;
+						* -m_mappedInputsComponent.m_axes[m_verticalViewMapping]->get_value() * 2;
 
 					auto& hierarchy = entity.get_component<HierarchyComponent>();
 					if (!hierarchy.m_children.empty())
@@ -266,20 +303,31 @@ namespace vob::aoe::common
 				}
 				else
 				{
-					auto& euler = simpleController.m_orientation;
+					/*auto& euler = simpleController.m_orientation;
 					// TODO VOB TODO transform.m_rotation = glm::quat{ euler };
 					if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right].m_changed)
 					{
 						m_worldCursor.m_state = common::CursorState::Normal;
 					}
-					setRotation(transform.m_matrix, glm::quat{ euler });
+					setRotation(transform.m_matrix, glm::quat{ euler });*/
 				}
 			}
 		}
 
 	private:
+
+		std::size_t m_lateralMoveMapping;
+		std::size_t m_longitudinalMoveMapping;
+		std::size_t m_lateralViewMapping;
+		std::size_t m_verticalViewMapping;
+
+		std::size_t m_pauseMapping;
+		std::size_t m_debugDisplayMapping;
+		std::size_t m_jumpMapping;
+		std::size_t m_shootMapping;
+
 		mutable int t = 0;
-		WorldInputComponent const& m_worldInput;
+		aoein::mapped_inputs_world_component const& m_mappedInputsComponent;
 		WorldCursorComponent& m_worldCursor;
 		WorldTimeComponent const& m_worldTimeComponent;
 		WorldPhysicComponent& m_worldPhysicComponent;

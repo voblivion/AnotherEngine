@@ -94,9 +94,9 @@ namespace vob::aoe::common
 			, m_debugSceneRenderComponent{
 				*a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{
-				a_wdp.getentity_view_list(*this, RigidBodyComponents{}) }
+				a_wdp.get_entity_view_list(*this, RigidBodyComponents{}) }
 			, m_characterEntities{
-				a_wdp.getentity_view_list(*this, CharacterComponents{}) }
+				a_wdp.get_entity_view_list(*this, CharacterComponents{}) }
 		{}
 
 		void update() const

@@ -14,7 +14,7 @@ namespace vob::aoe::common
 
 		explicit HierarchySystem(aoecs::WorldDataProvider& a_wdp)
 			: m_unspawnManager{ a_wdp.get_unspawn_manager() }
-			, m_entities{ a_wdp.getentity_view_list(*this, Components{}) }
+			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
 		{}
 
 		void on_entity_added(aoecs::entity& a_entity) const

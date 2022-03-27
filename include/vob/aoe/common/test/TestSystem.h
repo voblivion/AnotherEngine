@@ -14,7 +14,7 @@ namespace vob::aoe::common
 		>;
 
 		explicit TestSystem(aoecs::WorldDataProvider& a_worldDataProvider)
-			: m_entities{ a_worldDataProvider.getentity_view_list(*this, Components{}) }
+			: m_entities{ a_worldDataProvider.get_entity_view_list(*this, Components{}) }
 		{}
 
 		void update() const
