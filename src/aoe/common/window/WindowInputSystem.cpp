@@ -4,7 +4,7 @@
 #include <vob/aoe/common/input/WorldInputcomponent.h>
 #include <vob/aoe/common/input/KeyboardUtil.h>
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 
 #include <vob/misc/std/enum_traits.h>
 #include <iostream>
@@ -14,7 +14,6 @@ using namespace aoe::common;
 
 namespace
 {
-
 	inline aoein::keyboard::key glfw_to_keyboard_key(int a_glfwKeyId)
 	{
 		constexpr std::array<aoein::keyboard::key, GLFW_KEY_MENU + 1 - GLFW_KEY_SPACE> s_source{
@@ -335,7 +334,7 @@ namespace
 			, aoein::keyboard::key::RSystem // 347 GLFW_KEY_RIGHT_SUPPER
 			, aoein::keyboard::key::unknown // 348 GLFW_KEY_MENU
 		};
-
+		
 		if (a_glfwKeyId < GLFW_KEY_SPACE || a_glfwKeyId > GLFW_KEY_MENU)
 		{
 			return aoein::keyboard::key::unknown;
@@ -553,10 +552,10 @@ namespace
 	}
 }
 
-WindowInputSystem::WindowInputSystem(aoecs::WorldDataProvider& a_wdp)
-	: m_worldWindowComponent{ *a_wdp.getWorldComponent<WorldWindowComponent>() }
-	, m_worldInputComponent{ *a_wdp.getWorldComponent<WorldInputComponent>() }
-	, m_physicalInputsComponent{ *a_wdp.getWorldComponent<aoein::physical_inputs_world_component>() }
+WindowInputSystem::WindowInputSystem(aoecs::world_data_provider& a_wdp)
+	: m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent>() }
+	, m_worldInputComponent{ a_wdp.get_world_component<WorldInputComponent>() }
+	, m_physicalInputsComponent{ a_wdp.get_world_component<aoein::physical_inputs_world_component>() }
 	, m_stopManager{ a_wdp.getStopManager() }
 {}
 

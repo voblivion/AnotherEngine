@@ -2,9 +2,8 @@
 
 #include <vob/aoe/common/map/Hierarchycomponent.h>
 #include <vob/aoe/common/space/LocalTransformcomponent.h>
-#include <vob/aoe/common/render/debugscene/DebugMesh.h>
-#include <vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h>
-#include <vob/aoe/common/space/Velocitycomponent.h>
+#include <vob/aoe/common/_render/debugscene/DebugMesh.h>
+#include <vob/aoe/common/_render/debugscene/DebugSceneRendercomponent.h>
 #include <vob/aoe/common/todo/SimpleControllercomponent.h>
 #include <vob/aoe/common/input/WorldInputcomponent.h>
 #include <vob/aoe/common/space/Transformcomponent.h>
@@ -19,8 +18,10 @@
 #include <vob/aoe/input/physical_axis_mapping.h>
 #include <vob/aoe/input/physical_switch_mapping.h>
 #include <vob/aoe/input/axis_switch_mapping.h>
+#include <vob/aoe/actor/action_component.h>
+#include <vob/aoe/actor/actor_component.h>
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 
 #include <vob/misc/std/polymorphic_ptr_util.h>
 
@@ -42,25 +43,29 @@ namespace vob::aoe::common
 	{
 		using Components = aoecs::ComponentTypeList<
 			TransformComponent
-			, VelocityComponent
 			, SimpleControllerComponent
 			, RigidBodyComponent
 			, HierarchyComponent const
+			, aoeac::actor_component const
 		>;
+		
+		using ActionComponents = aoecs::ComponentTypeList<aoeac::action_component>;
+
 	public:
-		explicit SimpleControllerSystem(aoecs::WorldDataProvider& a_wdp)
-			: m_mappedInputsComponent{ *a_wdp.getWorldComponent<aoein::mapped_inputs_world_component const>() }
-			, m_worldCursor{ *a_wdp.getWorldComponent<WorldCursorComponent>() }
-			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
-			, m_worldPhysicComponent{ *a_wdp.getWorldComponent<WorldPhysicComponent>() }
-			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
+		explicit SimpleControllerSystem(aoecs::world_data_provider& a_wdp)
+			: m_mappedInputsComponent{ a_wdp.get_world_component<aoein::mapped_inputs_world_component const>() }
+			, m_worldCursor{ a_wdp.get_world_component<WorldCursorComponent>() }
+			, m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent const>() }
+			, m_worldPhysicComponent{ a_wdp.get_world_component<WorldPhysicComponent>() }
+			, m_entities{ a_wdp.get_old_entity_view_list(*this, Components{}) }
 			, m_heads{
-				a_wdp.get_entity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(
+				a_wdp.get_old_entity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(
 					*this) }
-			, m_debugSceneRenderComponent{ *a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
-			, m_spawnManager{ a_wdp.get_spawn_manager() }
+			, m_debugSceneRenderComponent{ a_wdp.get_world_component<DebugSceneRenderComponent>() }
+			, m_actions{ a_wdp.get_old_entity_view_list(*this, ActionComponents{}) }
+			, m_spawnManager{ a_wdp.get_old_spawn_manager() }
 		{
-			auto& mapping = a_wdp.getWorldComponentRef<aoein::mapped_inputs_world_component>();
+			auto& mapping = a_wdp.get_world_component<aoein::mapped_inputs_world_component>();
 
 			auto allocator = std::allocator<aoein::basic_axis_mapping>();
 
@@ -100,6 +105,10 @@ namespace vob::aoe::common
 				0.9f,
 				0.5f,
 				true));
+
+			m_interactMapping = mapping.m_switches.size();
+			mapping.m_switches.emplace_back(mistd::polymorphic_ptr_util::allocate<aoein::physical_switch_mapping>(
+				allocator, aoein::physical_switch_reference{ 0, aoein::gamepad::button::X }));
 		}
 
 
@@ -117,6 +126,8 @@ namespace vob::aoe::common
 
 				auto& simpleController = entity.get_component<SimpleControllerComponent>();
 				auto& rigidBody = entity.get_component<RigidBodyComponent>();
+
+				auto const& interactor = entity.get_component<aoeac::actor_component>();
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
 					DebugVertex{ transform.m_matrix[3], glm::vec3{1.0f, 0.0f, 0.0f} }
@@ -262,6 +273,24 @@ namespace vob::aoe::common
 					t = 0;
 				}
 
+				auto const& interact = m_mappedInputsComponent.m_switches[m_interactMapping];
+				if (interact->changed() && !interactor.m_actions.empty())
+				{
+					auto const* actionEntity = m_actions.find(interactor.m_actions[0]);
+					if (actionEntity != nullptr)
+					{
+						auto& action = actionEntity->get_component<aoeac::action_component>();
+						if (interact->is_pressed())
+						{
+							action.m_isInteracting = true;
+						}
+						else
+						{
+							action.m_isInteracting = false;
+						}
+					}
+				}
+
 				if (true)
 				//if (m_worldInput.m_mouse.m_buttons[Mouse::Button::Right])
 				{
@@ -325,6 +354,7 @@ namespace vob::aoe::common
 		std::size_t m_debugDisplayMapping;
 		std::size_t m_jumpMapping;
 		std::size_t m_shootMapping;
+		std::size_t m_interactMapping;
 
 		mutable int t = 0;
 		aoein::mapped_inputs_world_component const& m_mappedInputsComponent;
@@ -333,14 +363,15 @@ namespace vob::aoe::common
 		WorldPhysicComponent& m_worldPhysicComponent;
 		// TMP
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
-		aoecs::entity_view_list<
+		_aoecs::entity_view_list<
 			TransformComponent
-			, VelocityComponent
 			, SimpleControllerComponent
 			, RigidBodyComponent
 			, HierarchyComponent const
+			, aoeac::actor_component const
 		> const& m_entities;
-		aoecs::entity_view_list<HierarchyComponent const, LocalTransformComponent> const& m_heads;
-		aoecs::spawn_manager& m_spawnManager;
+		_aoecs::entity_view_list<HierarchyComponent const, LocalTransformComponent> const& m_heads;
+		_aoecs::entity_view_list<aoeac::action_component> const& m_actions;
+		_aoecs::spawn_manager& m_spawnManager;
 	};
 }

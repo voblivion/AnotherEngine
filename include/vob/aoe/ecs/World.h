@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vob/aoe/ecs/world_data.h>
-#include <vob/aoe/ecs/WorldDataProvider.h>
-#include <vob/aoe/ecs/component_manager.h>
+#include <vob/aoe/ecs/world_data_provider.h>
+#include <vob/aoe/ecs/_component_manager.h>
 #include <vob/misc/multithread/basic_task.h>
 #include <vob/misc/multithread/worker.h>
 
@@ -33,7 +33,7 @@ namespace vob::aoecs
 
 		private:
 			// Attributes
-			WorldDataProvider m_worldDataProvider;
+			aoecs::world_data_provider m_worldDataProvider;
 			SystemType m_system;
 		};
 	}
@@ -42,8 +42,10 @@ namespace vob::aoecs
 	{
 	public:
 		// Constructors
-		explicit world(component_manager a_worldComponents)
-			: m_data{ std::move(a_worldComponents) }
+		explicit world(
+			component_set a_worldComponents
+			, component_list_factory const& a_componentListFactory)
+			: m_data{ std::move(a_worldComponents), a_componentListFactory }
 		{}
 
 		// Methods

@@ -12,6 +12,13 @@ namespace vob::aoein
 	class mouse
 	{
 	public:
+		enum class axis
+		{
+			unkown = -1,
+			X = 0,
+			Y = 1
+		};
+
 		enum class button
 		{
 			unknown = -1,
@@ -20,6 +27,9 @@ namespace vob::aoein
 			M3,
 			M4,
 			M5,
+			M6,
+			M7,
+			M8,
 			count,
 
 			// Named
@@ -41,6 +51,8 @@ namespace vob::aoein
 			{
 				button.update();
 			}
+
+			m_move = glm::vec2{ 0.0f };
 		}
 	};
 }

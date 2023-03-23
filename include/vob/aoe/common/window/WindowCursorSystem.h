@@ -2,7 +2,7 @@
 
 #include <vob/aoe/api.h>
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 
 #include <vob/aoe/common/window/WorldCursorcomponent.h>
 #include <vob/aoe/common/window/WorldWindowcomponent.h>
@@ -16,7 +16,7 @@ namespace vob::aoe::common
 	class VOB_AOE_API WindowCursorSystem
 	{
 	public:
-		explicit WindowCursorSystem(aoecs::WorldDataProvider& a_wdp);
+		explicit WindowCursorSystem(aoecs::world_data_provider& a_wdp);
 
 		void update() const;
 

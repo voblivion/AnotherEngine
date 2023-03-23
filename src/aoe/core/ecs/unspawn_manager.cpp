@@ -1,6 +1,7 @@
-#include <vob/aoe/ecs/unspawn_manager.h>
+#include <vob/aoe/ecs/_unspawn_manager.h>
 
-namespace vob::aoecs
+
+namespace vob::_aoecs
 {
 	// Public
 	unspawn_manager::unspawn_manager(std::vector<entity_id>& a_frameUnspawns)
@@ -9,7 +10,7 @@ namespace vob::aoecs
 
 	void unspawn_manager::unspawn(entity_id const a_id)
 	{
-		std::lock_guard<std::mutex> t_lock{ m_mutex };
+		std::lock_guard<std::mutex> lock{ m_mutex };
 		m_frameUnspawns.emplace_back(a_id);
 	}
 }

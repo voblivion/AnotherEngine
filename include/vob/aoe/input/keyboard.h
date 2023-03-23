@@ -61,6 +61,7 @@ namespace vob::aoein
 			, Menu
 			, LBracket
 			, RBracket
+			, GraveAccent
 			, Semicolon
 			, Comma
 			, Period
@@ -98,6 +99,13 @@ namespace vob::aoein
 			, Numpad7
 			, Numpad8
 			, Numpad9
+			, NumpadDecimal
+			, NumpadDivide
+			, NumpadMultiply
+			, NumpadSubstract
+			, NumpadAdd
+			, NumpadEnter
+			, NumpadEqual
 			, F1
 			, F2
 			, F3
@@ -113,7 +121,21 @@ namespace vob::aoein
 			, F13
 			, F14
 			, F15
+			, F16
+			, F17
+			, F18
+			, F19
+			, F20
+			, F21
+			, F22
+			, F23
+			, F24
+			, F25
 			, Pause
+			, CapsLock
+			, ScrollLock
+			, NumLock
+			, PrintScreen
 			, count
 		};
 

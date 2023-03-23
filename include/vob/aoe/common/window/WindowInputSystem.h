@@ -1,16 +1,21 @@
 #pragma once
 
 #include <vob/aoe/input/physical_inputs_world_component.h>
+#include <vob/aoe/ecs/stop_manager.h>
 
 #include <vob/aoe/api.h>
 
 #include <iomanip>
 
 
+namespace vob::_aoecs
+{
+	class stop_manager;
+}
+
 namespace vob::aoecs
 {
-	class WorldDataProvider;
-	class stop_manager;
+	class world_data_provider;
 }
 
 namespace vob::aoe::common
@@ -21,7 +26,7 @@ namespace vob::aoe::common
 	class VOB_AOE_API WindowInputSystem
 	{
 	public:
-		explicit WindowInputSystem(aoecs::WorldDataProvider& a_wdp);
+		explicit WindowInputSystem(aoecs::world_data_provider& a_wdp);
 
 		void update() const;
 

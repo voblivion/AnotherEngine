@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 
 namespace vob::aoe::common
 {
@@ -14,6 +16,13 @@ namespace vob::aoe::common
 
 	private:
 	};
+
+	float distance(TransformComponent const& a_lhs, TransformComponent const& a_rhs)
+	{
+		auto const& lhs = a_lhs.m_matrix[3];
+		auto const& rhs = a_rhs.m_matrix[3];
+		return glm::length((rhs - lhs));
+	}
 }
 
 namespace vob::misvi

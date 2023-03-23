@@ -3,7 +3,7 @@
 #include <vob/aoe/api.h>
 #include <vob/aoe/common/time/Lifetimecomponent.h>
 #include <vob/aoe/common/time/WorldTimecomponent.h>
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 
 
 namespace vob::aoe::common
@@ -14,10 +14,10 @@ namespace vob::aoe::common
 		using Components = aoecs::ComponentTypeList<LifetimeComponent>;
 
 		// Constructors
-		explicit LifetimeSystem(aoecs::WorldDataProvider& a_wdp)
-			: m_unspawnManager{ a_wdp.get_unspawn_manager() }
-			, m_worldTimeComponent{ *a_wdp.getWorldComponent<WorldTimeComponent const>() }
-			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
+		explicit LifetimeSystem(aoecs::world_data_provider& a_wdp)
+			: m_unspawnManager{ a_wdp.get_old_unspawn_manager() }
+			, m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent const>() }
+			, m_entities{ a_wdp.get_old_entity_view_list(*this, Components{}) }
 		{}
 
 		// Methods
@@ -36,8 +36,8 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		aoecs::unspawn_manager& m_unspawnManager;
+		_aoecs::unspawn_manager& m_unspawnManager;
 		WorldTimeComponent const& m_worldTimeComponent;
-		aoecs::entity_view_list<LifetimeComponent> const& m_entities;
+		_aoecs::entity_view_list<LifetimeComponent> const& m_entities;
 	};
 }

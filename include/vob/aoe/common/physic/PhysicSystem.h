@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 #include <vob/aoe/common/physic/CharacterControllercomponent.h>
 #include <vob/aoe/common/physic/RigidBodycomponent.h>
 #include <vob/aoe/common/physic/WorldPhysiccomponent.h>
-#include <vob/aoe/common/render/debugscene/DebugMesh.h>
-#include <vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h>
+#include <vob/aoe/common/_render/debugscene/DebugMesh.h>
+#include <vob/aoe/common/_render/debugscene/DebugSceneRendercomponent.h>
 #include <vob/aoe/common/space/Transformcomponent.h>
 #include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <LinearMath/btIDebugDraw.h>
@@ -86,17 +86,17 @@ namespace vob::aoe::common
 			, CharacterControllerComponent
 		>;
 			
-		explicit PhysicSystem(aoecs::WorldDataProvider& a_wdp)
+		explicit PhysicSystem(aoecs::world_data_provider& a_wdp)
 			: m_worldPhysicComponent{
-				*a_wdp.getWorldComponent<WorldPhysicComponent>() }
+				a_wdp.get_world_component<WorldPhysicComponent>() }
 			, m_worldTimeComponent{
-				*a_wdp.getWorldComponent<WorldTimeComponent>() }
+				a_wdp.get_world_component<WorldTimeComponent>() }
 			, m_debugSceneRenderComponent{
-				*a_wdp.getWorldComponent<DebugSceneRenderComponent>() }
+				a_wdp.get_world_component<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{
-				a_wdp.get_entity_view_list(*this, RigidBodyComponents{}) }
+				a_wdp.get_old_entity_view_list(*this, RigidBodyComponents{}) }
 			, m_characterEntities{
-				a_wdp.get_entity_view_list(*this, CharacterComponents{}) }
+				a_wdp.get_old_entity_view_list(*this, CharacterComponents{}) }
 		{}
 
 		void update() const
@@ -132,7 +132,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void on_entity_added(aoecs::entity& a_entity) const
+		void on_entity_added(_aoecs::entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -221,7 +221,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void on_entity_removed(aoecs::entity& a_entity) const
+		void on_entity_removed(_aoecs::entity& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -244,11 +244,11 @@ namespace vob::aoe::common
 		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
-		aoecs::entity_view_list<
+		_aoecs::entity_view_list<
 			TransformComponent
 			, RigidBodyComponent
 		> const& m_rigidBodyEntities;
-		aoecs::entity_view_list<
+		_aoecs::entity_view_list<
 			TransformComponent
 			, CharacterControllerComponent
 		> const& m_characterEntities;

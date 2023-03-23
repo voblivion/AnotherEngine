@@ -4,29 +4,28 @@
 #include <vob/misc/hash/string_id_literals.h>
 #include <unordered_map>
 
-#include "vob/aoe/ecs/component_manager.h"
+#include "vob/aoe/ecs/_component_manager.h"
 
 #include <vob/misc/type/factory.h>
 #include <vob/misc/type/registry.h>
 
-#include "vob/aoe/common/render/debugscene/DebugSceneShaderProgram.h"
-#include "vob/aoe/common/render/debugscene/DebugSceneRendercomponent.h"
-#include "vob/aoe/common/render/model/StaticModel.h"
-#include "vob/aoe/common/render/model/Modelcomponent.h"
-#include "vob/aoe/common/render/model/ModelLoader.h"
-#include "vob/aoe/common/render/model/ModelShaderProgram.h"
-#include "vob/aoe/common/render/postprocess/PostProcessShaderProgram.h"
-#include "vob/aoe/common/render/resources/RenderTexture.h"
-#include "vob/aoe/common/render/resources/Texture.h"
-#include "vob/aoe/common/render/TextureLoader.h"
+#include "vob/aoe/common/_render/debugscene/DebugSceneShaderProgram.h"
+#include "vob/aoe/common/_render/debugscene/DebugSceneRendercomponent.h"
+#include "vob/aoe/common/_render/model/static_model.h"
+#include "vob/aoe/common/_render/model/Modelcomponent.h"
+#include "vob/aoe/common/_render/model/static_model_loader.h"
+#include "vob/aoe/common/_render/model/model_shader_program.h"
+#include "vob/aoe/common/_render/postprocess/PostProcessShaderProgram.h"
+#include "vob/aoe/common/_render/resources/RenderTexture.h"
+#include "vob/aoe/common/_render/resources/Texture.h"
+#include "vob/aoe/common/_render/TextureLoader.h"
 #include <vob/aoe/common/data/filesystem/FileSystemDatabase.h>
 #include "vob/aoe/common/serialization/VisitorFileSystemLoader.h"
 #include "vob/aoe/common/map/Hierarchycomponent.h"
 #include "vob/aoe/common/space/LocalTransformSystem.h"
 #include "vob/aoe/common/test/Testcomponent.h"
-#include "vob/aoe/common/render/Cameracomponent.h"
+#include "vob/aoe/common/_render/Cameracomponent.h"
 #include "vob/aoe/common/todo/SimpleControllercomponent.h"
-#include "vob/aoe/common/space/Velocitycomponent.h"
 #include "vob/aoe/common/space/Transformcomponent.h"
 #include "vob/aoe/common/physic/RigidBodycomponent.h"
 #include "vob/aoe/common/physic/SphereShape.h"
@@ -37,21 +36,46 @@
 #include "vob/aoe/common/time/Lifetimecomponent.h"
 #include "vob/aoe/common/physic/CapsuleShape.h"
 #include "vob/aoe/common/physic/CharacterControllercomponent.h"
-#include <vob/aoe/common/render/Manager.h>
+#include <vob/aoe/common/_render/Manager.h>
 #include <vob/aoe/common/data/filesystem/TextFileSystemLoader.h>
-#include <vob/aoe/common/render/gui/GuiShaderProgram.h>
+#include <vob/aoe/common/_render/gui/GuiShaderProgram.h>
 #include <vob/aoe/common/serialization/FileSystemVisitorContext.h>
-#include <vob/aoe/common/render/gui/text/FontLoader.h>
-#include <vob/aoe/common/render/gui/elements/TextElement.h>
-#include <vob/aoe/common/render/gui/elements/TextInputElement.h>
-#include <vob/aoe/common/render/gui/GuiMesh.h>
-#include <vob/aoe/common/render/gui/Canvascomponent.h>
-#include <vob/aoe/common/render/gui/elements/SplitElement.h>
+#include <vob/aoe/common/_render/gui/text/FontLoader.h>
+#include <vob/aoe/common/_render/gui/elements/TextElement.h>
+#include <vob/aoe/common/_render/gui/elements/TextInputElement.h>
+#include <vob/aoe/common/_render/gui/GuiMesh.h>
+#include <vob/aoe/common/_render/gui/Canvascomponent.h>
+#include <vob/aoe/common/_render/gui/elements/SplitElement.h>
 
-#include <vob/aoe/ecs/component_holder.h>
+#include <vob/aoe/actor/action_component.h>
+#include <vob/aoe/actor/actor_component.h>
+#include <vob/aoe/data/filesystem_database.h>
+#include <vob/aoe/data/filesystem_visitor_context.h>
+#include <vob/aoe/data/json_file_loader.h>
+#include <vob/aoe/data/multi_database.h>
+#include <vob/aoe/data/single_file_loader.h>
+#include <vob/aoe/data/string_loader.h>
+#include <vob/aoe/data/filesystem_util.h>
+#include <vob/aoe/debug/debug_controller.h>
+#include <vob/aoe/ecs/_component_holder.h>
+#include <vob/aoe/ecs/component_list_factory.h>
+#include <vob/aoe/physics/material.h>
+#include <vob/aoe/physics/rigidbody_component.h>
+#include <vob/aoe/rendering/components/camera_component.h>
+#include <vob/aoe/rendering/components/model_component.h>
+#include <vob/aoe/rendering/components/model_data_component.h>
+#include <vob/aoe/rendering/data/model_loader.h>
+#include <vob/aoe/rendering/data/texture_file_loader.h>
+#include <vob/aoe/rendering/data/program_data.h>
+#include <vob/aoe/spacetime/transform_component.h>
 
 #include <vob/misc/visitor/accept.h>
 #include <vob/misc/visitor/json_reader.h>
+
+#include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
+#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
+#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 
 using namespace vob;
 using namespace vob::mishs::literals;
@@ -75,6 +99,21 @@ namespace vob::misvi
 		context.m_database.find(indexer.get_id(path), a_dataPtr);
 		return true;
 	}
+
+	template <typename TData>
+	bool accept(
+		pmr::json_reader<aoedt::filesystem_visitor_context>& a_visitor
+		, std::shared_ptr<TData const>& a_data)
+	{
+		std::string rawPath;
+		a_visitor.visit(rawPath);
+
+		auto const& context = a_visitor.get_context();
+		auto const path = aoedt::filesystem_util::normalize(rawPath, context.get_base_path());
+		auto const& indexer = context.get_indexer();
+		a_data = context.get_multi_database().find<TData>(indexer.get_runtime_id(path));
+		return true;
+	}
 }
 
 namespace vob::aoe
@@ -94,11 +133,10 @@ namespace vob::aoe
 		using applicator = misvi::pmr::applicator<false, misvi::pmr::json_reader<TContext>>;
 
 		json_visitor_loader(
-			misty::pmr::factory const& a_factory,
 			applicator const& a_applicator,
 			TContext a_context,
 			allocator a_allocator = {})
-			: m_jsonVisitor{ a_factory, a_applicator, std::move(a_context), a_allocator }
+			: m_jsonVisitor{ a_applicator, std::move(a_context), a_allocator }
 		{}
 
 		template <typename TValue>
@@ -124,7 +162,6 @@ namespace vob::aoe
 				misty::pmr::factory dummyFactory{ dummyRegistry };
 				misvi::pmr::applicator<false, misvi::pmr::json_reader<std::nullptr_t>> dummyApplicator;
 				json_visitor_loader<std::nullptr_t> jsonVisitorLoader{
-					dummyFactory,
 					dummyApplicator,
 					dummyContext
 				};
@@ -148,28 +185,31 @@ namespace vob::aoe
 			{
 				typeRegistry.register_type<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
 
-				typeRegistry.register_type<aoecs::basic_component_holder>("vob::aoecs::basic_component_holder"_id);
+				typeRegistry.register_type<_aoecs::basic_component_holder>("vob::aoecs::basic_component_holder"_id);
 				// registerDynamicType<aoecs::AComponent>("vob::aoecs::AComponent"_id);
 				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
 				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
 				registerDynamicType<common::ACollisionShape>("vob::aoe::common::ACollisionShape"_id);
+
+				// v2
+				typeRegistry.register_type<aoecs::detail::component_holder_base>("vob::aoecs::component_holder_base"_id);
 			}
 
 			// Register non-visitable data types
 			{
 				registerDataType<common::Text>("vob::aoe::common::Text"_id);
-				registerDataType<common::GraphicResourceHandle<common::StaticModel>>("vob::aoe::common::GraphicResourceHandle<vob::aoe::common::StaticModel>"_id);
+				registerDataType<common::GraphicResourceHandle<common::static_model>>("vob::aoe::common::GraphicResourceHandle<vob::aoe::common::StaticModel>"_id);
 				registerDataType<common::GraphicResourceHandle<common::Texture>>("vob::aoe::common::GraphicResourceHandle<vob::aoe::common::Texture>"_id);
 				registerDataType<common::Font>("vob::aoe::common::Font"_id);
 			}
 
 			// Register visitable dynamic types
 			{
-				registerVisitableDynamicType<common::Material>("vob::aoe::common::Material"_id);
+				registerVisitableDynamicType<common::old_material>("vob::aoe::common::Material"_id);
 				registerVisitableDynamicType<
-					common::GraphicResourceHandle<common::ModelShaderProgram>
+					common::GraphicResourceHandle<aoegl::model_shader_program>
 					, type::ADynamicType
-					, common::IGraphicResourceManager<common::ModelShaderProgram>&
+					, common::IGraphicResourceManager<aoegl::model_shader_program>&
 				>(
 					"vob::aoe::common::GraphicResourceHandle<vob::aoe::common::ModelShaderProgram>"_id
 					, modelShaderProgramResourceManager
@@ -199,9 +239,9 @@ namespace vob::aoe
 					, guiShaderProgramResourceManager
 					);
 				registerVisitableDynamicType<
-					aoecs::component_manager
+					_aoecs::component_manager
 					, type::ADynamicType
-					, aoecs::component_holder_cloner const&
+					, _aoecs::component_holder_cloner const&
 				>(
 					"vob::aoecs::component_manager"_id
 					, componentHolderCloner
@@ -262,7 +302,6 @@ namespace vob::aoe
 				registerComponent<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
 				registerComponent<common::LocalTransformComponent>("vob::aoe::common::LocalTransformComponent"_id);
 				registerComponent<common::TestComponent>("vob::aoe::common::TestComponent"_id);
-				registerComponent<common::VelocityComponent>("vob::aoe::common::VelocityComponent"_id);
 				registerComponent<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
 				registerComponent<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
 				registerComponent<common::RigidBodyComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
@@ -271,14 +310,36 @@ namespace vob::aoe
 				registerComponent<common::CanvasComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
 				// registerComponent<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
 				// registerComponent<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
+				registerComponent<aoeac::action_component>("vob::aoeac::action_component"_id);
+				registerComponent<aoeac::actor_component>("vob::newaoeac::actor_component"_id);
+
+				// v2
+				register_component<aoegl::camera_component>("vob::aoegl::camera_component"_id);
+				register_component<aoegl::model_component>("vob::aoegl::model_component"_id);
+				register_component<aoegl::model_data_component>("vob::aoegl::model_data_component"_id);
+				register_component<aoeac::actor_component>("vob::aoeac::actor_component"_id);
+				register_component<aoeph::rigidbody_component>("vob::aoeph::rigidbody_component"_id);
+				register_component<aoest::transform_component>("vob::aoest::transform_component"_id);
+				register_component<aoedb::debug_controller_component>("vob::aoedb::debug_controller_component"_id);
+				
+				// old v2
+				register_component<common::HierarchyComponent>("vob::oldaoe::common::HierarchyComponent"_id);
+				register_component<common::TransformComponent>("vob::oldaoe::common::TransformComponent"_id);
+				register_component<common::ModelComponent>("vob::oldaoe::common::ModelComponent"_id);
+				register_component<common::SimpleControllerComponent>("vob::oldaoe::common::SimpleControllerComponent"_id);
+				//register_component<common::RigidBodyComponent>("vob::oldaoe::common::RigidBodyComponent"_id);
 			}
+
+			setup_multi_database();
 		}
+
+		vob::aoecs::component_list_factory componentListFactory;
 
 		misty::pmr::registry typeRegistry;
 		misty::pmr::factory factory{ typeRegistry };
 
 		misty::pmr::clone_copier<type::ADynamicType> dynamicTypeCloner{};
-		aoecs::component_holder_cloner componentHolderCloner{};
+		_aoecs::component_holder_cloner componentHolderCloner{};
 		misty::pmr::clone_copier<btCollisionShape> btCollisionShapeCloner{};
 		// aoe::ins::InstanceAllocationSizer instanceAllocationSizer{ typeRegistry, typeFactory, allocator };
 		common::FileSystemIndexer fileSystemIndexer;
@@ -295,15 +356,15 @@ namespace vob::aoe
 		};
 		common::TextFileSystemLoader textLoader{};
 		common::TextureLoader textureLoader{ textureResourceManager };
-		common::ModelLoader modelLoader{ database, fileSystemIndexer, staticModelResourceManager };
+		common::static_model_loader modelLoader{ database, fileSystemIndexer, staticModelResourceManager };
 		common::FontLoader fontLoader{ database };
 
 		// common resource managers
 		common::SingleWindowGraphicResourceManager<common::RenderTexture> renderTextureResourceManager;
 		common::SingleWindowGraphicResourceManager<common::Texture> textureResourceManager;
 
-		common::SingleWindowGraphicResourceManager<common::StaticModel> staticModelResourceManager;
-		common::SingleWindowGraphicResourceManager<common::ModelShaderProgram> modelShaderProgramResourceManager;
+		common::SingleWindowGraphicResourceManager<common::static_model> staticModelResourceManager;
+		common::SingleWindowGraphicResourceManager<aoegl::model_shader_program> modelShaderProgramResourceManager;
 
 		common::SingleWindowGraphicResourceManager<common::DebugSceneShaderProgram> debugSceneShaderProgramResourceManager;
 
@@ -311,6 +372,65 @@ namespace vob::aoe
 
 		common::SingleWindowGraphicResourceManager<common::GuiShaderProgram> guiShaderProgramResourceManager;
 		common::SingleWindowGraphicResourceManager<common::GuiMesh> guiMeshResourceManager;
+
+
+		// v2
+		aoedt::filesystem_indexer filesystemIndexer;
+		aoedt::multi_database multiDatabase;
+		using context = aoedt::filesystem_visitor_context;
+		using context_factory = aoedt::filesystem_visitor_context_factory;
+		context_factory contextFactory{ factory, filesystemIndexer, multiDatabase };
+
+		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{
+			filesystemIndexer };
+		aoedt::filesystem_database<aoegl::texture_file_loader> textureDatabase{
+			filesystemIndexer };
+		aoedt::filesystem_database<aoegl::model_loader> modelDatabase{
+			filesystemIndexer, textureDatabase, filesystemIndexer };
+		
+		misvi::pmr::applicator<false, misvi::pmr::json_reader<context>> jsonLoadApplicator;
+		aoedt::filesystem_database<aoedt::json_file_loader<aoegl::program_data, context_factory>>
+			shaderProgramDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
+		aoedt::filesystem_database<aoedt::json_file_loader<aoeph::material, context_factory>>
+			physicMaterialDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
+		aoedt::filesystem_database<aoedt::json_file_loader<aoecs::component_set, context_factory>>
+			componentSetDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
+
+		void setup_multi_database()
+		{
+			multiDatabase.register_database(stringDatabase);
+			multiDatabase.register_database(textureDatabase);
+			multiDatabase.register_database(modelDatabase);
+
+			multiDatabase.register_database(shaderProgramDatabase);
+			multiDatabase.register_database(physicMaterialDatabase);
+			multiDatabase.register_database(componentSetDatabase);
+
+			auto foo = shaderProgramDatabase.find(
+				filesystemIndexer.get_runtime_id("data/shaders/shader_new_db_test.json"));
+			auto bar = physicMaterialDatabase.find(
+				filesystemIndexer.get_runtime_id("data/physics/new_material.json"));
+			auto joh = componentSetDatabase.find(
+				filesystemIndexer.get_runtime_id("data/player_v2.json"));
+		}
+		/*{
+			aoedt::filesystem_indexer indexer;
+
+			aoedt::filesystem_database stringDatabase{
+				indexer, aoedt::single_file_loader{ aoedt::string_loader{} } };
+
+			misvi::pmr::applicator<false, misvi::pmr::json_reader<std::nullptr_t>> applicator;
+			aoedt::json_loader<int, std::nullptr_t> intLoader{ applicator, nullptr };
+
+		}*/
+
+		// New physics
+		btDefaultCollisionConfiguration m_collisionConfiguration;
+		btCollisionDispatcher m_dispatcher{ &m_collisionConfiguration };
+		btDbvtBroadphase m_pairCache{};
+		btSequentialImpulseConstraintSolver m_constraintSolver{};
+		btDiscreteDynamicsWorld m_dynamicsWorld{ &m_dispatcher, &m_pairCache
+			, &m_constraintSolver, &m_collisionConfiguration };
 
 	private:
 		void registerDatabaseLoaders()
@@ -348,6 +468,16 @@ namespace vob::aoe
 			factory.add_type<VisitableDynamicType, Args...>(std::forward<Args>(a_args)...);
 		}
 
+		template <typename TDynamicType, typename TBaseType, typename... TArgs>
+		void register_visitable_dynamic_type(vob::mishs::string_id const a_id, TArgs&&... a_args)
+		{
+			typeRegistry.register_type<TDynamicType, TBaseType>(a_id);
+
+			jsonLoadApplicator.register_type<TDynamicType>();
+
+			factory.add_type<TDynamicType, TArgs...>(std::forward<TArgs>(a_args)...);
+		}
+
 		template <typename VisitableBtCollisionShape, typename BaseType = btCollisionShape, typename... Args>
 		void registerVisitableBtCollisionShape(vob::mishs::string_id const a_id, Args&&... a_args)
 		{
@@ -361,13 +491,23 @@ namespace vob::aoe
 			factory.add_type<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
 		}
 
-		template <typename TComponent, typename... Args>
-		void registerComponent(vob::mishs::string_id const a_id, Args&&... a_args)
+		template <typename TComponent, typename... TArgs>
+		void registerComponent(vob::mishs::string_id const a_id, TArgs&&... a_args)
 		{
 			registerVisitableDynamicType<
-				aoecs::component_holder<TComponent>, aoecs::basic_component_holder, Args...
-			>(a_id, std::forward<Args>(a_args)...);
-			componentHolderCloner.register_type<aoecs::component_holder<TComponent>>();
+				_aoecs::component_holder<TComponent>, _aoecs::basic_component_holder, TArgs...
+			>(a_id, std::forward<TArgs>(a_args)...);
+			componentHolderCloner.register_type<_aoecs::component_holder<TComponent>>();
+		}
+
+		template <typename TComponent, typename... TArgs>
+		void register_component(vob::mishs::string_id const a_id, TArgs&&... a_args)
+		{
+			register_visitable_dynamic_type<
+				aoecs::detail::component_holder<TComponent>, aoecs::detail::component_holder_base, TArgs...
+			>(a_id, std::forward<TArgs>(a_args)...);
+
+			componentListFactory.register_component<TComponent>();
 		}
 	};
 }

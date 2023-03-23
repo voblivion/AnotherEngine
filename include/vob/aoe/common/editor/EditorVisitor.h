@@ -1,8 +1,8 @@
 #pragma once
 
 #include <type_traits>
-#include <vob/aoe/common/render/gui/elements/TextInputElement.h>
-#include <vob/aoe/common/render/gui/elements/SplitElement.h>
+#include <vob/aoe/common/_render/gui/elements/TextInputElement.h>
+#include <vob/aoe/common/_render/gui/elements/SplitElement.h>
 
 #include "vob/misc/visitor/name_value_pair.h"
 #include "vob/misc/visitor/is_visitable.h"

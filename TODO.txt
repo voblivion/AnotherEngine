@@ -1,11 +1,11 @@
 Features
-[ ][ ] Input
-[ ][ ] Action?
-[ ][ ] PawnDriver
+[ ][x] Input
+[ ][ ] Interaction?
+[ ][ ] PawnDriver / Controller?
 [ ][ ] Navigation Gym Map
 [ ][ ] Character Model
 [ ][ ] Save Game / Settings
-[ ][ ] Interaction
+[ ][x] Interaction
 [ ][ ] Debug Controller?
 
 Bugs
@@ -18,3 +18,9 @@ Bugs
 
 [ ][ ] Welcome window -> do not show again + admin commands?
 [ ][ ] Map Review -> search by author
+
+
+
+Actor (Humanoid, Quadruped)
+
+Controller (Player, Network, AI)

@@ -2,7 +2,7 @@
 
 #include "ACollisionShape.h"
 
-#include <vob/aoe/common/render/model/StaticModel.h>
+#include <vob/aoe/common/_render/model/static_model.h>
 
 #include <vob/misc/visitor/name_value_pair.h>
 
@@ -22,7 +22,7 @@ namespace vob::aoe::common
             : public btStridingMeshInterface
         {
         public:
-            StridingStaticMesh(std::shared_ptr<common::GraphicResourceHandle<common::StaticModel> const> a_model = nullptr)
+            StridingStaticMesh(std::shared_ptr<common::GraphicResourceHandle<common::static_model> const> a_model = nullptr)
                 : m_model{ std::move(a_model) }
             {}
 
@@ -54,9 +54,9 @@ namespace vob::aoe::common
             ) const override
             {
                 type = PHY_FLOAT;
-                stride = sizeof(Vertex);
+                stride = sizeof(static_vertex);
                 indicesType = PHY_INTEGER;
-                indexStride = sizeof(Triangle);
+                indexStride = sizeof(triangle);
 
                 if (m_model == nullptr)
                 {
@@ -103,7 +103,7 @@ namespace vob::aoe::common
                 assert(false);
             }
 
-            std::shared_ptr<common::GraphicResourceHandle<common::StaticModel> const> m_model;
+            std::shared_ptr<common::GraphicResourceHandle<common::static_model> const> m_model;
         };
 
     public:
@@ -141,7 +141,7 @@ namespace vob::aoe::common
             return *this;
         }
 
-        void setModel(std::shared_ptr<common::GraphicResourceHandle<common::StaticModel> const> a_model)
+        void setModel(std::shared_ptr<common::GraphicResourceHandle<common::static_model> const> a_model)
         {
             m_stridingMesh.m_model = std::move(a_model);
         }

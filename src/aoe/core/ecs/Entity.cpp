@@ -1,7 +1,7 @@
-#include <vob/aoe/ecs/entity.h>
+#include <vob/aoe/ecs/_entity.h>
 
 
-namespace vob::aoecs
+namespace vob::_aoecs
 {
 	// Public
 	entity::entity(entity_id const a_id, component_manager a_componentManager)

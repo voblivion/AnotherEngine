@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 #include <vob/aoe/common/map/Hierarchycomponent.h>
 
 #include <vob/misc/std/ignorable_assert.h>
@@ -12,12 +12,12 @@ namespace vob::aoe::common
 	{
 		using Components = aoecs::ComponentTypeList<HierarchyComponent>;
 
-		explicit HierarchySystem(aoecs::WorldDataProvider& a_wdp)
-			: m_unspawnManager{ a_wdp.get_unspawn_manager() }
-			, m_entities{ a_wdp.get_entity_view_list(*this, Components{}) }
+		explicit HierarchySystem(aoecs::world_data_provider& a_wdp)
+			: m_unspawnManager{ a_wdp.get_old_unspawn_manager() }
+			, m_entities{ a_wdp.get_old_entity_view_list(*this, Components{}) }
 		{}
 
-		void on_entity_added(aoecs::entity& a_entity) const
+		void on_entity_added(_aoecs::entity& a_entity) const
 		{
 			auto const hierarchy = a_entity.get_component<HierarchyComponent>();
 			auto const parent = m_entities.find(hierarchy->m_parent);
@@ -33,7 +33,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void on_entity_removed(aoecs::entity& a_entity) const
+		void on_entity_removed(_aoecs::entity& a_entity) const
 		{
 			auto& hierarchy = *a_entity.get_component<HierarchyComponent>();
 
@@ -71,7 +71,7 @@ namespace vob::aoe::common
 		void update() const {}
 
 	private:
-		aoecs::unspawn_manager& m_unspawnManager;
-		aoecs::entity_view_list<HierarchyComponent> const& m_entities;
+		_aoecs::unspawn_manager& m_unspawnManager;
+		_aoecs::entity_view_list<HierarchyComponent> const& m_entities;
 	};
 }

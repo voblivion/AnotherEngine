@@ -1,5 +1,5 @@
 #pragma once
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
 #include <vob/aoe/common/map/Hierarchycomponent.h>
 #include <vob/aoe/common/space/Transformcomponent.h>
 #include <vob/aoe/common/space/LocalTransformcomponent.h>
@@ -15,8 +15,8 @@ namespace vob::aoe::common
 			, LocalTransformComponent*
 		>;
 
-		explicit LocalTransformSystem(aoecs::WorldDataProvider& a_worldDataProvider)
-			: m_entities{ a_worldDataProvider.get_entity_view_list(*this, Components{}) }
+		explicit LocalTransformSystem(aoecs::world_data_provider& a_wdp)
+			: m_entities{ a_wdp.get_old_entity_view_list(*this, Components{}) }
 		{}
 
 		void update() const
@@ -35,7 +35,7 @@ namespace vob::aoe::common
 
 	private:
 		// Attributes
-		using entity_view_list = aoecs::entity_view_list<
+		using entity_view_list = _aoecs::entity_view_list<
 			HierarchyComponent const
 			, TransformComponent
 			, LocalTransformComponent*

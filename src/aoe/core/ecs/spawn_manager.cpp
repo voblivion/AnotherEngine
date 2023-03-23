@@ -1,6 +1,6 @@
-#include <vob/aoe/ecs/spawn_manager.h>
+#include <vob/aoe/ecs/_spawn_manager.h>
 
-namespace vob::aoecs
+namespace vob::_aoecs
 {
 	// Public
 	spawn_manager::spawn_manager(

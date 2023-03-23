@@ -2,8 +2,8 @@
 
 #include <vob/aoe/common/time/Chrono.h>
 
-#include "vob/aoe/ecs/entity_id.h"
-#include "vob/aoe/ecs/component_manager.h"
+#include "vob/aoe/ecs/_entity_id.h"
+#include "vob/aoe/ecs/_component_manager.h"
 
 #include <vob/misc/visitor/name_value_pair.h>
 
@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		// Attributes
 		glm::vec3 m_orientation{ 0.0f };
 		glm::vec3 m_headOrientation{ 0.0f };
-		std::shared_ptr<aoecs::component_manager const> m_bullet;
+		std::shared_ptr<_aoecs::component_manager const> m_bullet;
 		TimePoint m_lastBulletTime{};
 		float m_fallVelocity = 0.0f;
 		TimePoint m_lastJumpTime{};

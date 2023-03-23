@@ -12,7 +12,7 @@
 
 namespace vob::aoe::common
 {
-#pragma warning("Should be removed, probably no need for VisitorLoader<json_visitor_loader<context>>")
+#pragma message("TODO Should be removed, probably no need for VisitorLoader<json_visitor_loader<context>>")
 	template <typename TVisitor, typename TCanLoad>
 	class VisitorLoader final
 		: public AFileSystemLoader
@@ -43,7 +43,7 @@ namespace vob::aoe::common
 			std::ifstream file{ a_path, std::ios::binary | std::ios::in };
 
 			const auto context = createContext(a_path);
-			auto visitor = TVisitor{ m_factory, m_applicator, createContext(a_path), m_allocator };
+			auto visitor = TVisitor{ m_applicator, createContext(a_path), m_allocator };
 
 			std::shared_ptr<ADynamicType> t_data;
 			visitor.load(file, t_data);
@@ -67,7 +67,8 @@ namespace vob::aoe::common
 		FileSystemVisitorContext createContext(std::filesystem::path const& a_path) const
 		{
 			return {
-				m_fileSystemIndexer
+				m_factory
+				, m_fileSystemIndexer
 				, a_path
 				, m_database
 			};

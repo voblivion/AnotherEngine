@@ -3,9 +3,10 @@
 #include <vob/aoe/input/mapped_inputs_world_component.h>
 #include <vob/aoe/input/physical_inputs_world_component.h>
 
-#include <vob/aoe/common/time/WorldTimeComponent.h>
+#include <vob/aoe/spacetime/presentation_time_world_component.h>
 
-#include <vob/aoe/ecs/WorldDataProvider.h>
+#include <vob/aoe/ecs/world_data_provider.h>
+#include <vob/aoe/ecs/world_component_ref.h>
 
 
 namespace vob::aoein
@@ -13,28 +14,34 @@ namespace vob::aoein
 	class mapped_input_system
 	{
 	public:
-		explicit mapped_input_system(aoecs::WorldDataProvider& a_worldDataProvider)
-			: m_mappedInputsComponent{ *a_worldDataProvider.getWorldComponent<mapped_inputs_world_component>() }
-			, m_physicalInputsComponent{ *a_worldDataProvider.getWorldComponent<physical_inputs_world_component>() }
-			, m_timeWorldComponent{ *a_worldDataProvider.getWorldComponent<aoe::common::WorldTimeComponent>() }
+		explicit mapped_input_system(aoecs::world_data_provider& a_wdp)
+			: m_mappedInputsComponent{ a_wdp }
+			, m_physicalInputsComponent{ a_wdp }
+			, m_presentationTimeComponent{ a_wdp }
 		{}
 
 		void update() const
 		{
-			for (auto& mappedAxis : m_mappedInputsComponent.m_axes)
+			for (auto& mappedAxis : m_mappedInputsComponent->m_axes)
 			{
-				mappedAxis->update(m_physicalInputsComponent.m_inputs, m_timeWorldComponent.m_elapsedTime);
+				mappedAxis->update(
+					m_physicalInputsComponent->m_inputs,
+					m_presentationTimeComponent->m_elapsedTime);
 			}
 
-			for (auto& mappedSwitch : m_mappedInputsComponent.m_switches)
+			for (auto& mappedSwitch : m_mappedInputsComponent->m_switches)
 			{
-				mappedSwitch->update(m_physicalInputsComponent.m_inputs, m_timeWorldComponent.m_elapsedTime);
+				mappedSwitch->update(
+					m_physicalInputsComponent->m_inputs,
+					m_presentationTimeComponent->m_elapsedTime);
 			}
 		}
 
 	private:
-		mapped_inputs_world_component& m_mappedInputsComponent;
-		physical_inputs_world_component const& m_physicalInputsComponent;
-		aoe::common::WorldTimeComponent const& m_timeWorldComponent;
+		aoecs::world_component_ref<mapped_inputs_world_component> m_mappedInputsComponent;
+		aoecs::world_component_ref<physical_inputs_world_component const>
+			m_physicalInputsComponent;
+		aoecs::world_component_ref<aoest::presentation_time_world_component const>
+			m_presentationTimeComponent;
 	};
 }

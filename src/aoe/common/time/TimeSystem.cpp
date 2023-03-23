@@ -3,8 +3,8 @@
 namespace vob::aoe::common
 {
 	// Public
-	TimeSystem::TimeSystem(aoecs::WorldDataProvider& a_worldDataProvider)
-		: m_worldTimeComponent{ *a_worldDataProvider.getWorldComponent<WorldTimeComponent>() }
+	TimeSystem::TimeSystem(aoecs::world_data_provider& a_wdp)
+		: m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent>() }
 	{}
 
 	void TimeSystem::update() const

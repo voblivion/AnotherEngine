@@ -1,4 +1,4 @@
-#include <vob/aoe/common/render/resources/ShaderProgram.h>
+#include <vob/aoe/common/_render/resources/ShaderProgram.h>
 
 #include <iostream>
 
