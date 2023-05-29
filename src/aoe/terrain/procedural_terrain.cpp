@@ -18,8 +18,6 @@ namespace vob::aoetr
 	aoegl::mesh_data generate_procedural_terrain(
 		float a_size, float a_cellSize, std::span<layer> a_layers, bool a_useSmoothShading)
 	{
-		aoepf::test();
-
 		auto const subdivisions = static_cast<std::int32_t>(std::ceil(a_size / a_cellSize));
 		auto const vertexCount = (subdivisions + 1) * (subdivisions + 1);
 
