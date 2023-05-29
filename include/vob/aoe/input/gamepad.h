@@ -82,8 +82,8 @@ namespace vob::aoein
 
         aoein::switch_input m_isConnected;
         std::string_view m_name{};
-        mistd::enum_map<button, button::A, button::count, aoein::switch_input> m_buttons{};
-        mistd::enum_map<axis, axis::LX, axis::count, aoein::axis_input> m_axes{};
+        mistd::enum_map<button, aoein::switch_input> m_buttons{};
+        mistd::enum_map<axis, aoein::axis_input> m_axes{};
 
         void update()
         {

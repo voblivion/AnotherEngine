@@ -43,7 +43,7 @@ namespace vob::aoein
 		glm::vec2 m_position = {};
 		glm::vec2 m_move = {};
 		switch_input m_hover = {};
-		mistd::enum_map<button, button::M1, button::count, switch_input> m_buttons;
+		mistd::enum_map<button, switch_input> m_buttons;
 
 		void update()
 		{

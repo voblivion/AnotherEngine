@@ -139,7 +139,7 @@ namespace vob::aoein
 			, count
 		};
 
-		mistd::enum_map<key, key::A, key::count, aoein::switch_input> m_keys{};
+		mistd::enum_map<key, aoein::switch_input> m_keys{};
 
 		void update()
 		{
