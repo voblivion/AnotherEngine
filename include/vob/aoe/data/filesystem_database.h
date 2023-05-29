@@ -4,8 +4,6 @@
 #include <vob/aoe/data/database.h>
 #include <vob/aoe/data/filesystem_indexer.h>
 
-#include <vob/misc/std/filesystem.h>
-
 #include <mutex>
 #include <unordered_map>
 

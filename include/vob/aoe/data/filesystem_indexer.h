@@ -2,8 +2,6 @@
 
 #include <vob/aoe/data/id.h>
 
-#include <vob/misc/std/filesystem.h>
-
 #include <atomic>
 #include <cassert>
 #include <filesystem>
