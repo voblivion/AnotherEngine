@@ -517,13 +517,13 @@ namespace
 		for (auto i = 0; i != a_gamepad.m_buttons.size(); ++i)
 		{
 			{
-				auto button = Gamepad::Button(a_oldGamepad.m_buttons.begin_value + i);
+				auto button = Gamepad::Button(a_oldGamepad.m_buttons.begin_index + i);
 				auto isActive = state.buttons[gamepadButtonToGlfw(button)] == GLFW_PRESS;
 				auto& buttonState = a_oldGamepad.m_buttons[i];
 				buttonState.m_changed = buttonState.m_isActive != isActive;
 				buttonState.m_isActive = isActive;
 			}
-			auto button = aoein::gamepad::button{ a_gamepad.m_buttons.begin_value + i };
+			auto button = aoein::gamepad::button{ a_gamepad.m_buttons.begin_index + i };
 			auto& buttonState = a_gamepad.m_buttons[button];
 			buttonState.update(state.buttons[gamepad_button_to_glfw(button)] == GLFW_PRESS);
 		}
@@ -531,11 +531,11 @@ namespace
 		for (auto i = 0; i != a_oldGamepad.m_axes.size(); ++i)
 		{
 			{
-				auto axis = Gamepad::Axis{ a_oldGamepad.m_axes.begin_value + i };
+				auto axis = Gamepad::Axis{ a_oldGamepad.m_axes.begin_index + i };
 				auto& axisState = a_oldGamepad.m_axes[i];
 				axisState = state.axes[gamepadAxisToGlfw(axis)];
 			}
-			auto axis = aoein::gamepad::axis{ a_gamepad.m_axes.begin_value + i };
+			auto axis = aoein::gamepad::axis{ a_gamepad.m_axes.begin_index + i };
 			auto& axisState = a_gamepad.m_axes[axis];
 			axisState.update(state.axes[gamepad_axis_to_glfw(axis)]);
 		}
