@@ -46,7 +46,7 @@ namespace vob::aoe::common
             template <typename VisitorType>
             bool accept(VisitorType& a_visitor) const
             {
-                static_assert(false && "TODO");
+                assert(false); // static_assert(false && "TODO");
                 return true;
             }
         };
@@ -114,7 +114,7 @@ namespace vob::aoe::common
         template <typename VisitorType>
         bool accept(VisitorType& a_visitor) const
         {
-            static_assert(false && "TODO");
+            assert(false); // static_assert(false && "TODO");
             return true;
         }
 
