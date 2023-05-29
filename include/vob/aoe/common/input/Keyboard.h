@@ -114,9 +114,9 @@ namespace vob::aoe::common
 			, F14
 			, F15
 			, Pause
-			, Count
+			, count
 		};
 
-		mistd::enum_map<Key, Key::A, Key::Count, Switch> m_keys{};
+		mistd::enum_map<Key, Switch> m_keys{};
 	};
 }

@@ -1,11 +1,14 @@
 #pragma once
 
-#include <array>
+#include <vob/aoe/common/space/Vector.h>
+#include <vob/aoe/common/input/Switch.h>
 
 #include <vob/misc/std/enum_map.h>
 
-#include <vob/aoe/common/space/Vector.h>
-#include <vob/aoe/common/input/Switch.h>
+#include <glm/vec2.hpp>
+
+#include <array>
+
 
 namespace vob::aoe::common
 {
@@ -20,7 +23,7 @@ namespace vob::aoe::common
 			, M3
 			, M4
 			, M5
-			, Count
+			, count
 
 			, Left = M1
 			, Right = M2
@@ -32,7 +35,7 @@ namespace vob::aoe::common
 		glm::vec2 m_position = {};
 		glm::vec2 m_move = {};
 		Switch m_hover = {};
-		mistd::enum_map<Button, Button::M1, Button::Count, Switch> m_buttons{};
+		mistd::enum_map<Button, Switch> m_buttons{};
 	};
 
 	inline Mouse::Button mouseButtonFromGlfw(int a_glfwMouseButtonId)

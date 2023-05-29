@@ -35,7 +35,7 @@ namespace vob::aoe::common
             Right,
             Down,
             Left,
-            Count,
+            count,
 
             // Playstation
             Cross = A,
@@ -70,7 +70,7 @@ namespace vob::aoe::common
             RY,
             LT,
             RT,
-            Count,
+            count,
 
             // Playstation
             L2 = LT,
@@ -85,8 +85,8 @@ namespace vob::aoe::common
 
         Switch m_state{};
         std::string_view m_name{};
-        mistd::enum_map<Button, Button::A, Button::Count, Switch> m_buttons{};
-        mistd::enum_map<Axis, Axis::LX, Axis::Count, float> m_axes{};
+        mistd::enum_map<Button, Switch> m_buttons{};
+        mistd::enum_map<Axis, float> m_axes{};
     };
 
     inline Gamepad::Button gamepadButtonFromGlfw(int a_glfwGamepadButtonId)
