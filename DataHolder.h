@@ -4,8 +4,6 @@
 #include <vob/misc/hash/string_id_literals.h>
 #include <unordered_map>
 
-#include "vob/aoe/ecs/_component_manager.h"
-
 #include <vob/misc/type/factory.h>
 #include <vob/misc/type/registry.h>
 
@@ -57,7 +55,6 @@
 #include <vob/aoe/data/string_loader.h>
 #include <vob/aoe/data/filesystem_util.h>
 #include <vob/aoe/debug/debug_controller.h>
-#include <vob/aoe/ecs/_component_holder.h>
 #include <vob/aoe/ecs/component_list_factory.h>
 #include <vob/aoe/physics/material.h>
 #include <vob/aoe/physics/rigidbody_component.h>
@@ -185,7 +182,6 @@ namespace vob::aoe
 			{
 				typeRegistry.register_type<type::ADynamicType>("vob::aoe::type::ADynamicType"_id);
 
-				typeRegistry.register_type<_aoecs::basic_component_holder>("vob::aoecs::basic_component_holder"_id);
 				// registerDynamicType<aoecs::AComponent>("vob::aoecs::AComponent"_id);
 				registerDynamicType<common::AElement>("vob::aoe::common::AElement"_id);
 				registerDynamicType<common::AStandardElement, common::AElement>("vob::aoe::common::AStandardElement"_id);
@@ -239,14 +235,6 @@ namespace vob::aoe
 					, guiShaderProgramResourceManager
 					);
 				registerVisitableDynamicType<
-					_aoecs::component_manager
-					, type::ADynamicType
-					, _aoecs::component_holder_cloner const&
-				>(
-					"vob::aoecs::component_manager"_id
-					, componentHolderCloner
-					);
-				registerVisitableDynamicType<
 					common::TextElement
 					, common::AStandardElement
 					, common::IGraphicResourceManager<common::GuiMesh>&
@@ -297,37 +285,29 @@ namespace vob::aoe
 
 			// Register components
 			{
-				registerComponent<common::TransformComponent>("vob::aoe::common::TransformComponent"_id);
-				registerComponent<common::ModelComponent>("vob::aoe::common::ModelComponent"_id);
-				registerComponent<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
-				registerComponent<common::LocalTransformComponent>("vob::aoe::common::LocalTransformComponent"_id);
-				registerComponent<common::TestComponent>("vob::aoe::common::TestComponent"_id);
-				registerComponent<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
-				registerComponent<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
-				registerComponent<common::RigidBodyComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
-				registerComponent<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
-				registerComponent<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
-				registerComponent<common::CanvasComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
-				// registerComponent<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
-				// registerComponent<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
-				registerComponent<aoeac::action_component>("vob::aoeac::action_component"_id);
-				registerComponent<aoeac::actor_component>("vob::newaoeac::actor_component"_id);
+				register_component<common::TransformComponent>("vob::aoe::common::TransformComponent"_id);
+				register_component<common::ModelComponent>("vob::aoe::common::ModelComponent"_id);
+				register_component<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
+				register_component<common::LocalTransformComponent>("vob::aoe::common::LocalTransformComponent"_id);
+				register_component<common::TestComponent>("vob::aoe::common::TestComponent"_id);
+				register_component<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
+				register_component<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
+				register_component<common::RigidBodyComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
+				register_component<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
+				register_component<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
+				register_component<common::CanvasComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
+				// register_component<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
+				// register_component<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
+				register_component<aoeac::action_component>("vob::aoeac::action_component"_id);
+				register_component<aoeac::actor_component>("vob::newaoeac::actor_component"_id);
 
 				// v2
 				register_component<aoegl::camera_component>("vob::aoegl::camera_component"_id);
 				register_component<aoegl::model_component>("vob::aoegl::model_component"_id);
 				register_component<aoegl::model_data_component>("vob::aoegl::model_data_component"_id);
-				register_component<aoeac::actor_component>("vob::aoeac::actor_component"_id);
 				register_component<aoeph::rigidbody_component>("vob::aoeph::rigidbody_component"_id);
 				register_component<aoest::transform_component>("vob::aoest::transform_component"_id);
 				register_component<aoedb::debug_controller_component>("vob::aoedb::debug_controller_component"_id);
-				
-				// old v2
-				register_component<common::HierarchyComponent>("vob::oldaoe::common::HierarchyComponent"_id);
-				register_component<common::TransformComponent>("vob::oldaoe::common::TransformComponent"_id);
-				register_component<common::ModelComponent>("vob::oldaoe::common::ModelComponent"_id);
-				register_component<common::SimpleControllerComponent>("vob::oldaoe::common::SimpleControllerComponent"_id);
-				//register_component<common::RigidBodyComponent>("vob::oldaoe::common::RigidBodyComponent"_id);
 			}
 
 			setup_multi_database();
@@ -339,7 +319,6 @@ namespace vob::aoe
 		misty::pmr::factory factory{ typeRegistry };
 
 		misty::pmr::clone_copier<type::ADynamicType> dynamicTypeCloner{};
-		_aoecs::component_holder_cloner componentHolderCloner{};
 		misty::pmr::clone_copier<btCollisionShape> btCollisionShapeCloner{};
 		// aoe::ins::InstanceAllocationSizer instanceAllocationSizer{ typeRegistry, typeFactory, allocator };
 		common::FileSystemIndexer fileSystemIndexer;
@@ -489,15 +468,6 @@ namespace vob::aoe
 			// instanceAllocationSizer.register_type<VisitableDynamicType>();
 
 			factory.add_type<VisitableBtCollisionShape, Args...>(std::forward<Args>(a_args)...);
-		}
-
-		template <typename TComponent, typename... TArgs>
-		void registerComponent(vob::mishs::string_id const a_id, TArgs&&... a_args)
-		{
-			registerVisitableDynamicType<
-				_aoecs::component_holder<TComponent>, _aoecs::basic_component_holder, TArgs...
-			>(a_id, std::forward<TArgs>(a_args)...);
-			componentHolderCloner.register_type<_aoecs::component_holder<TComponent>>();
 		}
 
 		template <typename TComponent, typename... TArgs>

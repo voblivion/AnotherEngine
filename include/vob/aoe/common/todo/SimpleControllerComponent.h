@@ -2,9 +2,6 @@
 
 #include <vob/aoe/common/time/Chrono.h>
 
-#include "vob/aoe/ecs/_entity_id.h"
-#include "vob/aoe/ecs/_component_manager.h"
-
 #include <vob/misc/visitor/name_value_pair.h>
 
 

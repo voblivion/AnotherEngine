@@ -13,7 +13,6 @@ namespace vob::aoe::common
 {
 	class GuiRenderPass
 	{
-		using CanvasComponents = aoecs::ComponentTypeList<CanvasComponent>;
 	public:
 		// Constructor
 		explicit GuiRenderPass(aoecs::world_data_provider& a_wdp)

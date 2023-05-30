@@ -12,8 +12,6 @@ namespace vob::aoe::common
 	class LifetimeSystem final
 	{
 	public:
-		using Components = aoecs::ComponentTypeList<LifetimeComponent>;
-
 		// Constructors
 		explicit LifetimeSystem(aoecs::world_data_provider& a_wdp)
 			: m_unspawnManager{ a_wdp.get_despawner() }

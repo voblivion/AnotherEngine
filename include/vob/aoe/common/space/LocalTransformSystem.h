@@ -10,12 +10,6 @@ namespace vob::aoe::common
 	class LocalTransformSystem final
 	{
 	public:
-		using Components = aoecs::ComponentTypeList<
-			HierarchyComponent const
-			, TransformComponent
-			, LocalTransformComponent*
-		>;
-
 		explicit LocalTransformSystem(aoecs::world_data_provider& a_wdp)
 			: m_entities{ a_wdp }
 		{}

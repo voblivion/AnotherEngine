@@ -11,8 +11,6 @@ namespace vob::aoe::common
 {
 	struct HierarchySystem
 	{
-		using Components = aoecs::ComponentTypeList<HierarchyComponent>;
-
 		explicit HierarchySystem(aoecs::world_data_provider& a_wdp)
 			: m_unspawnManager{ a_wdp.get_despawner() }
 			, m_entities{ a_wdp }

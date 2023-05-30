@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/ecs/_entity_manager.h>
 #include <vob/aoe/ecs/component_set.h>
 #include <vob/aoe/ecs/entity_manager.h>
 #include <vob/aoe/ecs/stop_manager.h>

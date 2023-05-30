@@ -87,7 +87,10 @@ namespace vob::aoe::common
 				a_wdp.get_world_component<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{ a_wdp }
 			, m_characterEntities{ a_wdp }
-		{}
+		{
+			a_wdp.observe_spawns(*this);
+			a_wdp.observe_despawns(*this);
+		}
 
 		void update() const
 		{
@@ -122,7 +125,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void on_entity_added(_aoecs::entity& a_entity) const
+		void on_spawn(aoecs::entity_list::entity_view& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)
@@ -211,7 +214,7 @@ namespace vob::aoe::common
 			}
 		}
 
-		void on_entity_removed(_aoecs::entity& a_entity) const
+		void on_despawn(aoecs::entity_list::entity_view& a_entity) const
 		{
 			ignorable_assert(m_worldPhysicComponent.m_dynamicsWorldHolder != nullptr);
 			if (m_worldPhysicComponent.m_dynamicsWorldHolder == nullptr)

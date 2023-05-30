@@ -2,7 +2,6 @@
 
 #include <vob/aoe/ecs/world_data.h>
 #include <vob/aoe/ecs/world_data_provider.h>
-#include <vob/aoe/ecs/_component_manager.h>
 #include <vob/misc/multithread/basic_task.h>
 #include <vob/misc/multithread/worker.h>
 

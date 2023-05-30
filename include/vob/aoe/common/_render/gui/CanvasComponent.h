@@ -3,6 +3,7 @@
 #include <vob/aoe/common/_render/gui/elements/AElement.h>
 
 #include <vob/misc/visitor/name_value_pair.h>
+#include <vob/misc/visitor/macros.h>
 
 
 namespace vob::aoe::common
@@ -28,3 +29,12 @@ namespace vob::aoe::common
 	};
 }
 
+namespace vob::misvi
+{
+	VOB_MISVI_ACCEPT(aoe::common::CanvasComponent)
+	{
+		VOB_MISVI_NVP("Root Element", rootElement);
+		VOB_MISVI_NVP("Size", size);
+		return true;
+	}
+}

@@ -305,10 +305,6 @@ void setup_world_components(
 std::unique_ptr<aoecs::world> createGameWorld(
 	aoe::DataHolder& a_data, aoewi::glfw_window& a_window)
 {
-	// Prepare world components
-	_aoecs::component_manager oldWorldComponents{ a_data.componentHolderCloner };
-	setup_world_components(oldWorldComponents, a_data, a_window);
-
 	// v2
 	aoecs::component_set worldComponents;
 	setup_world_components(worldComponents, a_data, a_window);
@@ -613,13 +609,6 @@ void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 		auto& directorWorldComponent = *worldData.m_worldComponents.find<aoegl::director_world_component>();
 		directorWorldComponent.m_activeCamera = debugCameraId;
 	}
-}
-
-std::unique_ptr<aoecs::world> createEditorWorld(aoe::DataHolder& a_data)
-{
-	// Prepare world components
-	_aoecs::component_manager t_worldComponents{ a_data.componentHolderCloner };
-	return nullptr;
 }
 
 #include <filesystem>

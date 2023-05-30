@@ -3,7 +3,6 @@
 #include <typeindex>
 #include <unordered_set>
 
-#include <vob/aoe/ecs/_entity_manager.h>
 #include <vob/aoe/ecs/world_data.h>
 #include <vob/aoe/core/type/ADynamicType.h>
 // TMP
@@ -11,12 +10,6 @@
 
 namespace vob::aoecs
 {
-	template <typename... ComponentTypes>
-	struct ComponentTypeList
-	{
-		using EntityType = _aoecs::entity_view<ComponentTypes...>;
-	};
-
 	// ReSharper disable once CppClassCanBeFinal
 	class world_data_provider
 	{

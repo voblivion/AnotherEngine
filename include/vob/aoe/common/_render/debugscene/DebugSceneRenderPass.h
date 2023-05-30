@@ -11,10 +11,6 @@ namespace vob::aoe::common
 {
 	class DebugSceneRenderPass
 	{
-		using CameramanComponents = aoecs::ComponentTypeList<
-			TransformComponent const
-			, CameraComponent const
-		>;
 	public:
 		// Constructor
 		explicit DebugSceneRenderPass(aoecs::world_data_provider& a_wdp)

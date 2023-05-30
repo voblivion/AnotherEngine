@@ -17,11 +17,6 @@ namespace vob::aoeac
 
 	struct test_end_life_action_system
 	{
-		using action_components = aoecs::ComponentTypeList<
-			aoe::common::TransformComponent const, action_component>;
-		using timed_components = aoecs::ComponentTypeList<
-			aoe::common::TransformComponent const, aoe::common::LifetimeComponent>;
-
 		explicit test_end_life_action_system(aoecs::world_data_provider& a_wdp)
 			: m_actions{ a_wdp }
 			, m_timedEntities{ a_wdp }

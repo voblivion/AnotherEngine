@@ -43,16 +43,6 @@ namespace vob::aoe::common
 {
 	class SimpleControllerSystem
 	{
-		using Components = aoecs::ComponentTypeList<
-			TransformComponent
-			, SimpleControllerComponent
-			, RigidBodyComponent
-			, HierarchyComponent const
-			, aoeac::actor_component const
-		>;
-		
-		using ActionComponents = aoecs::ComponentTypeList<aoeac::action_component>;
-
 	public:
 		explicit SimpleControllerSystem(aoecs::world_data_provider& a_wdp)
 			: m_mappedInputsComponent{ a_wdp.get_world_component<aoein::mapped_inputs_world_component const>() }
