@@ -13,7 +13,7 @@ namespace vob::aoe::common
 		TSceneShaderProgram const& a_sceneShaderProgram
 		, WorldWindowComponent const& a_worldWindowComponent
 		, DirectorComponent const& a_directorComponent
-		, _aoecs::entity_view_list<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
+		, aoecs::entity_map_observer_list_ref<TransformComponent const, CameraComponent const> const& a_cameramanEntityList
 	)
     {
 		if (!a_sceneShaderProgram.isReady())
@@ -24,12 +24,12 @@ namespace vob::aoe::common
 		a_sceneShaderProgram.use();
 
 		auto const cameramanEntity = a_cameramanEntityList.find(a_directorComponent.m_currentCamera);
-		if (cameramanEntity == nullptr)
+		if (cameramanEntity == a_cameramanEntityList.end())
 		{
 			return false;
 		}
-		auto const& transformComponent = cameramanEntity->get_component<TransformComponent>();
-		auto const& cameraComponent = cameramanEntity->get_component<CameraComponent>();
+		auto const& transformComponent = cameramanEntity->get<TransformComponent>();
+		auto const& cameraComponent = cameramanEntity->get<CameraComponent>();
 
 		auto const viewMatrix = transformComponent.m_matrix;
 		a_sceneShaderProgram.setUniform(

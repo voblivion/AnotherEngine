@@ -14,6 +14,11 @@ namespace vob::aoecs
 			: m_entities{ a_wdp.observe_entities<TComponents...>() }
 		{}
 
+		bool empty() const
+		{
+			return m_entities.empty();
+		}
+
 		auto begin() const
 		{
 			return m_entities.begin();

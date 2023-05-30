@@ -30,6 +30,11 @@ namespace vob::aoecs
 				return m_entityList.get().find_index(a_id);
 			}
 
+			auto get_id(std::size_t const a_index) const
+			{
+				return m_entityList.get().get_id(a_index);
+			}
+
 		private:
 			std::reference_wrapper<entity_list const> m_entityList;
 		};
@@ -200,6 +205,11 @@ namespace vob::aoecs
 				return a_lhs.m_index != a_rhs.m_index || a_lhs.m_listView != a_rhs.m_listView;
 			}
 
+			auto get_id() const
+			{
+				return m_listView->get_id(m_index);
+			}
+
 		private:
 			friend class const_iterator;
 
@@ -274,6 +284,11 @@ namespace vob::aoecs
 		const_iterator end() const
 		{
 			return{ 0, m_entityLists.data() + m_entityLists.size() };
+		}
+
+		bool empty() const
+		{
+			return m_entityLists.empty();
 		}
 
 		auto& get_entity_lists()

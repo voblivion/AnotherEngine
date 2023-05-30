@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vob/aoe/ecs/_entity_id.h>
+#include <vob/aoe/ecs/entity_list.h>
 
 
 namespace vob::aoe::common
 {
 	struct DirectorComponent final
 	{
-		_aoecs::entity_id m_currentCamera;
+		aoecs::entity_id m_currentCamera;
 	};
 }

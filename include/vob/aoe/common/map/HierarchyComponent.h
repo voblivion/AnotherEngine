@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/ecs/_entity_id.h>
+#include <vob/aoe/ecs/entity_list.h>
 
 #include <vector>
 
@@ -9,8 +9,8 @@ namespace vob::aoe::common
 	struct HierarchyComponent final
 	{
 		// Attributes
-		_aoecs::entity_id m_parent;
-		std::vector<_aoecs::entity_id> m_children;
+		aoecs::entity_id m_parent;
+		std::vector<aoecs::entity_id> m_children;
 	};
 }
 

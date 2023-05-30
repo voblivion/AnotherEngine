@@ -556,7 +556,7 @@ WindowInputSystem::WindowInputSystem(aoecs::world_data_provider& a_wdp)
 	: m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent>() }
 	, m_worldInputComponent{ a_wdp.get_world_component<WorldInputComponent>() }
 	, m_physicalInputsComponent{ a_wdp.get_world_component<aoein::physical_inputs_world_component>() }
-	, m_stopManager{ a_wdp.getStopManager() }
+	, m_stopManager{ a_wdp.get_stop_manager() }
 {}
 
 void WindowInputSystem::update() const

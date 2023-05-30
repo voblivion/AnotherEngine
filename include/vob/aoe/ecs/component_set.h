@@ -54,6 +54,13 @@ namespace vob::aoecs
 	class component_set
 	{
 	public:
+		component_set() = default;
+		~component_set() = default;
+		component_set(component_set const&) = delete;
+		component_set(component_set&&) = default;
+		component_set& operator=(component_set const&) = delete;
+		component_set& operator=(component_set&&) = default;
+
 		auto size() const
 		{
 			return m_components.size();

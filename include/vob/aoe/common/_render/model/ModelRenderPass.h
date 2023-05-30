@@ -1,5 +1,6 @@
 #pragma once
 #include <vob/aoe/ecs/world_data_provider.h>
+#include <vob/aoe/ecs/entity_map_observer_list_ref.h>
 
 #include <vob/aoe/common/_render/Cameracomponent.h>
 #include <vob/aoe/common/_render/Directorcomponent.h>
@@ -12,18 +13,12 @@
 // DEBUG
 #include <vob/aoe/common/input/WorldInputcomponent.h>
 
+#include <glm/glm.hpp>
+
 namespace vob::aoe::common
 {
 	class ModelRenderPass
 	{
-		using CameramanComponents = aoecs::ComponentTypeList<
-			TransformComponent const
-			, CameraComponent const
-		>;
-		using ModelComponents = aoecs::ComponentTypeList<
-			TransformComponent const
-			, ModelComponent const
-		>;
 	public:
 		// Constructor
 		explicit ModelRenderPass(aoecs::world_data_provider& a_wdp)
@@ -31,8 +26,8 @@ namespace vob::aoe::common
 			, m_modelRenderComponent{ a_wdp.get_world_component<ModelRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.get_world_component<DirectorComponent>() }
-			, m_cameramanEntityList{ a_wdp.get_old_entity_view_list(*this, CameramanComponents{}) }
-			, m_modelEntityList{ a_wdp.get_old_entity_view_list(*this, ModelComponents{}) }
+			, m_cameramanEntityList{ a_wdp }
+			, m_modelEntityList{ a_wdp }
 		{
 		}
 
@@ -80,8 +75,8 @@ namespace vob::aoe::common
 
 			for (auto const& modelEntity : m_modelEntityList)
 			{
-				auto const& modelTransformComponent = modelEntity.get_component<TransformComponent>();
-				auto const& modelModelComponent = modelEntity.get_component<ModelComponent>();
+				auto const& modelTransformComponent = modelEntity.get<TransformComponent>();
+				auto const& modelModelComponent = modelEntity.get<ModelComponent>();
 
 				if (modelModelComponent.m_model == nullptr || !(*modelModelComponent.m_model)->isReady())
 				{
@@ -141,8 +136,8 @@ namespace vob::aoe::common
 		ModelRenderComponent& m_modelRenderComponent;
 		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
-		_aoecs::entity_view_list<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
-		_aoecs::entity_view_list<TransformComponent const, ModelComponent const> const& m_modelEntityList;
+		aoecs::entity_map_observer_list_ref<TransformComponent const, CameraComponent const> m_cameramanEntityList;
+		aoecs::entity_map_observer_list_ref<TransformComponent const, ModelComponent const> m_modelEntityList;
 
 		// DEBUG
 		mutable float t = 0;

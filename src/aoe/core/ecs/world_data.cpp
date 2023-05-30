@@ -13,7 +13,6 @@ namespace vob::aoecs
 
 	void world_data::update()
 	{
-		m_oldEntityManager.update();
 		m_entityManager.update();
 	}
 }

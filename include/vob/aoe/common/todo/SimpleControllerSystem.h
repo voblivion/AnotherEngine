@@ -22,6 +22,8 @@
 #include <vob/aoe/actor/actor_component.h>
 
 #include <vob/aoe/ecs/world_data_provider.h>
+#include <vob/aoe/ecs/entity_manager.h>
+#include <vob/aoe/ecs/entity_map_observer_list_ref.h>
 
 #include <vob/misc/std/polymorphic_ptr_util.h>
 
@@ -57,13 +59,11 @@ namespace vob::aoe::common
 			, m_worldCursor{ a_wdp.get_world_component<WorldCursorComponent>() }
 			, m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent const>() }
 			, m_worldPhysicComponent{ a_wdp.get_world_component<WorldPhysicComponent>() }
-			, m_entities{ a_wdp.get_old_entity_view_list(*this, Components{}) }
-			, m_heads{
-				a_wdp.get_old_entity_view_list<SimpleControllerSystem, HierarchyComponent const, LocalTransformComponent>(
-					*this) }
+			, m_entities{ a_wdp }
+			, m_heads{ a_wdp }
 			, m_debugSceneRenderComponent{ a_wdp.get_world_component<DebugSceneRenderComponent>() }
-			, m_actions{ a_wdp.get_old_entity_view_list(*this, ActionComponents{}) }
-			, m_spawnManager{ a_wdp.get_old_spawn_manager() }
+			, m_actions{ a_wdp }
+			, m_spawnManager{ a_wdp.get_spawner() }
 		{
 			auto& mapping = a_wdp.get_world_component<aoein::mapped_inputs_world_component>();
 
@@ -121,13 +121,13 @@ namespace vob::aoe::common
 		{
 			for (auto const& entity : m_entities)
 			{
-				auto& transform = entity.get_component<TransformComponent>();
+				auto& transform = entity.get<TransformComponent>();
 
 
-				auto& simpleController = entity.get_component<SimpleControllerComponent>();
-				auto& rigidBody = entity.get_component<RigidBodyComponent>();
+				auto& simpleController = entity.get<SimpleControllerComponent>();
+				auto& rigidBody = entity.get<RigidBodyComponent>();
 
-				auto const& interactor = entity.get_component<aoeac::actor_component>();
+				auto const& interactor = entity.get<aoeac::actor_component>();
 
 				m_debugSceneRenderComponent.m_debugMesh.addLine(
 					DebugVertex{ transform.m_matrix[3], glm::vec3{1.0f, 0.0f, 0.0f} }
@@ -248,23 +248,29 @@ namespace vob::aoe::common
 					if (m_worldTimeComponent.m_frameStartTime - simpleController.m_lastBulletTime > Duration{ 0.1f })
 					{
 						assert(simpleController.m_bullet != nullptr);
-						auto t_bullet = *simpleController.m_bullet;
+						auto& t_bullet = *simpleController.m_bullet;
 
-						// Initial velocity
-						auto const t_rigidBody = t_bullet.get_component<RigidBodyComponent>();
 						glm::vec3 t_localVelocity{ 0.0f, 0.0f, -8.0f };
-						t_rigidBody->m_linearVelocity = glm::vec3{
+						auto const nextBulletVelocity = glm::vec3{
 							glm::quat{ simpleController.m_orientation }
-							* glm::quat{ simpleController.m_headOrientation}
-							* glm::vec4{ t_localVelocity, 1.0f }
+							*glm::quat{ simpleController.m_headOrientation}
+							*glm::vec4{ t_localVelocity, 1.0f }
+						};
+						auto const nextBulletMatrix = glm::translate(
+							transform.m_matrix, glm::vec3{ 0.0f, 1.5f, 0.0f } + m_nextBulletVelocity / 10.0f);
+
+						m_bulletSpawnCallback = [nextBulletVelocity, nextBulletMatrix](aoecs::entity_list::entity_view& a_bullet)
+						{
+							// Initial velocity
+							auto const t_rigidBody = a_bullet.get_component<RigidBodyComponent>();
+							t_rigidBody->m_linearVelocity = nextBulletVelocity;
+
+							// Initial position
+							auto const t_transform = a_bullet.get_component<TransformComponent>();
+							t_transform->m_matrix = nextBulletMatrix;
 						};
 
-						// Initial position
-						auto const t_transform = t_bullet.get_component<TransformComponent>();
-						t_transform->m_matrix = glm::translate(transform.m_matrix, glm::vec3{ 0.0f, 1.5f, 0.0f });
-						t_transform->m_matrix = glm::translate(t_transform->m_matrix, t_rigidBody->m_linearVelocity / 10.0f);
-
-						m_spawnManager.spawn(std::move(t_bullet));
+						m_spawnManager.spawn(std::move(t_bullet), &m_bulletSpawnCallback);
 						simpleController.m_lastBulletTime = m_worldTimeComponent.m_frameStartTime;
 					}
 				}
@@ -276,10 +282,10 @@ namespace vob::aoe::common
 				auto const& interact = m_mappedInputsComponent.m_switches[m_interactMapping];
 				if (interact->changed() && !interactor.m_actions.empty())
 				{
-					auto const* actionEntity = m_actions.find(interactor.m_actions[0]);
-					if (actionEntity != nullptr)
+					auto const actionEntity = m_actions.find(interactor.m_actions[0]);
+					if (actionEntity != m_actions.end())
 					{
-						auto& action = actionEntity->get_component<aoeac::action_component>();
+						auto& action = actionEntity->get<aoeac::action_component>();
 						if (interact->is_pressed())
 						{
 							action.m_isInteracting = true;
@@ -310,13 +316,13 @@ namespace vob::aoe::common
 					headEuler.x += m_worldTimeComponent.m_elapsedTime.get_value()
 						* -m_mappedInputsComponent.m_axes[m_verticalViewMapping]->get_value() * 2;
 
-					auto& hierarchy = entity.get_component<HierarchyComponent>();
+					auto& hierarchy = entity.get<HierarchyComponent>();
 					if (!hierarchy.m_children.empty())
 					{
 						auto head = m_heads.find(hierarchy.m_children[0]);
-						if (head != nullptr)
+						if (head != m_heads.end())
 						{
-							auto& localTransform = head->get_component<LocalTransformComponent>();
+							auto& localTransform = head->get<LocalTransformComponent>();
 							setRotation(localTransform.m_matrix, glm::quat{ headEuler });
 						}
 					}
@@ -344,6 +350,10 @@ namespace vob::aoe::common
 		}
 
 	private:
+		mutable aoecs::entity_map::create_callback m_bulletSpawnCallback;
+
+		mutable glm::vec3 m_nextBulletVelocity;
+		mutable glm::mat4 m_nextBulletMatrix;
 
 		std::size_t m_lateralMoveMapping;
 		std::size_t m_longitudinalMoveMapping;
@@ -363,15 +373,15 @@ namespace vob::aoe::common
 		WorldPhysicComponent& m_worldPhysicComponent;
 		// TMP
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
-		_aoecs::entity_view_list<
+		aoecs::entity_map_observer_list_ref <
 			TransformComponent
 			, SimpleControllerComponent
 			, RigidBodyComponent
 			, HierarchyComponent const
 			, aoeac::actor_component const
-		> const& m_entities;
-		_aoecs::entity_view_list<HierarchyComponent const, LocalTransformComponent> const& m_heads;
-		_aoecs::entity_view_list<aoeac::action_component> const& m_actions;
-		_aoecs::spawn_manager& m_spawnManager;
+		> m_entities;
+		aoecs::entity_map_observer_list_ref<HierarchyComponent const, LocalTransformComponent> m_heads;
+		aoecs::entity_map_observer_list_ref<aoeac::action_component> m_actions;
+		aoecs::entity_manager::spawner& m_spawnManager;
 	};
 }

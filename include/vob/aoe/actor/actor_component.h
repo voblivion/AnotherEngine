@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/ecs/_entity_id.h>
+#include <vob/aoe/ecs/entity_list.h>
 
 #include <vector>
 
@@ -18,7 +18,7 @@ namespace vob::aoeac
 		std::vector<waypoint> m_waypoints;
 
 		// actions ?
-		std::vector<_aoecs::entity_id> m_actions;
+		std::vector<aoecs::entity_id> m_actions;
 	};
 }
 

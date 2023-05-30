@@ -20,7 +20,7 @@ namespace vob::aoe::common
 			: m_guiRenderComponent{ a_wdp.get_world_component<GuiRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent const>() }
 			, m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent const>() }
-			, m_canvasEntityList{ a_wdp.get_old_entity_view_list(*this, CanvasComponents{}) }
+			, m_canvasEntityList{ a_wdp }
 		{}
 
 		// Methods
@@ -61,7 +61,7 @@ namespace vob::aoe::common
 
 			for (auto const canvas : m_canvasEntityList)
 			{
-				auto& canvasComponent = canvas.get_component<CanvasComponent>();
+				auto& canvasComponent = canvas.get<CanvasComponent>();
 				if (canvasComponent.m_rootElement != nullptr)
 				{
 					for (auto const& event : window.getPolledEvents())
@@ -86,6 +86,6 @@ namespace vob::aoe::common
 		GuiRenderComponent& m_guiRenderComponent;
 		WorldWindowComponent const& m_worldWindowComponent;
 		WorldTimeComponent const& m_worldTimeComponent;
-		_aoecs::entity_view_list<CanvasComponent> const& m_canvasEntityList;
+		aoecs::entity_map_observer_list_ref<CanvasComponent> m_canvasEntityList;
 	};
 }

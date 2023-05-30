@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vob/aoe/ecs/world_data_provider.h>
+#include <vob/aoe/ecs/entity_map_observer_list_ref.h>
 #include <vob/aoe/common/physic/CharacterControllercomponent.h>
 #include <vob/aoe/common/physic/RigidBodycomponent.h>
 #include <vob/aoe/common/physic/WorldPhysiccomponent.h>
@@ -77,15 +78,6 @@ namespace vob::aoe::common
 
 	struct PhysicSystem
 	{
-		using RigidBodyComponents = aoecs::ComponentTypeList<
-			TransformComponent
-			, RigidBodyComponent
-		>;
-		using CharacterComponents = aoecs::ComponentTypeList<
-			TransformComponent
-			, CharacterControllerComponent
-		>;
-			
 		explicit PhysicSystem(aoecs::world_data_provider& a_wdp)
 			: m_worldPhysicComponent{
 				a_wdp.get_world_component<WorldPhysicComponent>() }
@@ -93,10 +85,8 @@ namespace vob::aoe::common
 				a_wdp.get_world_component<WorldTimeComponent>() }
 			, m_debugSceneRenderComponent{
 				a_wdp.get_world_component<DebugSceneRenderComponent>() }
-			, m_rigidBodyEntities{
-				a_wdp.get_old_entity_view_list(*this, RigidBodyComponents{}) }
-			, m_characterEntities{
-				a_wdp.get_old_entity_view_list(*this, CharacterComponents{}) }
+			, m_rigidBodyEntities{ a_wdp }
+			, m_characterEntities{ a_wdp }
 		{}
 
 		void update() const
@@ -110,8 +100,8 @@ namespace vob::aoe::common
 
 				for (auto& t_rigidBodyEntity : m_rigidBodyEntities)
 				{
-					auto& t_transform = t_rigidBodyEntity.get_component<TransformComponent>();
-					auto& t_rigidBody = t_rigidBodyEntity.get_component<RigidBodyComponent>();
+					auto& t_transform = t_rigidBodyEntity.get<TransformComponent>();
+					auto& t_rigidBody = t_rigidBodyEntity.get<RigidBodyComponent>();
 
 					auto t_matrix = btTransform{};
 					t_rigidBody.m_motionState->getWorldTransform(t_matrix);
@@ -244,13 +234,13 @@ namespace vob::aoe::common
 		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
-		_aoecs::entity_view_list<
+		aoecs::entity_map_observer_list_ref<
 			TransformComponent
 			, RigidBodyComponent
-		> const& m_rigidBodyEntities;
-		_aoecs::entity_view_list<
+		> m_rigidBodyEntities;
+		aoecs::entity_map_observer_list_ref<
 			TransformComponent
 			, CharacterControllerComponent
-		> const& m_characterEntities;
+		> m_characterEntities;
 	};
 }

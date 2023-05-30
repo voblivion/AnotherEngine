@@ -21,7 +21,6 @@ namespace vob::aoecs
 		// Attributes
 		stop_manager m_stopManager;
 		component_set m_worldComponents;
-		_aoecs::entity_manager m_oldEntityManager;
 		entity_manager m_entityManager;
 	};
 }

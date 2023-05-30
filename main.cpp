@@ -410,7 +410,7 @@ std::unique_ptr<aoecs::world> createGameWorld(
 	return std::move(world);
 }
 
-void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::world& a_world)
+/* void initGameWorldGuiMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
     auto& cloner = a_data.dynamicTypeCloner;
     auto& database = a_data.database;
@@ -548,17 +548,17 @@ void initOldGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 				auto n1 = n(p1, p10, p3, p0, p13);
 				auto n2 = n(p2, p3, p20, p23, p0);
 				auto n3 = n(p3, p32, p31, p2, p1);
-				/*n0 = glm::normalize(f(p1, p2, p01) + f(p01, p02, p1));
-				n0 = glm::normalize(f(p10, p3, p0) + f(p0, p13, p10));
-				n0 = glm::normalize(f(p3, p20, p23) + f(p23, p0, p3));
-				n0 = glm::normalize(f(p32, p31, p2) + f(p2, p1, p32));
+				//n0 = glm::normalize(f(p1, p2, p01) + f(p01, p02, p1));
+				//n0 = glm::normalize(f(p10, p3, p0) + f(p0, p13, p10));
+				//n0 = glm::normalize(f(p3, p20, p23) + f(p23, p0, p3));
+				//n0 = glm::normalize(f(p32, p31, p2) + f(p2, p1, p32));
 
-				n1 = f(p1, p3, p0);
-				n2 = f(p3, p2, p1);
-				n3 = f(p2, p0, p3);
-				n1 = n0;
-				n2 = n0;
-				n3 = n0;*/
+				//n1 = f(p1, p3, p0);
+				//n2 = f(p3, p2, p1);
+				//n3 = f(p2, p0, p3);
+				//n1 = n0;
+				//n2 = n0;
+				//n3 = n0;
 
 				auto tc0 = glm::vec2{ 0.0f, 0.0f };
 				auto tc1 = glm::vec2{ 0.0f, 1.0f };
@@ -592,7 +592,7 @@ void initOldGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 
 		oldSystemSpawnManager.spawn(std::move(ground));
 	}
-}
+} */
 
 void initGameWorldDefaultMap(aoe::DataHolder& a_data, aoecs::world& a_world)
 {
@@ -683,7 +683,7 @@ int main()
 		auto gameWorld = createGameWorld(data, window);
 
 		// Init old game world with default map
-		initOldGameWorldDefaultMap(data, *gameWorld);
+		// initOldGameWorldDefaultMap(data, *gameWorld);
 		initGameWorldDefaultMap(data, *gameWorld);
 		// initGameWorldGuiMap(data, *gameWorld);
 

@@ -21,7 +21,7 @@ namespace vob::aoe::common
 			: m_debugSceneRenderComponent{ a_wdp.get_world_component<DebugSceneRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent>() }
 			, m_directorComponent{ a_wdp.get_world_component<DirectorComponent>() }
-			, m_cameramanEntityList{ a_wdp.get_old_entity_view_list(*this, CameramanComponents{}) }
+			, m_cameramanEntityList{ a_wdp }
 		{}
 
 		// Methods
@@ -59,7 +59,7 @@ namespace vob::aoe::common
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 		WorldWindowComponent& m_worldWindowComponent;
 		DirectorComponent& m_directorComponent;
-		_aoecs::entity_view_list<TransformComponent const, CameraComponent const> const& m_cameramanEntityList;
+		aoecs::entity_map_observer_list_ref<TransformComponent const, CameraComponent const> m_cameramanEntityList;
 	};
 
 }

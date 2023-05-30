@@ -17,6 +17,23 @@ namespace vob::aoecs
 	class entity_list
 	{
 	public:
+		explicit entity_list(
+			component_list_factory const& a_componentListFactory, archetype const& a_archetype)
+		{
+			m_componentLists.reserve(a_archetype.size());
+			for (auto const& type : a_archetype)
+			{
+				auto componentList = a_componentListFactory.create(type);
+				assert(componentList != nullptr);
+				m_componentLists.emplace(type, std::move(componentList));
+			}
+		}
+
+		auto get_id(std::size_t const a_index) const
+		{
+			return m_ids[a_index];
+		}
+
 		class entity_view
 		{
 		public:
@@ -38,22 +55,15 @@ namespace vob::aoecs
 				return &(componentList->at(m_index));
 			}
 
+			auto get_id() const
+			{
+				return m_list.get().get_id(m_index);
+			}
+
 		private:
 			std::reference_wrapper<entity_list const> m_list;
 			std::size_t m_index;
 		};
-
-		explicit entity_list(
-			component_list_factory const& a_componentListFactory, archetype const& a_archetype)
-		{
-			m_componentLists.reserve(a_archetype.size());
-			for (auto const& type : a_archetype)
-			{
-				auto componentList = a_componentListFactory.create(type);
-				assert(componentList != nullptr);
-				m_componentLists.emplace(type, std::move(componentList));
-			}
-		}
 
 		entity_view add(entity_id a_id, component_set const& a_componentSet)
 		{

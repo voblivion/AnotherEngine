@@ -16,7 +16,7 @@ namespace vob::aoe::common
 		// Attributes
 		glm::vec3 m_orientation{ 0.0f };
 		glm::vec3 m_headOrientation{ 0.0f };
-		std::shared_ptr<_aoecs::component_manager const> m_bullet;
+		std::shared_ptr<aoecs::component_set const> m_bullet;
 		TimePoint m_lastBulletTime{};
 		float m_fallVelocity = 0.0f;
 		TimePoint m_lastJumpTime{};
