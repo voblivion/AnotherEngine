@@ -4,6 +4,8 @@
 
 #include <glm/glm.hpp>
 
+#include <vob/misc/std/message_macros.h>
+
 
 namespace vob::aoegl
 {
@@ -23,7 +25,7 @@ namespace vob::aoegl
 	using rgb = color<3>;
 	using rgba = color<4>;
 
-#pragma message("TODO glm cannot use constexpr...")
+#pragma message(VOB_MISTD_TODO "glm cannot use constexpr...")
 	static const rgba k_white = rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
 	static const rgba k_black = rgba{ 0.0f, 0.0f, 0.0f, 1.0f };
 	static const rgba k_red = rgba{ 1.0f, 0.0f, 0.0f, 1.0f };

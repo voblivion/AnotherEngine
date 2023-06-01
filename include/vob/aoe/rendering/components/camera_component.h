@@ -2,12 +2,14 @@
 
 #include <vob/misc/visitor/macros.h>
 
+#include <vob/misc/std/message_macros.h>
+
 
 namespace vob::aoegl
 {
 	struct camera_component final
 	{
-#pragma message("TODO fov stored in degree but loaded in radians?")
+#pragma message(VOB_MISTD_TODO "fov stored in degree but loaded in radians?")
 		float m_fovDegree{ 70.0f };
 		float m_nearClip{ 0.1f };
 		float m_farClip{ 1000.0f };

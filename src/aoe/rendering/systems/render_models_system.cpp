@@ -8,6 +8,7 @@
 #endif
 
 #include <vob/misc/physics/measure_literals.h>
+#include <vob/misc/std/message_macros.h>
 
 #include <numbers>
 
@@ -18,7 +19,7 @@ namespace vob::aoegl
 {
 	namespace
 	{
-#pragma message("TODO: code duplicate")
+#pragma message(VOB_MISTD_TODO "code duplicate")
 		template <typename TDirectorWorldComponent, typename TCameraEntities>
 		auto get_camera_settings(
 			TDirectorWorldComponent const& a_directorWorldComponent,

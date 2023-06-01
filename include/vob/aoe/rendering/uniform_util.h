@@ -3,6 +3,8 @@
 #include <vob/aoe/rendering/color.h>
 #include <vob/aoe/rendering/graphic_types.h>
 
+#include <vob/misc/std/message_macros.h>
+
 #include <glm/gtc/type_ptr.hpp>
 
 #include <span>
@@ -184,7 +186,7 @@ namespace vob::aoegl::uniform_util
 		glUniform4ui(a_uniformLocation, a_vector.x, a_vector.y, a_vector.z, a_vector.w);
 	}
 
-#pragma message("TODO: add v versions? other matrix versions?")
+#pragma message(VOB_MISTD_TODO "add v versions? other matrix versions?")
 
 	template <glm::qualifier t_qualifier>
 	inline void set(

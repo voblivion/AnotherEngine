@@ -164,7 +164,6 @@ namespace vob::aoecs
 		template <typename TObserver>
 		void observe_spawns(TObserver& a_observer)
 		{
-#pragma message("TODO use pmr allocator")
 			m_spawnObservers.push_back(
 				mistd::polymorphic_ptr_util::make<detail::spawn_observer<TObserver>>(
 					a_observer));
@@ -173,7 +172,6 @@ namespace vob::aoecs
 		template <typename TObserver>
 		void observe_despawns(TObserver& a_observer)
 		{
-#pragma message("TODO use pmr allocator")
 			m_despawnObservers.push_back(
 				mistd::polymorphic_ptr_util::make<detail::despawn_observer<TObserver>>(
 					a_observer));

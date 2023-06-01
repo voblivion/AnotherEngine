@@ -7,12 +7,13 @@
 #include <vob/aoe/common/serialization/FileSystemVisitorContext.h>
 
 #include <vob/misc/visitor/applicator.h>
+#include <vob/misc/std/message_macros.h>
 
 #include <bullet/BulletCollision/CollisionShapes/btCollisionShape.h>
 
 namespace vob::aoe::common
 {
-#pragma message("TODO Should be removed, probably no need for VisitorLoader<json_visitor_loader<context>>")
+#pragma message(VOB_MISTD_TODO "Should be removed, probably no need for VisitorLoader<json_visitor_loader<context>>")
 	template <typename TVisitor, typename TCanLoad>
 	class VisitorLoader final
 		: public AFileSystemLoader
