@@ -7,7 +7,6 @@
 #include "DataHolder.h"
 #include "vob/aoe/common/window/WorldWindowcomponent.h"
 #include "vob/aoe/common/time/WorldTimecomponent.h"
-#include "vob/aoe/common/input/WorldInputcomponent.h"
 #include "vob/aoe/common/window/WorldCursorcomponent.h"
 #include "vob/aoe/common/_render/Directorcomponent.h"
 #include "vob/aoe/common/physic/WorldPhysiccomponent.h"
@@ -18,7 +17,6 @@
 #include "vob/aoe/common/_render/RenderSystem.h"
 #include "vob/aoe/common/time/TimeSystem.h"
 #include "vob/aoe/common/window/WindowCursorSystem.h"
-#include "vob/aoe/common/window/WindowInputSystem.h"
 #include "vob/aoe/common/todo/SimpleControllerSystem.h"
 #include "vob/aoe/common/_render/DefaultDirectorSystem.h"
 #include "vob/aoe/common/time/LifetimeSystem.h"
@@ -35,12 +33,10 @@
 
 #include <vob/aoe/engine/world.h>
 
-#include <vob/aoe/input/mapped_inputs_world_component.h>
-#include <vob/aoe/input/physical_inputs_world_component.h>
-#include <vob/aoe/input/mapped_inputs_system.h>
-#include <vob/aoe/input/mouse_move_axis_mapping.h>
-#include <vob/aoe/input/double_switch_axis_mapping.h>
-#include <vob/aoe/input/shortcut_util.h>
+#include <vob/aoe/input/bindings.h>
+#include <vob/aoe/input/binding_system.h>
+#include <vob/aoe/input/binding_util.h>
+#include <vob/aoe/input/inputs.h>
 
 #include <vob/aoe/physics/physic_system.h>
 
@@ -204,35 +200,27 @@ void setup_world_components(
 		assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 	}
 
-	a_componentSet.add<aoein::physical_inputs_world_component>();
-	aoein::mapped_inputs_world_component& mappedInputWorldComponent = a_componentSet.add<aoein::mapped_inputs_world_component>();
+	a_componentSet.add<aoein::inputs>();
+	aoein::bindings& bindings = a_componentSet.add<aoein::bindings>();
 	aoedb::debug_controller_world_component& debugControllerWorldComponent = a_componentSet.add<aoedb::debug_controller_world_component>();
 	{
-		debugControllerWorldComponent.m_yawMapping = mappedInputWorldComponent.m_axes.size();
-		mappedInputWorldComponent.m_axes.emplace_back(
-			mistd::polymorphic_ptr_util::make<aoein::mouse_move_axis_mapping>(
-			aoein::mouse_move_axis_reference{ aoein::mouse::axis::X }, 1.0f));
-
-		debugControllerWorldComponent.m_pitchMapping = mappedInputWorldComponent.m_axes.size();
-		mappedInputWorldComponent.m_axes.emplace_back(
-			mistd::polymorphic_ptr_util::make<aoein::mouse_move_axis_mapping>(
-				aoein::mouse_move_axis_reference{ aoein::mouse::axis::Y }, 1.0f));
-
-		debugControllerWorldComponent.m_enableViewMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::mouse::button::Right));
-
-		debugControllerWorldComponent.m_lateralMoveMapping = mappedInputWorldComponent.m_axes.size();
-		mappedInputWorldComponent.m_axes.emplace_back(
-			aoein::shortcut_util::make_axis(aoein::keyboard::key::S, aoein::keyboard::key::F));
-
-		debugControllerWorldComponent.m_longitudinalMoveMapping = mappedInputWorldComponent.m_axes.size();
-		mappedInputWorldComponent.m_axes.emplace_back(
-			aoein::shortcut_util::make_axis(aoein::keyboard::key::E, aoein::keyboard::key::D));
+		debugControllerWorldComponent.m_yawMapping = bindings.axes.add(
+			aoein::binding_util::make_derived_axis(aoein::mouse::axis::X, 0.0001f));
 		
-		debugControllerWorldComponent.m_verticalMoveMapping = mappedInputWorldComponent.m_axes.size();
-		mappedInputWorldComponent.m_axes.emplace_back(
-			aoein::shortcut_util::make_axis(aoein::keyboard::key::Space, aoein::keyboard::key::LBracket));
+		debugControllerWorldComponent.m_pitchMapping = bindings.axes.add(
+			aoein::binding_util::make_derived_axis(aoein::mouse::axis::Y, 0.0001f));
+
+		debugControllerWorldComponent.m_enableViewMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::mouse::button::Right));
+
+		debugControllerWorldComponent.m_lateralMoveMapping = bindings.axes.add(
+			aoein::binding_util::make_axis(aoein::keyboard::key::S, aoein::keyboard::key::F));
+
+		debugControllerWorldComponent.m_longitudinalMoveMapping = bindings.axes.add(
+			aoein::binding_util::make_axis(aoein::keyboard::key::E, aoein::keyboard::key::D));
+
+		debugControllerWorldComponent.m_verticalMoveMapping = bindings.axes.add(
+			aoein::binding_util::make_axis(aoein::keyboard::key::Space, aoein::keyboard::key::LBracket));
 
 		std::vector<aoein::keyboard::key> toggleKeys = {
 			aoein::keyboard::key::Num6,
@@ -261,21 +249,20 @@ void setup_world_components(
 			aoein::keyboard::key::Slash };
 
 
-		debugControllerWorldComponent.m_terrainSizeUpMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::keyboard::key::RShift));
-		debugControllerWorldComponent.m_terrainSizeDownMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::keyboard::key::Quote));
-		debugControllerWorldComponent.m_terrainCellSizeUpMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::keyboard::key::LShift));
-		debugControllerWorldComponent.m_terrainCellSizeDownMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::keyboard::key::LControl));
-		debugControllerWorldComponent.m_terrainUseSmoothShadingMapping = mappedInputWorldComponent.m_switches.size();
-		mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-			aoein::keyboard::key::RBracket));
+		debugControllerWorldComponent.m_terrainSizeUpMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::keyboard::key::RShift));
+
+		debugControllerWorldComponent.m_terrainSizeDownMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::keyboard::key::Quote));
+
+		debugControllerWorldComponent.m_terrainCellSizeUpMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::keyboard::key::LShift));
+
+		debugControllerWorldComponent.m_terrainCellSizeDownMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::keyboard::key::LControl));
+
+		debugControllerWorldComponent.m_terrainUseSmoothShadingMapping = bindings.switches.add(
+			aoein::binding_util::make_switch(aoein::keyboard::key::RBracket));
 
 		for (int i = 0; i < 4; ++i)
 		{
@@ -285,16 +272,11 @@ void setup_world_components(
 			layer.m_height = 8.0f * std::powf(0.33f, 0.0f + i);
 			layer.m_offset = glm::vec2{ 1.0f } * (i * layer.m_frequency) * 256.0f;
 
-			layer.m_toggleMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(toggleKeys[i]));
-			layer.m_frequencyUpMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(frequencyUpKeys[i]));
-			layer.m_frequencyDownMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(frequencyDownKeys[i]));
-			layer.m_heightUpMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(heightUpKeys[i]));
-			layer.m_heightDownMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(heightDownKeys[i]));
+			layer.m_toggleMapping = bindings.switches.add(aoein::binding_util::make_switch(toggleKeys[i]));
+			layer.m_frequencyUpMapping = bindings.switches.add(aoein::binding_util::make_switch(frequencyUpKeys[i]));
+			layer.m_frequencyDownMapping = bindings.switches.add(aoein::binding_util::make_switch(frequencyDownKeys[i]));
+			layer.m_heightUpMapping = bindings.switches.add(aoein::binding_util::make_switch(heightUpKeys[i]));
+			layer.m_heightDownMapping = bindings.switches.add(aoein::binding_util::make_switch(heightDownKeys[i]));
 		}
 	}
 
@@ -404,35 +386,27 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 			assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 		}
 
-		a_world.add_world_component<aoein::physical_inputs_world_component>();
-		aoein::mapped_inputs_world_component& mappedInputWorldComponent = a_world.add_world_component<aoein::mapped_inputs_world_component>();
+		a_world.add_world_component<aoein::inputs>();
+		aoein::bindings& bindings = a_world.add_world_component<aoein::bindings>();
 		aoedb::debug_controller_world_component& debugControllerWorldComponent = a_world.add_world_component<aoedb::debug_controller_world_component>();
 		{
-			debugControllerWorldComponent.m_yawMapping = mappedInputWorldComponent.m_axes.size();
-			mappedInputWorldComponent.m_axes.emplace_back(
-				mistd::polymorphic_ptr_util::make<aoein::mouse_move_axis_mapping>(
-					aoein::mouse_move_axis_reference{ aoein::mouse::axis::X }, 1.0f));
+			debugControllerWorldComponent.m_yawMapping = bindings.axes.add(
+				aoein::binding_util::make_derived_axis(aoein::mouse::axis::X, 0.0001f));
 
-			debugControllerWorldComponent.m_pitchMapping = mappedInputWorldComponent.m_axes.size();
-			mappedInputWorldComponent.m_axes.emplace_back(
-				mistd::polymorphic_ptr_util::make<aoein::mouse_move_axis_mapping>(
-					aoein::mouse_move_axis_reference{ aoein::mouse::axis::Y }, 1.0f));
+			debugControllerWorldComponent.m_pitchMapping = bindings.axes.add(
+				aoein::binding_util::make_derived_axis(aoein::mouse::axis::Y, 0.0001f));
 
-			debugControllerWorldComponent.m_enableViewMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::mouse::button::Right));
+			debugControllerWorldComponent.m_enableViewMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::mouse::button::Right));
 
-			debugControllerWorldComponent.m_lateralMoveMapping = mappedInputWorldComponent.m_axes.size();
-			mappedInputWorldComponent.m_axes.emplace_back(
-				aoein::shortcut_util::make_axis(aoein::keyboard::key::S, aoein::keyboard::key::F));
+			debugControllerWorldComponent.m_lateralMoveMapping = bindings.axes.add(
+				aoein::binding_util::make_axis(aoein::keyboard::key::S, aoein::keyboard::key::F));
 
-			debugControllerWorldComponent.m_longitudinalMoveMapping = mappedInputWorldComponent.m_axes.size();
-			mappedInputWorldComponent.m_axes.emplace_back(
-				aoein::shortcut_util::make_axis(aoein::keyboard::key::E, aoein::keyboard::key::D));
+			debugControllerWorldComponent.m_longitudinalMoveMapping = bindings.axes.add(
+				aoein::binding_util::make_axis(aoein::keyboard::key::E, aoein::keyboard::key::D));
 
-			debugControllerWorldComponent.m_verticalMoveMapping = mappedInputWorldComponent.m_axes.size();
-			mappedInputWorldComponent.m_axes.emplace_back(
-				aoein::shortcut_util::make_axis(aoein::keyboard::key::Space, aoein::keyboard::key::LBracket));
+			debugControllerWorldComponent.m_verticalMoveMapping = bindings.axes.add(
+				aoein::binding_util::make_axis(aoein::keyboard::key::Space, aoein::keyboard::key::LBracket));
 
 			std::vector<aoein::keyboard::key> toggleKeys = {
 				aoein::keyboard::key::Num6,
@@ -461,21 +435,20 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 				aoein::keyboard::key::Slash };
 
 
-			debugControllerWorldComponent.m_terrainSizeUpMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::keyboard::key::RShift));
-			debugControllerWorldComponent.m_terrainSizeDownMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::keyboard::key::Quote));
-			debugControllerWorldComponent.m_terrainCellSizeUpMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::keyboard::key::LShift));
-			debugControllerWorldComponent.m_terrainCellSizeDownMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::keyboard::key::LControl));
-			debugControllerWorldComponent.m_terrainUseSmoothShadingMapping = mappedInputWorldComponent.m_switches.size();
-			mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(
-				aoein::keyboard::key::RBracket));
+			debugControllerWorldComponent.m_terrainSizeUpMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::RShift));
+
+			debugControllerWorldComponent.m_terrainSizeDownMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::Quote));
+
+			debugControllerWorldComponent.m_terrainCellSizeUpMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::LShift));
+
+			debugControllerWorldComponent.m_terrainCellSizeDownMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::LControl));
+
+			debugControllerWorldComponent.m_terrainUseSmoothShadingMapping = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::RBracket));
 
 			for (int i = 0; i < 4; ++i)
 			{
@@ -485,16 +458,11 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 				layer.m_height = 8.0f * std::powf(0.33f, 0.0f + i);
 				layer.m_offset = glm::vec2{ 1.0f } *(i * layer.m_frequency) * 256.0f;
 
-				layer.m_toggleMapping = mappedInputWorldComponent.m_switches.size();
-				mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(toggleKeys[i]));
-				layer.m_frequencyUpMapping = mappedInputWorldComponent.m_switches.size();
-				mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(frequencyUpKeys[i]));
-				layer.m_frequencyDownMapping = mappedInputWorldComponent.m_switches.size();
-				mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(frequencyDownKeys[i]));
-				layer.m_heightUpMapping = mappedInputWorldComponent.m_switches.size();
-				mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(heightUpKeys[i]));
-				layer.m_heightDownMapping = mappedInputWorldComponent.m_switches.size();
-				mappedInputWorldComponent.m_switches.emplace_back(aoein::shortcut_util::make_switch(heightDownKeys[i]));
+				layer.m_toggleMapping = bindings.switches.add(aoein::binding_util::make_switch(toggleKeys[i]));
+				layer.m_frequencyUpMapping = bindings.switches.add(aoein::binding_util::make_switch(frequencyUpKeys[i]));
+				layer.m_frequencyDownMapping = bindings.switches.add(aoein::binding_util::make_switch(frequencyDownKeys[i]));
+				layer.m_heightUpMapping = bindings.switches.add(aoein::binding_util::make_switch(heightUpKeys[i]));
+				layer.m_heightDownMapping = bindings.switches.add(aoein::binding_util::make_switch(heightDownKeys[i]));
 			}
 		}
 
@@ -511,7 +479,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 
 		auto const pollEventsSystemId = a_world.add_system<aoewi::poll_events_system>();
 		auto const windowInputSystemId = a_world.add_system<aoewi::window_input_system>();
-		auto const mappedInputsSystemId = a_world.add_system<aoein::mapped_input_system>();
+		auto const bindingSystemId = a_world.add_system<aoein::binding_system>();
 		auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
 		auto const physicSystemId = a_world.add_system<aoeph::physic_system>();
 
@@ -526,29 +494,14 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		auto const renderSceneSystemId = a_world.add_system<aoegl::render_scene_system>();
 
 		auto const swapBuffersSystemId = a_world.add_system<aoewi::swap_buffers_system>();
-		mismt::thread_schedule mainThread{
-			{presentationTimeSystemId, {}}
-			, {simulationTimeSystemId, {}}
-			, {pollEventsSystemId, {}}
-			, {windowInputSystemId, {}}
-			, {mappedInputsSystemId, {}}
-			, {debugControllerSystemId, {}}
-			, {modelDataResourceSystemId, {}}
-			, {bindSceneFramebufferSystemId, {}}
-			, {renderModelsSystemId, {}}
-			, {renderDebugMeshSystemId, {}}
-			, {bindWindowFramebufferSystemId, {}}
-			, {renderSceneSystemId, {}}
-			, {swapBuffersSystemId, {}}
-		};
-
+		
 		a_schedule.clear();
 		a_schedule.emplace_back(mismt::pmr::thread_schedule{
 			{presentationTimeSystemId, {}},
 			{simulationTimeSystemId, {}},
 			{pollEventsSystemId, {}},
 			{windowInputSystemId, {}},
-			{mappedInputsSystemId, {}},
+			{bindingSystemId, {}},
 			{debugControllerSystemId, {}},
 			{modelDataResourceSystemId, {}},
 			{bindSceneFramebufferSystemId, {}},
@@ -593,7 +546,6 @@ std::unique_ptr<aoecs::world> createGameWorld(
 	/*
 	// Register Systems
 	auto const timeSystemId = world->add_system<aoe::common::TimeSystem>();
-	auto const windowInputSystemId = world->add_system<aoe::common::WindowInputSystem>();
 	auto const windowCursorSystemId = world->add_system<aoe::common::WindowCursorSystem>();
 	auto const simpleControllerSystemId = world->add_system<aoe::common::SimpleControllerSystem>();
 	auto const renderSystemId = world->add_system<aoe::common::GameRenderSystem>();
@@ -639,7 +591,7 @@ std::unique_ptr<aoecs::world> createGameWorld(
 
 	auto const pollEventsSystemId = world->add_system<aoewi::poll_events_system>();
 	auto const windowInputSystemId = world->add_system<aoewi::window_input_system>();
-	auto const mappedInputsSystemId = world->add_system<aoein::mapped_input_system>();
+	auto const bindingSystemId = world->add_system<aoein::binding_system>();
 	auto const debugControllerSystemId = world->add_system<aoedb::debug_controller_system>();
 	auto const physicSystemId = world->add_system<aoeph::physic_system>();
 
@@ -659,7 +611,7 @@ std::unique_ptr<aoecs::world> createGameWorld(
 		, {simulationTimeSystemId, {}}
 		, {pollEventsSystemId, {}}
 		, {windowInputSystemId, {}}
-		, {mappedInputsSystemId, {}}
+		, {bindingSystemId, {}}
 		, {debugControllerSystemId, {}}
 		, {modelDataResourceSystemId, {}}
 		, {bindSceneFramebufferSystemId, {}}

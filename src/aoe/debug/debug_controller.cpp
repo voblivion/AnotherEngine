@@ -13,7 +13,7 @@ namespace vob::aoedb
 {
 	debug_controller_system::debug_controller_system(aoecs::world_data_provider& a_wdp)
 		: m_debugControllerWorldComponent{ a_wdp }
-		, m_mappedInputsWorldComponent{ a_wdp }
+		, m_bindings{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
 		, m_debugCameraEntities{ a_wdp }
 		, m_spawner{ a_wdp.get_spawner() }
@@ -22,11 +22,12 @@ namespace vob::aoedb
 
 	void debug_controller_system::update() const
 	{
-		auto const& switches = m_mappedInputsWorldComponent->m_switches;
+		auto const& switches = m_bindings->switches;
+		auto const& axes = m_bindings->axes;
 
 		auto const enableViewMapping = m_debugControllerWorldComponent->m_enableViewMapping;
-		auto const& enableViewSwitch = *switches[enableViewMapping];
-		if (enableViewSwitch.changed())
+		auto const& enableViewSwitch = *switches.find(enableViewMapping);
+		if (enableViewSwitch.has_changed())
 		{
 			m_windowWorldComponent->m_window.get().set_cursor_state(
 				enableViewSwitch.is_pressed() ? aoewi::cursor_state::disabled : aoewi::cursor_state::normal);
@@ -43,9 +44,9 @@ namespace vob::aoedb
 			auto const lateralMapping = m_debugControllerWorldComponent->m_lateralMoveMapping;
 			auto const verticalMapping = m_debugControllerWorldComponent->m_verticalMoveMapping;
 
-			move.x = -m_mappedInputsWorldComponent->m_axes[lateralMapping]->get_value();
-			move.y = m_mappedInputsWorldComponent->m_axes[verticalMapping]->get_value();
-			move.z = -m_mappedInputsWorldComponent->m_axes[longitudinalMapping]->get_value();
+			move.x = -axes.find(lateralMapping)->get_value();
+			move.y = axes.find(verticalMapping)->get_value();
+			move.z = -axes.find(longitudinalMapping)->get_value();
 
 			transform.m_matrix = glm::translate(glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } * move) * transform.m_matrix;
 
@@ -73,8 +74,8 @@ namespace vob::aoedb
 				}
 			}
 			roll = 0.0f;
-			yaw -= m_mappedInputsWorldComponent->m_axes[yawMapping]->get_value();
-			pitch -= m_mappedInputsWorldComponent->m_axes[pitchMapping]->get_value();
+			yaw -= axes[yawMapping]->get_value();
+			pitch -= axes[pitchMapping]->get_value();
 			pitch = glm::clamp(pitch, -glm::half_pi<float>(), glm::half_pi<float>());
 			/*if (glm::epsilonNotEqual(roll, 0.0f, 2 * glm::epsilon<float>()))
 			{
@@ -99,30 +100,30 @@ namespace vob::aoedb
 		}
 
 		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntityId == aoecs::k_invalidEntityId;
-		if (switches[m_debugControllerWorldComponent->m_terrainSizeUpMapping]->was_just_pressed())
+		if (switches[m_debugControllerWorldComponent->m_terrainSizeUpMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainSize += 8.0f;
 			needTerrainUpdate = true;
 		}
-		if (switches[m_debugControllerWorldComponent->m_terrainSizeDownMapping]->was_just_pressed())
+		if (switches[m_debugControllerWorldComponent->m_terrainSizeDownMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainSize = std::max(
 				8.0f, m_debugControllerWorldComponent->m_terrainSize - 8.0f);
 			needTerrainUpdate = true;
 		}
-		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeUpMapping]->was_just_pressed())
+		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeUpMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainCellSize *= 2.0f;
 			// 1.0f;
 			needTerrainUpdate = true;
 		}
-		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeDownMapping]->was_just_pressed())
+		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeDownMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainCellSize /= 2.0f; 
 			//std::max(1.0f, m_debugControllerWorldComponent->m_terrainCellSize - 1.0f);
 			needTerrainUpdate = true;
 		}
-		if (switches[m_debugControllerWorldComponent->m_terrainUseSmoothShadingMapping]->was_just_pressed())
+		if (switches[m_debugControllerWorldComponent->m_terrainUseSmoothShadingMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainUseSmoothShading ^= true;
 			needTerrainUpdate = true;
@@ -131,27 +132,27 @@ namespace vob::aoedb
 
 		for (auto& layer : m_debugControllerWorldComponent->m_terrainLayers)
 		{
-			if (switches[layer.m_toggleMapping]->was_just_pressed())
+			if (switches[layer.m_toggleMapping]->was_pressed())
 			{
 				layer.m_isEnabled ^= true;
 				needTerrainUpdate = true;
 			}
-			if (switches[layer.m_frequencyUpMapping]->was_just_pressed())
+			if (switches[layer.m_frequencyUpMapping]->was_pressed())
 			{
 				layer.m_frequency *= 1.2f;
 				needTerrainUpdate = true;
 			}
-			if (switches[layer.m_frequencyDownMapping]->was_just_pressed())
+			if (switches[layer.m_frequencyDownMapping]->was_pressed())
 			{
 				layer.m_frequency /= 1.2f;
 				needTerrainUpdate = true;
 			}
-			if (switches[layer.m_heightUpMapping]->was_just_pressed())
+			if (switches[layer.m_heightUpMapping]->was_pressed())
 			{
 				layer.m_height *= 1.2f;
 				needTerrainUpdate = true;
 			}
-			if (switches[layer.m_heightDownMapping]->was_just_pressed())
+			if (switches[layer.m_heightDownMapping]->was_pressed())
 			{
 				layer.m_height /= 1.2f;
 				needTerrainUpdate = true;

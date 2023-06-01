@@ -2,7 +2,7 @@
 
 #include <vob/aoe/api.h>
 
-#include <vob/aoe/input/physical_inputs_world_component.h>
+#include <vob/aoe/input/inputs.h>
 
 #include <vob/aoe/ecs/world_data_provider.h>
 #include <vob/aoe/ecs/world_component_ref.h>
@@ -21,8 +21,7 @@ namespace vob::aoewi
 
 	private:
 		aoecs::world_component_ref<window_world_component> m_windowWorldComponent;
-		aoecs::world_component_ref<aoein::physical_inputs_world_component>
-			m_physicalInputsWorldComponent;
+		aoecs::world_component_ref<aoein::inputs> m_inputs;
 		aoecs::stop_manager& m_stopManager;
 	};
 }

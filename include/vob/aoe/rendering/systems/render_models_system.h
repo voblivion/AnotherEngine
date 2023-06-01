@@ -13,7 +13,7 @@
 #include <vob/aoe/spacetime/transform_component.h>
 #include <vob/aoe/window/window_world_component.h>
 #ifndef NDEBUG
-#include <vob/aoe/input/mapped_inputs_world_component.h>
+#include <vob/aoe/input/bindings.h>
 #endif
 
 
@@ -45,8 +45,8 @@ namespace vob::aoegl
 		aoecs::world_component_ref<director_world_component> m_directorWorldComponent;
 		aoecs::world_component_ref<mesh_render_world_component> m_meshRenderWorldComponent;
 #ifndef NDEBUG
-		aoecs::world_component_ref<aoein::mapped_inputs_world_component> m_mappedInputsWorldComponent;
-		std::size_t m_polygonMapping = 0;
+		aoecs::world_component_ref<aoein::bindings> m_bindings;
+		aoein::bindings::switch_id m_polygonMapping = 0;
 		mutable graphic_enum m_polygonType = GL_FILL;
 #endif
 	};

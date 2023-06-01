@@ -4,7 +4,7 @@
 
 #include <vob/aoe/spacetime/measures.h>
 #ifndef NDEBUG
-#include <vob/aoe/input/physical_switch_mapping.h>
+#include <vob/aoe/input/binding_util.h>
 #endif
 
 #include <vob/misc/physics/measure_literals.h>
@@ -48,14 +48,11 @@ namespace vob::aoegl
 		, m_directorWorldComponent{ a_wdp }
 		, m_meshRenderWorldComponent{ a_wdp }
 #ifndef NDEBUG
-		, m_mappedInputsWorldComponent{ a_wdp }
+		, m_bindings{ a_wdp }
 #endif
 	{
 #ifndef NDEBUG
-		m_polygonMapping = m_mappedInputsWorldComponent->m_switches.size();
-		m_mappedInputsWorldComponent->m_switches.emplace_back(
-			mistd::polymorphic_ptr_util::make<aoein::physical_switch_mapping>(
-				aoein::physical_switch_reference{ aoein::keyboard::key::W }));
+		m_polygonMapping = m_bindings->switches.add(aoein::binding_util::make_switch(aoein::keyboard::key::W));
 #endif
 
 		glCreateVertexArrays(1, &(m_meshRenderWorldComponent->m_vao));
@@ -113,18 +110,22 @@ namespace vob::aoegl
 #endif
 
 		// DEBUG ROTATION
-		static float r = 0.0f;
-		static float rSpeed = 0.0025f;
-		r += rSpeed;
-		if (r > std::numbers::pi_v<float>)
+		glm::mat4 debugR{ 1.0f };
+		static bool k_enableDebugRotation = false;
+		if (k_enableDebugRotation)
 		{
-			r -= std::numbers::pi_v<float>;
+			static float r = 0.0f;
+			static float rSpeed = 0.0025f;
+			r += rSpeed;
+			if (r > std::numbers::pi_v<float>)
+			{
+				r -= std::numbers::pi_v<float>;
+			}
+			debugR = glm::rotate(glm::mat4{ 1.0f }, r, glm::vec3{ 0.0f, 1.0f, 0.0f });
 		}
-		glm::mat4 debugR = glm::rotate(glm::mat4{ 1.0f }, r, glm::vec3{ 0.0f, 1.0f, 0.0f });
 
 #ifndef NDEBUG
-		if (m_mappedInputsWorldComponent->m_switches[m_polygonMapping]->changed()
-			&& m_mappedInputsWorldComponent->m_switches[m_polygonMapping]->is_pressed())
+		if (m_bindings->switches[m_polygonMapping]->was_pressed())
 		{
 			m_polygonType = GL_LINE + ((m_polygonType - GL_LINE + 1) % (GL_FILL + 1 - GL_LINE));
 		}

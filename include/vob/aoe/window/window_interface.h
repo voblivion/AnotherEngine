@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vob/aoe/input/keyboard.h>
-#include <vob/aoe/input/mouse.h>
+#include <vob/aoe/input/inputs.h>
 
 #include <glm/glm.hpp>
 
