@@ -10,9 +10,15 @@
 
 namespace vob::aoein
 {
-	struct mapped_inputs_world_component
+	class mapped_inputs_world_component
 	{
+	public:
+		mapped_inputs_world_component() {}
+		mapped_inputs_world_component(mapped_inputs_world_component&&) = default;
+
 		std::pmr::vector<mistd::polymorphic_ptr<basic_axis_mapping>> m_axes;
 		std::pmr::vector<mistd::polymorphic_ptr<basic_switch_mapping>> m_switches;
+
+		mapped_inputs_world_component& operator=(mapped_inputs_world_component&&) = default;
 	};
 }
