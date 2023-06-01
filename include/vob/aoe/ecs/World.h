@@ -69,7 +69,7 @@ namespace vob::aoecs
 
 	private:
 		// Attributes
-		mismt::task_list m_tasks;
+		std::pmr::vector<std::shared_ptr<mismt::basic_task>> m_tasks;
 		world_data m_data;
 		mismt::schedule m_schedule;
 	};
