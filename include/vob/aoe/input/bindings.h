@@ -22,15 +22,15 @@ namespace vob::aoein
 			: m_bindings{ a_allocator }
 		{}
 
-		std::shared_ptr<TBindingBase const> const& find(binding_id const a_bindingId) const
+		TBindingBase const* find(binding_id const a_bindingId) const
 		{
 			auto const it = m_bindings.find(a_bindingId);
-			return it != m_bindings.end() ? *it : nullptr;
+			return it != m_bindings.end() ? it->get() : nullptr;
 		}
 
-		std::shared_ptr<TBindingBase const> const& operator[](binding_id const a_bindingId) const
+		TBindingBase const* operator[](binding_id const a_bindingId) const
 		{
-			return m_bindings[a_bindingId];
+			return m_bindings[a_bindingId].get();
 		}
 
 		binding_id add(std::shared_ptr<TBindingBase> a_binding)

@@ -27,7 +27,7 @@ namespace vob::aoeng
 			m_worldData.process_pending_registry_queries();
 
 #pragma message(VOB_MISTD_TODO "max framerate should be handled by a system.")
-			std::this_thread::sleep_for(std::chrono::milliseconds(2));
+			std::this_thread::sleep_for(std::chrono::milliseconds(0));
 		}
 	}
 }

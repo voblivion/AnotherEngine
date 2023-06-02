@@ -8,7 +8,7 @@
 namespace vob::aoegl
 {
 	bind_window_framebuffer_system::bind_window_framebuffer_system(
-		aoecs::world_data_provider& a_wdp)
+		aoeng::world_data_provider& a_wdp)
 		: m_windowWorldComponent{ a_wdp }
 	{}
 

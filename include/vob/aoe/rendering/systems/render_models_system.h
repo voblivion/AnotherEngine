@@ -10,6 +10,9 @@
 #include <vob/aoe/ecs/entity_map_observer_list_ref.h>
 #include <vob/aoe/ecs/world_component_ref.h>
 #include <vob/aoe/ecs/world_data_provider.h>
+
+#include <vob/aoe/engine/world_data_provider.h>
+
 #include <vob/aoe/spacetime/transform_component.h>
 #include <vob/aoe/window/window_world_component.h>
 #ifndef NDEBUG
@@ -22,7 +25,7 @@ namespace vob::aoegl
 	class VOB_AOE_API render_models_system
 	{
 	public:
-		explicit render_models_system(aoecs::world_data_provider& a_wdp);
+		explicit render_models_system(aoeng::world_data_provider& a_wdp);
 		render_models_system(render_models_system&&) = delete;
 		render_models_system(render_models_system const&) = delete;
 
@@ -30,22 +33,22 @@ namespace vob::aoegl
 
 		decltype(auto) operator=(render_models_system&&) = delete;
 		decltype(auto) operator=(render_models_system const&) = delete;
-		
+
 
 		void update() const;
 
 	private:
-		aoecs::entity_map_observer_list_ref<
+		aoeng::registry_view_ref<
 			model_component const, aoest::transform_component const> m_modelEntities;
 
-		aoecs::entity_map_observer_list_ref<
+		aoeng::registry_view_ref<
 			aoest::transform_component const, camera_component const> m_cameraEntities;
 
-		aoecs::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
-		aoecs::world_component_ref<director_world_component> m_directorWorldComponent;
-		aoecs::world_component_ref<mesh_render_world_component> m_meshRenderWorldComponent;
+		aoeng::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
+		aoeng::world_component_ref<director_world_component> m_directorWorldComponent;
+		aoeng::world_component_ref<mesh_render_world_component> m_meshRenderWorldComponent;
 #ifndef NDEBUG
-		aoecs::world_component_ref<aoein::bindings> m_bindings;
+		aoeng::world_component_ref<aoein::bindings> m_bindings;
 		aoein::bindings::switch_id m_polygonMapping = 0;
 		mutable graphic_enum m_polygonType = GL_FILL;
 #endif

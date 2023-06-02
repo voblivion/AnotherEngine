@@ -2,6 +2,8 @@
 
 #include <vob/aoe/api.h>
 
+#include <vob/misc/std/message_macros.h>
+
 #include <entt/entt.hpp>
 
 
@@ -33,10 +35,18 @@ namespace vob::aoeng
 			return m_shouldStop;
 		}
 
+#pragma message(VOB_MISTD_TODO "those functions are needed for world init, but need a better pattern.")
+#pragma region TMP
 		entity_registry& get_entity_registry()
 		{
 			return m_entityRegistry;
 		}
+
+		entity get_world_entity()
+		{
+			return m_worldEntity;
+		}
+#pragma endregion
 
 		void process_pending_registry_queries();
 

@@ -57,10 +57,10 @@ namespace vob::aoewi
 		}
 	}
 
-	window_input_system::window_input_system(aoecs::world_data_provider& a_wdp)
+	window_input_system::window_input_system(aoeng::world_data_provider& a_wdp)
 		: m_windowWorldComponent{ a_wdp }
 		, m_inputs{ a_wdp }
-		, m_stopManager{ a_wdp.get_stop_manager() }
+		, m_shouldStop{ a_wdp }
 	{}
 
 	void window_input_system::update() const

@@ -7,6 +7,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/fwd.hpp>
+#include <glm/ext/quaternion_float.hpp>
 #include <bullet/BulletDynamics/Dynamics/btRigidBody.h>
 #include <bullet/LinearMath/btDefaultMotionState.h>
 

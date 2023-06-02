@@ -8,7 +8,7 @@
 
 namespace vob::aoegl
 {
-	render_scene_system::render_scene_system(aoecs::world_data_provider& a_wdp)
+	render_scene_system::render_scene_system(aoeng::world_data_provider& a_wdp)
 		: m_postProcessRenderWorldComponent{ a_wdp }
 		, m_sceneTextureWorldComponent{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }

@@ -25,14 +25,13 @@ namespace vob::aoegl
 			TDirectorWorldComponent const& a_directorWorldComponent,
 			TCameraEntities const& a_cameraEntities)
 		{
-			auto const cameraEntity = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
-			if (cameraEntity == a_cameraEntities.end())
+			auto const cameraEntityIt = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
+			if (cameraEntityIt == a_cameraEntities.end())
 			{
 				return std::make_tuple(glm::mat4{ 1.0f }, std::numbers::pi_v<float> / 2, 0.1f, 1000.0f);
 			}
 
-			auto const& transformComponent = cameraEntity->get<aoest::transform_component>();
-			auto const& cameraComponent = cameraEntity->get<camera_component>();
+			auto [transformComponent, cameraComponent] = a_cameraEntities.get(*cameraEntityIt);
 			return std::make_tuple(
 				transformComponent.m_matrix
 				, glm::radians(cameraComponent.m_fovDegree)
@@ -41,7 +40,7 @@ namespace vob::aoegl
 		}
 	}
 
-	render_models_system::render_models_system(aoecs::world_data_provider& a_wdp)
+	render_models_system::render_models_system(aoeng::world_data_provider& a_wdp)
 		: m_modelEntities{ a_wdp }
 		, m_cameraEntities{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
@@ -62,7 +61,7 @@ namespace vob::aoegl
 		glEnableVertexAttribArray(index); \
 		glVertexAttribFormat(index, count, GL_FLOAT, GL_FALSE, 0); \
 		glVertexAttribBinding(index, index);
-		
+
 		_SETUP_ATTRIB(0, 3); // position
 		_SETUP_ATTRIB(1, 2); // texture coord
 		_SETUP_ATTRIB(2, 3); // normal
@@ -133,11 +132,11 @@ namespace vob::aoegl
 #endif
 
 		// Render models
-		for (auto const& modelEntity : m_modelEntities)
+		auto modelEntitiesView = m_modelEntities.get();
+		for (auto const& modelEntity : modelEntitiesView)
 		{
-			auto const& modelComponent = modelEntity.get<model_component>();
-			auto const& transformComponent = modelEntity.get<aoest::transform_component>();			
-			
+			auto [modelComponent, transformComponent] = modelEntitiesView.get(modelEntity);
+
 			// Set model uniforms
 			uniform_util::set(program.m_meshTransformLocation, transformComponent.m_matrix * debugR);
 			uniform_util::set(
@@ -179,7 +178,7 @@ namespace vob::aoegl
 				glDrawElements(GL_TRIANGLES, texturedMesh.m_mesh.m_triangleCount * 3, GL_UNSIGNED_INT, nullptr);
 			}
 		}
-		
+
 		glBindVertexArray(0);
 
 #ifndef NDEBUG

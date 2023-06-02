@@ -11,13 +11,13 @@
 
 namespace vob::aoedb
 {
-	debug_controller_system::debug_controller_system(aoecs::world_data_provider& a_wdp)
+	debug_controller_system::debug_controller_system(aoeng::world_data_provider& a_wdp)
 		: m_debugControllerWorldComponent{ a_wdp }
 		, m_bindings{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
+		, m_simulationTimeWorldComponent{ a_wdp }
+		, m_queryRef{ a_wdp }
 		, m_debugCameraEntities{ a_wdp }
-		, m_spawner{ a_wdp.get_spawner() }
-		, m_despawner{ a_wdp.get_despawner() }
 	{}
 
 	void debug_controller_system::update() const
@@ -33,20 +33,24 @@ namespace vob::aoedb
 				enableViewSwitch.is_pressed() ? aoewi::cursor_state::disabled : aoewi::cursor_state::normal);
 		}
 
-		for (auto const& debugCameraEntity : m_debugCameraEntities)
+		auto debugCameraEntitiesView = m_debugCameraEntities.get();
+		for (auto debugCameraEntity : debugCameraEntitiesView)
 		{
-			auto& transform = debugCameraEntity.get<aoest::transform_component>();
-			auto& camera = debugCameraEntity.get<aoegl::camera_component>();
+			auto [transform, camera] = debugCameraEntitiesView.get(debugCameraEntity);
 
-			auto move = glm::vec3{ 0.0f };
+			auto moveDir = glm::vec3{ 0.0f };
 
 			auto const longitudinalMapping = m_debugControllerWorldComponent->m_longitudinalMoveMapping;
 			auto const lateralMapping = m_debugControllerWorldComponent->m_lateralMoveMapping;
 			auto const verticalMapping = m_debugControllerWorldComponent->m_verticalMoveMapping;
 
-			move.x = -axes.find(lateralMapping)->get_value();
-			move.y = axes.find(verticalMapping)->get_value();
-			move.z = -axes.find(longitudinalMapping)->get_value();
+			moveDir.x = -axes.find(lateralMapping)->get_value();
+			moveDir.y = axes.find(verticalMapping)->get_value();
+			moveDir.z = -axes.find(longitudinalMapping)->get_value();
+
+			auto const dt = m_simulationTimeWorldComponent->m_elapsedTime.get_value();
+
+			auto const move = moveDir * dt * m_debugControllerWorldComponent->m_moveSpeed;
 
 			transform.m_matrix = glm::translate(glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } * move) * transform.m_matrix;
 
@@ -74,8 +78,8 @@ namespace vob::aoedb
 				}
 			}
 			roll = 0.0f;
-			yaw -= axes[yawMapping]->get_value();
-			pitch -= axes[pitchMapping]->get_value();
+			yaw -= axes[yawMapping]->get_value() * dt;
+			pitch -= axes[pitchMapping]->get_value() * dt;
 			pitch = glm::clamp(pitch, -glm::half_pi<float>(), glm::half_pi<float>());
 			/*if (glm::epsilonNotEqual(roll, 0.0f, 2 * glm::epsilon<float>()))
 			{
@@ -99,7 +103,7 @@ namespace vob::aoedb
 			transform.m_matrix[2] = orientation[2];
 		}
 
-		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntityId == aoecs::k_invalidEntityId;
+		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntity == entt::tombstone;
 		if (switches[m_debugControllerWorldComponent->m_terrainSizeUpMapping]->was_pressed())
 		{
 			m_debugControllerWorldComponent->m_terrainSize += 8.0f;
@@ -119,7 +123,7 @@ namespace vob::aoedb
 		}
 		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeDownMapping]->was_pressed())
 		{
-			m_debugControllerWorldComponent->m_terrainCellSize /= 2.0f; 
+			m_debugControllerWorldComponent->m_terrainCellSize /= 2.0f;
 			//std::max(1.0f, m_debugControllerWorldComponent->m_terrainCellSize - 1.0f);
 			needTerrainUpdate = true;
 		}
@@ -128,7 +132,7 @@ namespace vob::aoedb
 			m_debugControllerWorldComponent->m_terrainUseSmoothShading ^= true;
 			needTerrainUpdate = true;
 		}
-		
+
 
 		for (auto& layer : m_debugControllerWorldComponent->m_terrainLayers)
 		{
@@ -161,9 +165,13 @@ namespace vob::aoedb
 
 		if (needTerrainUpdate)
 		{
-			if (m_debugControllerWorldComponent->m_terrainEntityId != aoecs::k_invalidEntityId)
+			if (m_debugControllerWorldComponent->m_terrainEntity != entt::tombstone)
 			{
-				m_despawner.despawn(m_debugControllerWorldComponent->m_terrainEntityId);
+				aoeng::entity const terrainEntity = m_debugControllerWorldComponent->m_terrainEntity;
+				m_queryRef.add(
+					[terrainEntity](aoeng::entity_registry& a_registry) {
+						a_registry.destroy(terrainEntity);
+					});
 			}
 
 			std::vector<aoetr::layer> layers;
@@ -194,8 +202,25 @@ namespace vob::aoedb
 				aoegl::material_data{});
 			terrainComponents.add<aoegl::model_data_component>(std::move(modelData));
 			terrainComponents.add<aoegl::model_component>();
+			
+			m_queryRef.add(
+				[this](aoeng::entity_registry& a_registry) {
+					auto const terrainEntity = a_registry.create(m_debugControllerWorldComponent->m_terrainEntity);
+					
+					a_registry.emplace<aoest::transform_component>(
+						terrainEntity,
+						*m_debugControllerWorldComponent->m_terrainComponents.find<aoest::transform_component>());
 
-			m_debugControllerWorldComponent->m_terrainEntityId = m_spawner.spawn(terrainComponents);
+					a_registry.emplace<aoegl::model_data_component>(
+						terrainEntity,
+						*m_debugControllerWorldComponent->m_terrainComponents.find<aoegl::model_data_component>());
+
+					a_registry.emplace<aoegl::model_component>(
+						terrainEntity,
+						*m_debugControllerWorldComponent->m_terrainComponents.find<aoegl::model_component>());
+
+					m_debugControllerWorldComponent->m_terrainEntity = terrainEntity;
+				});
 		}
 	}
 }

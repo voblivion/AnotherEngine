@@ -19,14 +19,13 @@ namespace vob::aoegl
 			TDirectorWorldComponent const& a_directorWorldComponent,
 			TCameraEntities const& a_cameraEntities)
 		{
-			auto const cameraEntity = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
-			if (cameraEntity == a_cameraEntities.end())
+			auto const cameraEntityIt = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
+			if (cameraEntityIt == a_cameraEntities.end())
 			{
 				return std::make_tuple(glm::mat4{ 1.0f }, std::numbers::pi_v<float> / 2, 0.1f, 1000.0f);
 			}
 
-			auto const& transformComponent = cameraEntity->get<aoest::transform_component>();
-			auto const& cameraComponent = cameraEntity->get<camera_component>();
+			auto [transformComponent, cameraComponent] = a_cameraEntities.get(*cameraEntityIt);
 			return std::make_tuple(
 				transformComponent.m_matrix
 				, glm::radians(cameraComponent.m_fovDegree)
@@ -35,7 +34,7 @@ namespace vob::aoegl
 		}
 	}
 
-	render_debug_mesh_system::render_debug_mesh_system(aoecs::world_data_provider& a_wdp)
+	render_debug_mesh_system::render_debug_mesh_system(aoeng::world_data_provider& a_wdp)
 		: m_cameraEntities{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
 		, m_directorWorldComponent{ a_wdp }

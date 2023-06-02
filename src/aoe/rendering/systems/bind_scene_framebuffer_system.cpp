@@ -5,7 +5,7 @@
 
 namespace vob::aoegl
 {
-	bind_scene_framebuffer_system::bind_scene_framebuffer_system(aoecs::world_data_provider& a_wdp)
+	bind_scene_framebuffer_system::bind_scene_framebuffer_system(aoeng::world_data_provider& a_wdp)
 		: m_sceneTextureWorldComponent{ a_wdp }
 	{}
 

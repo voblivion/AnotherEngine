@@ -10,6 +10,8 @@
 
 #include <vob/aoe/ecs/world_component_ref.h>
 
+#include <vob/aoe/engine/world_data_provider.h>
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/matrix_decompose.hpp>
 
@@ -18,21 +20,19 @@
 
 namespace vob::aoegl
 {
-	/// Initialize model_component from model_data_component
 	class VOB_AOE_API model_data_resource_system
 	{
 	public:
-		explicit model_data_resource_system(aoecs::world_data_provider& a_wdp);
-
-		void on_spawn(aoecs::entity_list::entity_view a_entity) const;
-
-		void on_despawn(aoecs::entity_list::entity_view a_entity) const;
+		explicit model_data_resource_system(aoeng::world_data_provider& a_wdp);
 
 		void update() const;
 
-	private:
-		aoecs::world_component_ref<model_data_resource_manager> m_modelDataResourceManager;
+		void on_construct(aoeng::entity_registry& a_registry, aoeng::entity a_entity);
 
-		aoecs::world_component_ref<mesh_render_world_component> m_meshRenderWorldComponent;
+		void on_destroy(aoeng::entity_registry& a_registry, aoeng::entity a_entity);
+
+	private:
+		aoeng::world_component_ref<model_data_resource_manager> m_modelDataResourceManager;
+		aoeng::world_component_ref<mesh_render_world_component> m_meshRenderWorldComponent;
 	};
 }

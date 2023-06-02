@@ -11,7 +11,7 @@ namespace vob::aoeng
 	class world_component_accessor
 	{
 	public:
-		explicit world_component_accessor(entt::registry const& a_entityRegistry, entt::entity a_worldEntity)
+		explicit world_component_accessor(entt::registry& a_entityRegistry, entt::entity a_worldEntity)
 			: m_entityRegistry{ a_entityRegistry }
 			, m_worldEntity{ a_worldEntity }
 		{
@@ -23,7 +23,7 @@ namespace vob::aoeng
 		}
 
 	private:
-		std::reference_wrapper<entt::registry const> m_entityRegistry;
+		std::reference_wrapper<entt::registry> m_entityRegistry;
 		entt::entity m_worldEntity;
 	};
 
@@ -31,24 +31,24 @@ namespace vob::aoeng
 	class registry_view_accessor
 	{
 	public:
-		explicit registry_view_accessor(entt::registry const& a_entityRegistry)
+		explicit registry_view_accessor(entt::registry& a_entityRegistry)
 			: m_entityRegistry{ a_entityRegistry }
 		{
 		}
 
 		template <typename... TExcludes>
-		decltype(auto) get()
+		decltype(auto) get() const
 		{
 			return m_entityRegistry.get().view<TComponents...>(entt::exclude_t<TExcludes...>{});
 		}
 
-		decltype(auto) get()
+		decltype(auto) get() const
 		{
 			return m_entityRegistry.get().view<TComponents...>();
 		}
 
 	private:
-		std::reference_wrapper<entt::registry const> m_entityRegistry;
+		std::reference_wrapper<entt::registry> m_entityRegistry;
 	};
 
 	class world_data_provider
@@ -83,6 +83,21 @@ namespace vob::aoeng
 			return registry_view_accessor<TComponents...>(m_worldData.m_entityRegistry);
 		}
 
+		template <typename TComponent, auto TCandidate, typename... TValues>
+		void on_construct(TValues&&... a_values)
+		{
+			m_worldData.m_entityRegistry.on_construct<TComponent>().connect<TCandidate>(
+				std::forward<TValues>(a_values)...);
+		}
+
+		template <typename TComponent, auto TCandidate, typename... TValues>
+		void on_destroy(TValues&&... a_values)
+		{
+			m_worldData.m_entityRegistry.on_destroy<TComponent>().connect<TCandidate>(
+				std::forward<TValues>(a_values)...);
+		}
+
+
 	private:
 		world_data& m_worldData;
 	};
@@ -105,6 +120,11 @@ namespace vob::aoeng
 			return m_shouldStop.get();
 		}
 
+		bool& operator*() const
+		{
+			return m_shouldStop.get();
+		}
+
 	private:
 		std::reference_wrapper<bool> m_shouldStop;
 	};
@@ -121,6 +141,16 @@ namespace vob::aoeng
 		TComponent& get() const
 		{
 			return m_worldComponentAccessor.get();
+		}
+
+		TComponent& operator*() const
+		{
+			return get();
+		}
+
+		TComponent* operator->() const
+		{
+			return &get();
 		}
 
 	private:
@@ -162,6 +192,11 @@ namespace vob::aoeng
 		decltype(auto) get() const
 		{
 			return m_registryViewAccessor.get();
+		}
+
+		decltype(auto) operator*() const
+		{
+			return get();
 		}
 
 	private:

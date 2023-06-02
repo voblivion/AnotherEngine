@@ -19,17 +19,17 @@ namespace vob::aoegl
 	class VOB_AOE_API render_debug_mesh_system
 	{
 	public:
-		explicit render_debug_mesh_system(aoecs::world_data_provider& a_wdp);
+		explicit render_debug_mesh_system(aoeng::world_data_provider& a_wdp);
 
 		void update() const;
 
 	private:
-		aoecs::entity_map_observer_list_ref<
+		aoeng::registry_view_ref<
 			aoest::transform_component const, camera_component const> m_cameraEntities;
 
-		aoecs::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
-		aoecs::world_component_ref<director_world_component> m_directorWorldComponent;
-		aoecs::world_component_ref<debug_render_world_component> m_debugRenderWorldComponent;
-		aoecs::world_component_ref<debug_mesh_world_component> m_debugSceneWorldComponent;
+		aoeng::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
+		aoeng::world_component_ref<director_world_component> m_directorWorldComponent;
+		aoeng::world_component_ref<debug_render_world_component> m_debugRenderWorldComponent;
+		aoeng::world_component_ref<debug_mesh_world_component> m_debugSceneWorldComponent;
 	};
 }
