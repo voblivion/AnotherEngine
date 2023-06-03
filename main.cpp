@@ -5,20 +5,7 @@
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
-#include "vob/aoe/common/window/WorldWindowcomponent.h"
-#include "vob/aoe/common/window/WorldCursorcomponent.h"
-#include "vob/aoe/common/_render/Directorcomponent.h"
-#include "vob/aoe/common/physic/WorldPhysiccomponent.h"
-#include "vob/aoe/common/physic/DefaultDynamicsWorldHolder.h"
-#include "vob/aoe/common/physic/PhysicSystem.h"
-#include "vob/aoe/common/test/TestSystem.h"
-#include "vob/aoe/common/_render/RenderSystem.h"
-#include "vob/aoe/common/window/WindowCursorSystem.h"
-#include "vob/aoe/common/_render/DefaultDirectorSystem.h"
 #include "vob/aoe/common/map/HierarchySystem.h"
-#include <vob/aoe/common/_render/OpenGl.h>
-#include <vob/aoe/common/_render/Window.h>
-#include <vob/aoe/common/_render/SceneFramebufferInitializer.h>
 
 #include <vob/aoe/actor/simple_actor_system.h>
 
@@ -68,8 +55,6 @@
 #include <filesystem>
 #include <utility>
 
-#include <vob/aoe/common/editor/EditorVisitor.h>
-
 
 using namespace vob;
 using namespace misph::literals;
@@ -83,34 +68,6 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 {
 	// world components
 	{
-		a_world.add_world_component<aoe::common::SceneRenderComponent>(
-			a_data.renderTextureResourceManager,
-			glm::ivec2{ g_width, g_height });
-
-		a_world.add_world_component<aoe::common::ModelRenderComponent>(
-			a_data.database,
-			a_data.textureResourceManager,
-			a_data.renderTextureResourceManager,
-			a_data.staticModelResourceManager,
-			a_data.modelShaderProgramResourceManager,
-			glm::ivec2{ g_width, g_height });
-		a_world.add_world_component<aoe::common::DebugSceneRenderComponent>(
-			a_data.database,
-			a_data.debugSceneShaderProgramResourceManager);
-		a_world.add_world_component<aoe::common::PostProcessRenderComponent>(
-			a_data.database,
-			a_data.postProcessShaderProgramResourceManager);
-		a_world.add_world_component<aoe::common::WorldInputComponent>();
-		a_world.add_world_component<aoe::common::WorldCursorComponent>();
-		a_world.add_world_component<aoe::common::DirectorComponent>();
-		auto dynamicsWorldHolder = aoe::type::dynamic_type_clone<aoe::common::ADynamicsWorldHolder>(a_data.dynamicTypeCloner);
-		dynamicsWorldHolder.init<aoe::common::DefaultDynamicsWorldHolder>();
-		a_world.add_world_component<aoe::common::WorldPhysicComponent>(std::move(dynamicsWorldHolder));
-		a_world.add_world_component<aoe::common::GuiRenderComponent>(
-			a_data.database,
-			a_data.guiShaderProgramResourceManager,
-			a_data.guiMeshResourceManager,
-			a_data.textureResourceManager);
 		auto loadProgram = [&a_data](auto& a_program, char const* a_programPathCStr)
 		{
 			auto programPath = std::filesystem::path{ a_programPathCStr };

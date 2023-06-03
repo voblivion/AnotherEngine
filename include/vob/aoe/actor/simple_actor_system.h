@@ -3,37 +3,34 @@
 #include <vob/aoe/actor/actor_component.h>
 #include <vob/aoe/actor/action_component.h>
 
-#include <vob/aoe/common/space/Transformcomponent.h>
+#include <vob/aoe/spacetime/transform_component.h>
 
-#include <vob/aoe/ecs/world_data_provider.h>
-#include <vob/aoe/ecs/entity_map_observer_list_ref.h>
+#include <vob/aoe/engine/world_data_provider.h>
 
 
 namespace vob::aoeac
 {
 	struct simple_actor_system
 	{
-		explicit simple_actor_system(aoecs::world_data_provider& a_wdp)
+		explicit simple_actor_system(aoeng::world_data_provider& a_wdp)
 			: m_interactors{ a_wdp }
 			, m_actions{ a_wdp }
 		{}
 
 		void update() const
 		{
-			for (auto const& interactorEntity : m_interactors)
+			auto actionView = *m_actions;
+			auto interactorsView = *m_interactors;
+			for (auto const& interactorEntity : *m_interactors)
 			{
-				auto const& interactorComponent =
-					interactorEntity.get<actor_component>();
-				auto const& interactorTransform =
-					interactorEntity.get<aoe::common::TransformComponent>();
+				auto [interactorTransform, interactorComponent] = interactorsView.get(interactorEntity);
 				
 				for (auto const& actionId : interactorComponent.m_actions)
 				{
-					auto const actionEntity = m_actions.find(actionId);
-					if (actionEntity != m_actions.end())
+					auto const actionEntityIt = actionView.find(actionId);
+					if (actionEntityIt != actionView.end())
 					{
-						auto& interactionTransform =
-							actionEntity->get<aoe::common::TransformComponent>();
+						auto [interactionTransform] = actionView.get(*actionEntityIt);
 
 						interactionTransform.m_matrix = interactorTransform.m_matrix;
 					}
@@ -42,10 +39,10 @@ namespace vob::aoeac
 		}
 
 	private:
-		aoecs::entity_map_observer_list_ref<
-			aoe::common::TransformComponent const,
+		aoeng::registry_view_ref<
+			aoest::transform_component const,
 			actor_component const
 		> m_interactors;
-		aoecs::entity_map_observer_list_ref<aoe::common::TransformComponent> m_actions;
+		aoeng::registry_view_ref<aoest::transform_component> m_actions;
 	};
 }

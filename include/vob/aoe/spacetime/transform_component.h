@@ -5,6 +5,8 @@
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
+#include <vob/aoe/data/glm_accept.h>
+
 
 namespace vob::aoest
 {
