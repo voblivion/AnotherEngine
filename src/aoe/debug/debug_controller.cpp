@@ -106,13 +106,13 @@ namespace vob::aoedb
 		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntity == entt::tombstone;
 		if (switches[m_debugControllerWorldComponent->m_terrainSizeUpMapping]->was_pressed())
 		{
-			m_debugControllerWorldComponent->m_terrainSize += 8.0f;
+			m_debugControllerWorldComponent->m_terrainSize *= 1.25f;
 			needTerrainUpdate = true;
 		}
 		if (switches[m_debugControllerWorldComponent->m_terrainSizeDownMapping]->was_pressed())
 		{
-			m_debugControllerWorldComponent->m_terrainSize = std::max(
-				8.0f, m_debugControllerWorldComponent->m_terrainSize - 8.0f);
+			m_debugControllerWorldComponent->m_terrainSize /= 1.25f;
+			//std::max(8.0f, m_debugControllerWorldComponent->m_terrainSize - 8.0f);
 			needTerrainUpdate = true;
 		}
 		if (switches[m_debugControllerWorldComponent->m_terrainCellSizeUpMapping]->was_pressed())
