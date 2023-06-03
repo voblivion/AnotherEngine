@@ -6,7 +6,6 @@
 #include <GLFW/glfw3.h>
 #include "DataHolder.h"
 #include "vob/aoe/common/window/WorldWindowcomponent.h"
-#include "vob/aoe/common/time/WorldTimecomponent.h"
 #include "vob/aoe/common/window/WorldCursorcomponent.h"
 #include "vob/aoe/common/_render/Directorcomponent.h"
 #include "vob/aoe/common/physic/WorldPhysiccomponent.h"
@@ -14,18 +13,14 @@
 #include "vob/aoe/common/physic/PhysicSystem.h"
 #include "vob/aoe/common/test/TestSystem.h"
 #include "vob/aoe/common/_render/RenderSystem.h"
-#include "vob/aoe/common/time/TimeSystem.h"
 #include "vob/aoe/common/window/WindowCursorSystem.h"
-#include "vob/aoe/common/todo/SimpleControllerSystem.h"
 #include "vob/aoe/common/_render/DefaultDirectorSystem.h"
-#include "vob/aoe/common/time/LifetimeSystem.h"
 #include "vob/aoe/common/map/HierarchySystem.h"
 #include <vob/aoe/common/_render/OpenGl.h>
 #include <vob/aoe/common/_render/Window.h>
 #include <vob/aoe/common/_render/SceneFramebufferInitializer.h>
 
 #include <vob/aoe/actor/simple_actor_system.h>
-#include <vob/aoe/actor/test_end_life_action_system.h>
 
 #include <vob/aoe/debug/debug_controller.h>
 
@@ -105,7 +100,6 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		a_world.add_world_component<aoe::common::PostProcessRenderComponent>(
 			a_data.database,
 			a_data.postProcessShaderProgramResourceManager);
-		a_world.add_world_component<aoe::common::WorldTimeComponent>();
 		a_world.add_world_component<aoe::common::WorldInputComponent>();
 		a_world.add_world_component<aoe::common::WorldCursorComponent>();
 		a_world.add_world_component<aoe::common::DirectorComponent>();

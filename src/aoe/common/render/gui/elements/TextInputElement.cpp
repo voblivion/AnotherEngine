@@ -205,11 +205,11 @@ namespace vob::aoe::common
                 , a_transform.m_size
             );
 
-            m_lastCursorUpdateTime = a_renderContext.m_frameStartTime;
+            // m_lastCursorUpdateTime = a_renderContext.m_frameStartTime;
             m_needsCursorUpdate = false;
         }
 
-        auto timeSinceCursorUpdate = a_renderContext.m_frameStartTime - m_lastCursorUpdateTime;
+        /*auto timeSinceCursorUpdate = a_renderContext.m_frameStartTime - m_lastCursorUpdateTime;
         auto halfSecondsSinceCursorUpdate = timeSinceCursorUpdate.count() / 500000000;
         if (halfSecondsSinceCursorUpdate % 2 == 0)
         {
@@ -221,7 +221,7 @@ namespace vob::aoe::common
             a_shaderProgram.setElementSize(m_cursorTransform.second);
             a_shaderProgram.setColor(glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f });
             a_renderContext.m_quad->render();
-        }
+        }*/
 
         TextElement::renderContent(a_shaderProgram, a_renderContext, a_transform);
     }

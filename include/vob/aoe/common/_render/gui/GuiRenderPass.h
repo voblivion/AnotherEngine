@@ -6,7 +6,6 @@
 #include <vob/aoe/common/_render/gui/elements/EmptyElement.h>
 #include <vob/aoe/common/_render/gui/elements/TextElement.h>
 #include <vob/aoe/common/_render/gui/Canvascomponent.h>
-#include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <vob/aoe/common/window/WorldWindowcomponent.h>
 
 namespace vob::aoe::common
@@ -18,7 +17,6 @@ namespace vob::aoe::common
 		explicit GuiRenderPass(aoecs::world_data_provider& a_wdp)
 			: m_guiRenderComponent{ a_wdp.get_world_component<GuiRenderComponent>() }
 			, m_worldWindowComponent{ a_wdp.get_world_component<WorldWindowComponent const>() }
-			, m_worldTimeComponent{ a_wdp.get_world_component<WorldTimeComponent const>() }
 			, m_canvasEntityList{ a_wdp }
 		{}
 
@@ -56,7 +54,7 @@ namespace vob::aoe::common
 			{
 				quad->create();
 			}
-			m_guiRenderComponent.m_guiRenderContext.m_frameStartTime = m_worldTimeComponent.m_frameStartTime;
+			// m_guiRenderComponent.m_guiRenderContext.m_frameStartTime = m_worldTimeComponent.m_frameStartTime;
 
 			for (auto const canvas : m_canvasEntityList)
 			{
@@ -84,7 +82,6 @@ namespace vob::aoe::common
 		mutable float t = 0.0f;
 		GuiRenderComponent& m_guiRenderComponent;
 		WorldWindowComponent const& m_worldWindowComponent;
-		WorldTimeComponent const& m_worldTimeComponent;
 		aoecs::entity_map_observer_list_ref<CanvasComponent> m_canvasEntityList;
 	};
 }

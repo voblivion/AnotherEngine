@@ -23,7 +23,6 @@
 #include "vob/aoe/common/space/LocalTransformSystem.h"
 #include "vob/aoe/common/test/Testcomponent.h"
 #include "vob/aoe/common/_render/Cameracomponent.h"
-#include "vob/aoe/common/todo/SimpleControllercomponent.h"
 #include "vob/aoe/common/space/Transformcomponent.h"
 #include "vob/aoe/common/physic/RigidBodycomponent.h"
 #include "vob/aoe/common/physic/SphereShape.h"
@@ -31,7 +30,6 @@
 #include "vob/aoe/common/physic/BoxShape.h"
 #include "vob/aoe/common/physic/CylinderShape.h"
 #include "vob/aoe/common/physic/ModelShape.h"
-#include "vob/aoe/common/time/Lifetimecomponent.h"
 #include "vob/aoe/common/physic/CapsuleShape.h"
 #include "vob/aoe/common/physic/CharacterControllercomponent.h"
 #include <vob/aoe/common/_render/Manager.h>
@@ -290,11 +288,9 @@ namespace vob::aoe
 				register_component<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
 				register_component<common::LocalTransformComponent>("vob::aoe::common::LocalTransformComponent"_id);
 				register_component<common::TestComponent>("vob::aoe::common::TestComponent"_id);
-				register_component<common::SimpleControllerComponent>("vob::aoe::common::SimpleControllerComponent"_id);
 				register_component<common::CameraComponent>("vob::aoe::common::CameraComponent"_id);
 				register_component<common::RigidBodyComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::RigidBodyComponent"_id, dynamicTypeCloner);
 				register_component<common::CharacterControllerComponent>("vob::aoe::common::CharacterControllerComponent"_id);
-				register_component<common::LifetimeComponent>("vob::aoe::common::LifetimeComponent"_id);
 				register_component<common::CanvasComponent, type::dynamic_type_clone_copier const&>("vob::aoe::common::CanvasComponent"_id, dynamicTypeCloner);
 				// register_component<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
 				// register_component<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vob/aoe/common/_render/gui/elements/TextElement.h>
-#include <vob/aoe/common/time/Chrono.h>
 
 namespace vob::aoe::common
 {
@@ -38,7 +37,7 @@ namespace vob::aoe::common
 
 		mutable bool m_needsCursorUpdate = true;
 		mutable std::pair<glm::vec2, glm::vec2> m_cursorTransform = {};
-		mutable TimePoint m_lastCursorUpdateTime = {};
+		// mutable TimePoint m_lastCursorUpdateTime = {};
 		glm::ivec2 m_mousePosition = {};
 		bool m_isMouseLeftDown = false;
 	};

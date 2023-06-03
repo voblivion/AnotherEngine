@@ -8,7 +8,6 @@
 #include <vob/aoe/common/_render/debugscene/DebugMesh.h>
 #include <vob/aoe/common/_render/debugscene/DebugSceneRendercomponent.h>
 #include <vob/aoe/common/space/Transformcomponent.h>
-#include <vob/aoe/common/time/WorldTimecomponent.h>
 #include <LinearMath/btIDebugDraw.h>
 
 namespace vob::aoe::common
@@ -81,8 +80,6 @@ namespace vob::aoe::common
 		explicit PhysicSystem(aoecs::world_data_provider& a_wdp)
 			: m_worldPhysicComponent{
 				a_wdp.get_world_component<WorldPhysicComponent>() }
-			, m_worldTimeComponent{
-				a_wdp.get_world_component<WorldTimeComponent>() }
 			, m_debugSceneRenderComponent{
 				a_wdp.get_world_component<DebugSceneRenderComponent>() }
 			, m_rigidBodyEntities{ a_wdp }
@@ -99,7 +96,7 @@ namespace vob::aoe::common
 
 			if (!m_worldPhysicComponent.m_pause)
 			{
-				t_dynamicsWorld.stepSimulation(m_worldTimeComponent.m_elapsedTime.get_value());
+				t_dynamicsWorld.stepSimulation(1.0f / 60.0f);
 
 				for (auto& t_rigidBodyEntity : m_rigidBodyEntities)
 				{
@@ -234,7 +231,6 @@ namespace vob::aoe::common
 	private:
 		
 		WorldPhysicComponent& m_worldPhysicComponent;
-		WorldTimeComponent& m_worldTimeComponent;
 		DebugSceneRenderComponent& m_debugSceneRenderComponent;
 
 		aoecs::entity_map_observer_list_ref<
