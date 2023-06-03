@@ -19,7 +19,7 @@
 #include <vob/aoe/input/binding_util.h>
 #include <vob/aoe/input/inputs.h>
 
-#include <vob/aoe/physics/physic_system.h>
+#include <vob/aoe/physics/physics_system.h>
 
 #include <vob/aoe/rendering/data/model_data_resource_manager.h>
 #include <vob/aoe/rendering/data/texture_data_resource_manager.h>
@@ -217,7 +217,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		auto& textureDataResourceManager = a_world.add_world_component<aoegl::texture_data_resource_manager>();
 		a_world.add_world_component<aoegl::model_data_resource_manager>(textureDataResourceManager);
 
-		a_world.add_world_component<aoeph::world_physic_component>(a_data.m_dynamicsWorld);
+		a_world.add_world_component<aoeph::physics_world_component>(a_data.m_dynamicsWorld);
 	}
 
 	// systems
@@ -229,7 +229,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		auto const windowInputSystemId = a_world.add_system<aoewi::window_input_system>();
 		auto const bindingSystemId = a_world.add_system<aoein::binding_system>();
 		auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
-		auto const physicSystemId = a_world.add_system<aoeph::physic_system>();
+		auto const physicsSystemId = a_world.add_system<aoeph::physics_system>();
 
 
 		auto const modelDataResourceSystemId = a_world.add_system<aoegl::model_data_resource_system>();
@@ -260,7 +260,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 			{swapBuffersSystemId, {}} });
 
 		a_schedule.emplace_back(mismt::pmr::thread_schedule{
-			{physicSystemId, {swapBuffersSystemId}} });
+			{physicsSystemId, {swapBuffersSystemId}} });
 	}
 }
 
