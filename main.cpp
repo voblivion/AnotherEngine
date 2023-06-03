@@ -139,10 +139,10 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		aoedb::debug_controller_world_component& debugControllerWorldComponent = a_world.add_world_component<aoedb::debug_controller_world_component>();
 		{
 			debugControllerWorldComponent.m_yawMapping = bindings.axes.add(
-				aoein::binding_util::make_derived_axis(aoein::mouse::axis::X, 0.01f));
+				aoein::binding_util::make_derived_axis(aoein::mouse::axis::X, 0.001f));
 
 			debugControllerWorldComponent.m_pitchMapping = bindings.axes.add(
-				aoein::binding_util::make_derived_axis(aoein::mouse::axis::Y, 0.01f));
+				aoein::binding_util::make_derived_axis(aoein::mouse::axis::Y, 0.001f));
 
 			debugControllerWorldComponent.m_enableViewMapping = bindings.switches.add(
 				aoein::binding_util::make_switch(aoein::mouse::button::Right));
