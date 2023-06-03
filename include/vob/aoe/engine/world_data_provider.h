@@ -83,18 +83,18 @@ namespace vob::aoeng
 			return registry_view_accessor<TComponents...>(m_worldData.m_entityRegistry);
 		}
 
-		template <typename TComponent, auto TCandidate, typename... TValues>
+		template <auto TCandidate, typename... TComponents, typename... TValues>
 		void on_construct(TValues&&... a_values)
 		{
-			m_worldData.m_entityRegistry.on_construct<TComponent>().connect<TCandidate>(
-				std::forward<TValues>(a_values)...);
+			(m_worldData.m_entityRegistry.on_construct<TComponents>().connect<TCandidate>(
+				std::forward<TValues>(a_values)...), ...);
 		}
 
-		template <typename TComponent, auto TCandidate, typename... TValues>
+		template <auto TCandidate, typename... TComponents, typename... TValues>
 		void on_destroy(TValues&&... a_values)
 		{
-			m_worldData.m_entityRegistry.on_destroy<TComponent>().connect<TCandidate>(
-				std::forward<TValues>(a_values)...);
+			(m_worldData.m_entityRegistry.on_destroy<TComponents>().connect<TCandidate>(
+				std::forward<TValues>(a_values)...), ...);
 		}
 
 

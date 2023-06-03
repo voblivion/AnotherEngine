@@ -7,8 +7,8 @@ namespace vob::aoegl
 		: m_modelDataResourceManager{ a_wdp }
 		, m_meshRenderWorldComponent{ a_wdp }
 	{
-		a_wdp.on_construct<model_component, &model_data_resource_system::on_construct>(*this);
-		a_wdp.on_destroy<model_component, &model_data_resource_system::on_destroy>(*this);
+		a_wdp.on_construct<&model_data_resource_system::on_construct, model_component, model_data_component>(*this);
+		a_wdp.on_destroy<&model_data_resource_system::on_destroy, model_component, model_data_component>(*this);
 	}
 
 	void model_data_resource_system::on_construct(aoeng::entity_registry& a_registry, aoeng::entity a_entity)
