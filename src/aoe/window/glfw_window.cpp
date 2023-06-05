@@ -529,10 +529,12 @@ namespace vob::aoewi
 		, GLchar const* a_message
 		, void const* a_userParam)
 	{
-		// ignore non-significant error/warning codes
-		if (a_id == 131169 || a_id == 131185 || a_id == 131218 || a_id == 131204) return;
+		// ignore non-significant messages
+		if (a_type == GL_DEBUG_TYPE_OTHER)
+		{
+			return;
+		}
 
-		std::cerr << "[";
 		switch (a_type)
 		{
 		case GL_DEBUG_TYPE_ERROR:

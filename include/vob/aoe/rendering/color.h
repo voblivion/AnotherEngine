@@ -35,4 +35,38 @@ namespace vob::aoegl
 	static const rgba k_purple = rgba{ 1.0f, 0.0f, 1.0f, 1.0f };
 	static const rgba k_cyan = rgba{ 0.0f, 1.0f, 1.0f, 1.0f };
 	static const rgba k_dark_blue = rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
+
+	inline auto to_rgb(glm::vec3 const& a_vector)
+	{
+		return rgb{
+			color_channel{a_vector.x},
+			color_channel{a_vector.y},
+			color_channel{a_vector.z} };
+	}
+
+	inline auto to_rgba(glm::vec3 const& a_vector)
+	{
+		return rgba{
+			color_channel{a_vector.x},
+			color_channel{a_vector.y},
+			color_channel{a_vector.z},
+			1.0f };
+	}
+
+	inline auto to_rgb(glm::vec4 const& a_vector)
+	{
+		return rgb{
+			color_channel{a_vector.x},
+			color_channel{a_vector.y},
+			color_channel{a_vector.z} };
+	}
+
+	inline auto to_rgba(glm::vec4 const& a_vector)
+	{
+		return rgba{
+			color_channel{a_vector.x},
+			color_channel{a_vector.y},
+			color_channel{a_vector.z},
+			color_channel{ a_vector.w } };
+	}
 }
