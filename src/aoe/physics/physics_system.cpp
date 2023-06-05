@@ -92,7 +92,7 @@ namespace
 
 	private:
 		vob::aoegl::debug_mesh_world_component& m_debugMeshWorldComponent;
-		DebugDrawModes m_debugModes = DBG_DrawWireframe;
+		DebugDrawModes m_debugModes = DBG_NoDebug;
 	};
 }
 
@@ -103,6 +103,7 @@ namespace vob::aoeph
 		, m_simulationTimeWorldComponent{ a_wdp }
 		, m_colliderEntities{ a_wdp }
 		, m_debugMeshWorldComponent{ a_wdp }
+		, m_bindings{ a_wdp }
 	{
 		a_wdp.on_construct<&physics_system::on_spawn, aoest::transform_component, collider_component>(this);
 		a_wdp.on_destroy<&physics_system::on_despawn, rigidbody_component>(this);
@@ -146,10 +147,18 @@ namespace vob::aoeph
 
 	void physics_system::try_debug_draw() const
 	{
-		if (m_physicsWorldComponent->m_enableDebugDraw)
+		auto const& cycleDebugDrawModeSwitch = *m_bindings->switches.find(
+			m_physicsWorldComponent->m_cycleDebugDrawModeBinding);
+		if (cycleDebugDrawModeSwitch.was_pressed())
+		{
+			m_physicsWorldComponent->m_debugDrawModeIndex =
+				(m_physicsWorldComponent->m_debugDrawModeIndex + 1) % k_debugDrawModes.size();
+		}
+		if (m_physicsWorldComponent->m_debugDrawModeIndex != 0)
 		{
 			debug_drawer debugDrawer{ *m_debugMeshWorldComponent };
-
+			debugDrawer.setDebugMode(k_debugDrawModes[m_physicsWorldComponent->m_debugDrawModeIndex]);
+			
 			auto& physicsWorld = m_physicsWorldComponent->m_world.get();
 			physicsWorld.setDebugDrawer(&debugDrawer);
 			physicsWorld.debugDrawWorld();

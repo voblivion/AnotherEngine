@@ -39,6 +39,8 @@ namespace vob::aoeph
 			aoest::simulation_time_world_component> m_simulationTimeWorldComponent;
 		aoeng::world_component_ref<
 			aoegl::debug_mesh_world_component> m_debugMeshWorldComponent;
+		aoeng::world_component_ref<
+			aoein::bindings const> m_bindings;
 
 		aoeng::registry_view_ref<
 			aoest::transform_component, collider_component, motion_state_component> m_colliderEntities;
