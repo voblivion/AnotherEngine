@@ -21,7 +21,7 @@
 #include <vob/aoe/debug/debug_controller.h>
 #include <vob/aoe/ecs/component_list_factory.h>
 #include <vob/aoe/physics/material.h>
-#include <vob/aoe/physics/rigidbody_component.h>
+#include <vob/aoe/physics/collider_component.h>
 #include <vob/aoe/rendering/components/camera_component.h>
 #include <vob/aoe/rendering/components/model_component.h>
 #include <vob/aoe/rendering/components/model_data_component.h>
@@ -117,7 +117,7 @@ namespace vob::aoe
 				register_component<aoegl::camera_component>("vob::aoegl::camera_component"_id);
 				register_component<aoegl::model_component>("vob::aoegl::model_component"_id);
 				register_component<aoegl::model_data_component>("vob::aoegl::model_data_component"_id);
-				register_component<aoeph::rigidbody_component>("vob::aoeph::rigidbody_component"_id);
+				register_component<aoeph::collider_component>("vob::aoeph::collider_component"_id);
 				register_component<aoest::transform_component>("vob::aoest::transform_component"_id);
 				register_component<aoedb::debug_controller_component>("vob::aoedb::debug_controller_component"_id);
 			}

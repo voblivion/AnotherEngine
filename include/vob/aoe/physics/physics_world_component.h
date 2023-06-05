@@ -16,6 +16,6 @@ namespace vob::aoeph
 
 		std::reference_wrapper<btDynamicsWorld> m_world;
 		bool m_isPaused = false;
-		bool m_enableDebugDraw = false;
+		bool m_enableDebugDraw = true;
 	};
 }

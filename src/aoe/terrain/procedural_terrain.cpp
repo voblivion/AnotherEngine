@@ -1,55 +1,85 @@
 #include <vob/aoe/terrain/procedural_terrain.h>
 
+#include <vob/aoe/pathfinding/a_star.h>
+
 #include <vob/misc/random/simplex.h>
+#include <vob/misc/std/vector2d.h>
+
+#include <bullet/BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 
 #include <span>
 
-#include <vob/aoe/pathfinding/a_star.h>
+
+namespace
+{
+	float calculate_height(glm::vec2 const& a_pos2d, std::span<vob::aoetr::layer> a_layers)
+	{
+		auto height = 0.0f;
+		for (auto const& layer : a_layers)
+		{
+			height += static_cast<float>(layer.m_height * vob::misrn::simplex::noise(
+				a_pos2d.x * layer.m_frequency + layer.m_offset.x,
+				a_pos2d.y * layer.m_frequency + layer.m_offset.y));
+		}
+		return height;
+	}
+
+	template <typename TProcessor>
+	vob::mistd::vector2d<decltype(std::declval<TProcessor>()(std::declval<glm::vec3 const&>()))> generate_procedural(
+		glm::vec2 a_center,
+		glm::vec2 a_size,
+		glm::ivec2 a_subdivisions,
+		std::span<vob::aoetr::layer> a_layers,
+		TProcessor a_processor)
+	{
+		using type = decltype(std::declval<TProcessor>()(std::declval<glm::vec3 const&>()));
+
+		auto const cellSize = glm::vec2{ a_size.x / a_subdivisions.x, a_size.y / a_subdivisions.y };
+		auto const start = a_center - a_size / 2.0f;
+
+		vob::mistd::vector2d<type> result{ vob::mistd::size2d{a_subdivisions.x + 1, a_subdivisions.y + 1} };
+		for (auto const& index : result.keys())
+		{
+			auto const pos2d = start + glm::vec2{ index.x * cellSize.x, index.y * cellSize.y };
+			result[index] = a_processor(glm::vec3{ pos2d.x, calculate_height(pos2d, a_layers), pos2d.y });
+		}
+
+		return result;
+	}
+}
 
 
 namespace vob::aoetr
 {
-	aoegl::mesh_data generate_procedural_terrain(std::int32_t a_size, float a_cellSize, float a_height, float a_f)
+	mistd::vector2d<float> generate_procedural_heights(
+		glm::vec2 a_center, glm::vec2 a_size, glm::ivec2 a_subdivisions, std::span<layer> a_layers)
 	{
-		layer uniqueLayer{ a_height, a_f };
-		return generate_procedural_terrain(a_cellSize * a_size, a_cellSize, std::span{ &uniqueLayer, 1 }, true);
+		return generate_procedural(
+			a_center, a_size, a_subdivisions, a_layers, [](glm::vec3 const& a_pos) { return a_pos.y; });
 	}
 
-	aoegl::mesh_data generate_procedural_terrain(
-		float a_size, float a_cellSize, std::span<layer> a_layers, bool a_useSmoothShading)
+	mistd::vector2d<glm::vec3> generated_procedural_positions(
+		glm::vec2 a_center, glm::vec2 a_size, glm::ivec2 a_subdivisions, std::span<layer> a_layers)
 	{
-		auto const subdivisions = static_cast<std::int32_t>(std::ceil(a_size / a_cellSize));
-		auto const vertexCount = (subdivisions + 1) * (subdivisions + 1);
+		return generate_procedural(
+			a_center, a_size, a_subdivisions, a_layers, [](glm::vec3 const& a_pos) { return a_pos; });
+	}
 
-		std::vector<std::vector<glm::vec3>> pos;
-		pos.reserve(subdivisions + 3);
-		for (int i = -1; i <= subdivisions + 2; ++i)
-		{
-			auto& line = pos.emplace_back();
-			line.reserve(subdivisions + 3);
-			for (int j = -1; j <= subdivisions + 2; ++j)
-			{
-				auto const x = float(i) * a_cellSize - a_size / 2;
-				auto const y = float(j) * a_cellSize - a_size / 2;
+	aoegl::mesh_data generate_procedural_mesh(
+		glm::vec2 a_center, glm::vec2 a_size, glm::ivec2 a_subdivisions, std::span<layer> a_layers, bool a_useSmoothShading)
+	{
 
-				auto height = 0.0;
-				for (auto const& layer : a_layers)
-				{
-					height += layer.m_height * misrn::simplex::noise(
-						x * layer.m_frequency + layer.m_offset.x,
-						y * layer.m_frequency + layer.m_offset.y);
-				}
+		auto const cellSize = glm::vec2{ a_size.x / a_subdivisions.x, a_size.y / a_subdivisions.y };
+		auto const vertexCount = (a_subdivisions.x + 2) * (a_subdivisions.y + 2);
 
-				line.emplace_back(x, height, y);
-			}
-		}
+		auto pos = generated_procedural_positions(a_center, a_size + 2.0f * cellSize, a_subdivisions + glm::ivec2{2, 2}, a_layers);
 
 		aoegl::mesh_data mesh;
 		mesh.m_positions.reserve(vertexCount);
 		mesh.m_textureCoords.reserve(vertexCount);
 		mesh.m_normals.reserve(vertexCount);
 		mesh.m_tangents.reserve(vertexCount);
-		mesh.m_triangles.reserve(subdivisions * subdivisions * 2);
+		mesh.m_triangles.reserve(a_subdivisions.x * a_subdivisions.y * 2);
 
 		auto const f = [](auto const p0, auto const p1, auto const p2)
 		{
@@ -60,27 +90,27 @@ namespace vob::aoetr
 		auto const n = [&f, &pos](auto i, auto j)
 		{
 			auto normal = glm::vec3{ 0.0f };
-			normal += f(pos[i - 1][j - 1], pos[i - 1][j], pos[i][j]);
-			normal += f(pos[i - 1][j - 1], pos[i][j], pos[i][j - 1]);
-			normal += f(pos[i][j - 1], pos[i][j], pos[i + 1][j - 1]);
-			normal += f(pos[i + 1][j - 1], pos[i + 1][j], pos[i][j]);
-			normal += f(pos[i][j], pos[i + 1][j + 1], pos[i + 1][j]);
-			normal += f(pos[i][j], pos[i][j + 1], pos[i + 1][j + 1]);
-			normal += f(pos[i][j], pos[i - 1][j + 1], pos[i][j + 1]);
-			normal += f(pos[i][j], pos[i - 1][j], pos[i - 1][j + 1]);
+			normal += f(pos[{i - 1, j - 1}], pos[{i - 1, j}], pos[{i, j}]);
+			normal += f(pos[{i - 1, j - 1}], pos[{i, j}], pos[{i, j - 1}]);
+			normal += f(pos[{i, j - 1}], pos[{i, j}], pos[{i + 1, j - 1}]);
+			normal += f(pos[{i + 1, j - 1}], pos[{i + 1, j}], pos[{i, j}]);
+			normal += f(pos[{i, j}], pos[{i + 1, j + 1}], pos[{i + 1, j}]);
+			normal += f(pos[{i, j}], pos[{i, j + 1}], pos[{i + 1, j + 1}]);
+			normal += f(pos[{i, j}], pos[{i - 1, j + 1}], pos[{i, j + 1}]);
+			normal += f(pos[{i, j}], pos[{i - 1, j}], pos[{i - 1, j + 1}]);
 
 			auto averageNormal = glm::normalize(normal);
 			return averageNormal;
 		};
 
-		for (auto i = 1; i <= subdivisions; ++i)
+		for (auto i = 1; i <= a_subdivisions.x; ++i)
 		{
-			for (auto j = 1; j <= subdivisions; ++j)
+			for (auto j = 1; j <= a_subdivisions.y; ++j)
 			{
-				glm::vec3 p0 = pos[i][j];
-				glm::vec3 p1 = pos[i][j + 1];
-				glm::vec3 p2 = pos[i + 1][j];
-				glm::vec3 p3 = pos[i + 1][j + 1];
+				glm::vec3 p0 = pos[{i, j}];
+				glm::vec3 p1 = pos[{i, j + 1}];
+				glm::vec3 p2 = pos[{i + 1, j}];
+				glm::vec3 p3 = pos[{i + 1, j + 1}];
 
 				glm::vec2 tc0 = glm::vec2{ 0.0f, 0.0f };
 				glm::vec2 tc1 = glm::vec2{ 0.0f, 1.0f };

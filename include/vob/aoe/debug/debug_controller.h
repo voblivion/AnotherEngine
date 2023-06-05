@@ -18,6 +18,7 @@
 #include <vob/aoe/window/window_world_component.h>
 
 #include <vob/misc/visitor/macros.h>
+#include <vob/misc/std/vector2d.h>
 
 
 namespace vob::aoedb
@@ -31,6 +32,7 @@ namespace vob::aoedb
 	{
 		// Camera
 		aoein::bindings::switch_id m_enableViewMapping = 0;
+		aoein::bindings::switch_id m_spawnItem = 0;
 		aoein::bindings::axis_id m_lateralMoveMapping = 0;
 		aoein::bindings::axis_id m_longitudinalMoveMapping = 0;
 		aoein::bindings::axis_id m_verticalMoveMapping = 0;
@@ -38,16 +40,21 @@ namespace vob::aoedb
 		aoein::bindings::axis_id m_yawMapping = 0;
 		float m_moveSpeed = 10.0f;
 
+		// Item
+		aoecs::component_set m_itemComponents;
+
 		// Terrain
 		aoeng::entity m_terrainEntity = entt::tombstone;
 		aoecs::entity_id m_terrainEntityId = aoecs::k_invalidEntityId;
 		aoecs::component_set m_terrainComponents;
+		mistd::vector2d<float> m_currentHeights;
+		mistd::vector2d<float> m_nextHeights;
 		float m_terrainSize = 64.0f;
 		aoein::bindings::switch_id m_terrainSizeUpMapping = 0;
 		aoein::bindings::switch_id m_terrainSizeDownMapping = 0;
-		float m_terrainCellSize = 1.0f;
-		aoein::bindings::switch_id m_terrainCellSizeUpMapping = 0;
-		aoein::bindings::switch_id m_terrainCellSizeDownMapping = 0;
+		int32_t m_terrainSubdivisionCount = 16;
+		aoein::bindings::switch_id m_terrainSubdivisionCountUpMapping = 0;
+		aoein::bindings::switch_id m_terrainSubdivisionCountDownMapping = 0;
 		bool m_terrainUseSmoothShading = false;
 		aoein::bindings::switch_id m_terrainUseSmoothShadingMapping = 0;
 		struct terrain_layer
