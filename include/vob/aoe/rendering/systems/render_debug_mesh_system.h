@@ -30,6 +30,6 @@ namespace vob::aoegl
 		aoeng::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
 		aoeng::world_component_ref<director_world_component> m_directorWorldComponent;
 		aoeng::world_component_ref<debug_render_world_component> m_debugRenderWorldComponent;
-		aoeng::world_component_ref<debug_mesh_world_component> m_debugSceneWorldComponent;
+		aoeng::world_component_ref<debug_mesh_world_component> m_debugMeshWorldComponent;
 	};
 }
