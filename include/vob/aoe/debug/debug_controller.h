@@ -10,6 +10,7 @@
 
 #include <vob/aoe/input/bindings.h>
 
+#include <vob/aoe/rendering/data/model_data.h>
 #include <vob/aoe/rendering/components/camera_component.h>
 
 #include <vob/aoe/spacetime/transform_component.h>
@@ -42,6 +43,7 @@ namespace vob::aoedb
 
 		// Item
 		aoecs::component_set m_itemComponents;
+		std::shared_ptr<aoegl::model_data const> m_itemModel;
 
 		// Terrain
 		aoeng::entity m_terrainEntity = entt::tombstone;

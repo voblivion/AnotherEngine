@@ -217,12 +217,19 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 				layer.m_heightUpMapping = bindings.switches.add(aoein::binding_util::make_switch(heightUpKeys[i]));
 				layer.m_heightDownMapping = bindings.switches.add(aoein::binding_util::make_switch(heightDownKeys[i]));
 			}
+
+			auto itemModelId = a_data.filesystemIndexer.get_runtime_id("data/new/models/sphere.gltf");
+			debugControllerWorldComponent.m_itemModel = a_data.modelDatabase.find(itemModelId);
 		}
 
 		auto& textureDataResourceManager = a_world.add_world_component<aoegl::texture_data_resource_manager>();
 		a_world.add_world_component<aoegl::model_data_resource_manager>(textureDataResourceManager);
 
-		a_world.add_world_component<aoeph::physics_world_component>(a_data.m_dynamicsWorld);
+		auto& physicsWorldComponent = a_world.add_world_component<aoeph::physics_world_component>(a_data.m_dynamicsWorld);
+		{
+			physicsWorldComponent.m_cycleDebugDrawModeBinding = bindings.switches.add(
+				aoein::binding_util::make_switch(aoein::keyboard::key::T));
+		}
 	}
 
 	// systems

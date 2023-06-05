@@ -46,17 +46,24 @@ namespace vob::aoegl
 
 		// position
 		glEnableVertexAttribArray(0);
-		glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, offsetof(debug_vertex, m_position));
+		glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
 		glVertexAttribBinding(0, 0);
 
 		// color
 		glEnableVertexAttribArray(1);
-		glVertexAttribFormat(1, 4, GL_FLOAT, GL_FALSE, offsetof(debug_vertex, m_color));
+		glVertexAttribFormat(1, 4, GL_FLOAT, GL_FALSE, 0);
 		glVertexAttribBinding(1, 1);
 	}
 
 	void render_debug_mesh_system::update() const
 	{
+		auto& vertices = m_debugMeshWorldComponent->m_vertices;
+		auto& lines = m_debugMeshWorldComponent->m_lines;
+		if (vertices.empty() || lines.empty())
+		{
+			return;
+		}
+
 		auto const& program = m_debugRenderWorldComponent->m_debugProgram;
 
 		// Use program
@@ -76,9 +83,6 @@ namespace vob::aoegl
 				farClip) * glm::inverse(transform));
 
 		// Render debug mesh
-		auto& vertices = m_debugMeshWorldComponent->m_vertices;
-		auto& lines = m_debugMeshWorldComponent->m_lines;
-
 		{
 			glBindVertexArray(m_debugRenderWorldComponent->m_vao);
 			glEnableVertexAttribArray(0);

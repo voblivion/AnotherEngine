@@ -125,6 +125,8 @@ namespace vob::aoedb
 					std::move(itemShape),
 					std::make_shared<aoeph::material>());
 
+				itemComponents.add<aoegl::model_data_component>(m_debugControllerWorldComponent->m_itemModel);
+
 				m_queryRef.add(
 					[this](aoeng::entity_registry& a_registry) {
 						auto const itemEntity = a_registry.create();
@@ -136,6 +138,10 @@ namespace vob::aoedb
 						a_registry.emplace<aoeph::collider_component>(
 							itemEntity,
 							*m_debugControllerWorldComponent->m_itemComponents.find<aoeph::collider_component>());
+
+						a_registry.emplace<aoegl::model_data_component>(
+							itemEntity,
+							*m_debugControllerWorldComponent->m_itemComponents.find<aoegl::model_data_component>());
 					});
 			}
 		}
