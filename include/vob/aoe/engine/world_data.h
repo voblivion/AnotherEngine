@@ -12,6 +12,8 @@ namespace vob::aoeng
 	using entity = entt::entity;
 	using entity_allocator = std::allocator<entity>; // std::pmr::polymorphic_allocator<entity>;
 	using entity_registry = entt::basic_registry<entt::entity, entity_allocator>;
+	using entity_handle = entt::basic_handle<entity_registry>;
+	
 	using entity_registry_query = std::function<void(entity_registry&)>;
 	using entity_registry_query_queue = std::pmr::vector<entity_registry_query>;
 	using entity_registry_query_allocator = std::pmr::polymorphic_allocator<entity_registry_query>;
