@@ -95,8 +95,11 @@ namespace vob::aoegl
 		uniform_util::set(program.m_viewPositionLocation, aoest::get_translation(transform));
 		uniform_util::set(
 			program.m_viewProjectionTransformLocation,
-			glm::perspective(fov, static_cast<float>(windowSize.x) / windowSize.y, nearClip, farClip)
-			* glm::inverse(transform));
+			glm::perspective(
+				fov,
+				static_cast<float>(windowSize.x) / windowSize.y,
+				nearClip,
+				farClip) * glm::inverse(transform));
 
 		glBindVertexArray(m_meshRenderWorldComponent->m_vao);
 		glEnableVertexAttribArray(0);
