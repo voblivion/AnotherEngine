@@ -107,13 +107,10 @@ namespace vob::aoegl
 				nearClip,
 				farClip) * glm::inverse(transform));
 
-		// Render debug mesh
+		// Update debug mesh
 		{
 			glBindVertexArray(debugRenderWorldComponent.m_vao);
-			glEnableVertexAttribArray(0);
-			glEnableVertexAttribArray(1);
 
-			// vbo
 			glBindBuffer(GL_ARRAY_BUFFER, debugRenderWorldComponent.m_vbo);
 			glBufferData(
 				GL_ARRAY_BUFFER,
@@ -121,17 +118,16 @@ namespace vob::aoegl
 				vertices.data(),
 				GL_STATIC_DRAW);
 
-			// ebo
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, debugRenderWorldComponent.m_ebo);
 			glBufferData(
 				GL_ELEMENT_ARRAY_BUFFER,
 				lines.size() * sizeof(decltype(lines.front())),
 				lines.data(),
 				GL_STATIC_DRAW);
-
-			// draw
-			glDrawElements(GL_LINES, static_cast<int32_t>(lines.size() * 2), GL_UNSIGNED_INT, nullptr);
 		}
+
+		// Render debug mesh
+		glDrawElements(GL_LINES, static_cast<int32_t>(lines.size() * 2), GL_UNSIGNED_INT, nullptr);
 
 		m_debugMeshWorldComponent->clear_lines();
 	}
