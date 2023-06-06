@@ -14,23 +14,23 @@ namespace vob::aoest
 	{
 	public:
 		explicit time_system(aoeng::world_data_provider& a_wdp)
-			: m_simulationTimeWorldComponent{ a_wdp }
+			: m_timeWorldComponent{ a_wdp }
 		{}
 
 		void update() const
 		{
 #pragma message(VOB_MISTD_TODO "handle pause.")
 			auto const currentTime = time_world_component<TCategory>::clock::now();
-			auto& tickStartTime = m_simulationTimeWorldComponent->m_tickStartTime;
+			auto& tickStartTime = m_timeWorldComponent->m_tickStartTime;
 			if (tickStartTime.has_value())
 			{
-				m_simulationTimeWorldComponent->m_elapsedTime = currentTime - *tickStartTime;
+				m_timeWorldComponent->m_elapsedTime = currentTime - *tickStartTime;
 			}
-			m_simulationTimeWorldComponent->m_tickStartTime = currentTime;
+			m_timeWorldComponent->m_tickStartTime = currentTime;
 		}
 
 	private:
-		aoeng::world_component_ref<time_world_component<TCategory>> m_simulationTimeWorldComponent;
+		aoeng::world_component_ref<time_world_component<TCategory>> m_timeWorldComponent;
 	};
 
 	using presentation_time_system = time_system<presentation_t>;

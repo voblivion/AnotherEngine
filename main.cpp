@@ -38,6 +38,7 @@
 
 #include <vob/aoe/spacetime/time_world_component.h>
 #include <vob/aoe/spacetime/time_system.h>
+#include <vob/aoe/spacetime/lifetime_system.h>
 
 #include <vob/aoe/terrain/procedural_terrain.h>
 
@@ -242,7 +243,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 		auto const bindingSystemId = a_world.add_system<aoein::binding_system>();
 		auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
 		auto const physicsSystemId = a_world.add_system<aoeph::physics_system>();
-
+		auto const lifetimeSystemId = a_world.add_system<aoest::lifetime_system>();
 
 		auto const modelDataResourceSystemId = a_world.add_system<aoegl::model_data_resource_system>();
 
@@ -263,6 +264,7 @@ void init_world_and_schedule(aoeng::world& a_world, mismt::pmr::schedule& a_sche
 			{windowInputSystemId, {}},
 			{bindingSystemId, {}},
 			{debugControllerSystemId, {}},
+			{lifetimeSystemId, {}},
 			{modelDataResourceSystemId, {}},
 			{bindSceneFramebufferSystemId, {}},
 			{renderModelsSystemId, {}},

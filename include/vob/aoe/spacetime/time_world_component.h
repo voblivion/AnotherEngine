@@ -7,10 +7,10 @@
 #include <optional>
 
 
-using namespace vob::misph::literals;
-
 namespace vob::aoest
 {
+	using namespace misph::literals;
+
 	template <typename TCategory>
 	struct time_world_component
 	{

@@ -8,6 +8,7 @@
 #include <vob/aoe/rendering/components/model_component.h>
 #include <vob/aoe/rendering/components/model_data_component.h>
 #include <vob/aoe/physics/collider_component.h>
+#include <vob/aoe/spacetime/lifetime_component.h>
 
 #include <bullet/BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btSphereShape.h>
@@ -15,6 +16,8 @@
 
 namespace vob::aoedb
 {
+	using namespace misph::literals;
+
 	debug_controller_system::debug_controller_system(aoeng::world_data_provider& a_wdp)
 		: m_debugControllerWorldComponent{ a_wdp }
 		, m_bindings{ a_wdp }
@@ -57,6 +60,51 @@ namespace vob::aoedb
 			auto const move = moveDir * dt * m_debugControllerWorldComponent->m_moveSpeed;
 
 			transform.m_matrix = glm::translate(glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } * move) * transform.m_matrix;
+
+			if (switches.find(m_debugControllerWorldComponent->m_spawnItem)->was_pressed())
+			{
+				auto& itemComponents = m_debugControllerWorldComponent->m_itemComponents;
+				itemComponents = aoecs::component_set{};
+
+				auto& itemTransform = itemComponents.add<aoest::transform_component>();
+				auto offset = glm::vec3{ 0.0f, 0.0f, -1.0f }; // forward
+				itemTransform.m_matrix = glm::translate(
+					glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } *offset) * transform.m_matrix;
+
+				auto itemShape = std::make_shared<btSphereShape>(1.0f);
+				itemComponents.add<aoeph::collider_component>(
+					1.0f /* mass */,
+					glm::vec3{ 0.0f, 0.0f, 0.0f } /* offset */,
+					glm::vec3{ 1.0f } /* linear factor */,
+					glm::vec3{ 1.0f } /* angular factor */,
+					std::move(itemShape),
+					std::make_shared<aoeph::material>());
+
+				itemComponents.add<aoegl::model_data_component>(m_debugControllerWorldComponent->m_itemModel);
+
+				itemComponents.add<aoest::lifetime_component>(30.0_s);
+
+				m_queryRef.add(
+					[this](aoeng::entity_registry& a_registry) {
+						auto const itemEntity = a_registry.create();
+
+				a_registry.emplace<aoest::transform_component>(
+					itemEntity,
+					*m_debugControllerWorldComponent->m_itemComponents.find<aoest::transform_component>());
+
+				a_registry.emplace<aoeph::collider_component>(
+					itemEntity,
+					*m_debugControllerWorldComponent->m_itemComponents.find<aoeph::collider_component>());
+
+				a_registry.emplace<aoegl::model_data_component>(
+					itemEntity,
+					*m_debugControllerWorldComponent->m_itemComponents.find<aoegl::model_data_component>());
+
+				a_registry.emplace<aoest::lifetime_component>(
+					itemEntity,
+					*m_debugControllerWorldComponent->m_itemComponents.find<aoest::lifetime_component>());
+					});
+			}
 
 			if (!enableViewSwitch.is_pressed())
 			{
@@ -105,45 +153,6 @@ namespace vob::aoedb
 			transform.m_matrix[0] = orientation[0];
 			transform.m_matrix[1] = orientation[1];
 			transform.m_matrix[2] = orientation[2];
-
-			if (switches.find(m_debugControllerWorldComponent->m_spawnItem)->was_pressed())
-			{
-				auto& itemComponents = m_debugControllerWorldComponent->m_itemComponents;
-				itemComponents = aoecs::component_set{};
-
-				auto& itemTransform = itemComponents.add<aoest::transform_component>();
-				auto offset = glm::vec3{ 0.0f, 0.0f, -1.0f }; // forward
-				itemTransform.m_matrix = glm::translate(
-					glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } *offset) * transform.m_matrix;
-
-				auto itemShape = std::make_shared<btSphereShape>(1.0f);
-				itemComponents.add<aoeph::collider_component>(
-					1.0f /* mass */,
-					glm::vec3{ 0.0f, 0.0f, 0.0f } /* offset */,
-					glm::vec3{ 1.0f } /* linear factor */,
-					glm::vec3{ 1.0f } /* angular factor */,
-					std::move(itemShape),
-					std::make_shared<aoeph::material>());
-
-				itemComponents.add<aoegl::model_data_component>(m_debugControllerWorldComponent->m_itemModel);
-
-				m_queryRef.add(
-					[this](aoeng::entity_registry& a_registry) {
-						auto const itemEntity = a_registry.create();
-
-						a_registry.emplace<aoest::transform_component>(
-							itemEntity,
-							*m_debugControllerWorldComponent->m_itemComponents.find<aoest::transform_component>());
-
-						a_registry.emplace<aoeph::collider_component>(
-							itemEntity,
-							*m_debugControllerWorldComponent->m_itemComponents.find<aoeph::collider_component>());
-
-						a_registry.emplace<aoegl::model_data_component>(
-							itemEntity,
-							*m_debugControllerWorldComponent->m_itemComponents.find<aoegl::model_data_component>());
-					});
-			}
 		}
 
 		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntity == entt::tombstone;
