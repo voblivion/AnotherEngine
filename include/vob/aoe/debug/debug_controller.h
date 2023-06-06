@@ -54,7 +54,7 @@ namespace vob::aoedb
 		float m_terrainSize = 64.0f;
 		aoein::bindings::switch_id m_terrainSizeUpMapping = 0;
 		aoein::bindings::switch_id m_terrainSizeDownMapping = 0;
-		int32_t m_terrainSubdivisionCount = 16;
+		int32_t m_terrainSubdivisionCount = 1;
 		aoein::bindings::switch_id m_terrainSubdivisionCountUpMapping = 0;
 		aoein::bindings::switch_id m_terrainSubdivisionCountDownMapping = 0;
 		bool m_terrainUseSmoothShading = false;

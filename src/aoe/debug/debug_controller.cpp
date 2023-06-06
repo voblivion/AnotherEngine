@@ -12,6 +12,7 @@
 
 #include <bullet/BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btSphereShape.h>
+#include <bullet/BulletCollision/CollisionShapes/btMultiSphereShape.h>
 
 
 namespace vob::aoedb
@@ -69,14 +70,18 @@ namespace vob::aoedb
 				auto& itemTransform = itemComponents.add<aoest::transform_component>();
 				auto offset = glm::vec3{ 0.0f, 0.0f, -1.0f }; // forward
 				itemTransform.m_matrix = glm::translate(
-					glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } *offset) * transform.m_matrix;
+					glm::mat4{ 1.0f }, glm::quat{ transform.m_matrix } *offset + glm::vec3{ transform.m_matrix[3] });
 
-				auto itemShape = std::make_shared<btSphereShape>(1.0f);
+				//auto itemShape = std::make_shared<btSphereShape>(1.0f);
+
+				btVector3 itemSpherePositions[2] = { btVector3(0.0, 0.0, 0.0), btVector3(0.0, 1.0, 0.0) };
+				btScalar itemSphereRadiuses[2] = { btScalar(1.0), btScalar(1.0) };
+				auto itemShape = std::make_shared<btMultiSphereShape>(itemSpherePositions, itemSphereRadiuses, 2);
 				itemComponents.add<aoeph::collider_component>(
 					1.0f /* mass */,
 					glm::vec3{ 0.0f, 0.0f, 0.0f } /* offset */,
 					glm::vec3{ 1.0f } /* linear factor */,
-					glm::vec3{ 1.0f } /* angular factor */,
+					glm::vec3{ 0.0f, 1.0f, 0.0f } /* angular factor */,
 					std::move(itemShape),
 					std::make_shared<aoeph::material>());
 
@@ -88,21 +93,21 @@ namespace vob::aoedb
 					[this](aoeng::entity_registry& a_registry) {
 						auto const itemEntity = a_registry.create();
 
-				a_registry.emplace<aoest::transform_component>(
-					itemEntity,
-					*m_debugControllerWorldComponent->m_itemComponents.find<aoest::transform_component>());
+						a_registry.emplace<aoest::transform_component>(
+							itemEntity,
+							*m_debugControllerWorldComponent->m_itemComponents.find<aoest::transform_component>());
 
-				a_registry.emplace<aoeph::collider_component>(
-					itemEntity,
-					*m_debugControllerWorldComponent->m_itemComponents.find<aoeph::collider_component>());
+						a_registry.emplace<aoeph::collider_component>(
+							itemEntity,
+							*m_debugControllerWorldComponent->m_itemComponents.find<aoeph::collider_component>());
 
-				a_registry.emplace<aoegl::model_data_component>(
-					itemEntity,
-					*m_debugControllerWorldComponent->m_itemComponents.find<aoegl::model_data_component>());
+						a_registry.emplace<aoegl::model_data_component>(
+							itemEntity,
+							*m_debugControllerWorldComponent->m_itemComponents.find<aoegl::model_data_component>());
 
-				a_registry.emplace<aoest::lifetime_component>(
-					itemEntity,
-					*m_debugControllerWorldComponent->m_itemComponents.find<aoest::lifetime_component>());
+						a_registry.emplace<aoest::lifetime_component>(
+							itemEntity,
+							*m_debugControllerWorldComponent->m_itemComponents.find<aoest::lifetime_component>());
 					});
 			}
 
@@ -158,12 +163,13 @@ namespace vob::aoedb
 		bool needTerrainUpdate = m_debugControllerWorldComponent->m_terrainEntity == entt::tombstone;
 		if (switches[m_debugControllerWorldComponent->m_terrainSizeUpMapping]->was_pressed())
 		{
-			m_debugControllerWorldComponent->m_terrainSize *= 1.25f;
+			m_debugControllerWorldComponent->m_terrainSize *= 2.0f;
 			needTerrainUpdate = true;
 		}
 		if (switches[m_debugControllerWorldComponent->m_terrainSizeDownMapping]->was_pressed())
 		{
-			m_debugControllerWorldComponent->m_terrainSize /= 1.25f;
+			m_debugControllerWorldComponent->m_terrainSize = std::max(1.0f,
+				m_debugControllerWorldComponent->m_terrainSize / 2.0f);
 			needTerrainUpdate = true;
 		}
 		if (switches[m_debugControllerWorldComponent->m_terrainSubdivisionCountUpMapping]->was_pressed())
@@ -242,12 +248,15 @@ namespace vob::aoedb
 			terrainTransform.m_matrix = glm::translate(
 				glm::mat4{ 1.0f }, glm::vec3{ 0.0f, 0.0f, 0.0f });
 
+			auto const subdivisions = m_debugControllerWorldComponent->m_terrainSubdivisionCount
+				* static_cast<int32_t>(m_debugControllerWorldComponent->m_terrainSize / 16);
+
 			auto modelData = std::make_shared<aoegl::model_data>();
 			modelData->m_texturedMeshes.emplace_back(
 				aoetr::generate_procedural_mesh(
 					glm::vec2{0.0f, 0.0f},
 					glm::vec2{ m_debugControllerWorldComponent->m_terrainSize },
-					glm::ivec2{ m_debugControllerWorldComponent->m_terrainSubdivisionCount },
+					glm::ivec2{ subdivisions },
 					layers,
 					m_debugControllerWorldComponent->m_terrainUseSmoothShading),
 				aoegl::material_data{});
@@ -257,7 +266,7 @@ namespace vob::aoedb
 			m_debugControllerWorldComponent->m_nextHeights = aoetr::generate_procedural_heights(
 				glm::vec2{ 0.0f, 0.0f },
 				glm::vec2{ m_debugControllerWorldComponent->m_terrainSize },
-				glm::ivec2{ m_debugControllerWorldComponent->m_terrainSubdivisionCount },
+				glm::ivec2{ subdivisions },
 				layers);
 
 			auto& heights = m_debugControllerWorldComponent->m_nextHeights;
@@ -266,8 +275,8 @@ namespace vob::aoedb
 			auto const maxH = *std::max_element(heights.begin(), heights.end());
 
 			auto terrainShape = std::make_shared<btHeightfieldTerrainShape>(
-				m_debugControllerWorldComponent->m_terrainSubdivisionCount + 1,
-				m_debugControllerWorldComponent->m_terrainSubdivisionCount + 1,
+				subdivisions + 1,
+				subdivisions + 1,
 				heights.data(),
 				btScalar(1.0),
 				btScalar(minH),
@@ -276,8 +285,7 @@ namespace vob::aoedb
 				PHY_FLOAT,
 				false /* flip quad edges */);
 			terrainShape->setUseDiamondSubdivision(true);
-			auto const cellSize = m_debugControllerWorldComponent->m_terrainSize
-				/ m_debugControllerWorldComponent->m_terrainSubdivisionCount;
+			auto const cellSize = m_debugControllerWorldComponent->m_terrainSize / subdivisions;
 			btVector3 scale{ cellSize, 1.0f, cellSize };
 			terrainShape->setLocalScaling(scale);
 
