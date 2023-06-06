@@ -41,18 +41,42 @@ namespace vob::aoegl
 		, m_debugRenderWorldComponent{ a_wdp }
 		, m_debugMeshWorldComponent{ a_wdp }
 	{
-		glCreateVertexArrays(1, &(m_debugRenderWorldComponent->m_vao));
-		glBindVertexArray(m_debugRenderWorldComponent->m_vao);
+		// vao
+		{
+			glCreateVertexArrays(1, &(m_debugRenderWorldComponent->m_vao));
+			glBindVertexArray(m_debugRenderWorldComponent->m_vao);
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
 
-		// position
-		glEnableVertexAttribArray(0);
-		glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
-		glVertexAttribBinding(0, 0);
+			// position
+			glEnableVertexAttribArray(0);
+			glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+			glVertexAttribBinding(0, 0);
 
-		// color
-		glEnableVertexAttribArray(1);
-		glVertexAttribFormat(1, 4, GL_FLOAT, GL_FALSE, 0);
-		glVertexAttribBinding(1, 1);
+			// color
+			glEnableVertexAttribArray(1);
+			glVertexAttribFormat(1, 4, GL_FLOAT, GL_FALSE, 0);
+			glVertexAttribBinding(1, 1);
+		}
+		// vbo
+		{
+			graphic_id vbo;
+			glCreateBuffers(1, &(m_debugRenderWorldComponent->m_vbo));
+			glBindVertexBuffer(
+				0,
+				m_debugRenderWorldComponent->m_vbo,
+				offsetof(debug_vertex, m_position),
+				sizeof(debug_vertex));
+			glBindVertexBuffer(
+				1,
+				m_debugRenderWorldComponent->m_vbo,
+				offsetof(debug_vertex, m_color),
+				sizeof(debug_vertex));
+		}
+		// ebo
+		{
+			glCreateBuffers(1, &(m_debugRenderWorldComponent->m_ebo));
+		}
 	}
 
 	void render_debug_mesh_system::update() const
@@ -64,7 +88,8 @@ namespace vob::aoegl
 			return;
 		}
 
-		auto const& program = m_debugRenderWorldComponent->m_debugProgram;
+		auto& debugRenderWorldComponent = *m_debugRenderWorldComponent;
+		auto const& program = debugRenderWorldComponent.m_debugProgram;
 
 		// Use program
 		glUseProgram(program.m_id);
@@ -84,14 +109,12 @@ namespace vob::aoegl
 
 		// Render debug mesh
 		{
-			glBindVertexArray(m_debugRenderWorldComponent->m_vao);
+			glBindVertexArray(debugRenderWorldComponent.m_vao);
 			glEnableVertexAttribArray(0);
 			glEnableVertexAttribArray(1);
 
 			// vbo
-			graphic_id vbo;
-			glCreateBuffers(1, &vbo);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo);
+			glBindBuffer(GL_ARRAY_BUFFER, debugRenderWorldComponent.m_vbo);
 			glBufferData(
 				GL_ARRAY_BUFFER,
 				vertices.size() * sizeof(decltype(vertices.front())),
@@ -99,9 +122,7 @@ namespace vob::aoegl
 				GL_STATIC_DRAW);
 
 			// ebo
-			graphic_id ebo;
-			glCreateBuffers(1, &ebo);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, debugRenderWorldComponent.m_ebo);
 			glBufferData(
 				GL_ELEMENT_ARRAY_BUFFER,
 				lines.size() * sizeof(decltype(lines.front())),
@@ -109,67 +130,8 @@ namespace vob::aoegl
 				GL_STATIC_DRAW);
 
 			// draw
-			glBindVertexBuffer(0, vbo, offsetof(debug_vertex, m_position), sizeof(debug_vertex));
-
-			glBindVertexBuffer(1, vbo, offsetof(debug_vertex, m_color), sizeof(debug_vertex));
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-
 			glDrawElements(GL_LINES, static_cast<int32_t>(lines.size() * 2), GL_UNSIGNED_INT, nullptr);
-
-			glDeleteBuffers(1, &ebo);
-			glDeleteBuffers(1, &vbo);
 		}
-		/*debug_mesh debugMesh;
-		glCreateVertexArrays(1, &debugMesh.m_vao);
-		glBindVertexArray(debugMesh.m_vao);
-
-		glCreateBuffers(1, &debugMesh.m_vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, debugMesh.m_vbo);
-		glBufferData(
-			GL_ARRAY_BUFFER
-			, vertices.size() * sizeof(debug_vertex)
-			, vertices.data()
-			, GL_STATIC_DRAW);
-
-		glCreateBuffers(1, &debugMesh.m_ebo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, debugMesh.m_ebo);
-		glBufferData(
-			GL_ELEMENT_ARRAY_BUFFER
-			, lines.size() * sizeof(line)
-			, lines.data()
-			, GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(
-			0
-			, 3
-			, GL_FLOAT
-			, GL_FALSE
-			, sizeof(debug_vertex)
-			, reinterpret_cast<void*>(offsetof(debug_vertex, m_position)));
-
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(
-			1
-			, 4
-			, GL_FLOAT
-			, GL_FALSE
-			, sizeof(debug_vertex)
-			, reinterpret_cast<void*>(offsetof(debug_vertex, m_color))
-		);
-
-		glBindVertexArray(debugMesh.m_vao);
-		glDrawElements(
-			GL_LINES
-			, static_cast<std::uint32_t>(lines.size()) * 2
-			, GL_UNSIGNED_INT
-			, nullptr
-		);
-
-		glDeleteBuffers(1, &debugMesh.m_ebo);
-		glDeleteBuffers(1, &debugMesh.m_vbo);
-		glDeleteVertexArrays(1, &debugMesh.m_vao);*/
 
 		m_debugMeshWorldComponent->clear_lines();
 	}
