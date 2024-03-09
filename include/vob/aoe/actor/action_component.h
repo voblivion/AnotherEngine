@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/ecs/entity_list.h>
+#include <entt/entt.hpp>
 
 
 namespace vob::aoeac
@@ -9,7 +9,7 @@ namespace vob::aoeac
 	{
 		bool m_canInteract = true;
 		bool m_isInteracting = false;
-		aoecs::entity_id m_interactor;
+		entt::entity m_interactor;
 	};
 }
 

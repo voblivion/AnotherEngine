@@ -7,9 +7,6 @@
 
 #include <vob/aoe/spacetime/time_world_component.h>
 
-#include <vob/aoe/ecs/world_data_provider.h>
-#include <vob/aoe/ecs/world_component_ref.h>
-
 #include <vob/aoe/engine/world_data_provider.h>
 
 

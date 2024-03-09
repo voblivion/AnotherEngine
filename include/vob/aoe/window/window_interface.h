@@ -122,5 +122,10 @@ namespace vob::aoewi
 		virtual unsigned int get_default_framebuffer_id() const = 0;
 		virtual bool is_hovered() const = 0;
 		virtual void set_cursor_state(cursor_state a_cursorState) = 0;
+
+		// TODO: this technically doesn't have to be in the window; it can be some world's component + system
+		virtual bool is_gamepad_present(int a_gamepadIndex) const = 0;
+		virtual bool is_gamepad_button_pressed(int a_gamepadIndex, aoein::gamepad::button a_button) const = 0;
+		virtual float get_gamepad_axis_value(int a_gamepadIndex, aoein::gamepad::axis a_axis) const = 0;
 	};
 }

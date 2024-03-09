@@ -1,7 +1,7 @@
 #include <vob/aoe/rendering/systems/render_debug_mesh_system.h>
 
+#include <vob/aoe/rendering/camera_util.h>
 #include <vob/aoe/rendering/uniform_util.h>
-
 #include <vob/aoe/rendering/resources/debug_mesh.h>
 
 #include <vob/misc/std/message_macros.h>
@@ -11,29 +11,6 @@
 
 namespace vob::aoegl
 {
-	namespace
-	{
-#pragma message(VOB_MISTD_TODO "code duplicate")
-		template <typename TDirectorWorldComponent, typename TCameraEntities>
-		auto get_camera_settings(
-			TDirectorWorldComponent const& a_directorWorldComponent,
-			TCameraEntities const& a_cameraEntities)
-		{
-			auto const cameraEntityIt = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
-			if (cameraEntityIt == a_cameraEntities.end())
-			{
-				return std::make_tuple(glm::mat4{ 1.0f }, std::numbers::pi_v<float> / 2, 0.1f, 1000.0f);
-			}
-
-			auto [transformComponent, cameraComponent] = a_cameraEntities.get(*cameraEntityIt);
-			return std::make_tuple(
-				transformComponent.m_matrix
-				, glm::radians(cameraComponent.m_fovDegree)
-				, cameraComponent.m_nearClip
-				, cameraComponent.m_farClip);
-		}
-	}
-
 	render_debug_mesh_system::render_debug_mesh_system(aoeng::world_data_provider& a_wdp)
 		: m_cameraEntities{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
@@ -60,7 +37,6 @@ namespace vob::aoegl
 		}
 		// vbo
 		{
-			graphic_id vbo;
 			glCreateBuffers(1, &(m_debugRenderWorldComponent->m_vbo));
 			glBindVertexBuffer(
 				0,
@@ -96,16 +72,10 @@ namespace vob::aoegl
 
 		// Set scene uniforms
 		auto const windowSize = m_windowWorldComponent->m_window.get().get_size();
-		const auto [transform, fov, nearClip, farClip] = get_camera_settings(
-			*m_directorWorldComponent, *m_cameraEntities);
-		uniform_util::set(program.m_viewPositionLocation, aoest::get_translation(transform));
-		uniform_util::set(
-			program.m_viewProjectionTransformLocation,
-			glm::perspective(
-				fov,
-				static_cast<float>(windowSize.x) / windowSize.y,
-				nearClip,
-				farClip) * glm::inverse(transform));
+		const auto [viewPosition, viewProjectionTransform] = get_active_camera_settings(
+			*m_directorWorldComponent, *m_cameraEntities, static_cast<float>(windowSize.x) / windowSize.y);
+		uniform_util::set(program.m_viewPositionLocation, viewPosition);
+		uniform_util::set(program.m_viewProjectionTransformLocation, viewProjectionTransform);
 
 		// Update debug mesh
 		{

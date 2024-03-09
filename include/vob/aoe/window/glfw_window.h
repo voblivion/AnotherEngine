@@ -40,7 +40,7 @@ namespace vob::aoewi
 		auto& operator==(glfw_window&&) = delete;
 		auto& operator==(glfw_window const&) = delete;
 
-#pragma region iwindow
+#pragma region window_interface
 		glm::ivec2 get_size() const override;
 		void swap_buffers() override;
 		void poll_events() override;
@@ -49,6 +49,10 @@ namespace vob::aoewi
 		unsigned int get_default_framebuffer_id() const override;
 		bool is_hovered() const override;
 		void set_cursor_state(cursor_state a_cursorState) override;
+
+		bool is_gamepad_present(int a_gamepadIndex) const override;
+		bool is_gamepad_button_pressed(int a_gamepadIndex, aoein::gamepad::button a_button) const override;
+		float get_gamepad_axis_value(int a_gamepadIndex, aoein::gamepad::axis a_axis) const override;
 #pragma endregion
 
 		GLFWwindow* get_native_handle() const;

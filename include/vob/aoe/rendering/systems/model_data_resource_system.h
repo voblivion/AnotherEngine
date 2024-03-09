@@ -8,8 +8,6 @@
 #include <vob/aoe/rendering/data/model_data_resource_manager.h>
 #include <vob/aoe/rendering/world_components/mesh_render_world_component.h>
 
-#include <vob/aoe/ecs/world_component_ref.h>
-
 #include <vob/aoe/engine/world_data_provider.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -27,9 +25,9 @@ namespace vob::aoegl
 
 		void update() const;
 
-		void on_construct(aoeng::entity_registry& a_registry, aoeng::entity a_entity);
+		void on_construct(aoeng::registry& a_registry, aoeng::entity a_entity);
 
-		void on_destroy(aoeng::entity_registry& a_registry, aoeng::entity a_entity);
+		void on_destroy(aoeng::registry& a_registry, aoeng::entity a_entity);
 
 	private:
 		aoeng::world_component_ref<model_data_resource_manager> m_modelDataResourceManager;

@@ -11,20 +11,18 @@ namespace vob::aoeng
 	class world_component_accessor
 	{
 	public:
-		explicit world_component_accessor(entt::registry& a_entityRegistry, entt::entity a_worldEntity)
+		explicit world_component_accessor(entt::registry& a_entityRegistry)
 			: m_entityRegistry{ a_entityRegistry }
-			, m_worldEntity{ a_worldEntity }
 		{
 		}
 
 		TComponent& get() const
 		{
-			return m_entityRegistry.get().get<TComponent>(m_worldEntity);
+			return m_entityRegistry.get().ctx().get<TComponent>();
 		}
 
 	private:
 		std::reference_wrapper<entt::registry> m_entityRegistry;
-		entt::entity m_worldEntity;
 	};
 
 	template <typename... TComponents>
@@ -45,6 +43,11 @@ namespace vob::aoeng
 		decltype(auto) get() const
 		{
 			return m_entityRegistry.get().view<TComponents...>();
+		}
+
+		decltype(auto) valid(entity a_entity) const
+		{
+			return m_entityRegistry.get().valid(a_entity);
 		}
 
 	private:
@@ -69,10 +72,10 @@ namespace vob::aoeng
 		template <typename TComponent>
 		world_component_accessor<TComponent> get_world_component_accessor()
 		{
-			return world_component_accessor<TComponent>(m_worldData.m_entityRegistry, m_worldData.m_worldEntity);
+			return world_component_accessor<TComponent>(m_worldData.m_registry);
 		}
 
-		entity_registry_query_queue& get_pending_entity_registry_queries()
+		registry_query_queue& get_pending_entity_registry_queries()
 		{
 			return m_worldData.m_pendingEntityRegistryQueries;
 		}
@@ -80,20 +83,20 @@ namespace vob::aoeng
 		template <typename... TComponents>
 		registry_view_accessor<TComponents...> get_registry_view_accessor()
 		{
-			return registry_view_accessor<TComponents...>(m_worldData.m_entityRegistry);
+			return registry_view_accessor<TComponents...>(m_worldData.m_registry);
 		}
 
 		template <auto TCandidate, typename... TComponents, typename... TValues>
 		void on_construct(TValues&&... a_values)
 		{
-			(m_worldData.m_entityRegistry.on_construct<TComponents>().connect<TCandidate>(
+			(m_worldData.m_registry.on_construct<TComponents>().connect<TCandidate>(
 				std::forward<TValues>(a_values)...), ...);
 		}
 
 		template <auto TCandidate, typename... TComponents, typename... TValues>
 		void on_destroy(TValues&&... a_values)
 		{
-			(m_worldData.m_entityRegistry.on_destroy<TComponents>().connect<TCandidate>(
+			(m_worldData.m_registry.on_destroy<TComponents>().connect<TCandidate>(
 				std::forward<TValues>(a_values)...), ...);
 		}
 
@@ -165,13 +168,13 @@ namespace vob::aoeng
 		{
 		}
 
-		void add(entity_registry_query a_query) const
+		void add(registry_query a_query) const
 		{
 			m_queries.get().emplace_back(std::move(a_query));
 		}
 
 	private:
-		std::reference_wrapper<entity_registry_query_queue> m_queries;
+		std::reference_wrapper<registry_query_queue> m_queries;
 	};
 
 	template <typename... TComponents>
@@ -192,6 +195,13 @@ namespace vob::aoeng
 		decltype(auto) get() const
 		{
 			return m_registryViewAccessor.get();
+		}
+
+		// TODO: should probably have a generic registry ref whose purpose is to check the presence of an entity
+		// and other entity but non-component related accesses.
+		decltype(auto) valid(entity a_entity) const
+		{
+			return m_registryViewAccessor.valid(a_entity);
 		}
 
 		decltype(auto) operator*() const

@@ -6,11 +6,11 @@
 
 #include <vob/misc/type/factory.h>
 #include <vob/misc/type/registry.h>
-
-#include "vob/aoe/common/map/Hierarchycomponent.h"
+#include <vob/misc/type/registry.h>
 
 #include <vob/aoe/actor/action_component.h>
 #include <vob/aoe/actor/actor_component.h>
+#include <vob/aoe/core/type/ADynamicType.h> // ?
 #include <vob/aoe/data/filesystem_database.h>
 #include <vob/aoe/data/filesystem_visitor_context.h>
 #include <vob/aoe/data/json_file_loader.h>
@@ -19,16 +19,15 @@
 #include <vob/aoe/data/string_loader.h>
 #include <vob/aoe/data/filesystem_util.h>
 #include <vob/aoe/debug/debug_controller.h>
-#include <vob/aoe/ecs/component_list_factory.h>
 #include <vob/aoe/physics/material.h>
-#include <vob/aoe/physics/collider_component.h>
+#include <vob/aoe/physics/components/rigidbody.h>
 #include <vob/aoe/rendering/components/camera_component.h>
 #include <vob/aoe/rendering/components/model_component.h>
 #include <vob/aoe/rendering/components/model_data_component.h>
 #include <vob/aoe/rendering/data/model_loader.h>
 #include <vob/aoe/rendering/data/texture_file_loader.h>
 #include <vob/aoe/rendering/data/program_data.h>
-#include <vob/aoe/spacetime/transform_component.h>
+#include <vob/aoe/spacetime/transform.h>
 
 #include <vob/misc/visitor/accept.h>
 #include <vob/misc/visitor/json_reader.h>
@@ -37,6 +36,7 @@
 #include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
 #include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
 
 using namespace vob;
 using namespace vob::mishs::literals;
@@ -107,7 +107,7 @@ namespace vob::aoe
 
 			// Register components
 			{
-				register_component<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
+				// register_component<common::HierarchyComponent>("vob::aoe::common::HierarchyComponent"_id);
 				// register_component<common::gui::GuiComponent, type::Cloner const&>("gui::GuiComponent"_id, Cloner);
 				// register_component<common::gui::ObjectComponent, type::Cloner const&>("gui::ObjectComponent"_id, Cloner);
 				register_component<aoeac::action_component>("vob::aoeac::action_component"_id);
@@ -117,15 +117,17 @@ namespace vob::aoe
 				register_component<aoegl::camera_component>("vob::aoegl::camera_component"_id);
 				register_component<aoegl::model_component>("vob::aoegl::model_component"_id);
 				register_component<aoegl::model_data_component>("vob::aoegl::model_data_component"_id);
-				register_component<aoeph::collider_component>("vob::aoeph::collider_component"_id);
-				register_component<aoest::transform_component>("vob::aoest::transform_component"_id);
+				// TODO: make it some comp_data -> comp pattern
+				// register_component<aoeph::rigidbody>("vob::aoeph::rigidbody"_id);
+				register_component<aoest::position>("vob::aoest::position"_id);
+				register_component<aoest::rotation>("vob::aoest::rotation"_id);
 				register_component<aoedb::debug_controller_component>("vob::aoedb::debug_controller_component"_id);
 			}
 
+			m_dynamicsWorld.setGravity(btVector3(0.0f, -25.0f, 0.0f));
+
 			setup_multi_database();
 		}
-
-		vob::aoecs::component_list_factory componentListFactory;
 
 		misty::pmr::registry typeRegistry;
 		misty::pmr::factory factory{ typeRegistry };
@@ -198,8 +200,6 @@ namespace vob::aoe
 			register_visitable_dynamic_type<
 				aoecs::detail::component_holder<TComponent>, aoecs::detail::component_holder_base, TArgs...
 			>(a_id, std::forward<TArgs>(a_args)...);
-
-			componentListFactory.register_component<TComponent>();
 		}
 	};
 }

@@ -11,7 +11,7 @@ namespace vob::aoegl
 		a_wdp.on_destroy<&model_data_resource_system::on_destroy, model_data_component, model_component>(*this);
 	}
 
-	void model_data_resource_system::on_construct(aoeng::entity_registry& a_registry, aoeng::entity a_entity)
+	void model_data_resource_system::on_construct(aoeng::registry& a_registry, aoeng::entity a_entity)
 	{
 		auto const& modelDataComponent = a_registry.get<model_data_component const>(a_entity);
 		auto& modelComponent = a_registry.emplace_or_replace<model_component>(a_entity);
@@ -24,7 +24,7 @@ namespace vob::aoegl
 		glBindVertexArray(0);
 	}
 
-	void model_data_resource_system::on_destroy(aoeng::entity_registry& a_registry, aoeng::entity a_entity)
+	void model_data_resource_system::on_destroy(aoeng::registry& a_registry, aoeng::entity a_entity)
 	{
 		auto [modelDataComponent, modelComponent] =
 			a_registry.try_get<model_data_component const, model_component>(a_entity);

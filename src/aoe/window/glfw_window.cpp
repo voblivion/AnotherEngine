@@ -6,7 +6,9 @@
 #include <vob/misc/std/ignorable_assert.h>
 
 #include <iostream>
+#include <vob/misc/std/enum_traits.h>
 #endif
+
 
 namespace vob::aoewi
 {
@@ -52,6 +54,7 @@ namespace vob::aoewi
 		glDebugMessageCallback(debug_message_callback, this);
 		GLuint ids = 0;
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &ids, true);
+
 #endif
 	}
 
@@ -101,6 +104,42 @@ namespace vob::aoewi
 	void glfw_window::set_cursor_state(cursor_state a_cursorState)
 	{
 		glfwSetInputMode(m_nativeHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL + static_cast<GLenum>(a_cursorState));
+	}
+
+	bool glfw_window::is_gamepad_present(int a_gamepadIndex) const
+	{
+		return glfwJoystickPresent(GLFW_JOYSTICK_1 + a_gamepadIndex) != 0;
+	}
+
+	bool glfw_window::is_gamepad_button_pressed(int a_gamepadIndex, aoein::gamepad::button a_button) const
+	{
+		int joystickButtonCount;
+		auto const joystickButtons = glfwGetJoystickButtons(GLFW_JOYSTICK_1 + a_gamepadIndex, &joystickButtonCount);
+		
+		if (static_cast<int>(a_button) >= joystickButtonCount)
+		{
+			return false;
+		}
+
+		auto const result = joystickButtons[static_cast<int>(a_button)] == GLFW_PRESS;
+		if (result)
+		{
+			std::cout << *vob::mistd::enum_traits<aoein::gamepad::button>::cast(a_button) << std::endl;
+		}
+		return result;
+	}
+
+	float glfw_window::get_gamepad_axis_value(int a_gamepadIndex, aoein::gamepad::axis a_axis) const
+	{
+		int joystickAxisCount;
+		auto const joystickAxes = glfwGetJoystickAxes(GLFW_JOYSTICK_1 + a_gamepadIndex, &joystickAxisCount);
+		
+		if (static_cast<int>(a_axis) >= joystickAxisCount)
+		{
+			return 0.0f;
+		}
+
+		return joystickAxes[static_cast<int>(a_axis)];
 	}
 
 	GLFWwindow* glfw_window::get_native_handle() const

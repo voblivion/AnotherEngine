@@ -7,12 +7,12 @@ namespace vob::aoein
 {
 	namespace binding_util
 	{
-		auto make_switch(switch_reference const a_switchRef)
+		inline auto make_switch(switch_reference const a_switchRef)
 		{
 			return std::make_shared<default_switch_binding>(a_switchRef);
 		}
 
-		auto make_switch(
+		inline auto make_switch(
 			axis_reference const a_axisRef,
 			float const a_pressThreshold = 0.0f,
 			float const a_releaseThreshold = 0.0f,
@@ -22,7 +22,7 @@ namespace vob::aoein
 				std::make_shared<default_axis_binding>(a_axisRef), a_pressThreshold, a_releaseThreshold, a_isUp);
 		}
 
-		auto make_axis(
+		inline auto make_axis(
 			axis_reference const a_axisRef,
 			float const a_sensitivity = 1.0f,
 			float const a_deadZoneValue = 0.0f,
@@ -32,13 +32,13 @@ namespace vob::aoein
 				a_axisRef, a_sensitivity, a_deadZoneValue, a_deadZoneRadius);
 		}
 
-		auto make_derived_axis(axis_reference const a_axisRef, float const a_sensitivity = 1.0f)
+		inline auto make_derived_axis(axis_reference const a_axisRef, float const a_sensitivity = 1.0f)
 		{
 			return std::make_shared<derived_axis_binding>(
 				std::make_shared<default_axis_binding>(a_axisRef, a_sensitivity));
 		}
 
-		auto make_axis(
+		inline auto make_axis(
 			switch_reference const a_switchRef,
 			float const a_upStrength = 1000.0f,
 			float const a_downStrength = 1000.0f)
@@ -47,7 +47,7 @@ namespace vob::aoein
 				std::make_shared<default_switch_binding>(a_switchRef), a_upStrength, a_downStrength);
 		}
 
-		auto make_axis(
+		inline auto make_axis(
 			switch_reference const a_switchUpRef,
 			switch_reference const a_switchDownRef,
 			float const a_restValue = 0.0f,

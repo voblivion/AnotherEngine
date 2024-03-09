@@ -19,6 +19,11 @@ namespace vob::aoegl
 		std::pmr::vector<debug_vertex> m_vertices;
 		std::pmr::vector<line> m_lines;
 
+		void add_line(glm::vec3 a_source, glm::vec3 a_target, rgba a_color)
+		{
+			add_line(debug_vertex{ a_source, a_color }, debug_vertex{ a_target, a_color });
+		}
+
 		void add_line(debug_vertex a_source, debug_vertex a_target)
 		{
 			auto const v0 = static_cast<std::uint32_t>(m_vertices.size());

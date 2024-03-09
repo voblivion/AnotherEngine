@@ -43,8 +43,8 @@ namespace vob::aoeng
 	{
 	public:
 		explicit world(
-			entity_allocator const& a_entityAllocator = {},
-			entity_registry_query_allocator const& a_entityRegistryQueryAllocator = {},
+			registry_allocator const& a_registryAllocator = {},
+			registry_query_allocator const& a_entityRegistryQueryAllocator = {},
 			system_allocator const& a_systemAllocator = {}
 		);
 
@@ -57,6 +57,12 @@ namespace vob::aoeng
 		decltype(auto) add_world_component(TArgs&&... a_args)
 		{
 			return m_worldData.add_world_component<TWorldComponent>(std::forward<TArgs>(a_args)...);
+		}
+
+		template <typename TWorldComponent>
+		decltype(auto) get_world_component()
+		{
+			return m_worldData.get_world_component<TWorldComponent>();
 		}
 
 		template <typename TSystem>

@@ -10,11 +10,11 @@
 namespace vob::aoeng
 {
 	world::world(
-		entity_allocator const& a_entityAllocator,
-		entity_registry_query_allocator const& a_entityRegistryQueryAllocator,
+		registry_allocator const& a_registryAllocator,
+		registry_query_allocator const& a_entityRegistryQueryAllocator,
 		system_allocator const& a_systemAllocator
 	)
-		: m_worldData{ a_entityAllocator, a_entityRegistryQueryAllocator }
+		: m_worldData{ a_registryAllocator, a_entityRegistryQueryAllocator }
 	{
 	}
 

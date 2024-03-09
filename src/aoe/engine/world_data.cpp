@@ -4,11 +4,10 @@
 namespace vob::aoeng
 {
 	world_data::world_data(
-		entity_allocator const& a_entityAllocator,
-		entity_registry_query_allocator const& a_entityRegistryQueryAllocator
+		registry_allocator const& a_registryAllocator,
+		registry_query_allocator const& a_entityRegistryQueryAllocator
 	)
-		: m_entityRegistry{ a_entityAllocator }
-		, m_worldEntity{ m_entityRegistry.create() }
+		: m_registry{ a_registryAllocator }
 		, m_pendingEntityRegistryQueries{ a_entityRegistryQueryAllocator }
 	{
 	}
@@ -17,7 +16,7 @@ namespace vob::aoeng
 	{
 		for (auto& entityRegistryQuery : m_pendingEntityRegistryQueries)
 		{
-			entityRegistryQuery(m_entityRegistry);
+			entityRegistryQuery(m_registry);
 		}
 		m_pendingEntityRegistryQueries.clear();
 	}

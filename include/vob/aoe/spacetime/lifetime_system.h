@@ -29,7 +29,7 @@ namespace vob::aoest
 				if (lifetime.m_remainingLifetime < 0.0_s)
 				{
 					m_queryRef.add(
-						[lifetimeEntity](aoeng::entity_registry& a_registry) {
+						[lifetimeEntity](aoeng::registry& a_registry) {
 							a_registry.destroy(lifetimeEntity);
 						});
 				}

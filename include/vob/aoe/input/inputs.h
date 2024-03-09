@@ -66,6 +66,11 @@ namespace vob::aoein
 			m_hasChanged = false;
 		}
 
+		bool was_pressed() const
+		{
+			return has_changed() && is_pressed();
+		}
+
 	private:
 		bool m_isPressed = false;
 		bool m_hasChanged = false;
@@ -95,6 +100,8 @@ namespace vob::aoein
 			M6,
 			M7,
 			M8,
+			ScrollUp,
+			ScrollDown,
 			count,
 
 			// Named Aliases
@@ -122,6 +129,10 @@ namespace vob::aoein
 			{
 				button.reset_changed_state();
 			}
+
+			// Scroll wheel only provides changes (could be an axis but not great)
+			buttons[button::ScrollUp].update_state(false);
+			buttons[button::ScrollDown].update_state(false);
 		}
 	};
 

@@ -7,8 +7,13 @@
 #include <vob/aoe/input/binding_util.h>
 #endif
 
+#include <vob/aoe/rendering/camera_util.h>
+
 #include <vob/misc/physics/measure_literals.h>
 #include <vob/misc/std/message_macros.h>
+
+#include <glm/glm.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 
 #include <numbers>
 
@@ -17,29 +22,6 @@ using namespace vob::misph::literals;
 
 namespace vob::aoegl
 {
-	namespace
-	{
-#pragma message(VOB_MISTD_TODO "code duplicate")
-		template <typename TDirectorWorldComponent, typename TCameraEntities>
-		auto get_camera_settings(
-			TDirectorWorldComponent const& a_directorWorldComponent,
-			TCameraEntities const& a_cameraEntities)
-		{
-			auto const cameraEntityIt = a_cameraEntities.find(a_directorWorldComponent.m_activeCamera);
-			if (cameraEntityIt == a_cameraEntities.end())
-			{
-				return std::make_tuple(glm::mat4{ 1.0f }, std::numbers::pi_v<float> / 2, 0.1f, 1000.0f);
-			}
-
-			auto [transformComponent, cameraComponent] = a_cameraEntities.get(*cameraEntityIt);
-			return std::make_tuple(
-				transformComponent.m_matrix
-				, glm::radians(cameraComponent.m_fovDegree)
-				, cameraComponent.m_nearClip
-				, cameraComponent.m_farClip);
-		}
-	}
-
 	render_models_system::render_models_system(aoeng::world_data_provider& a_wdp)
 		: m_modelEntities{ a_wdp }
 		, m_cameraEntities{ a_wdp }
@@ -90,16 +72,10 @@ namespace vob::aoegl
 
 		// Set scene uniforms
 		auto const windowSize = m_windowWorldComponent->m_window.get().get_size();
-		const auto [transform, fov, nearClip, farClip] = get_camera_settings(
-			*m_directorWorldComponent, *m_cameraEntities);
-		uniform_util::set(program.m_viewPositionLocation, aoest::get_translation(transform));
-		uniform_util::set(
-			program.m_viewProjectionTransformLocation,
-			glm::perspective(
-				fov,
-				static_cast<float>(windowSize.x) / windowSize.y,
-				nearClip,
-				farClip) * glm::inverse(transform));
+		const auto [viewPosition, viewProjectionTransform] = get_active_camera_settings(
+			*m_directorWorldComponent, *m_cameraEntities, static_cast<float>(windowSize.x) / windowSize.y);
+		uniform_util::set(program.m_viewPositionLocation, viewPosition);
+		uniform_util::set(program.m_viewProjectionTransformLocation, viewProjectionTransform);
 
 		glBindVertexArray(m_meshRenderWorldComponent->m_vao);
 		glEnableVertexAttribArray(0);
@@ -138,13 +114,14 @@ namespace vob::aoegl
 		auto modelEntitiesView = m_modelEntities.get();
 		for (auto const& modelEntity : modelEntitiesView)
 		{
-			auto [modelComponent, transformComponent] = modelEntitiesView.get(modelEntity);
+			auto [position, rotation, modelComponent] = modelEntitiesView.get(modelEntity);
+			auto const transform = aoest::combine(position, rotation);
 
 			// Set model uniforms
-			uniform_util::set(program.m_meshTransformLocation, transformComponent.m_matrix * debugR);
+			uniform_util::set(program.m_meshTransformLocation, transform * debugR);
 			uniform_util::set(
 				program.m_meshNormalTransformLocation,
-				glm::mat3(glm::transpose(glm::inverse(transformComponent.m_matrix * debugR))));
+				glm::mat3(glm::transpose(glm::inverse(transform * debugR))));
 
 			// Render model meshes
 			for (auto const& texturedMesh : modelComponent.m_model.m_texturedMeshes)

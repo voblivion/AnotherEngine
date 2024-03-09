@@ -33,6 +33,6 @@ namespace vob::aoest
 		aoeng::world_component_ref<time_world_component<TCategory>> m_timeWorldComponent;
 	};
 
-	using presentation_time_system = time_system<presentation_t>;
-	using simulation_time_system = time_system<simulation_t>;
+	using presentation_time_system = time_system<presentation_time_t>;
+	using simulation_time_system = time_system<simulation_time_t>;
 }
