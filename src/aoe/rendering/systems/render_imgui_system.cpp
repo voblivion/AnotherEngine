@@ -169,6 +169,8 @@ namespace
 
 	void process_event(vob::aoewi::text_event const& a_textEvent)
 	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.AddInputCharacter(a_textEvent.m_unicode);
 	}
 
 	void process_event(vob::aoewi::mouse_move_event const& a_mouseMoveEvent)
@@ -186,7 +188,7 @@ namespace
 	void process_event(vob::aoewi::mouse_scroll_event const& a_mouseScrollEvent)
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		io.AddMouseWheelEvent(a_mouseScrollEvent.m_move.x, a_mouseScrollEvent.m_move.y);
+		io.AddMouseWheelEvent(static_cast<float>(a_mouseScrollEvent.m_move.x), static_cast<float>(a_mouseScrollEvent.m_move.y));
 	}
 
 	void process_event(vob::aoewi::mouse_hover_event const& a_mouseHoverEvent)
