@@ -70,42 +70,42 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 	//}
 	auto& bindings = a_world.get_world_component<vob::aoein::bindings>();
 
-	auto const track = entityRegistry.create();
-	{
-		entityRegistry.emplace<vob::aoest::position>(track, 0.0f, 0.0f, 0.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(track);
+	//auto const track = entityRegistry.create();
+	//{
+	//	entityRegistry.emplace<vob::aoest::position>(track, 0.0f, 0.0f, 0.0f);
+	//	entityRegistry.emplace<vob::aoest::rotation>(track);
 
-		auto trackModelId = a_data.filesystemIndexer.get_runtime_id("data/new/models/Track.gltf");
-		entityRegistry.emplace<vob::aoegl::model_data_component>(
-			track,
-			a_data.modelDatabase.find(trackModelId));
+	//	auto trackModelId = a_data.filesystemIndexer.get_runtime_id("data/new/models/Track.gltf");
+	//	entityRegistry.emplace<vob::aoegl::model_data_component>(
+	//		track,
+	//		a_data.modelDatabase.find(trackModelId));
 
-		// aya .. mem leak and all, disgusting!
-		auto model = a_data.modelDatabase.find(trackModelId);
-		auto& mesh = model->m_texturedMeshes[0].m_mesh;
-		btTriangleIndexVertexArray* vertexArray = new btTriangleIndexVertexArray();
-		btIndexedMesh indexedMesh;
-		indexedMesh.m_numTriangles = static_cast<int>(mesh.m_triangles.size());
-		indexedMesh.m_triangleIndexBase = reinterpret_cast<const unsigned char*>(&(mesh.m_triangles[0].m_v0));
-		indexedMesh.m_triangleIndexStride = sizeof(vob::aoegl::triangle);
-		indexedMesh.m_numVertices = static_cast<int>(mesh.m_positions.size());
-		indexedMesh.m_vertexBase = reinterpret_cast<const unsigned char*>(&(mesh.m_positions[0].x));
-		indexedMesh.m_vertexStride = sizeof(glm::vec3);
-		vertexArray->addIndexedMesh(indexedMesh);
-		entityRegistry.emplace<vob::aoeph::rigidbody>(
-			track,
-			true,
-			0.0f,
-			glm::mat4{1.0f},
-			std::make_shared<btBvhTriangleMeshShape>(vertexArray, true),
-			std::make_shared<aoeph::material>());
-	}
+	//	// aya .. mem leak and all, disgusting!
+	//	auto model = a_data.modelDatabase.find(trackModelId);
+	//	auto& mesh = model->m_texturedMeshes[0].m_mesh;
+	//	btTriangleIndexVertexArray* vertexArray = new btTriangleIndexVertexArray();
+	//	btIndexedMesh indexedMesh;
+	//	indexedMesh.m_numTriangles = static_cast<int>(mesh.m_triangles.size());
+	//	indexedMesh.m_triangleIndexBase = reinterpret_cast<const unsigned char*>(&(mesh.m_triangles[0].m_v0));
+	//	indexedMesh.m_triangleIndexStride = sizeof(vob::aoegl::triangle);
+	//	indexedMesh.m_numVertices = static_cast<int>(mesh.m_positions.size());
+	//	indexedMesh.m_vertexBase = reinterpret_cast<const unsigned char*>(&(mesh.m_positions[0].x));
+	//	indexedMesh.m_vertexStride = sizeof(glm::vec3);
+	//	vertexArray->addIndexedMesh(indexedMesh);
+	//	entityRegistry.emplace<vob::aoeph::rigidbody>(
+	//		track,
+	//		true,
+	//		0.0f,
+	//		glm::mat4{1.0f},
+	//		std::make_shared<btBvhTriangleMeshShape>(vertexArray, true),
+	//		std::make_shared<aoeph::material>());
+	//}
 
 	auto const ghostControlledCamera = entityRegistry.create();
 	{
 
-		entityRegistry.emplace<vob::aoest::position>(ghostControlledCamera, 0.0f, 10.0f, 30.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(ghostControlledCamera);
+		entityRegistry.emplace<vob::aoest::position>(ghostControlledCamera, 0.0f, 0.0f, -5.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(ghostControlledCamera, glm::vec3{ 0.0f, -3.141592f, 0.0f });
 
 		auto& ghostController = entityRegistry.emplace<vob::aoedb::debug_ghost_controller_component>(ghostControlledCamera);
 		ghostController.m_lateralMoveMapping = bindings.axes.add(aoein::binding_util::make_axis(
@@ -120,10 +120,10 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 			aoein::mouse::axis::Y, 0.001f));
 		ghostController.m_enableViewMapping = bindings.switches.add(aoein::binding_util::make_switch(
 			aoein::mouse::button::Right));
-		/*ghostController.m_decreaseSpeedMapping = bindings.switches.add(aoein::binding_util::make_switch(
+		ghostController.m_decreaseSpeedMapping = bindings.switches.add(aoein::binding_util::make_switch(
 			aoein::mouse::button::ScrollDown));
 		ghostController.m_increaseSpeedMapping = bindings.switches.add(aoein::binding_util::make_switch(
-			aoein::mouse::button::ScrollUp));*/
+			aoein::mouse::button::ScrollUp));
 
 		entityRegistry.emplace<vob::aoegl::camera_component>(ghostControlledCamera);
 
