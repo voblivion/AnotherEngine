@@ -27,14 +27,26 @@ namespace vob::aoegl
 
 #pragma message(VOB_MISTD_TODO "glm cannot use constexpr...")
 	static const rgba k_white = rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
+	static const rgba k_gray = rgba{ 0.5f, 0.5f, 0.5f, 1.0f };
 	static const rgba k_black = rgba{ 0.0f, 0.0f, 0.0f, 1.0f };
 	static const rgba k_red = rgba{ 1.0f, 0.0f, 0.0f, 1.0f };
+	static const rgba k_maroon = rgba{ 0.5f, 0.0f, 0.0f, 1.0f };
 	static const rgba k_green = rgba{ 0.0f, 1.0f, 0.0f, 1.0f };
+	static const rgba k_forest = rgba{ 0.0f, 0.5f, 0.0f, 1.0f };
 	static const rgba k_blue = rgba{ 0.0f, 0.0f, 1.0f, 1.0f };
+	static const rgba k_navy = rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
 	static const rgba k_yellow = rgba{ 1.0f, 1.0f, 0.0f, 1.0f };
-	static const rgba k_purple = rgba{ 1.0f, 0.0f, 1.0f, 1.0f };
+	static const rgba k_olive = rgba{ 0.5f, 0.5f, 0.0f, 1.0f };
+	static const rgba k_magenta = rgba{ 1.0f, 0.0f, 1.0f, 1.0f };
+	static const rgba k_eggplant = rgba{ 0.5f, 0.0f, 0.5f, 1.0f };
 	static const rgba k_cyan = rgba{ 0.0f, 1.0f, 1.0f, 1.0f };
-	static const rgba k_dark_blue = rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
+	static const rgba k_teal = rgba{ 0.0f, 0.5f, 0.5f, 1.0f };
+	static const rgba k_orange = rgba{ 1.0f, 0.5f, 0.0f, 1.0f };
+	static const rgba k_rose = rgba{ 1.0f, 0.0f, 0.5f, 1.0f };
+	static const rgba k_chartreuse = rgba{ 0.5f, 1.0f, 0.0f, 1.0f };
+	static const rgba k_spring = rgba{ 0.0f, 1.0f, 0.5f, 1.0f };
+	static const rgba k_violet = rgba{ 0.5f, 0.0f, 1.0f, 1.0f };
+	static const rgba k_azure = rgba{ 0.0f, 0.5f, 1.0f, 1.0f };
 
 	inline auto to_rgb(glm::vec3 const& a_vector)
 	{
