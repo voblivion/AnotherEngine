@@ -2,6 +2,8 @@
 
 #include <vob/misc/physics/measure.h>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#define GLM_FORCE_CXX17
 #include <glm/glm.hpp>
 
 #include <vob/misc/std/message_macros.h>
@@ -25,6 +27,16 @@ namespace vob::aoegl
 	using rgb = color<3>;
 	using rgba = color<4>;
 
+	inline auto to_rgba(const std::uint32_t a_hex)
+	{
+		return rgba{
+			color_channel{static_cast<float>((a_hex & 0xff000000) >> 24) / 256.0f},
+			color_channel{static_cast<float>((a_hex & 0x00ff0000) >> 16) / 256.0f},
+			color_channel{static_cast<float>((a_hex & 0x0000ff00) >> 8) / 256.0f},
+			color_channel{static_cast<float>((a_hex & 0x000000ff) >> 0) / 256.0f},
+		};
+	}
+
 #pragma message(VOB_MISTD_TODO "glm cannot use constexpr...")
 	static const rgba k_white = rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
 	static const rgba k_gray = rgba{ 0.5f, 0.5f, 0.5f, 1.0f };
@@ -35,6 +47,7 @@ namespace vob::aoegl
 	static const rgba k_forest = rgba{ 0.0f, 0.5f, 0.0f, 1.0f };
 	static const rgba k_blue = rgba{ 0.0f, 0.0f, 1.0f, 1.0f };
 	static const rgba k_navy = rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
+	static const rgba k_blueprint = to_rgba(0x14252e);
 	static const rgba k_yellow = rgba{ 1.0f, 1.0f, 0.0f, 1.0f };
 	static const rgba k_olive = rgba{ 0.5f, 0.5f, 0.0f, 1.0f };
 	static const rgba k_magenta = rgba{ 1.0f, 0.0f, 1.0f, 1.0f };

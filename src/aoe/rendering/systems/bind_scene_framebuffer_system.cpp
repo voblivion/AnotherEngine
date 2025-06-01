@@ -12,7 +12,7 @@ namespace vob::aoegl
 	void bind_scene_framebuffer_system::update() const
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, m_sceneTextureWorldComponent->m_sceneTexture.m_framebuffer);
-		glClearColor(k_dark_blue.r, k_dark_blue.g, k_dark_blue.b, k_dark_blue.a);
+		glClearColor(k_navy.r, k_navy.g, k_navy.b, k_navy.a);
 		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
