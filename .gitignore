@@ -48,3 +48,6 @@
 /cpp.hint
 /Benchmark
 /x64/Debug
+/imgui.ini
+*.i
+/Manager.i
