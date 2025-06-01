@@ -69,6 +69,7 @@ namespace vob::aoegl
 
 		// Use program
 		glUseProgram(program.m_id);
+		glLineWidth(2);
 
 		// Set scene uniforms
 		auto const windowSize = m_windowWorldComponent->m_window.get().get_size();
