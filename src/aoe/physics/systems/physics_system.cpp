@@ -118,6 +118,7 @@ namespace vob::aoeph
 
 	void physics_system::update() const
 	{
+		return;
 		auto const dt = m_simulationTimeWorldComponent->m_elapsedTime.get_value();
 		auto& physicsWorld = m_physicsWorldComponent->m_world.get();
 		physicsWorld.stepSimulation(dt, 10, 0.01f);
@@ -427,7 +428,7 @@ namespace vob::aoeph
 					auto const lateralSlideSpeed = glm::dot(contactVelocity, sideDir);
 					auto const lateralFrictionForce = -sideDir * lateralSlideSpeed * wheel.m_contactPoint->m_friction;
 					auto const kh = glm::vec3{ 0.0, 0.1, 0.0 };
-					m_debugMeshWorldComponent->add_line(contactPosition + kh, contactPosition + lateralFrictionForce + kh, aoegl::k_purple);
+					m_debugMeshWorldComponent->add_line(contactPosition + kh, contactPosition + lateralFrictionForce + kh, aoegl::k_magenta);
 				}
 				else
 				{
