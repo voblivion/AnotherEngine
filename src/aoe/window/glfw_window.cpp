@@ -2,12 +2,12 @@
 
 #include <GL/glew.h>
 
-#ifndef NDEBUG
 #include <vob/misc/std/ignorable_assert.h>
 
+#ifndef NDEBUG
 #include <iostream>
 #include <vob/misc/std/enum_traits.h>
-#endif
+ #endif
 
 
 namespace vob::aoewi
@@ -122,10 +122,13 @@ namespace vob::aoewi
 		}
 
 		auto const result = joystickButtons[static_cast<int>(a_button)] == GLFW_PRESS;
+#ifndef NDEBUG
 		if (result)
 		{
 			std::cout << *vob::mistd::enum_traits<aoein::gamepad::button>::cast(a_button) << std::endl;
 		}
+#endif
+
 		return result;
 	}
 
