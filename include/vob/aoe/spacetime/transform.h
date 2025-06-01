@@ -36,6 +36,16 @@ namespace vob::aoest
 		return rotationMatrix;
 	}
 
+	inline glm::vec3 normalize_safe(glm::vec3 const& a_vector, float a_epsilon = glm::epsilon<float>(), glm::vec3 const& a_defaultVector = glm::vec3{ 0.0f })
+	{
+		auto const lengthSquared = glm::dot(a_vector, a_vector);
+		if (lengthSquared < a_epsilon)
+		{
+			return a_defaultVector;
+		}
+		return a_vector * glm::inversesqrt(lengthSquared);
+	}
+
 	inline glm::vec3 get_position(glm::mat4 const& a_transform)
 	{
 		return a_transform[3];
