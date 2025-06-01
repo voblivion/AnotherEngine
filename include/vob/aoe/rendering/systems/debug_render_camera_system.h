@@ -24,6 +24,12 @@ namespace vob::aoegl
 
 		void update() const
 		{
+			static auto k_enable = false;
+			if (!k_enable)
+			{
+				return;
+			}
+
 			auto cleanup = [](glm::vec4 const& v) { return glm::vec3{ v / v.w }; };
 			auto const windowSize = m_windowWorldComponent->m_window.get().get_size();
 			auto const aspectRatio = static_cast<float>(windowSize.x) / windowSize.y;
