@@ -23,6 +23,6 @@ namespace vob::aoein
 		aoeng::world_component_ref<bindings> m_bindings;
 		aoeng::world_component_ref<inputs> m_inputs;
 		aoeng::world_component_ref<
-			aoest::presentation_time_world_component const> m_presentationTimeWorldComponent;
+			aoest::presentation_time_context const> m_presentationTimeWorldComponent;
 	};
 }

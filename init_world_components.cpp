@@ -40,9 +40,8 @@ void init_world_components(
 		}
 	};
 
-	a_world.add_world_component<aoest::presentation_time_world_component>();
-	a_world.add_world_component<aoest::simulation_time_world_component>();
-	a_world.add_world_component<aoest::simulation_pause_world_component>();
+	a_world.add_world_component<aoest::presentation_time_context>();
+	a_world.add_world_component<aoest::simulation_time_context>();
 
 	a_world.add_world_component<aoewi::window_input_world_component>();
 	a_world.add_world_component<aoewi::window_world_component>(a_window);
@@ -223,4 +222,7 @@ void init_world_components(
 		physicsDebugWorldComponent.m_cycleDebugDrawModeBinding = bindings.switches.add(
 			aoein::binding_util::make_switch(aoein::keyboard::key::T));
 	}
+
+	a_world.add_world_component<aoeph::physx_context>();
+	a_world.add_world_component<aoeph::physx_debug_context>();
 }

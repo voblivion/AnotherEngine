@@ -21,7 +21,7 @@ namespace vob::aoest
 
 		void update() const
 		{
-			auto const dt = m_simulationTimeWorldComponent->m_elapsedTime.get_value();
+			auto const dt = m_simulationTimeWorldComponent->elapsed_time.get_value();
 
 			auto const softFollowingEntities = m_softFollowingEntities.get();
 			auto const softFollowableEntities = m_softFollowableEntities.get();
@@ -68,7 +68,7 @@ namespace vob::aoest
 		}
 
 	private:
-		aoeng::world_component_ref<aoest::simulation_time_world_component> m_simulationTimeWorldComponent;
+		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeWorldComponent;
 		aoeng::world_component_ref<aoegl::debug_mesh_world_component> m_debugMeshWorldComponent;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation> m_softFollowableEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, soft_follow> m_softFollowingEntities;

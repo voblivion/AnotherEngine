@@ -23,7 +23,7 @@ namespace vob::aoedb
 	private:
 		aoeng::world_component_ref<aoein::bindings const> m_bindings;
 		aoeng::world_component_ref<
-			aoest::presentation_time_world_component const> m_presentationTimeWorldComponent;
+			aoest::presentation_time_context const> m_presentationTimeWorldComponent;
 		aoeng::registry_view_ref<
 			aoest::position, aoest::rotation, debug_ghost_controller_component, controlled_tag> m_ghostControllerEntities;
 	};

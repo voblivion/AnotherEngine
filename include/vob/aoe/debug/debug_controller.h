@@ -12,7 +12,6 @@
 
 #include <vob/aoe/spacetime/attachment_component.h>
 #include <vob/aoe/spacetime/transform.h>
-#include <vob/aoe/spacetime/pause_world_component.h>
 #include <vob/aoe/spacetime/time_world_component.h>
 
 #include <vob/aoe/window/window_world_component.h>
@@ -88,9 +87,8 @@ namespace vob::aoedb
 		aoeng::world_component_ref<debug_controller_world_component> m_debugControllerWorldComponent;
 		aoeng::world_component_ref<aoein::bindings const> m_bindings;
 		aoeng::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
-		aoeng::world_component_ref<aoest::presentation_time_world_component> m_presentationTimeWorldComponent;
-		aoeng::world_component_ref<aoest::simulation_time_world_component> m_simulationTimeWorldComponent;
-		aoeng::world_component_ref<aoest::simulation_pause_world_component> m_simulationPauseWorldComponent;
+		aoeng::world_component_ref<aoest::presentation_time_context> m_presentationTimeWorldComponent;
+		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeWorldComponent;
 		aoeng::world_component_ref<aoegl::debug_mesh_world_component> m_debugMeshWorldComponent;
 
 		aoeng::pending_entity_registry_query_queue_ref m_queryRef;

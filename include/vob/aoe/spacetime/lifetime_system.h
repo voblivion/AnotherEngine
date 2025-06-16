@@ -19,7 +19,7 @@ namespace vob::aoest
 
 		void update() const
 		{
-			auto elapsedTime = m_simulationTimeWorldComponent->m_elapsedTime;
+			auto elapsedTime = m_simulationTimeWorldComponent->elapsed_time;
 
 			auto lifetimeEntities = m_lifetimeEntities.get();
 			for (auto lifetimeEntity : lifetimeEntities)
@@ -37,7 +37,7 @@ namespace vob::aoest
 		}
 
 	private:
-		aoeng::world_component_ref<simulation_time_world_component> m_simulationTimeWorldComponent;
+		aoeng::world_component_ref<simulation_time_context> m_simulationTimeWorldComponent;
 
 		aoeng::registry_view_ref<lifetime_component> m_lifetimeEntities;
 

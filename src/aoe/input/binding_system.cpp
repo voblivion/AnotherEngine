@@ -13,6 +13,6 @@ namespace vob::aoein
 
 	void binding_system::update() const
 	{
-		m_bindings->update(*m_inputs, m_presentationTimeWorldComponent->m_elapsedTime);
+		m_bindings->update(*m_inputs, m_presentationTimeWorldComponent->elapsed_time);
 	}
 }
