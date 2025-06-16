@@ -119,7 +119,7 @@ namespace vob::aoeph
 	void physics_system::update() const
 	{
 		return;
-		auto const dt = m_simulationTimeWorldComponent->m_elapsedTime.get_value();
+		auto const dt = m_simulationTimeWorldComponent->elapsed_time.get_value();
 		auto& physicsWorld = m_physicsWorldComponent->m_world.get();
 		physicsWorld.stepSimulation(dt, 10, 0.01f);
 
@@ -616,4 +616,510 @@ namespace vob::aoeph
 
 		return a_entity.emplace<rigidbody_component>(std::move(rigidbody));
 	}*/
+
+	bool are_intersecting(aabb const& a_lhs, aabb const& a_rhs)
+	{
+		if (a_lhs.max.x < a_rhs.min.x || a_lhs.max.y < a_rhs.min.y || a_lhs.max.z < a_rhs.min.z)
+		{
+			return false;
+		}
+
+		if (a_rhs.max.x < a_lhs.min.x || a_rhs.max.y < a_lhs.min.y || a_rhs.max.z < a_lhs.min.z)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	struct rk4_state
+	{
+		glm::vec3 position;
+		glm::quat rotation;
+		glm::vec3 linearVelocity;
+		glm::vec3 angularVelocityLocal;
+	};
+
+	using broadphase_result = std::tuple<aoest::position, aoest::rotation, static_body>;
+
+	static inline glm::vec3 closest_triangle_point(triangle const& a_triangle, glm::vec3 const& a_point)
+	{
+		auto const v01 = a_triangle.p1 - a_triangle.p0;
+		auto const v02 = a_triangle.p2 - a_triangle.p0;
+		auto const v0p = a_point - a_triangle.p0;
+		
+		auto const d1 = glm::dot(v01, v0p);
+		auto const d2 = glm::dot(v02, v0p);
+		if (d1 <= 0.0f && d2 <= 0.0f)
+		{
+			return a_triangle.p0;
+		}
+
+		auto const v13 = a_point - a_triangle.p1;
+		auto const d3 = glm::dot(v01, v13);
+		auto const d4 = glm::dot(v02, v13);
+		if (d3 >= 0.0f && d4 <= d3)
+		{
+			return a_triangle.p1;
+		}
+
+		auto const v2 = d1 * d4 - d2 * d3;
+		if (v2 <= 0.0f && d1 >= 0.0f && d3 <= 0.0f)
+		{
+			return a_triangle.p0 + v01 * d1 / (d1 - d3);
+		}
+
+		auto const v2p = a_point - a_triangle.p2;
+		auto const d5 = glm::dot(v01, v2p);
+		auto const d6 = glm::dot(v02, v2p);
+		if (d6 >= 0.0f && d5 <= d6)
+		{
+			return a_triangle.p2;
+		}
+
+		auto const v1 = d2 * d5 - d1 * d6;
+		if (v1 <= 0.0f && d2 >= 0.0f && d6 <= 0.0f)
+		{
+			return a_triangle.p0 + v02 * d2 / (d2 - d6);
+		}
+
+		auto const v0 = d3 * d6 - d4 * d5;
+		if (v0 <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f)
+		{
+			return a_triangle.p1 + (a_triangle.p2 - a_triangle.p1) * (d4 - d3) / ((d4 - d3) + (d5 - d6));
+		}
+
+		auto const d01Sq = glm::dot(v01, v01);
+		auto const d02Sq = glm::dot(v02, v02);
+		auto const d0102 = glm::dot(v01, v02);
+		
+		auto const d = d01Sq * d02Sq - d0102 * d0102;
+		auto const v = (d02Sq * glm::dot(v0p, v01) - d0102 * glm::dot(v0p, v02)) / d;
+		auto const w = (d01Sq * glm::dot(v0p, v02) - d0102 * glm::dot(v0p, v01)) / d;
+		return a_triangle.p0 + v01 * v + v02 * w;
+	}
+
+	static inline glm::vec3 closest_unit_ellipsoid_point(glm::vec3 const& a_radiuses, glm::vec3 const& a_point)
+	{
+		auto const r2 = a_radiuses * a_radiuses;
+		auto const computeError = [&a_point, &a_radiuses, &r2](const float lambda) {
+			auto const p2 = a_point * a_point;
+			auto const dSqrt = r2 + lambda;
+			auto const t = p2 * r2 / (dSqrt * dSqrt);
+			return t.x + t.y + t.z - 1.0f;
+			};
+
+		auto lambdaMin = -std::min({ r2.x, r2.y, r2.z });
+		auto lambdaMax = 0.0f;
+		while (lambdaMax - lambdaMin > 1e-4f)
+		{
+			auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
+			auto const error = computeError(lambda);
+			if (error < 0.0f)
+			{
+				lambdaMax = lambda;
+			}
+			else
+			{
+				lambdaMin = lambda;
+			}
+		}
+
+		auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
+		return a_point * r2 / (r2 + lambda);
+	}
+
+	std::tuple<float, glm::vec3, glm::vec3> intersect_unit_ellipsoid_with_triangle(
+		glm::vec3 const& a_radiuses,
+		triangle const& a_triangle)
+	{
+		auto const normal = glm::normalize(glm::cross(a_triangle.p1 - a_triangle.p0, a_triangle.p2 - a_triangle.p0));
+		if (glm::dot(normal, -a_triangle.p0) < 0.0f)
+		{
+			return {};
+		}
+
+		auto const normalEllipsoidDir = normal * a_radiuses * a_radiuses;
+		auto const normalEllipsoidPoint = -normalEllipsoidDir / std::sqrt(glm::dot(normalEllipsoidDir, normal));
+		auto const normalDistance = glm::dot(normalEllipsoidPoint - a_triangle.p0, normal);
+		auto const normalTrianglePoint = normalEllipsoidPoint - normalDistance * normal;
+
+		auto const trianglePoint = closest_triangle_point(a_triangle, normalTrianglePoint);
+		auto const ellipsoidPoint = closest_unit_ellipsoid_point(a_radiuses, trianglePoint);
+		auto const distance = glm::length(trianglePoint - ellipsoidPoint);
+		auto const t = trianglePoint / a_radiuses;
+		return { glm::dot(t, t) < 1.0f ? -distance : distance, ellipsoidPoint, trianglePoint };
+	}
+
+	std::tuple<float, glm::vec3, glm::vec3> intersect_ellipsoid_with_triangle(
+		glm::mat4 const& a_ellipsoidTransform,
+		glm::mat4 const& a_ellipsoidTransformInv,
+		glm::vec3 const& a_radiuses,
+		triangle const& a_triangle)
+	{
+		auto [distance, unitEllipsoidPoint, unitTrianglePoint] = intersect_unit_ellipsoid_with_triangle(
+			a_radiuses,
+			triangle{
+				aoest::apply(a_ellipsoidTransformInv, a_triangle.p0),
+				aoest::apply(a_ellipsoidTransformInv, a_triangle.p1),
+				aoest::apply(a_ellipsoidTransformInv, a_triangle.p2)
+			});
+
+		auto const ellipsoidPoint = aoest::apply(a_ellipsoidTransform, unitEllipsoidPoint);
+		auto const trianglePoint = aoest::apply(a_ellipsoidTransform, unitTrianglePoint);
+		return { distance, ellipsoidPoint, trianglePoint };
+	}
+
+	glm::quat differentiate_quaternion(glm::quat const& a_rotation, glm::vec3 const& a_angularVelocity)
+	{
+		auto const angularVelocity = glm::quat{ 0.0f, a_angularVelocity.x, a_angularVelocity.y, a_angularVelocity.z };
+		return 0.5f * a_rotation * angularVelocity;
+	}
+
+	rk4_state rk4_derivate(dynamic_body const& a_dynamicBody, rk4_state const& a_state, std::vector<broadphase_result> const& a_broadphaseResults)
+	{
+		auto const rotationMatrix = glm::mat3_cast(a_state.rotation);
+		auto const rotationMatrixInv = glm::transpose(rotationMatrix);
+		auto const inertia = rotationMatrix * a_dynamicBody.inertia * glm::transpose(rotationMatrix);
+		auto const inertiaInv = glm::inverse(inertia);
+
+		struct contact
+		{
+			physx_material material;
+			float distance = 0.0f;
+			glm::vec3 ellipsoidPoint;
+			glm::vec3 trianglePoint;
+		};
+
+		std::vector<contact> partContacts;
+		partContacts.reserve(a_dynamicBody.parts.size());
+		for (auto const& part : a_dynamicBody.parts)
+		{
+			auto const ellipsoidTransform = aoest::combine(
+				a_state.position + rotationMatrix * part.position,
+				a_state.rotation * part.rotation);
+			auto const ellipsoidTransformInv = glm::inverse(ellipsoidTransform);
+
+			contact closestContact;
+			for (auto const& [staticBodyPosition, staticBodyRotation, staticBody] : a_broadphaseResults)
+			{
+				auto const staticBodyTransform = aoest::combine(staticBodyPosition, staticBodyRotation);
+
+				for (auto const& staticBodyPart : staticBody.parts)
+				{
+					for (auto const& staticTriangle : staticBodyPart.triangles)
+					{
+						auto [distance, ellipsoidPoint, trianglePoint] = intersect_ellipsoid_with_triangle(
+							ellipsoidTransform,
+							ellipsoidTransformInv,
+							part.radiuses,
+							triangle{
+								aoest::apply(staticBodyTransform, staticTriangle.p0),
+								aoest::apply(staticBodyTransform, staticTriangle.p1),
+								aoest::apply(staticBodyTransform, staticTriangle.p2) });
+						if (distance < closestContact.distance)
+						{
+							closestContact = contact{ staticBodyPart.material, distance, ellipsoidPoint, trianglePoint };
+						}
+					}
+				}
+			}
+
+			if (closestContact.distance < 0.0f)
+			{
+				partContacts.emplace_back(closestContact);
+			}
+		}
+
+		auto force = a_dynamicBody.force;
+		auto torque = a_dynamicBody.torque;
+		for (auto const& contact : partContacts)
+		{
+			auto const lever = contact.ellipsoidPoint - a_state.position;
+			auto const hitVelocity = a_state.linearVelocity + glm::cross(a_state.angularVelocityLocal, lever);
+			auto const hitNormal = glm::normalize(contact.trianglePoint - contact.ellipsoidPoint);
+			auto const hitVelocityNormal = glm::dot(hitVelocity, hitNormal) * hitNormal;
+			auto const hitVelocityTangent = hitVelocity - hitVelocityNormal;
+
+			auto const springForce = contact.material.ellasticity * (-contact.distance) * hitNormal;
+
+			auto const hitSpeedNormal = glm::length(hitVelocityNormal);
+			auto const zeta = glm::mix(contact.material.zetaHigh, contact.material.zetaLow, glm::smoothstep(0.01f, 0.2f, hitSpeedNormal));
+			auto const dampingCoefficient = 2.0f * std::sqrt(contact.material.ellasticity * a_dynamicBody.mass / partContacts.size()) * zeta;
+			auto const dampenerForce = -dampingCoefficient * hitVelocityNormal;
+
+			auto frictionForce = glm::vec3{ 0.0f };
+			if (glm::dot(hitVelocityNormal, hitVelocityNormal) > glm::epsilon<float>() * glm::epsilon<float>())
+			{
+				auto const frictionDir = -glm::normalize(hitVelocityNormal);
+				auto const maxFriction = contact.material.friction * glm::length(springForce);
+				frictionForce = frictionDir * std::min(maxFriction, glm::length(hitVelocityNormal) * a_dynamicBody.mass / partContacts.size());
+			}
+
+			force += springForce + dampenerForce + frictionForce;
+			torque += glm::cross(lever, springForce + dampenerForce + frictionForce);
+		}
+
+		rk4_state derivativeState;
+		derivativeState.position = a_state.linearVelocity;
+		derivativeState.linearVelocity = force / a_dynamicBody.mass;
+		derivativeState.rotation = differentiate_quaternion(a_state.rotation, rotationMatrixInv * a_state.angularVelocityLocal);
+		derivativeState.angularVelocityLocal = inertiaInv * (torque - glm::cross(a_state.angularVelocityLocal, inertia * a_state.angularVelocityLocal));
+		return derivativeState;
+	}
+
+	rk4_state rk4_step(rk4_state const& a_initialState, rk4_state const& a_prevDerivativeState, float a_stepDuration)
+	{
+		rk4_state state = a_initialState;
+		state.position += a_prevDerivativeState.position * a_stepDuration;
+		state.rotation = glm::normalize(state.rotation + a_prevDerivativeState.rotation * a_stepDuration);
+		state.linearVelocity += a_prevDerivativeState.linearVelocity * a_stepDuration;
+		state.angularVelocityLocal += a_prevDerivativeState.angularVelocityLocal * a_stepDuration;
+
+		return state;
+	}
+
+	physx_debug_system::physx_debug_system(aoeng::world_data_provider& a_wdp)
+		: m_physicsDebugContext{ a_wdp }
+		, m_debugMeshContext{ a_wdp }
+		, m_dynamicBodyEntities{ a_wdp }
+		, m_staticBodyEntities{ a_wdp }
+	{
+
+	}
+
+	void draw_ellipsoid(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::mat4 const& a_transform, glm::vec3 const& a_radiuses, aoegl::rgba const& a_color)
+	{
+		constexpr auto kHorizontalSlices = 7;
+		constexpr auto kHorizontalSubdivisions = 8;
+		constexpr auto kVerticalSlices = 8;
+		constexpr auto kVerticalSubdivisions = 8;
+
+		for (int h = 0; h < kHorizontalSlices; ++h)
+		{
+			auto const hSliceAngle0 = (static_cast<float>(h) / (kHorizontalSlices + 1) - 0.5f) * std::numbers::pi_v<float>;
+			auto const hSliceAngle1 = (static_cast<float>(h + 1) / (kHorizontalSlices + 1) - 0.5f) * std::numbers::pi_v<float>;
+			for (int hs = 0; hs < kHorizontalSubdivisions; ++hs)
+			{
+				auto const hSubR0 = static_cast<float>(hs) / kHorizontalSubdivisions;
+				auto const hSubR1 = static_cast<float>(hs + 1) / kHorizontalSubdivisions;
+				auto const hSubAngle0 = hSliceAngle0 + hSubR0 * (hSliceAngle1 - hSliceAngle0);
+				auto const hSubAngle1 = hSliceAngle0 + hSubR1 * (hSliceAngle1 - hSliceAngle0);
+
+				auto const y0 = a_radiuses.y * std::sin(hSubAngle0);
+				auto const r0 = std::cos(hSubAngle0);
+				auto const y1 = a_radiuses.y * std::sin(hSubAngle1);
+				auto const r1 = std::cos(hSubAngle1);
+
+				for (int v = 0; v < 2 * kVerticalSlices; ++v)
+				{
+					auto const vSliceAngle = (static_cast<float>(v) / kVerticalSlices) * std::numbers::pi_v<float>;
+					auto const vSliceCos = std::cos(vSliceAngle);
+					auto const vSliceSin = std::sin(vSliceAngle);
+					auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
+					auto const localPos1 = glm::vec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
+					a_debugMeshContext.add_line(aoest::apply(a_transform, localPos0), aoest::apply(a_transform, localPos1), a_color);
+				}
+			}
+
+			for (int v = 0; v < 2 * kVerticalSlices; ++v)
+			{
+				auto const vSliceAngle0 = (static_cast<float>(v) / kVerticalSlices) * std::numbers::pi_v<float>;
+				auto const vSliceAngle1 = (static_cast<float>(v + 1) / kVerticalSlices) * std::numbers::pi_v<float>;
+
+				for (int vs = 0; vs < kVerticalSubdivisions; ++vs)
+				{
+					auto const r = std::cos(hSliceAngle1);
+					auto const y = a_radiuses.y * std::sin(hSliceAngle1);
+
+					auto const vSubR0 = static_cast<float>(vs) / kVerticalSubdivisions;
+					auto const vSubR1 = static_cast<float>(vs + 1) / kVerticalSubdivisions;
+					auto const vSubAngle0 = vSliceAngle0 + vSubR0 * (vSliceAngle1 - vSliceAngle0);
+					auto const vSubAngle1 = vSliceAngle0 + vSubR1 * (vSliceAngle1 - vSliceAngle0);
+
+					auto const vSubCos0 = std::cos(vSubAngle0);
+					auto const vSubSin0 = std::sin(vSubAngle0);
+					auto const vSubCos1 = std::cos(vSubAngle1);
+					auto const vSubSin1 = std::sin(vSubAngle1);
+					auto const localPos0 = glm::vec3{ r * a_radiuses.x * vSubSin0, y, r * a_radiuses.z * vSubCos0 };
+					auto const localPos1 = glm::vec3{ r * a_radiuses.x * vSubSin1, y, r * a_radiuses.z * vSubCos1 };
+					a_debugMeshContext.add_line(aoest::apply(a_transform, localPos0), aoest::apply(a_transform, localPos1), a_color);
+				}
+			}
+		}
+
+		auto const hSliceAngle0 = (static_cast<float>(kHorizontalSlices) / (kHorizontalSlices + 1) - 0.5f) * std::numbers::pi_v<float>;
+		auto const hSliceAngle1 = (static_cast<float>(kHorizontalSlices + 1) / (kHorizontalSlices + 1) - 0.5f) * std::numbers::pi_v<float>;
+		for (int hs = 0; hs < kHorizontalSubdivisions; ++hs)
+		{
+			auto const hSubR0 = static_cast<float>(hs) / kHorizontalSubdivisions;
+			auto const hSubR1 = static_cast<float>(hs + 1) / kHorizontalSubdivisions;
+			auto const hSubAngle0 = hSliceAngle0 + hSubR0 * (hSliceAngle1 - hSliceAngle0);
+			auto const hSubAngle1 = hSliceAngle0 + hSubR1 * (hSliceAngle1 - hSliceAngle0);
+
+			auto const y0 = a_radiuses.y * std::sin(hSubAngle0);
+			auto const r0 = std::cos(hSubAngle0);
+			auto const y1 = a_radiuses.y * std::sin(hSubAngle1);
+			auto const r1 = std::cos(hSubAngle1);
+
+			for (int v = 0; v < 2 * kVerticalSlices; ++v)
+			{
+				auto const vSliceAngle = (static_cast<float>(v) / kVerticalSlices) * std::numbers::pi_v<float>;
+				auto const vSliceCos = std::cos(vSliceAngle);
+				auto const vSliceSin = std::sin(vSliceAngle);
+				auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
+				auto const localPos1 = glm::vec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
+				a_debugMeshContext.add_line(aoest::apply(a_transform, localPos0), aoest::apply(a_transform, localPos1), a_color);
+			}
+		}
+	}
+	
+	void draw_triangle(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::mat4 const& a_transform, triangle const a_triangle, aoegl::rgba const& a_color)
+	{
+		auto const p0 = aoest::apply(a_transform, a_triangle.p0);
+		auto const p1 = aoest::apply(a_transform, a_triangle.p1);
+		auto const p2 = aoest::apply(a_transform, a_triangle.p2);
+
+		a_debugMeshContext.add_line(p0, p1, a_color);
+		a_debugMeshContext.add_line(p1, p2, a_color);
+
+		auto const s01Length = glm::length(p1 - p0);
+		auto const s12Length = glm::length(p2 - p1);
+
+		auto const subdivisionCount = static_cast<std::int32_t>(std::ceil(s01Length / 5.0f));
+		for (auto subdivisionIndex = 0; subdivisionIndex < subdivisionCount; ++subdivisionIndex)
+		{
+			auto const subdivisionRatio = static_cast<float>(subdivisionIndex) / subdivisionCount;
+
+			a_debugMeshContext.add_line(p2 + (p1 - p2) * subdivisionRatio, p0 + (p1 - p0) * subdivisionRatio, a_color);
+		}
+	}
+
+	void physx_debug_system::update() const
+	{
+		auto physicsDebugContext = m_physicsDebugContext.get();
+		auto dynamicBodyEntitiesView = m_dynamicBodyEntities.get();
+		auto staticBodyEntitiesView = m_staticBodyEntities.get();
+		
+		for (auto const dynamicBodyEntity : dynamicBodyEntitiesView)
+		{
+			auto [position, rotation, linearVelocity, angularVelocityLocal, dynamicBody] = dynamicBodyEntitiesView.get(dynamicBodyEntity);
+			auto const transform = aoest::combine4x3(position, rotation);
+
+			auto const rotationMatrix = glm::mat3_cast(rotation);
+			if (physicsDebugContext.is_dynamic_shape_debug_enabled)
+			{
+				for (auto const& part : dynamicBody.parts)
+				{
+					auto const ellipsoidTransform = aoest::combine(position + rotationMatrix * part.position, rotation * part.rotation);
+					draw_ellipsoid(*m_debugMeshContext, ellipsoidTransform, part.radiuses, aoegl::k_red);
+				}
+			}
+		}
+
+		for (auto const staticBodyEntity : staticBodyEntitiesView)
+		{
+			auto [position, rotation, staticBody] = staticBodyEntitiesView.get(staticBodyEntity);
+
+			auto const staticBodyTransform = aoest::combine(position, rotation);
+
+			for (auto const& part : staticBody.parts)
+			{
+				for (auto const& triangle : part.triangles)
+				{
+					draw_triangle(*m_debugMeshContext, staticBodyTransform, triangle, aoegl::k_white);
+				}
+			}
+		}
+	}
+
+	physx_system::physx_system(aoeng::world_data_provider& a_wdp)
+		: m_simulationTimeContext{ a_wdp }
+		, m_physicsContext{ a_wdp }
+		, m_inputs{ a_wdp }
+		, m_dynamicBodyEntities{ a_wdp }
+		, m_staticBodyEntities{ a_wdp }
+	{
+	}
+
+#pragma optimize("", off)
+	void physx_system::update() const
+	{
+		auto dynamicBodyEntitiesView = m_dynamicBodyEntities.get();
+		auto staticBodyEntitiesView = m_staticBodyEntities.get();
+
+		auto& simulationTimeContext = m_simulationTimeContext.get();
+		auto& physicsContext = m_physicsContext.get();
+
+		//
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
+		{
+			for (auto const dynamicBodyEntity : dynamicBodyEntitiesView)
+			{
+				// broadphase
+				auto [position, rotation, linearVelocity, angularVelocityLocal, dynamicBody] = dynamicBodyEntitiesView.get(dynamicBodyEntity);
+
+				position.y = 10.0f;
+				linearVelocity.y = 0.0f;
+			}
+		}
+
+		if (physicsContext.m_lastUpdateTime + physx_context::clock::duration{ physicsContext.m_updateDuration } < simulationTimeContext.tick_start_time)
+		{
+			physicsContext.m_lastUpdateTime = physicsContext.m_lastUpdateTime + physx_context::clock::duration{ physicsContext.m_updateDuration };
+
+			auto const simulationTimeStep = physicsContext.m_updateDuration.get_value() / physicsContext.m_updateStepCount;
+
+			std::vector<std::tuple<aoest::position, aoest::rotation, static_body>> broadphaseResults;
+
+			for (auto const dynamicBodyEntity : dynamicBodyEntitiesView)
+			{
+				broadphaseResults.clear();
+
+				// broadphase
+				auto [position, rotation, linearVelocity, angularVelocityLocal, dynamicBody] = dynamicBodyEntitiesView.get(dynamicBodyEntity);
+
+				auto const transform = aoest::combine4x3(position, rotation);
+				auto boundsMin = glm::vec3{ std::numeric_limits<float>::max() };
+				auto boundsMax = glm::vec3{ std::numeric_limits<float>::min() };
+				for (auto const& part : dynamicBody.parts)
+				{
+					auto const maxRadius = glm::vec3{ std::max({ part.radiuses.x, part.radiuses.y, part.radiuses.z }) };
+					auto const partPosition = transform * glm::vec4{ part.position, 1.0f };
+					boundsMin = glm::min(boundsMin, partPosition - maxRadius);
+					boundsMax = glm::max(boundsMax, partPosition + maxRadius);
+				}
+				dynamicBody.bounds = aabb{ boundsMin - glm::vec3{1.0f}, boundsMax + glm::vec3{1.0f} };
+
+				for (auto const staticBodyEntity : staticBodyEntitiesView)
+				{
+					auto [staticBodyPosition, staticBodyRotation, staticBody] = staticBodyEntitiesView.get(staticBodyEntity);
+
+					if (are_intersecting(dynamicBody.bounds, staticBody.bounds))
+					{
+						broadphaseResults.emplace_back(staticBodyPosition, staticBodyRotation, staticBody);
+					}
+				}
+
+				// narrowphase
+				auto const updateStepDuration = physicsContext.m_updateDuration.get_value() / physicsContext.m_updateStepCount;
+				for (int32_t updateStep = 0; updateStep < physicsContext.m_updateStepCount; ++updateStep)
+				{
+					auto const initialState = rk4_state{ position, rotation, linearVelocity, angularVelocityLocal };
+					auto const k1 = rk4_derivate(dynamicBody, initialState, broadphaseResults);
+					auto const k2 = rk4_derivate(dynamicBody, rk4_step(initialState, k1, updateStepDuration * 0.5f), broadphaseResults);
+					auto const k3 = rk4_derivate(dynamicBody, rk4_step(initialState, k2, updateStepDuration * 0.5f), broadphaseResults);
+					auto const k4 = rk4_derivate(dynamicBody, rk4_step(initialState, k3, updateStepDuration), broadphaseResults);
+
+					position += (simulationTimeStep / 6.0f) * (k1.position + 2.0f * k2.position + 2.0f * k3.position + k4.position);
+					rotation += glm::normalize(rotation + (simulationTimeStep / 6.0f) * (k1.rotation + 2.0f * k2.rotation + 2.0f * k3.rotation + k4.rotation));
+					linearVelocity += (simulationTimeStep / 6.0f) * (k1.linearVelocity + 2.0f * k2.linearVelocity + 2.0f * k3.linearVelocity + k4.linearVelocity);
+					angularVelocityLocal += (simulationTimeStep / 6.0f) * (k1.angularVelocityLocal + 2.0f * k2.angularVelocityLocal + 2.0f * k3.angularVelocityLocal + k4.angularVelocityLocal);
+				}
+
+				dynamicBody.force = glm::vec3{ 0.0f, -10.0f, 0.0f } / dynamicBody.mass;
+				dynamicBody.torque = glm::vec3{ 0.0f };
+			}
+		}
+	}
 }

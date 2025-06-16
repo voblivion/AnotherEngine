@@ -13,6 +13,7 @@
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
 
 #include <memory>
+#include <numbers>
 
 
 namespace vob::aoeph
@@ -28,6 +29,77 @@ namespace vob::aoeph
 
 		std::unique_ptr<btRigidBody> m_instance = nullptr;
 	};
+
+	struct aabb
+	{
+		glm::vec3 min;
+		glm::vec3 max;
+	};
+
+	struct linear_velocity : public glm::vec3
+	{
+	};
+
+	struct angular_velocity_local : public glm::vec3
+	{
+
+	};
+
+	struct physx_material
+	{
+		float ellasticity = 100'000.0f;
+		float restitution = 0.5f;
+		float friction = 0.128f;
+		float rolling_friction = 1.0f;
+
+		float logRestitution = std::log(restitution);
+		float zetaLow = std::sqrt(logRestitution * logRestitution / (logRestitution * logRestitution + std::numbers::pi_v<float> *std::numbers::pi_v<float>));
+		float zetaHigh = zetaLow; // or 1.0f
+	};
+
+	struct dynamic_body
+	{
+		struct part
+		{
+			physx_material material;
+			glm::vec3 position = glm::vec3{ 0.0f };
+			glm::quat rotation = glm::quat();
+			glm::vec3 radiuses = glm::vec3{ 1.0f };
+		};
+
+		std::vector<part> parts;
+
+		glm::vec3 barycenter = glm::vec3{ 0.0f };
+
+		float mass = 1.0f;
+		glm::mat3 inertia = glm::mat3{ 1.0f };
+
+		glm::vec3 force = glm::vec3{ 0.0f };
+		glm::vec3 torque = glm::vec3{ 0.0f };
+
+		aabb bounds;
+	};
+
+	struct triangle
+	{
+		glm::vec3 p0;
+		glm::vec3 p1;
+		glm::vec3 p2;
+	};
+
+	struct static_body
+	{
+		struct part
+		{
+			physx_material material;
+			std::vector<triangle> triangles;
+		};
+
+		std::vector<part> parts;
+
+		aabb bounds;
+	};
+
 }
 
 namespace vob::misvi

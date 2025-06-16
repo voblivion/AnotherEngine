@@ -26,12 +26,6 @@ namespace vob::aoeph
 		explicit test_system(aoeng::world_data_provider& a_wdp);
 
 		void update() const;
-		void update_v1() const;
-		void update_v2() const;
-		void update_v3() const;
-		void update_v4() const;
-		void update_v5() const;
-		void update_test() const;
 
 	private:
 		aoeng::world_component_ref<aoein::inputs const> m_inputs;
@@ -39,7 +33,7 @@ namespace vob::aoeph
 		aoeng::world_component_ref<aoegl::debug_mesh_world_component> m_debugMeshWorldComponent;
 		aoeng::world_component_ref<aoegl::director_world_component> m_directorWorldComponent;
 		aoeng::world_component_ref<aoewi::window_world_component> m_windowWorldComponent;
-		aoeng::world_component_ref<aoest::simulation_time_world_component> m_simulationTimeContext;
+		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeContext;
 
 		aoeng::registry_view_ref<aoest::position const, aoest::rotation const, aoegl::camera_component const> m_cameraEntities;
 	};

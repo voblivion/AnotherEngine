@@ -469,7 +469,7 @@ namespace vob::aoeph
 		a_debugMeshContext.add_line(a_p0, a_p1, a_color);
 	}
 
-	void draw_triangle(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::vec3 const& a_p0, glm::vec3 const& a_p1, glm::vec3 const& a_p2, aoegl::rgba const& a_color)
+	void _draw_triangle(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::vec3 const& a_p0, glm::vec3 const& a_p1, glm::vec3 const& a_p2, aoegl::rgba const& a_color)
 	{
 		draw_line(a_debugMeshContext, a_p0, a_p1, a_color);
 		draw_line(a_debugMeshContext, a_p1, a_p2, a_color);
@@ -486,7 +486,7 @@ namespace vob::aoeph
 		}
 	}
 
-	void draw_ellipsoid(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::mat4 const& a_transform, glm::vec3 const& a_radiuses, aoegl::rgba const& a_color)
+	void _draw_ellipsoid(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::mat4 const& a_transform, glm::vec3 const& a_radiuses, aoegl::rgba const& a_color)
 	{
 		constexpr auto kHorizontalSlices = 7;
 		constexpr auto kHorizontalSubdivisions = 8;
@@ -574,7 +574,7 @@ namespace vob::aoeph
 
 	void draw_sphere(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::vec3 const& a_position, float a_radius, aoegl::rgba const& a_color)
 	{
-		draw_ellipsoid(a_debugMeshContext, aoest::combine(a_position, glm::quat{}), glm::vec3{ a_radius }, a_color);
+		_draw_ellipsoid(a_debugMeshContext, aoest::combine(a_position, glm::quat{}), glm::vec3{ a_radius }, a_color);
 	}
 #pragma endregion
 
@@ -788,547 +788,6 @@ namespace vob::aoeph
 		std::vector<part> parts;
 	};
 
-	void test_system::update_v1() const
-	{
-		static float k_elapsedTime = 0.0f;
-		k_elapsedTime += std::clamp(m_simulationTimeContext->m_elapsedTime.get_value(), 0.0f, 1.0f / 30.0f);
-
-		static bool k_useFixedTimeStep = true;
-		//auto const dt = m_simulationTimeContext->m_elapsedTime.get_value() > 0.0f ? 1.0f / 300 : 0.0f;
-		auto const dt = k_useFixedTimeStep ? (k_elapsedTime > 1.0f / 100 ? 1.0f / 100 : 0.0f) : k_elapsedTime;
-		k_elapsedTime -= dt;
-
-		// world
-		static glm::vec3 ps[] = {
-			glm::vec3{0.0f, 1.0f, 0.0f},
-			glm::vec3{ 0.0f, 1.0f, 100.0f },
-			glm::vec3{ 100.0f, 1.0f, 0.0f }
-		};
-		static auto ellasticity = 100'000.0f;
-		static auto rollingFriction = 0.5f; // how sticky+soft surface prevent rolling
-		static auto restitution = 0.1f;
-		static auto friction = 1.0f;
-		static auto staticFriction = 2.0f;
-		static auto gravity = glm::vec3{ 0.0f, -25.0f, 0.0f };
-		const triangle groundTriangle{ ps[0], ps[1], ps[2] };
-		auto const groundNormal = glm::normalize(glm::cross(ps[1] - ps[0], ps[2] - ps[0]));
-
-		// intersect_volume_unit_sphere_with_normal_plane_section(-0.01f, -0.9999f, 0.9999f);
-		// intersect_volume_unit_sphere_with_triangle(triangle{ glm::vec3{-3.0f, -0.002f, -3.1f}, glm::vec3{-3.0f, -0.002f, 3.1f}, glm::vec3{3.1f, -0.002f, 0.0f} });
-
-		draw_triangle(*m_debugMeshWorldComponent, ps[0], ps[1], ps[2], aoegl::k_eggplant);
-
-		// ellipsoid
-		static auto centerOfMassOffset = glm::vec3{ 0.0f };
-		static auto radiuses = glm::vec3{ 1.0f, 1.f, 3.f };
-		static auto mass = 10.0f;
-		auto inertia = mass / 5.0f * glm::mat3{
-			glm::vec3{radiuses.y * radiuses.y + radiuses.z * radiuses.z, 0.0f, 0.0f},
-			glm::vec3{0.0f, radiuses.z * radiuses.z + radiuses.x * radiuses.x, 0.0f},
-			glm::vec3{0.0f, 0.0f, radiuses.x * radiuses.x + radiuses.y * radiuses.y} };
-		static auto integralStep = 1.0f / 1000.f;
-
-		static auto startPosition = glm::vec3{ 5.0f, 20.0f, 5.0f };
-		static auto startRotation = glm::vec3{ 2.0f, 3.1415926535f / 4, 0.0f };
-		static auto startLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto startAngularVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto position = startPosition;
-		static auto rotation = glm::quat{ startRotation };
-		static auto linearVelocity = glm::vec3{ 0.0f };
-		static auto angularVelocity = glm::vec3{ 0.0f };
-		static bool isGrounded = false;
-
-		static std::optional<glm::vec3> lastHitPos = std::nullopt;
-		static std::optional<glm::vec3> lastHitImpulse = std::nullopt;
-		static std::optional<glm::vec3> lastHitContactVelocity = std::nullopt;
-		static std::optional<glm::vec3> lastHitPosition = std::nullopt;
-		static std::optional<glm::quat> lastHitRotation = std::nullopt;
-		static glm::vec3 lastPenetrationTrianglePos = glm::vec3{ 0.0f };
-		static glm::vec3 lastPenetrationPos = glm::vec3{ 0.0f };
-		static glm::vec3 lastPenetrationNormal = glm::vec3{ 0.0f, 1.0f, 0.0f };
-		static std::pair<float, glm::vec3> projectedHit = {};
-		static float lastPenetrationTime = 0.0f;
-		static float lastPenetrationDist = 0.0f;
-		static float lastCoverRatio = 0.0f;
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
-		{
-			linearVelocity = glm::vec3{ 0.0f };
-			linearVelocity = startLinearVelocity;
-			angularVelocity = startAngularVelocity;
-			position = startPosition;
-			rotation = glm::quat{ startRotation };
-			isGrounded = false;
-		}
-
-		auto const pa0 = std::atan(0.0f);
-		auto const na0 = std::atan(-0.0f);
-
-		static std::optional<float> dragStart;
-
-		draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(position, rotation), radiuses, aoegl::k_gray);
-
-		static bool k_debugPenetration = false;
-		if (k_debugPenetration)
-		{
-			draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(lastPenetrationPos, glm::quat{}), glm::vec3{ 0.10f }, aoegl::k_orange);
-			draw_line(*m_debugMeshWorldComponent, lastPenetrationTrianglePos, lastPenetrationPos, aoegl::k_orange);
-			draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(lastPenetrationPos, glm::quat{}), glm::vec3{ 0.10f }, aoegl::k_yellow);
-
-			draw_line(*m_debugMeshWorldComponent, lastPenetrationTrianglePos, ps[0], aoegl::k_azure);
-			draw_line(*m_debugMeshWorldComponent, lastPenetrationTrianglePos, ps[1], aoegl::k_azure);
-			draw_line(*m_debugMeshWorldComponent, lastPenetrationTrianglePos, ps[2], aoegl::k_azure);
-		}
-
-		static bool k_debugLastHit = false;
-		if (k_debugLastHit && lastHitPos.has_value())
-		{
-			draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(*lastHitPos, glm::quat{}), glm::vec3{ 0.05f }, aoegl::k_red);
-			draw_line(*m_debugMeshWorldComponent, *lastHitPos, *lastHitPos + *lastHitImpulse / 50.0f, aoegl::k_orange);
-			draw_line(*m_debugMeshWorldComponent, *lastHitPos, *lastHitPos + *lastHitContactVelocity, aoegl::k_chartreuse);
-
-			draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(*lastHitPosition, *lastHitRotation), radiuses, aoegl::k_forest);
-		}
-
-		static bool k_debugProjectedHit = false;
-		if (k_debugProjectedHit)
-		{
-			draw_sphere(*m_debugMeshWorldComponent, projectedHit.second, 0.05f, aoegl::k_maroon);
-
-			auto const projectedHitEllipsoidPos = projectedHit.second + groundNormal * projectedHit.first;
-			draw_line(*m_debugMeshWorldComponent, projectedHit.second, projectedHitEllipsoidPos, aoegl::k_maroon);
-
-			auto toPoint = projectedHitEllipsoidPos - position;
-			auto const pointVelocity = linearVelocity + glm::cross(angularVelocity, toPoint);
-			draw_line(*m_debugMeshWorldComponent, projectedHitEllipsoidPos, projectedHitEllipsoidPos + pointVelocity, aoegl::k_yellow);
-		}
-
-		static bool k_debugVelocity = true;
-		if (k_debugVelocity)
-		{
-			draw_line(*m_debugMeshWorldComponent, position, position + angularVelocity, aoegl::k_orange);
-			draw_line(*m_debugMeshWorldComponent, position, position + linearVelocity, aoegl::k_azure);
-		}
-
-		ImGui::Begin("Test");
-
-		ImGui::InputFloat3("P0", &ps[0].x);
-		ImGui::InputFloat3("P1", &ps[1].x);
-		ImGui::InputFloat3("P2", &ps[2].x);
-		ImGui::InputFloat3("Gravity", &gravity.x);
-		ImGui::InputFloat("Ellasticity", &ellasticity);
-		ImGui::InputFloat("Restitution", &restitution);
-		ImGui::InputFloat("Friction", &friction);
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Static Friction", &staticFriction);
-		ImGui::EndDisabled();
-		ImGui::InputFloat("Rolling Friction", &rollingFriction);
-		ImGui::InputFloat("Integral Step", &integralStep);
-		ImGui::Separator();
-		ImGui::InputFloat3("Center Of Mass", &centerOfMassOffset.x);
-		ImGui::InputFloat3("Radiuses", &radiuses.x);
-
-		ImGui::Separator();
-		ImGui::InputFloat3("Start Position", &startPosition.x, "%.6f");
-		ImGui::InputFloat3("Start Rotation", &startRotation.x, "%.6f");
-		ImGui::InputFloat3("Start Linear Velocity", &startLinearVelocity.x, "%.6f");
-		ImGui::InputFloat3("Start Angular Velocity", &startAngularVelocity.x, "%.6f");
-		ImGui::InputFloat3("Position", &position.x, "%.6f");
-		auto eulerAngles = glm::eulerAngles(rotation);
-		ImGui::InputFloat3("Rotation", &eulerAngles.x, "%.6f");
-		rotation = glm::quat{ eulerAngles };
-		if (false && m_simulationTimeContext->m_elapsedTime.get_value() > 0.0f)
-		{
-			ImGui::BeginDisabled();
-		}
-		ImGui::InputFloat3("Linear Velocity", &linearVelocity.x);
-		ImGui::InputFloat3("Angular Velocity", &angularVelocity.x);
-		if (true || m_simulationTimeContext->m_elapsedTime.get_value() <= 0.0f)
-		{
-			ImGui::BeginDisabled();
-		}
-		ImGui::InputFloat("Penetration Time", &lastPenetrationTime);
-		ImGui::InputFloat("Penetration Dist", &lastPenetrationDist);
-		ImGui::InputFloat("Cover Ratio", &lastCoverRatio);
-		static float collisionEnergyLoss = 0.0f;
-		float energy = calc_energy(mass, linearVelocity, inertia, angularVelocity, gravity, position);
-		ImGui::InputFloat("Energy", &energy);
-		ImGui::InputFloat("Collision Energy Loss", &collisionEnergyLoss);
-		ImGui::Checkbox("Is Grounded", &isGrounded);
-		ImGui::EndDisabled();
-
-		ImGui::Separator();
-		ImGui::Checkbox("Used Fixed Time Step", &k_useFixedTimeStep);
-		ImGui::Checkbox("Debug Penetration", &k_debugPenetration);
-		ImGui::Checkbox("Debug Last Hit", &k_debugLastHit);
-		ImGui::Checkbox("Debug Projected Hit", &k_debugProjectedHit);
-		ImGui::Checkbox("Debug Velocity", &k_debugVelocity);
-
-		ImGui::End();
-
-		if (m_inputs->mouse.buttons[aoein::mouse::button::Left].was_pressed() && m_inputs->keyboard.keys[aoein::keyboard::key::LControl].is_pressed())
-		{
-			if (m_inputs->keyboard.keys[aoein::keyboard::key::LShift].is_pressed())
-			{
-				angularVelocity += glm::vec3{ aoest::combine(position, rotation) * glm::vec4{1.0f, 0.0f, 0.0f, 0.0f} };
-			}
-			else
-			{
-				angularVelocity -= glm::vec3{ aoest::combine(position, rotation) * glm::vec4{1.0f, 0.0f, 0.0f, 0.0f} };
-			}
-			//float sign = m_inputs->keyboard.keys[aoein::keyboard::key::LShift].is_pressed() ? 1.0f : -1.0f;
-			//glm::vec3 dW = glm::vec4{ sign * 10.0f, 0.0f, 0.0f, 0.0f };
-			//angularVelocity += dW;
-		}
-
-		auto const transform = glm::scale(aoest::combine(position, rotation), radiuses);
-		auto const invTransform = glm::inverse(transform);
-
-		if (dt <= 0.0f)
-		{
-			return;
-		}
-
-
-		// 2. apply physics
-		{
-			auto integrate = [&](auto const maxTime)
-				{
-					auto z = 0.0f;
-					auto pos = position;
-					auto rot = rotation;
-					auto V = linearVelocity;
-					auto W = angularVelocity;
-
-					auto const m = mass;
-					auto const k = ellasticity;
-					auto const period = std::sqrt(k / m);
-					auto const b = 2.0f * mass * mass * (1.0f - restitution); // ellasticity : so .. it doesn't depend on time on ground?
-					auto const r = friction;
-					auto const N = groundNormal;
-					auto const I = inertia;
-					auto const iI = glm::inverse(I);
-
-					auto const pe = calc_energy(mass, V, I, W, gravity, pos);
-
-					auto S = 0.0f;
-					auto const ds = integralStep;
-					while (z <= 0.001f && S <= maxTime)
-					{
-						lastPenetrationDist = std::max(lastPenetrationDist, std::abs(z));
-
-						S += ds;
-						auto const Tr = aoest::combine(pos, rot);
-						glm::mat4 const iTr = glm::inverse(Tr);
-						auto const [newZ, planeP, ellipsoidP, coverRatio] = ellipsoid_intersect(glm::scale(Tr, radiuses), glm::inverse(glm::scale(Tr, radiuses)), groundTriangle);
-						z = glm::dot(ellipsoidP - planeP, N);
-						lastCoverRatio = coverRatio;
-
-						auto const iIw = glm::mat3{ Tr } *iI * glm::inverse(glm::mat3{ Tr });
-
-						lastPenetrationPos = ellipsoidP;
-						lastPenetrationTrianglePos = planeP;
-
-						auto const R = ellipsoidP - pos;
-						auto const Vp = V + glm::cross(W, R);
-						auto const Vpn = glm::dot(Vp, N) * N;
-						auto const Vpt = Vp - Vpn;
-						auto const Fpn = -k * z * N;
-						auto const Fdamp = -b * Vpn * coverRatio; // not applied to angular momentum, else energy is just transfered
-
-						// For now assuming static friction = 2 * dynamic friction, or something like that
-						auto Fpt = glm::vec3{ 0.0f };
-						auto const maxFrictionlessSpeed = 2.0f * r / m * glm::length(Fpn);
-						if (glm::length(Vpt) != 0.0f)
-						{
-							Fpt = -glm::normalize(Vpt) * std::min(r * glm::length(Fpn), 0.5f * glm::length(Vpt) * m / ds);
-						}
-
-						auto const Fp = (Fpn + Fpt) * coverRatio;
-						auto const dV = (gravity + (Fp + Fdamp) / m) * ds;
-
-						auto const lFp = glm::transpose(glm::mat3{ Tr }) * Fp;
-						auto const lR = glm::transpose(glm::mat3{ Tr }) * R;
-						auto const lDw = iI * glm::cross(lR, lFp) * ds;
-						auto const dW = glm::mat3{ Tr } *lDw;
-
-						V = V + dV;
-						W = W - (W * rollingFriction * ds) + dW;
-
-						pos += V * ds;
-
-						auto const theta = W * ds;
-						auto const thetaMagnitude = glm::length(theta);
-						if (thetaMagnitude > glm::epsilon<float>())
-						{
-							glm::vec3 axis = theta / thetaMagnitude;
-							float halfTheta = thetaMagnitude / 2.0f;
-							rot = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rot;
-						}
-					}
-
-					isGrounded = z <= 0.001f;
-
-					linearVelocity = V;
-					angularVelocity = W;
-					lastPenetrationTime = S;
-					position = pos;
-					rotation = rot;
-
-					auto const ne = calc_energy(mass, V, I, W, gravity, pos);
-					collisionEnergyLoss = ne - pe;
-				};
-
-			if (isGrounded)
-			{
-				integrate(dt);
-			}
-			else if (!isGrounded)
-			{
-				linearVelocity += gravity * dt;
-				auto linearMove = linearVelocity * dt;
-				auto angularMove = angularVelocity * dt;
-				auto [hitTime, hitPos] = ellipsoid_move(position, rotation, radiuses, linearMove, angularMove, groundTriangle);
-				if (0 <= hitTime && hitTime < 1.0f)
-				{
-					position += hitTime * linearMove;
-					rotation = glm::quat{ hitTime * angularMove } *rotation;
-					lastHitPosition = position;
-					lastHitRotation = rotation;
-
-					lastPenetrationDist = 0.0f;
-					integrate(dt * (1.0f - hitTime));
-					return;
-
-					//{
-					//	auto const I = inertia;
-					//	auto const e = restitution;
-					//	auto const V = linearVelocity;
-					//	auto const W = angularVelocity;
-					//	auto const R = hitPos - position;
-					//	auto const Vp = V + glm::cross(W, R);
-					//	auto const N = groundNormal;
-
-					//	auto const J = -(1 + e) * glm::dot(Vp, N) / (1.0f / mass + glm::dot(N, glm::cross(glm::inverse(I) * glm::cross(R, N), N))) * N;
-
-					//	linearVelocity += J / mass;
-					//	angularVelocity += glm::inverse(I) * glm::cross(R, J);
-					//	if (glm::dot(linearVelocity, groundNormal) < 0.0f)
-					//	{
-					//		//isGrounded = true;
-					//	}
-
-					//	lastHitContactVelocity = V + glm::cross(W, R);
-					//	lastHitPos = hitPos;
-					//	lastHitImpulse = J;
-					//}
-
-					//{
-					//	auto const _I = inertia;
-					//	auto const _Ii = glm::inverse(_I);
-					//	auto const V = linearVelocity;
-					//	auto const W = angularVelocity;
-					//	auto const R = hitPos - position;
-					//	auto const _R = glm::matrixCross3(R);
-
-					//	auto const A = 2.0f*(V + glm::cross(W, R));
-					//	auto const B = (1.0f / mass * glm::mat3{1.0f} + glm::transpose(_R) * _Ii * _R);
-					//	glm::mat3 C(1.0f);
-					//	auto const K = -glm::dot(A, A) / glm::dot(A, B * A) * A;
-
-					//	auto const Kn = glm::dot(K, groundNormal) * groundNormal;
-					//	auto const Kt = K - Kn;
-					//	auto const J = restitution * Kn + friction * Kt;
-
-					//	linearVelocity += J / mass;
-					//	angularVelocity += _Ii * glm::cross(R, J);
-					//	if (glm::dot(linearVelocity, groundNormal) < 0.0f)
-					//	{
-					//		//isGrounded = true;
-					//	}
-
-					//	lastHitContactVelocity = V + glm::cross(W, R);
-					//	lastHitPos = hitPos;
-					//	lastHitImpulse = J;
-
-					//	return;
-					//}
-
-					//{
-					//	auto const m = mass;
-					//	auto const V0 = linearVelocity;
-					//	auto const I = inertia;
-					//	auto const W0 = angularVelocity;
-					//	auto const A = m * glm::dot(V0, V0) + glm::dot(W0, I * W0);
-					//	auto const B = W0 + m * glm::inverse(I) * V0;
-					//	auto const C = I * W0 + m * V0;
-					//	auto const D = (glm::dot(B, C) - A) / m;
-					//	auto const E = -B - glm::inverse(I) * C;
-					//	auto const F = (1.0f + m * glm::inverse(I));
-
-					//	auto const a = F[1][1];
-					//	auto const b = E[1];
-					//	auto const c = F[0][0] * V0[0] * V0[0] + F[2][2] * V0[2] * V0[2] + E[0] * V0[0] + E[2] * V0[2] + D;
-
-					//	auto const d = b * b - 4 * a * c;
-					//	auto const r1 = (-b - std::sqrt(d)) / (2.0f * a);
-					//	auto const r2 = (-b + std::sqrt(d)) / (2.0f * a);
-
-					//	auto const V1 = glm::vec3{ V0[0], r2, V0[2] };
-					//	auto const W1 = W0 + m * glm::inverse(I) * glm::cross(V0 - V1, glm::cross(glm::cross(hitPos-position, groundNormal), groundNormal));
-					//	linearVelocity = V1;
-					//	angularVelocity = W1;
-					//	return;
-					//}
-
-					{
-						auto const Vp0 = linearVelocity + glm::cross(angularVelocity, hitPos - position);
-						auto const Vp0n = glm::dot(Vp0, groundNormal) * groundNormal;
-						auto const Vp0t = Vp0 - Vp0n;
-
-
-						auto const Jv1 = -mass * Vp0n - mass * friction * Vp0t;
-						auto const R = hitPos - position;
-						auto const ratio = glm::dot(R, -groundNormal) / glm::length(R);
-						auto const J1 = -mass * (1.0f + restitution * ratio) * Vp0n;
-						auto const J = J1;
-
-						linearVelocity += J / mass;
-						angularVelocity += glm::inverse(inertia) * glm::cross(R, J);
-
-						lastHitContactVelocity = Vp0;
-						lastHitPos = hitPos;
-						lastHitImpulse = J;
-
-						if (glm::dot(linearVelocity + dt * gravity, groundNormal) < 0.0f)
-						{
-							isGrounded = true;
-						}
-					}
-				}
-				else
-				{
-					position += linearMove;
-					rotation = glm::quat{ angularMove } *rotation;
-				}
-			}
-			else
-			{
-				// 1. force touch down
-				auto const [hitT0, P0] = ellipsoid_cast(transform, invTransform, gravity, groundTriangle);
-				auto const Rp0 = P0 - position;
-				position += hitT0 * gravity;
-				auto const pos0 = position;
-
-				// 2. gravity lever
-				auto const rollingFriction = 0.0f;
-				auto const deltaAngularVelocity = glm::inverse(inertia) * glm::cross(Rp0, -mass * gravity * dt);
-				angularVelocity = angularVelocity * std::pow(1.0f - rollingFriction, dt) + deltaAngularVelocity;
-				rotation = rotation * glm::quat{ angularVelocity * dt };
-
-				auto const frictionMove = -dt * glm::cross(angularVelocity, Rp0);
-				position += frictionMove;
-
-				auto const transform1 = glm::scale(aoest::combine(position, rotation), radiuses);
-				auto const invTransform1 = glm::inverse(transform1);
-				auto const [hitT1, P1] = ellipsoid_cast(transform1, invTransform1, -groundNormal, groundTriangle);
-
-				linearVelocity += dt * gravity;
-				auto const maxFall = glm::dot(linearVelocity * dt, -groundNormal);
-				if (hitT1 < 0.0f || hitT1 < maxFall)
-				{
-					position -= hitT1 * groundNormal;
-					auto const pos1 = position;
-					linearVelocity = (pos1 - pos0) / dt;
-				}
-				else
-				{
-					position += linearVelocity * dt;
-					isGrounded = false;
-				}
-			}
-		}
-
-
-		//auto const transform = aoest::combine(position, rotation);
-		//auto const invTransform = glm::inverse(transform);
-
-		//glm::vec3 totalForce = glm::vec3{ 0.0f };
-		//glm::vec3 totalTorque = glm::vec3{ 0.0f };
-		//auto applyForce = [&](glm::vec3 const& a_force, glm::vec3 const& a_pos)
-		//	{
-		//		totalForce += a_force;
-		//		auto const relativePos = a_pos - position;
-		//		totalTorque += 1.0f * glm::cross(relativePos, a_force);
-		//	};
-		//auto applyImpulse = [&](glm::vec3 const& a_impulse, glm::vec3 const& a_pos)
-		//	{
-		//		linearVelocity += (1.0f / mass) * a_impulse;
-		//		auto const relativePos = a_pos - position;
-		//		angularVelocity += 1.0f * glm::inverse(inertia) * glm::cross(relativePos, a_impulse);
-		//	};
-
-		//// 1. apply gravity force
-		//applyForce(mass * gravity, position);
-
-		//static auto kEnableDynamic = true;
-
-		//// 2. apply repulsion force
-		//auto const angularMove = angularVelocity * dt;
-		//rotation = glm::quat{ rotation * angularMove } *rotation;
-		//auto ellipsoidTransform = glm::scale(aoest::combine(position, rotation), radiuses);
-		//auto invEllipsoidTransform = glm::inverse(ellipsoidTransform);
-		//auto [penetrationDist, penetrationPos, penetrationInsidePos] = ellipsoid_intersect(ellipsoidTransform, invEllipsoidTransform, groundTriangle);
-		//lastPenetrationDist = penetrationDist;
-		//lastPenetrationPos = penetrationPos;
-		//lastPenetrationInsidePos = penetrationInsidePos;
-		//lastPenetrationNormal = glm::normalize(glm::cross(groundTriangle.m_p1 - groundTriangle.m_p0, groundTriangle.m_p2 - groundTriangle.m_p0));
-		//auto linearMove = glm::vec3{ 0.0f };
-
-		//if (penetrationDist < 0.0f)
-		//{
-		//	if (kEnableDynamic) position += (lastPenetrationPos - lastPenetrationInsidePos);
-		//	auto const averageRadius = (radiuses.x + radiuses.y + radiuses.z) / 3.0f;
-		//	auto const travelEstimate = -averageRadius * friction * glm::cross(angularMove, lastPenetrationNormal);
-		//	if (kEnableDynamic) position += travelEstimate;
-		//	// linearMove += (lastPenetrationPos - lastPenetrationInsidePos);
-		//}
-		//ellipsoidTransform = glm::scale(aoest::combine(position, rotation), radiuses);
-		//invEllipsoidTransform = glm::inverse(ellipsoidTransform);
-
-		//// 3. apply forces
-		//if (kEnableDynamic) linearVelocity += totalForce * (1.0f / mass) * dt;
-		//if (kEnableDynamic) angularVelocity += glm::inverse(inertia) * totalTorque * dt;
-
-		//linearMove += linearVelocity * dt;
-
-		//// 3. apply velocity
-		//auto [hitTime, hitPos] = ellipsoid_cast(ellipsoidTransform, invEllipsoidTransform, linearMove, groundTriangle);
-
-		//if (hitTime >= 0.0f && hitTime < 1.0f)
-		//{
-		//	lastHitPos = hitPos;
-		//	lastHitTime = hitTime;
-		//	if (kEnableDynamic) position = position + hitTime * linearMove;
-
-		//	glm::vec3 const hitNormal = glm::normalize((position - hitPos) / (radiuses * radiuses));
-
-		//	auto const localVelocity = linearVelocity + glm::cross(angularVelocity, hitPos - position);
-
-		//	auto const localVelocityN = glm::dot(localVelocity, hitNormal) * hitNormal;
-		//	auto const localVelocityT = localVelocity - localVelocityN;
-
-		//	lastHitImpulse = hitNormal * glm::dot(hitNormal, -localVelocity) * (1.0f + restitution);
-		//	lastVelocityAtImpact = localVelocity;
-		//	// applyImpulse(*lastHitImpulse, hitPos);
-		//	linearVelocity += -localVelocityN * (1 + restitution);
-		//	angularVelocity += 0.2f * glm::cross(hitPos - position, -localVelocityN * restitution);
-		//}
-		//else
-		//{
-		//	if (kEnableDynamic) position = position + linearMove;
-		//}
-	}
-
 	static inline std::optional<std::tuple<float, glm::vec3, glm::vec3>> _unit_ellipsoid_intersect2(glm::vec3 const& a_radiuses, triangle const& a_triangle)
 	{
 		// The "fake" variables refer to those for calculations done in the skewed space where ellispoid is the unit-sphere.
@@ -1532,346 +991,192 @@ namespace vob::aoeph
 		}
 		return closestContact;
 	}
-
-	void test_system::update_v2() const
+	
+	static inline glm::vec3 closest_point_on_ellipsoid(glm::vec3 const& radiuses, glm::vec3 const& point)
 	{
-		// 0. statics
-		// A. time
-		static auto k_useFixedTimeStep = true;
-		static auto k_maxDeltaTime = 1.0f / 30.0f;
-		static auto k_fixedTimeStep = 1.0f / 100.0f;
-		static auto k_integrationTimeStep = 1.0f / 1000.0f;
-		static auto k_simulationStep = 0;
+		glm::vec3 scaled = point / radiuses; // point in unit-sphere space
+		float lambda = 0.0f;
 
-		static auto k_unusedElapsedTime = 0.0f;
-		static auto k_computationTime = 0.0f;
-		auto const computationStartTime = std::chrono::high_resolution_clock().now();
-		// B. world
-		static auto k_gravity = glm::vec3{ 0.0f, -25.0f, 0.0f };
-		static auto k_groundTriangles = std::vector<triangle>();
-		static auto k_groundTriangle = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f },
-			glm::vec3{ 100.0f, 1.0f, 0.0f }
-		};
-		static auto k_groundTriangle2 = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 100.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f }
-		};
-		static auto k_groundEllasticity = 100'000.0f;
-		static auto k_groundRestitution = 0.1f;
-		static auto k_groundFriction = 1.0f;
-		static auto k_groundRollingFriction = 0.5f; // how sticky+soft surface prevent rolling
-		// C. ellipsoid
-		static auto k_ellipsoidRadiuses = glm::vec3{ 3.0f, 2.2f, 3.0f };
-		static auto k_ellipsoidMass = 10.0f;
-		static auto k_ellipsoidStartPosition = glm::vec3{ 5.0f, 4.0f, 5.0f };
-		static auto k_ellipsoidStartRotation = glm::vec3{ 2.0f, 3.1415926535f / 4, 0.0f };
-		static auto k_ellipsoidStartLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto k_ellipsoidStartAngularVelocity = glm::vec3{ 0.0f, 0.0f, 0.75f };
-
-		static auto k_ellipsoidPosition = k_ellipsoidStartPosition;
-		static auto k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-		static auto k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-		static auto k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-		static auto k_isEllipsoidGrounded = false;
-		static auto k_ellipsoidEnergy = 0.0f;
-		// D. physics
-		static auto k_lastContactTrianglePosition = glm::vec3{ 0.0f };
-		static auto k_lastContactEllipsoidPosition = glm::vec3{ 0.0f };
-		static auto k_lastContactNormal = glm::vec3{ 0.0f };
-		static auto k_maxIntegrationStepsDone = 0;
-
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
+		for (int i = 0; i < 10; ++i)
 		{
-			k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-			k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-			k_ellipsoidPosition = k_ellipsoidStartPosition;
-			k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-			k_isEllipsoidGrounded = false;
-			k_maxIntegrationStepsDone = 0;
-			k_simulationStep = 0;
+			glm::vec3 denom = glm::vec3(1.0f) + lambda / (radiuses * radiuses);
+			glm::vec3 e = point / denom;
+
+			float f = glm::dot(e / radiuses, e / radiuses) - 1.0f;
+
+			if (std::abs(f) < 1e-4f)
+				break;
+
+			glm::vec3 df = -2.0f * e / (radiuses * radiuses * denom);
+			float df_dot = glm::dot(df, point);
+
+			lambda -= f / df_dot;
 		}
 
-		// 1. imgui
-		ImGui::Begin("Test System");
-
-		ImGui::SeparatorText("Time Settings");
-		ImGui::InputFloat("Max Delta Time", &k_maxDeltaTime);
-		ImGui::Checkbox("Use Fixed Simulation Time Step", &k_useFixedTimeStep);
-		if (k_useFixedTimeStep)
-		{
-			ImGui::InputFloat("Fixed Simulation Time Step", &k_fixedTimeStep);
-		}
-		// ImGui::InputFloat("Integration Time Step", &k_integrationTimeStep);
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Computation Time", &k_computationTime);
-		ImGui::InputInt("Step", &k_simulationStep);
-		auto fps = 1000.0f * m_simulationTimeContext->m_elapsedTime.get_value();
-		ImGui::InputFloat("Frame Time (ms)", &fps);
-		ImGui::EndDisabled();
-
-		ImGui::SeparatorText("World Settings");
-		ImGui::InputFloat3("Gravity", &k_gravity.x);
-		ImGui::InputFloat3("Ground Triangle P0", &k_groundTriangle.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle P1", &k_groundTriangle.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle P2", &k_groundTriangle.m_p2.x);
-		ImGui::InputFloat3("Ground Triangle 2 P0", &k_groundTriangle2.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle 2 P1", &k_groundTriangle2.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle 2 P2", &k_groundTriangle2.m_p2.x);
-		ImGui::InputFloat("Ground Ellasticity", &k_groundEllasticity);
-		ImGui::InputFloat("Ground Restitution", &k_groundRestitution);
-		ImGui::InputFloat("Ground Friction", &k_groundFriction);
-		ImGui::InputFloat("Ground Rolling Friction", &k_groundRollingFriction);
-
-		ImGui::SeparatorText("Ellipsoid Settings");
-		ImGui::InputFloat3("Radiuses", &k_ellipsoidRadiuses.x);
-		ImGui::InputFloat("Mass", &k_ellipsoidMass);
-		ImGui::InputFloat3("Start Position", &k_ellipsoidStartPosition.x);
-		ImGui::InputFloat3("Start Rotation", &k_ellipsoidStartRotation.x);
-		ImGui::InputFloat3("Start Linear Velocity", &k_ellipsoidStartLinearVelocity.x);
-		ImGui::InputFloat3("Start Angular Velocity", &k_ellipsoidStartAngularVelocity.x);
-
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Energy", &k_ellipsoidEnergy);
-		ImGui::EndDisabled();
-
-		ImGui::End();
-
-		// 2. draw
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle.m_p0, k_groundTriangle.m_p1, k_groundTriangle.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle2.m_p0, k_groundTriangle2.m_p1, k_groundTriangle2.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.5f }));
-		draw_line(
-			*m_debugMeshWorldComponent,
-			k_lastContactEllipsoidPosition,
-			k_lastContactEllipsoidPosition + (k_lastContactTrianglePosition - k_lastContactEllipsoidPosition) * 100.0f,
-			aoegl::k_red);
-		draw_sphere(*m_debugMeshWorldComponent, k_lastContactTrianglePosition, 0.125f, aoegl::k_red);
-		draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.125f, aoegl::k_azure);
-
-		// TODO draw hits
-
-		// 3. physics
-		k_unusedElapsedTime += std::clamp(m_simulationTimeContext->m_elapsedTime.get_value(), 0.0f, k_maxDeltaTime);
-		auto const simulationTimeStep = k_useFixedTimeStep ? (k_unusedElapsedTime > k_fixedTimeStep ? k_fixedTimeStep : 0.0f) : std::min(k_unusedElapsedTime, k_maxDeltaTime);
-		k_unusedElapsedTime = k_useFixedTimeStep ? k_unusedElapsedTime - simulationTimeStep : 0.0f;
-		if (simulationTimeStep == 0.0f)
-		{
-			return;
-		}
-		++k_simulationStep;
-
-		auto const ellipsoidTransform = glm::scale(aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses);
-		auto const ellipsoidTransformInv = glm::inverse(ellipsoidTransform);
-
-		{
-			auto const ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::mat3{
-				glm::vec3{k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z, 0.0f, 0.0f},
-				glm::vec3{0.0f, k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x, 0.0f},
-				glm::vec3{0.0f, 0.0f, k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y} };
-
-			k_ellipsoidEnergy = calc_energy(k_ellipsoidMass, k_ellipsoidLinearVelocity, ellipsoidInertia, k_ellipsoidAngularVelocity, k_gravity, k_ellipsoidPosition);
-
-			auto integrate = [&](auto const maxTime)
-				{
-					auto z = 0.0f;
-					auto pos = k_ellipsoidPosition;
-					auto rot = k_ellipsoidRotation;
-					auto V = k_ellipsoidLinearVelocity;
-					auto W = k_ellipsoidAngularVelocity;
-
-					auto const m = k_ellipsoidMass;
-					auto const k = k_groundEllasticity;
-					auto const b = 2.0f * k_ellipsoidMass * k_ellipsoidMass * (1.0f - k_groundRestitution); // ellasticity : so .. it doesn't depend on time on ground?
-					auto const r = k_groundFriction;
-					// auto const N = glm::normalize(glm::cross(k_groundTriangle.m_p1 - k_groundTriangle.m_p0, k_groundTriangle.m_p2 - k_groundTriangle.m_p0));
-					auto const I = ellipsoidInertia;
-					auto const iI = glm::inverse(I);
-
-					auto S = 0.0f;
-					auto const ds = k_integrationTimeStep;
-					auto integrationStepsDone = 0;
-					while (z <= 0.001f && S <= maxTime)
-					{
-						++integrationStepsDone;
-
-						S += ds;
-						auto const Tr = aoest::combine(pos, rot);
-						glm::mat4 const iTr = glm::inverse(Tr);
-						//auto const [newZ, ellipsoidP, triangleP] =
-						//	ellipsoid_intersect2(glm::scale(Tr, k_ellipsoidRadiuses), glm::inverse(glm::scale(Tr, k_ellipsoidRadiuses)), k_groundTriangle);
-						auto const result = _ellipsoid_intersect(Tr, glm::inverse(Tr), k_ellipsoidRadiuses, { k_groundTriangle, k_groundTriangle2 });
-						if (result == std::nullopt)
-						{
-							V += k_gravity * (maxTime - S);
-							pos += V * (maxTime - S);
-							auto const theta = W * (maxTime - S);
-							auto const thetaMagnitude = glm::length(theta);
-							if (thetaMagnitude > glm::epsilon<float>())
-							{
-								glm::vec3 axis = theta / thetaMagnitude;
-								float halfTheta = thetaMagnitude / 2.0f;
-								rot = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rot;
-							}
-
-							break;
-						}
-
-						z = std::get<0>(*result);
-						auto const trianglePoint = std::get<1>(*result);
-						auto const ellipsoidPoint = std::get<2>(*result);
-						auto const ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-						auto const N = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle) < glm::epsilon<float>() ?
-							glm::normalize(ellipsoidPoint - pos) : glm::normalize(ellipsoidToTriangle);
-
-						k_lastContactTrianglePosition = std::get<1>(*result);
-						k_lastContactEllipsoidPosition = std::get<2>(*result);
-
-						auto const iIw = glm::mat3{ Tr } *iI * glm::inverse(glm::mat3{ Tr });
-
-						auto const R = std::get<2>(*result) - pos;
-						auto const Vp = V + glm::cross(W, R);
-						auto const Vpn = glm::dot(Vp, N) * N;
-						auto const Vpt = Vp - Vpn;
-						auto const Fpn = -k * z * N;
-						auto const Fdamp = -b * Vpn; // not applied to angular momentum, else energy is just transfered
-
-						// For now assuming static friction = 2 * dynamic friction, or something like that
-						auto Fpt = glm::vec3{ 0.0f };
-						auto const maxFrictionlessSpeed = 2.0f * r / m * glm::length(Fpn);
-						if (glm::length(Vpt) != 0.0f)
-						{
-							Fpt = -glm::normalize(Vpt) * std::min(r * glm::length(Fpn), 0.5f * glm::length(Vpt) * m / ds);
-						}
-
-						auto const Fp = (Fpn + Fpt);
-						auto const dV = (k_gravity + (Fp + Fdamp) / m) * ds;
-
-						auto const lFp = glm::transpose(glm::mat3{ Tr }) * Fp;
-						auto const lR = glm::transpose(glm::mat3{ Tr }) * R;
-						auto const lDw = iI * glm::cross(lR, lFp) * ds;
-						auto const dW = glm::mat3{ Tr } *lDw;
-
-						V = V + dV;
-						W = W - (W * k_groundRollingFriction * ds) + dW;
-
-						pos += V * ds;
-
-						auto const theta = W * ds;
-						auto const thetaMagnitude = glm::length(theta);
-						if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
-						{
-							glm::vec3 axis = theta / thetaMagnitude;
-							float halfTheta = thetaMagnitude / 2.0f;
-							rot = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rot;
-						}
-					}
-
-					if (integrationStepsDone > k_maxIntegrationStepsDone)
-					{
-						k_maxIntegrationStepsDone = integrationStepsDone;
-					}
-
-					k_isEllipsoidGrounded = z <= 0.001f;
-
-					k_ellipsoidLinearVelocity = V;
-					k_ellipsoidAngularVelocity = W;
-					k_ellipsoidPosition = pos;
-					k_ellipsoidRotation = rot;
-				};
-
-			if (k_isEllipsoidGrounded)
-			{
-				integrate(simulationTimeStep);
-			}
-			else if (!k_isEllipsoidGrounded)
-			{
-				k_ellipsoidLinearVelocity += k_gravity * simulationTimeStep;
-				auto linearMove = k_ellipsoidLinearVelocity * simulationTimeStep;
-				auto angularMove = k_ellipsoidAngularVelocity * simulationTimeStep;
-				auto [hitTime, hitPos] = _ellipsoid_move2(k_ellipsoidPosition, k_ellipsoidRotation, k_ellipsoidRadiuses, linearMove, angularMove, { k_groundTriangle, k_groundTriangle2 });
-				if (0 <= hitTime && hitTime < 1.0f)
-				{
-					k_ellipsoidPosition += hitTime * linearMove;
-					k_ellipsoidRotation = glm::quat(hitTime * angularMove) * k_ellipsoidRotation;
-
-					integrate(simulationTimeStep * (1.0f - hitTime));
-				}
-				else
-				{
-					k_ellipsoidPosition += linearMove;
-					k_ellipsoidRotation = glm::quat(angularMove) * k_ellipsoidRotation;
-				}
-			}
-		}
-
-		auto const computationStopTime = std::chrono::high_resolution_clock().now();
-		k_computationTime = (computationStopTime - computationStartTime).count() * 0.001f;
+		glm::vec3 denom = glm::vec3(1.0f) + lambda / (radiuses * radiuses);
+		return point / denom;
 	}
 
+	static inline glm::vec3 _closest_triangle_point(glm::vec3 const& a_point, triangle const& a_triangle)
+	{
+		auto const a = a_triangle.m_p0;
+		auto const b = a_triangle.m_p1;
+		auto const c = a_triangle.m_p2;
+		auto const p = a_point;
 
+		glm::vec3 ab = b - a;
+		glm::vec3 ac = c - a;
+		glm::vec3 ap = p - a;
 
+		float d1 = glm::dot(ab, ap);
+		float d2 = glm::dot(ac, ap);
+		if (d1 <= 0.0f && d2 <= 0.0f) return a;
 
+		glm::vec3 bp = p - b;
+		float d3 = glm::dot(ab, bp);
+		float d4 = glm::dot(ac, bp);
+		if (d3 >= 0.0f && d4 <= d3) return b;
 
+		float vc = d1 * d4 - d3 * d2;
+		if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f)
+		{
+			float v = d1 / (d1 - d3);
+			return a + v * ab;
+		}
 
+		glm::vec3 cp = p - c;
+		float d5 = glm::dot(ab, cp);
+		float d6 = glm::dot(ac, cp);
+		if (d6 >= 0.0f && d5 <= d6) return c;
+
+		float vb = d5 * d2 - d1 * d6;
+		if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f)
+		{
+			float w = d2 / (d2 - d6);
+			return a + w * ac;
+		}
+
+		float va = d3 * d6 - d5 * d4;
+		if (va <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f)
+		{
+			float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+			return b + w * (c - b);
+		}
+
+		// Inside triangle
+		float denom = glm::dot(ab, ab) * glm::dot(ac, ac) - glm::dot(ab, ac) * glm::dot(ab, ac);
+		float v = (glm::dot(ac, ac) * glm::dot(ap, ab) - glm::dot(ab, ac) * glm::dot(ap, ac)) / denom;
+		float w = (glm::dot(ab, ab) * glm::dot(ap, ac) - glm::dot(ab, ac) * glm::dot(ap, ab)) / denom;
+		return a + ab * v + ac * w;
+	}
+
+	static inline glm::vec3 _closest_ellipsoid_point(glm::vec3 const& a_point, glm::vec3 const& a_radiuses)
+	{
+		auto const r2 = a_radiuses * a_radiuses;
+		auto const computeError = [&a_point, &a_radiuses, &r2](const float lambda) {
+			auto const p2 = a_point * a_point;
+			auto const dSqrt = r2 + lambda;
+			auto const t = p2 * r2 / (dSqrt * dSqrt);
+			return t.x + t.y + t.z - 1.0f;
+		};
+
+		auto lambdaMin = -std::min({ r2.x, r2.y, r2.z });
+		auto lambdaMax = 0.0f;
+		while (lambdaMax - lambdaMin > 1e-4f)
+		{
+			auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
+			auto const error = computeError(lambda);
+			if (error < 0.0f)
+			{
+				lambdaMax = lambda;
+			}
+			else
+			{
+				lambdaMin = lambda;
+			}
+		}
+
+		auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
+		return a_point * r2 / (r2 + lambda);
+	}
 
 	static inline std::tuple<float, glm::vec3, glm::vec3> _unit_ellipsoid_intersect(glm::vec3 const& a_radiuses, triangle const& a_triangle)
 	{
-		// The "fake" variables refer to those for calculations done in the skewed space where ellispoid is the unit-sphere.
-		auto const fakeP0 = a_triangle.m_p0 / a_radiuses;
-		auto const fakeP1 = a_triangle.m_p1 / a_radiuses;
-		auto const fakeP2 = a_triangle.m_p2 / a_radiuses;
+		// returns signed distance, ellipsoid point, and triangle point
 
-		// 1. Ellipsoid's center is below triangle
-		auto const fakeNormal = glm::normalize(glm::cross(fakeP1 - fakeP0, fakeP2 - fakeP0));
-		if (glm::dot(fakeNormal, -fakeP0) < 0.0f)
-		{
-			return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
-		}
-
-		// 2. Ellipsoid is above triangle
-		auto const fakePlaneDist = glm::dot(-fakeNormal, fakeP0 + fakeNormal);
-		if (fakePlaneDist > 1.0f)
-		{
-			return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
-		}
-
-		// 3. Deepest point of triangle's plane inside ellipsoid belongs to the triangle
-		auto const fakePlanePoint = -fakePlaneDist * fakeNormal;
 		auto const normal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
-		auto const deepestEllipsoidPointInPlane = -fakeNormal * a_radiuses;
-		auto const planePoint = deepestEllipsoidPointInPlane + glm::dot(a_triangle.m_p0 - deepestEllipsoidPointInPlane, normal) * normal;
-		if (is_inside(planePoint, a_triangle))
+
+		auto const normalEllipsoidDir = normal * a_radiuses * a_radiuses;
+		auto const normalEllipsoidPoint = -normalEllipsoidDir / std::sqrt(glm::dot(normalEllipsoidDir, normal));
+		auto const normalDistance = glm::dot(normalEllipsoidPoint - a_triangle.m_p0, normal);
+		auto const normalTrianglePoint = normalEllipsoidPoint - normalDistance * normal;
+
+		if (glm::dot(normal, -a_triangle.m_p0) < 0.0f)
 		{
-			return std::make_tuple(glm::dot(deepestEllipsoidPointInPlane - planePoint, normal), deepestEllipsoidPointInPlane, planePoint);
+			return { -normalDistance, normalEllipsoidPoint, normalTrianglePoint };
 		}
 
-		// Compute what point of a triangle's edge is deepest inside ellipsoid
-		// (I think it's an approximation but unsure...).
-		auto const t01 = -glm::dot(fakeP0, fakeP1 - fakeP0) / glm::dot(fakeP1 - fakeP0, fakeP1 - fakeP0);
-		auto const fakeSegmentPoint01 = fakeP0 + glm::clamp(t01, 0.0f, 1.0f) * (fakeP1 - fakeP0);
-		auto const t12 = -glm::dot(fakeP1, fakeP2 - fakeP1) / glm::dot(fakeP2 - fakeP1, fakeP2 - fakeP1);
-		auto const fakeSegmentPoint12 = fakeP1 + glm::clamp(t12, 0.0f, 1.0f) * (fakeP2 - fakeP1);
-		auto const t20 = -glm::dot(fakeP2, fakeP0 - fakeP2) / glm::dot(fakeP0 - fakeP2, fakeP0 - fakeP2);
-		auto const fakeSegmentPoint20 = fakeP2 + glm::clamp(t20, 0.0f, 1.0f) * (fakeP0 - fakeP2);
-		auto const d01Sq = glm::dot(fakeSegmentPoint01, fakeSegmentPoint01);
-		auto const d12Sq = glm::dot(fakeSegmentPoint12, fakeSegmentPoint12);
-		auto const d20Sq = glm::dot(fakeSegmentPoint20, fakeSegmentPoint20);
-		auto const fakeTrianglePoint = d01Sq < d12Sq ? (d01Sq < d20Sq ? fakeSegmentPoint01 : fakeSegmentPoint20) : (d12Sq < d20Sq ? fakeSegmentPoint12 : fakeSegmentPoint20);
+		auto const trianglePoint = _closest_triangle_point(normalTrianglePoint, a_triangle);
+		auto const ellipsoidPoint = _closest_ellipsoid_point(trianglePoint, a_radiuses);
+		auto const distance = glm::length(trianglePoint - ellipsoidPoint);
+		auto const t = (trianglePoint * trianglePoint) / (a_radiuses * a_radiuses);
+		return { t.x + t.y + t.z < 1.0f ? -distance : distance, ellipsoidPoint, trianglePoint };
 
-		// 4. Ellipsoid doesn't intersect triangle
-		if (glm::dot(fakeTrianglePoint, fakeTrianglePoint) > 1.0f)
-		{
-			return { 0.0f, fakeTrianglePoint * a_radiuses, fakeTrianglePoint * a_radiuses };
-		}
+		//{
+		//	// The "fake" variables refer to those for calculations done in the skewed space where ellispoid is the unit-sphere.
+		//	auto const fakeP0 = a_triangle.m_p0 / a_radiuses;
+		//	auto const fakeP1 = a_triangle.m_p1 / a_radiuses;
+		//	auto const fakeP2 = a_triangle.m_p2 / a_radiuses;
 
-		// 5. Rough approximation only valid near the ellipsoid's surface
-		auto const t = std::sqrt(std::max(0.0f, 1.0f / glm::dot(fakeTrianglePoint, fakeTrianglePoint)));
-		auto const trianglePoint = fakeTrianglePoint * a_radiuses;
-		auto const ellipsoidPoint = trianglePoint * t;
-		return std::make_tuple(-glm::distance(trianglePoint, ellipsoidPoint), ellipsoidPoint, trianglePoint);
+		//	// 1. Ellipsoid's center is below triangle
+		//	auto const fakeNormal = glm::normalize(glm::cross(fakeP1 - fakeP0, fakeP2 - fakeP0));
+		//	if (glm::dot(fakeNormal, -fakeP0) < 0.0f)
+		//	{
+		//		return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
+		//	}
+
+		//	// 2. Ellipsoid is above triangle
+		//	auto const fakePlaneDist = glm::dot(-fakeNormal, fakeP0 + fakeNormal);
+		//	if (fakePlaneDist > 1.0f)
+		//	{
+		//		return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
+		//	}
+
+		//	// 3. Deepest point of triangle's plane inside ellipsoid belongs to the triangle
+		//	auto const fakePlanePoint = -fakePlaneDist * fakeNormal;
+		//	auto const normal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
+		//	auto const deepestEllipsoidPointInPlane = -fakeNormal * a_radiuses;
+		//	auto const planePoint = deepestEllipsoidPointInPlane + glm::dot(a_triangle.m_p0 - deepestEllipsoidPointInPlane, normal) * normal;
+		//	if (is_inside(planePoint, a_triangle))
+		//	{
+		//		return std::make_tuple(glm::dot(deepestEllipsoidPointInPlane - planePoint, normal), deepestEllipsoidPointInPlane, planePoint);
+		//	}
+
+		//	// Compute what point of a triangle's edge is deepest inside ellipsoid
+		//	// (I think it's an approximation but unsure...).
+		//	auto const t01 = -glm::dot(fakeP0, fakeP1 - fakeP0) / glm::dot(fakeP1 - fakeP0, fakeP1 - fakeP0);
+		//	auto const fakeSegmentPoint01 = fakeP0 + glm::clamp(t01, 0.0f, 1.0f) * (fakeP1 - fakeP0);
+		//	auto const t12 = -glm::dot(fakeP1, fakeP2 - fakeP1) / glm::dot(fakeP2 - fakeP1, fakeP2 - fakeP1);
+		//	auto const fakeSegmentPoint12 = fakeP1 + glm::clamp(t12, 0.0f, 1.0f) * (fakeP2 - fakeP1);
+		//	auto const t20 = -glm::dot(fakeP2, fakeP0 - fakeP2) / glm::dot(fakeP0 - fakeP2, fakeP0 - fakeP2);
+		//	auto const fakeSegmentPoint20 = fakeP2 + glm::clamp(t20, 0.0f, 1.0f) * (fakeP0 - fakeP2);
+		//	auto const d01Sq = glm::dot(fakeSegmentPoint01, fakeSegmentPoint01);
+		//	auto const d12Sq = glm::dot(fakeSegmentPoint12, fakeSegmentPoint12);
+		//	auto const d20Sq = glm::dot(fakeSegmentPoint20, fakeSegmentPoint20);
+		//	auto const fakeTrianglePoint = d01Sq < d12Sq ? (d01Sq < d20Sq ? fakeSegmentPoint01 : fakeSegmentPoint20) : (d12Sq < d20Sq ? fakeSegmentPoint12 : fakeSegmentPoint20);
+
+		//	// 4. Ellipsoid doesn't intersect triangle
+		//	if (glm::dot(fakeTrianglePoint, fakeTrianglePoint) > 1.0f)
+		//	{
+		//		return { 0.0f, fakeTrianglePoint * a_radiuses, fakeTrianglePoint * a_radiuses };
+		//	}
+
+		//	// 5. Rough approximation only valid near the ellipsoid's surface
+		//	auto const t = std::sqrt(std::max(0.0f, 1.0f / glm::dot(fakeTrianglePoint, fakeTrianglePoint)));
+		//	auto const trianglePoint = fakeTrianglePoint * a_radiuses;
+		//	auto const ellipsoidPoint = trianglePoint * t;
+		//	return std::make_tuple(-glm::distance(trianglePoint, ellipsoidPoint), ellipsoidPoint, trianglePoint);
+		//}
 	}
 
 	std::tuple<float, glm::vec3, glm::vec3> _ellipsoid_intersect(
@@ -2016,224 +1321,6 @@ namespace vob::aoeph
 		return glm::normalize(glm::vec3{ transform * glm::vec4{ invNormal, 0.0f } });
 	}
 
-	void test_system::update_v3() const
-	{
-		// 0. statics
-		// A. time
-		static auto k_useFixedTimeStep = true;
-		static auto k_maxDeltaTime = 1.0f / 30.0f;
-		static auto k_fixedTimeStep = 1.0f / 100.0f;
-		static auto k_integrationTimeStep = 1.0f / 1000.0f;
-		static auto k_simulationStep = 0;
-
-		static auto k_unusedElapsedTime = 0.0f;
-		static auto k_computationTime = 0.0f;
-		auto const computationStartTime = std::chrono::high_resolution_clock().now();
-		// B. world
-		static auto k_gravity = glm::vec3{ 0.0f, -25.0f, 0.0f };
-		static auto k_groundTriangles = std::vector<triangle>();
-		static auto k_groundTriangle = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f },
-			glm::vec3{ 100.0f, 1.0f, 0.0f }
-		};
-		static auto k_groundTriangle2 = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 100.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f }
-		};
-		static auto k_groundEllasticity = 100'000.0f;
-		static auto k_groundRestitution = 0.1f;
-		static auto k_groundFriction = 1.0f;
-		static auto k_groundRollingFriction = 0.5f; // how sticky+soft surface prevent rolling
-		// C. ellipsoid
-		static auto k_ellipsoidRadiuses = glm::vec3{ 1.0f, 3.0f, 1.0f };
-		static auto k_ellipsoidMass = 10.0f;
-		static auto k_ellipsoidStartPosition = glm::vec3{ 5.0f, 10.0f, 5.0f };
-		static auto k_ellipsoidStartRotation = glm::vec3{ 0.0f, 0.0, 0.0f };
-		static auto k_ellipsoidStartLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto k_ellipsoidStartAngularVelocity = glm::vec3{ 0.0f, 0.0f, 3.0f };
-
-		static auto k_ellipsoidPosition = k_ellipsoidStartPosition;
-		static auto k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-		static auto k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-		static auto k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-		static auto k_isEllipsoidGrounded = false;
-		static auto k_ellipsoidEnergy = 0.0f;
-		// D. physics
-		static auto k_lastContactNormal = glm::vec3{ 0.0f };
-		static auto k_maxIntegrationStepsDone = 0;
-
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
-		{
-			k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-			k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-			k_ellipsoidPosition = k_ellipsoidStartPosition;
-			k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-			k_isEllipsoidGrounded = false;
-			k_maxIntegrationStepsDone = 0;
-			k_simulationStep = 0;
-		}
-
-		// E. Collisions
-		static auto k_lastHitTrianglePoint = glm::vec3{ 0.0f };
-		static auto k_lastHitEllipsoidPoint = glm::vec3{ 0.0f };
-		static auto k_lastHitLinearVelocity = glm::vec3{ 0.0f };
-		static auto k_lastHitAngularVelocity = glm::vec3{ 0.0f };
-
-		// 1. imgui
-		ImGui::Begin("Test System");
-
-		ImGui::SeparatorText("Time Settings");
-		ImGui::InputFloat("Max Delta Time", &k_maxDeltaTime);
-		ImGui::Checkbox("Use Fixed Simulation Time Step", &k_useFixedTimeStep);
-		if (k_useFixedTimeStep)
-		{
-			ImGui::InputFloat("Fixed Simulation Time Step", &k_fixedTimeStep);
-		}
-		ImGui::InputFloat("Integration Time Step", &k_integrationTimeStep);
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Computation Time", &k_computationTime);
-		ImGui::InputInt("Step", &k_simulationStep);
-		ImGui::EndDisabled();
-
-		ImGui::SeparatorText("World Settings");
-		ImGui::InputFloat3("Gravity", &k_gravity.x);
-		ImGui::InputFloat3("Ground Triangle P0", &k_groundTriangle.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle P1", &k_groundTriangle.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle P2", &k_groundTriangle.m_p2.x);
-		ImGui::InputFloat3("Ground Triangle 2 P0", &k_groundTriangle2.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle 2 P1", &k_groundTriangle2.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle 2 P2", &k_groundTriangle2.m_p2.x);
-		ImGui::InputFloat("Ground Ellasticity", &k_groundEllasticity);
-		ImGui::InputFloat("Ground Restitution", &k_groundRestitution);
-		ImGui::InputFloat("Ground Friction", &k_groundFriction);
-		ImGui::InputFloat("Ground Rolling Friction", &k_groundRollingFriction);
-
-		ImGui::SeparatorText("Ellipsoid Settings");
-		ImGui::InputFloat3("Radiuses", &k_ellipsoidRadiuses.x);
-		ImGui::InputFloat("Mass", &k_ellipsoidMass);
-		ImGui::InputFloat3("Start Position", &k_ellipsoidStartPosition.x);
-		ImGui::InputFloat3("Start Rotation", &k_ellipsoidStartRotation.x);
-		ImGui::InputFloat3("Start Linear Velocity", &k_ellipsoidStartLinearVelocity.x);
-		ImGui::InputFloat3("Start Angular Velocity", &k_ellipsoidStartAngularVelocity.x);
-
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Energy", &k_ellipsoidEnergy);
-		ImGui::InputFloat3("Linear Velocity", &k_ellipsoidLinearVelocity.x);
-		ImGui::EndDisabled();
-
-		ImGui::End();
-
-		// 2. draw
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle.m_p0, k_groundTriangle.m_p1, k_groundTriangle.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle2.m_p0, k_groundTriangle2.m_p1, k_groundTriangle2.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.5f }));
-		draw_line(*m_debugMeshWorldComponent, k_lastHitEllipsoidPoint, k_lastHitEllipsoidPoint + k_lastHitLinearVelocity, aoegl::k_red);
-
-		// TODO draw hits
-
-		// 3. physics
-		k_unusedElapsedTime += std::clamp(m_simulationTimeContext->m_elapsedTime.get_value(), 0.0f, k_maxDeltaTime);
-		auto const simulationTimeStep = k_useFixedTimeStep ? (k_unusedElapsedTime > k_fixedTimeStep ? k_fixedTimeStep : 0.0f) : std::min(k_unusedElapsedTime, k_maxDeltaTime);
-		k_unusedElapsedTime = k_useFixedTimeStep ? k_unusedElapsedTime - simulationTimeStep : 0.0f;
-		if (simulationTimeStep == 0.0f)
-		{
-			return;
-		}
-		++k_simulationStep;
-
-		k_ellipsoidLinearVelocity += k_gravity * simulationTimeStep * 0.5f;
-		auto const linearMove = k_ellipsoidLinearVelocity * simulationTimeStep;
-		auto const angularMove = k_ellipsoidAngularVelocity * simulationTimeStep;
-		k_ellipsoidLinearVelocity += k_gravity * simulationTimeStep * 0.5f;
-
-		auto const ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::mat3{
-			glm::vec3{k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z, 0.0f, 0.0f},
-			glm::vec3{0.0f, k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x, 0.0f},
-			glm::vec3{0.0f, 0.0f, k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y} };
-		k_ellipsoidEnergy = calc_energy(k_ellipsoidMass, k_ellipsoidLinearVelocity, ellipsoidInertia, k_ellipsoidAngularVelocity, k_gravity, k_ellipsoidPosition);
-
-		std::vector<std::pair<glm::mat4, aoegl::rgba>> dummyTransforms;
-		std::int32_t dummyCount;
-		auto [hitRatio, ellipsoidPoint, trianglePoint] = _ellipsoid_move(
-			k_ellipsoidPosition, k_ellipsoidRotation, k_ellipsoidRadiuses, linearMove, angularMove, k_groundTriangle, dummyTransforms, dummyCount);
-
-		if (hitRatio < 1.0f)
-		{
-			k_ellipsoidPosition = linearMove * hitRatio + k_ellipsoidPosition;
-			k_ellipsoidRotation = glm::quat{ angularMove * hitRatio } * k_ellipsoidRotation;
-
-			auto const localToGlobalTr = aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation);
-			auto const globalToLocalTr = glm::inverse(localToGlobalTr);
-
-			auto const hitNormal = -_ellipsoid_normal(k_ellipsoidPosition, k_ellipsoidRotation, -k_ellipsoidRadiuses, ellipsoidPoint);
-			auto const hitOffset = ellipsoidPoint - k_ellipsoidPosition;
-			auto const hitRotAxis = aoest::normalize_safe(glm::cross(hitOffset, hitNormal));
-
-			// -r * sin(theta)
-			auto const k = 0.4f;
-			auto const kSqrt = std::sqrt(k);
-			auto const s = glm::length(glm::cross(hitNormal, hitOffset));
-			// TODO: inertia along hitRotAxis
-			auto const I = ellipsoidInertia[0][0];
-			auto const Vh = k_ellipsoidLinearVelocity - glm::cross(hitOffset, k_ellipsoidAngularVelocity);
-			auto const Vhn = glm::dot(Vh, hitNormal);
-			auto const Ve = k_ellipsoidLinearVelocity;
-			auto const Ven = glm::dot(Ve, hitNormal);
-			auto const m = k_ellipsoidMass;
-			auto const Wer = glm::dot(k_ellipsoidAngularVelocity, hitRotAxis);
-			auto const Fe = k * (Ven * Ven + I / m * Wer * Wer);
-
-			auto const a = s * s + I / m;
-			auto const b = 2 * s * kSqrt * Vhn;
-			auto const c = k * Vhn * Vhn - Fe;
-
-			auto const d = b * b - 4.0f * a * c;
-			auto const dSqrt = std::sqrt(std::max(0.0f, d));
-			auto const Wer0 = (-b - dSqrt) / (2.0f * a);
-			auto const Wer1 = (-b + dSqrt) / (2.0f * a);
-
-			auto const Ven0 = - kSqrt * Vhn - s * Wer0;
-			auto const Ven1 = - kSqrt * Vhn - s * Wer1;
-
-			auto const triangleNormal = glm::normalize(glm::cross(k_groundTriangle.m_p1 - k_groundTriangle.m_p0, k_groundTriangle.m_p2 - k_groundTriangle.m_p0));
-			if (glm::dot(trianglePoint - ellipsoidPoint, triangleNormal) < 0.0f)
-			{
-				k_ellipsoidPosition += (trianglePoint - ellipsoidPoint);
-			}
-
-			// ouf
-			if (glm::dot(Vh, hitNormal) < 0.0f)
-			{
-				if (Vhn < glm::dot(Ve, hitNormal))
-				{
-					k_ellipsoidLinearVelocity = (k_ellipsoidLinearVelocity - Ven * hitNormal) + Ven0 * hitNormal;
-					k_ellipsoidAngularVelocity = (k_ellipsoidAngularVelocity - Wer * hitRotAxis) + Wer0 * hitRotAxis;
-				}
-				else
-				{
-					k_ellipsoidLinearVelocity = (k_ellipsoidLinearVelocity - Ven * hitNormal) + Ven1 * hitNormal;
-					k_ellipsoidAngularVelocity = (k_ellipsoidAngularVelocity - Wer * hitRotAxis) + Wer1 * hitRotAxis;
-				}
-
-
-				k_lastHitEllipsoidPoint = ellipsoidPoint;
-				k_lastHitLinearVelocity = Vh;
-			}
-			else
-			{
-				k_ellipsoidPosition = linearMove + k_ellipsoidPosition;
-				k_ellipsoidRotation = glm::quat{ angularMove } *k_ellipsoidRotation;
-			}
-		}
-		else
-		{
-			k_ellipsoidPosition = linearMove + k_ellipsoidPosition;
-			k_ellipsoidRotation = glm::quat{ angularMove } * k_ellipsoidRotation;
-		}
-	}
-
 	struct solid_shape
 	{
 		struct part
@@ -2248,41 +1335,63 @@ namespace vob::aoeph
 		glm::vec3 barycenter = glm::vec3{ 0.0f };
 	};
 
-	void test_system::update_v4() const
+	glm::quat _differentiate_quaternion(glm::quat const& a_rotation, glm::vec3 const& a_angularVelocity)
 	{
+		auto const angularVelocity = glm::quat{ 0.0f, a_angularVelocity.x, a_angularVelocity.y, a_angularVelocity.z };
+		return 0.5f * a_rotation * angularVelocity;
+	}
+
+	glm::quat integrate_quaternion(glm::quat const& a_rotation, glm::vec3 const& a_angularVelocity, float a_dt)
+	{
+		auto const angle = glm::length(a_angularVelocity) * a_dt;
+		if (angle < glm::epsilon<float>())
+		{
+			return a_rotation;
+		}
+
+		auto const axis = glm::normalize(a_angularVelocity);
+		return glm::normalize(glm::angleAxis(angle, axis) * a_rotation);
+	}
+
+#pragma optimize("", off)
+	void test_system::update() const
+	{
+
+#pragma region STATIC_AND_IMGUI
 
 		// 0. statics
 		// A. time
 		static auto k_useFixedTimeStep = true;
 		static auto k_maxDeltaTime = 1.0f / 30.0f;
 		static auto k_fixedTimeStep = 1.0f / 100.0f;
-		static auto k_integrationTimeStep = 1.0f / 400.0f;
+		static auto k_integrationStepCount = 10;
 		static auto k_simulationStep = 0;
 
+		static std::chrono::high_resolution_clock::time_point k_lastUpdateTime = {};
 		static auto k_unusedElapsedTime = 0.0f;
 		static auto k_computationTime = 0.0f;
 		auto const computationStartTime = std::chrono::high_resolution_clock().now();
 		// B. world
-		static auto k_gravity = glm::vec3{ 0.0f, -25.0f, 0.0f };
+		static auto k_gravity = glm::vec3{ 0.0f, -10.0f, 0.0f };
 		static auto k_groundTriangles = std::vector<triangle>();
 		static auto k_groundTriangle = triangle{
-			glm::vec3{ 0.0f, 0.0f, 0.0f },
-			glm::vec3{ 0.0f, 0.0f, 100.0f },
-			glm::vec3{ 100.0f, 0.0f, 0.0f }
+			glm::vec3{ -5.0f, 2.0f, -5.0f },
+			glm::vec3{ -5.0f, 2.0f, 20.0f },
+			glm::vec3{ 20.0f, 2.0f, -5.0f }
 		};
 		static auto k_groundTriangle2 = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 100.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f }
+			glm::vec3{ -10.0f, 1.0f, 0.0f },
+			glm::vec3{ -10.0f, 100.0f, 0.0f },
+			glm::vec3{ -10.0f, 1.0f, 100.0f }
 		};
 		static auto k_groundEllasticity = 100'000.0f;
 		static auto k_groundRestitution = 0.5f;
-		static auto k_groundFriction = 1.0f;
-		static auto k_groundRollingFriction = 0.5f; // how sticky+soft surface prevent rolling
+		static auto k_groundFriction = 0.128f;
+		static auto k_groundRollingFriction = 1.0f; // how sticky+soft surface prevent rolling
 		// C. ellipsoid
-		static auto k_ellipsoidRadiuses = glm::vec3{ 3.0f, 2.2f, 3.0f };
+		static auto k_ellipsoidRadiuses = glm::vec3{ 1.067f, 0.818f, 2.146f };
 		static auto k_ellipsoidMass = 1.0f;
-		static auto k_ellipsoidStartPosition = glm::vec3{ 10.0f, 4.0f, 10.0f };
+		static auto k_ellipsoidStartPosition = glm::vec3{ 0.0f, 10.0f, 0.0f };
 		static auto k_ellipsoidStartRotation = glm::vec3{ 0.0f, 0.0f, 0.0f };
 		static auto k_ellipsoidStartLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
 		static auto k_ellipsoidStartAngularVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
@@ -2291,7 +1400,6 @@ namespace vob::aoeph
 		static auto k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
 		static auto k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
 		static auto k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-		static auto k_isEllipsoidGrounded = false;
 		static auto k_ellipsoidEnergy = 0.0f;
 		// D. physics
 		static auto k_lastContactTrianglePosition = glm::vec3{ 0.0f };
@@ -2305,8 +1413,8 @@ namespace vob::aoeph
 		// E. solid
 		solid_shape k_solidShape = solid_shape{
 			std::vector<solid_shape::part>{
-			// front axel
-			solid_shape::part{ glm::vec3{ -0.01553f, 0.36325f, -1.75357f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{glm::half_pi<float>(), glm::half_pi<float>(), 0.0f}), glm::vec3{0.385f, 0.905f, 0.283f}},
+				// front axel
+				solid_shape::part{ glm::vec3{ -0.01553f, 0.36325f, -1.75357f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.905f, 0.283f, 0.385f}},
 				// mid axel
 				solid_shape::part{ glm::vec3{ 0.0f, 0.471f, -0.219f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.439f, 0.362f, 1.902f}},
 				// cockpit
@@ -2324,16 +1432,39 @@ namespace vob::aoeph
 			}
 		};
 
+		struct triple
+		{
+			glm::vec3 first;
+			glm::vec3 second;
+			glm::vec3 third;
+		};
+
+		static std::vector<std::optional<triple>> k_lastCollisionPoints;
+
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::O].is_pressed())
+		{
+			auto maxRadiuses = glm::vec3{ 0.0f };
+			for (auto const& part : k_solidShape.parts)
+			{
+				maxRadiuses.x = std::max(maxRadiuses.x, std::abs(part.position.x) + part.radiuses.x);
+				maxRadiuses.y = std::max(maxRadiuses.y, std::abs(part.position.y) + part.radiuses.y);
+				maxRadiuses.z = std::max(maxRadiuses.z, std::abs(part.position.z) + part.radiuses.z);
+			}
+
+			k_ellipsoidRadiuses = maxRadiuses;
+		}
+
 		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
 		{
 			k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
 			k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
 			k_ellipsoidPosition = k_ellipsoidStartPosition;
 			k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-			k_isEllipsoidGrounded = false;
 			k_maxIntegrationStepsDone = 0;
 			k_simulationStep = 0;
+			k_unusedElapsedTime = 0.0f;
 		}
+
 		if (m_inputs->mouse.buttons[aoein::mouse::button::Left].is_pressed())
 		{
 			k_ellipsoidPosition.y -= m_inputs->mouse.axes[aoein::mouse::axis::Y].get_change() * 0.01f;
@@ -2349,12 +1480,16 @@ namespace vob::aoeph
 		{
 			ImGui::InputFloat("Fixed Simulation Time Step", &k_fixedTimeStep);
 		}
-		ImGui::InputFloat("Integration Time Step", &k_integrationTimeStep);
+		ImGui::InputInt("Integration Step Count", &k_integrationStepCount);
 		ImGui::BeginDisabled();
 		ImGui::InputFloat("Computation Time", &k_computationTime);
 		ImGui::InputInt("Step", &k_simulationStep);
-		auto fps = 1000.0f * m_simulationTimeContext->m_elapsedTime.get_value();
+		auto fps = 1000.0f * m_simulationTimeContext->elapsed_time.get_value();
 		ImGui::InputFloat("Frame Time (ms)", &fps);
+
+		auto sp = [](glm::vec3 const& a) { return a.x + a.y + a.z; };
+		auto sq = [](glm::quat const& a) { return a.x + a.y + a.z + a.w; };
+
 		ImGui::EndDisabled();
 
 		ImGui::SeparatorText("World Settings");
@@ -2378,19 +1513,26 @@ namespace vob::aoeph
 		ImGui::InputFloat3("Start Linear Velocity", &k_ellipsoidStartLinearVelocity.x);
 		ImGui::InputFloat3("Start Angular Velocity", &k_ellipsoidStartAngularVelocity.x);
 
-		auto const frameTime = m_simulationTimeContext->m_elapsedTime.get_value();
+		auto k_ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::diagonal3x3(glm::vec3{
+			k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z,
+			k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x,
+			k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y });
+
+		auto const frameTime = m_simulationTimeContext->elapsed_time.get_value();
 		k_unusedElapsedTime += std::clamp(frameTime, 0.0f, k_maxDeltaTime);
 		auto const isPaused = frameTime == 0.0f;
 		if (isPaused)
 		{
 			k_unusedElapsedTime = 0;
 		}
-		auto const simulationTimeStep = k_useFixedTimeStep ? (k_unusedElapsedTime > k_fixedTimeStep ? k_fixedTimeStep : 0.0f) : std::min(k_unusedElapsedTime, k_maxDeltaTime);
+		auto simulationTimeStep = k_useFixedTimeStep ? (k_unusedElapsedTime > k_fixedTimeStep ? k_fixedTimeStep : 0.0f) : std::min(k_unusedElapsedTime, k_maxDeltaTime);
 		k_unusedElapsedTime = k_useFixedTimeStep ? k_unusedElapsedTime - simulationTimeStep : 0.0f;
 		if (simulationTimeStep > 0.0f)
 		{
 			++k_simulationStep;
 		}
+
+		k_ellipsoidEnergy = calc_energy(k_ellipsoidMass, k_ellipsoidLinearVelocity, k_ellipsoidInertia, k_ellipsoidAngularVelocity, k_gravity, k_ellipsoidPosition);
 
 		ImGui::SeparatorText("State");
 		if (!isPaused)
@@ -2398,36 +1540,42 @@ namespace vob::aoeph
 			ImGui::BeginDisabled();
 		}
 
-		ImGui::InputFloat3("Position", &k_ellipsoidPosition.x);
-		auto ellipsoidEuler = glm::eulerAngles(k_ellipsoidRotation);
-		ImGui::InputFloat3("Rotation", &ellipsoidEuler.x);
-		k_ellipsoidRotation = glm::quat(ellipsoidEuler);
-		ImGui::InputFloat3("Linear Velocity", &k_ellipsoidLinearVelocity.x);
-		ImGui::InputFloat3("Angular Velocity", &k_ellipsoidAngularVelocity.x);
+		{
+			auto position = k_ellipsoidPosition;
+			ImGui::InputFloat3("Position", &position.x);
+			auto ellipsoidEuler = glm::eulerAngles(k_ellipsoidRotation);
+			ImGui::InputFloat3("Rotation", &ellipsoidEuler.x);
+			auto linearVelocity = k_ellipsoidLinearVelocity;
+			ImGui::InputFloat3("Linear Velocity", &linearVelocity.x);
+			auto angularVelocity = k_ellipsoidAngularVelocity;
+			ImGui::InputFloat3("Angular Velocity", &angularVelocity.x);
+		}
 
 		if (isPaused)
 		{
 			ImGui::BeginDisabled();
 		}
 		ImGui::InputFloat("Energy", &k_ellipsoidEnergy);
-		ImGui::Checkbox("Is Grounded", &k_isEllipsoidGrounded);
 		ImGui::InputFloat("Max Y", &k_yMax);
 		ImGui::EndDisabled();
-		static bool k_rk4 = false;
+		static bool k_rk4 = true;
 		ImGui::Checkbox("RK4", &k_rk4);
 
 		ImGui::End();
+#pragma endregion
+
+#pragma region DEBUG_DRAW
 
 		// 2. draw
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle.m_p0, k_groundTriangle.m_p1, k_groundTriangle.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle2.m_p0, k_groundTriangle2.m_p1, k_groundTriangle2.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		// vob draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.5f }));
-		draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.4f, 0.1f, 0.1f, 1.0f }));
+		_draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle.m_p0, k_groundTriangle.m_p1, k_groundTriangle.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
+		_draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle2.m_p0, k_groundTriangle2.m_p1, k_groundTriangle2.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
+		// vob _draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.5f }));
+		// _draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.4f, 0.1f, 0.1f, 1.0f }));
 
 		// draw solid
 		for (auto const& solidPart : k_solidShape.parts)
 		{
-			draw_ellipsoid(
+			_draw_ellipsoid(
 				*m_debugMeshWorldComponent,
 				aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation) * aoest::combine(solidPart.position, solidPart.rotation),
 				solidPart.radiuses,
@@ -2437,1148 +1585,240 @@ namespace vob::aoeph
 		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidLinearVelocity, aoegl::k_green);
 		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidAngularVelocity, aoegl::k_red);
 
-		// draw hits
-		/*draw_line(
-			*m_debugMeshWorldComponent,
-			k_lastContactEllipsoidPosition,
-			k_lastContactEllipsoidPosition + (k_lastContactTrianglePosition - k_lastContactEllipsoidPosition) * 100.0f,
-			aoegl::k_red);
-		draw_sphere(*m_debugMeshWorldComponent, k_lastContactTrianglePosition, 0.125f, aoegl::k_red);
-		draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.125f, aoegl::k_azure);*/
-		draw_line(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, k_lastContactEllipsoidPosition + k_lastContactForce, aoegl::k_orange);
-
-		// 3. physics
-		auto const ellipsoidTransform = glm::scale(aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses);
-		auto const ellipsoidTransformInv = glm::inverse(ellipsoidTransform);
-
-		if (true)
+		for (auto const& lastCollisionPoint : k_lastCollisionPoints)
 		{
-			auto const k_ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::diagonal3x3(glm::vec3{
-				k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z,
-				k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x,
-				k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y });
-			auto const k_ellipsoidInertiaInv = glm::inverse(k_ellipsoidInertia);
-
-			auto dt = simulationTimeStep;
-			auto const dampenerFactor = -std::log(k_groundRestitution) * std::sqrt(k_ellipsoidMass * k_groundEllasticity) / std::numbers::pi_v<float>;
-			auto const gravityForce = k_gravity.y * k_ellipsoidMass;
-			while (dt > 0.0f)
+			if (lastCollisionPoint.has_value())
 			{
-				auto const ds = std::min(dt, std::max(0.0001f, k_integrationTimeStep));
-
-				if (false)
-				{
-					auto const f1 = [&](auto const _t, auto const p, auto const r, auto const v, auto const w)
-						{
-							return std::make_pair(v, glm::quat{ w });
-						};
-
-					auto const f2 = [&](auto const _t, auto const p, auto const r, auto const v, auto const w)
-						{
-							auto const t = aoest::combine(p, r);
-							auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(p, r, k_ellipsoidRadiuses, k_groundTriangle);
-							if (unitDist >= 0.0f)
-							{
-								return std::make_pair(k_gravity, glm::vec3{ 0.0f });
-							}
-
-							auto const lever = ellipsoidPoint - p;
-							auto const hitPointVelocity = v + glm::cross(w, lever);
-							auto const ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-							auto const penetrationDistSq = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle);
-							auto const hitNormal = penetrationDistSq > glm::epsilon<float>()
-								? glm::normalize(ellipsoidToTriangle) : glm::normalize(ellipsoidPoint - p);
-							auto const hitPointNormalVelocity = glm::dot(hitPointVelocity, hitNormal) * hitNormal;
-							auto const hitPointTangentVelocity = hitPointVelocity - hitPointNormalVelocity;
-							auto const penetrationDist = std::sqrt(penetrationDistSq);
-
-							auto const gravityForce = k_gravity * k_ellipsoidMass;
-							auto const springForce = k_groundEllasticity * penetrationDist * hitNormal;
-							auto const dampenerForce = -2.0f * k_ellipsoidMass * k_ellipsoidMass * (1.0f - k_groundRestitution) * hitPointNormalVelocity;
-							auto const frictionForce = glm::dot(hitPointTangentVelocity, hitPointTangentVelocity) > glm::epsilon<float>()
-								? -glm::normalize(hitPointTangentVelocity)
-								* std::min(k_groundFriction * glm::length(springForce), 0.5f * glm::length(hitPointTangentVelocity) * k_ellipsoidMass)
-								: glm::vec3{ 0.0f };
-
-							auto const hitForce = gravityForce + springForce + dampenerForce + frictionForce;
-
-							auto const localHitReaction = glm::transpose(glm::mat3{ t }) * springForce;
-							auto const localLever = glm::transpose(glm::mat3{ t }) * lever;
-
-							return std::make_pair(hitForce / k_ellipsoidMass, glm::mat3{ t } *k_ellipsoidInertiaInv * glm::cross(localLever, localHitReaction));
-						};
-
-					auto const hds = ds / 2.0f;
-					auto const p = k_ellipsoidPosition;
-					auto const r = k_ellipsoidRotation;
-					auto const v = k_ellipsoidLinearVelocity;
-					auto const w = k_ellipsoidAngularVelocity;
-					auto const [kv1, kw1] = f1(0.0f, p, r, v, w);
-					auto const [kdv1, kdw1] = f2(0.0f, p, r, v, w);
-					auto const [kv2, kw2] = f1(hds, p + hds * kv1, (hds * kw1) * r, v + hds * kdv1, w + hds * kdw1);
-					auto const [kdv2, kdw2] = f2(hds, p + hds * kv1, (hds * kw1) * r, v + hds * kdv1, w + hds * kdw1);
-					auto const [kv3, kw3] = f1(hds, p + hds * kv2, (hds * kw2) * r, v + hds * kdv2, w + hds * kdw2);
-					auto const [kdv3, kdw3] = f2(hds, p + hds * kv2, (hds * kw2) * r, v + hds * kdv2, w + hds * kdw2);
-					auto const [kv4, kw4] = f1(ds, p + ds * kv3, (ds * kw3) * r, v + ds * kdv3, w + ds * kdw3);
-					auto const [kdv4, kdw4] = f2(ds, p + ds * kv3, (ds * kw3) * r, v + ds * kdv3, w + ds * kdw3);
-
-					k_ellipsoidPosition = p + ds / 6.0f * (kv1 + 2.0f * kv2 + 2.0f * kv3 + kv4);
-					k_ellipsoidRotation = glm::quat(ds / 6.0f * (kw1 + 2.0f * kw2 + 2.0f * kw3 + kw4)) * r;
-					k_ellipsoidLinearVelocity = v + ds / 6.0f * (kdv1 + 2.0f * kdv2 + 2.0f * kdv3 + kdv4);
-					k_ellipsoidAngularVelocity = w + ds / 6.0f * (kdw1 + 2.0f * kdw2 + 2.0f * kdw3 + kdw4);
-
-					dt -= ds;
-				}
-				else
-				{
-					dt -= ds;
-
-					// Runge Kutta 4
-					auto const f = [&](auto const t, auto ly, auto lv)
-						{
-							auto const z = ly - k_ellipsoidRadiuses.y;
-							auto const springForce = z < 0.0f ? -k_groundEllasticity * z : 0.0f;
-							auto const dampenerForce = z < 0.0f ? -dampenerFactor * lv : 0.0f;
-							return (springForce + dampenerForce + gravityForce) / k_ellipsoidMass;
-						};
-
-					auto const v = k_ellipsoidLinearVelocity.y;
-					auto const y = k_ellipsoidPosition.y;
-
-					auto const C0 = v;
-					auto const K0 = f(0.0f, y, C0);
-					auto const C1 = v + ds / 2.0f * K0;
-					auto const K1 = f(0.0f + ds / 2.0f, y + ds / 2.0f * C0, C1);
-					auto const C2 = v + ds / 2.0f * K1;
-					auto const K2 = f(0.0f + ds / 2.0f, y + ds / 2.0f * C1, C2);
-					auto const C3 = v + ds * K2;
-					auto const K3 = f(0.0f + ds, y + ds * C2, C3);
-
-					if (k_rk4)
-					{
-						auto const dy = ds / 6.0f * (C0 + 2.0f * C1 + 2.0f * C2 + C3);
-						auto const dv = ds / 6.0f * (K0 + 2.0f * K1 + 2.0f * K2 + K3);
-
-						k_ellipsoidLinearVelocity.y += dv;
-						k_ellipsoidPosition.y += dy;
-					}
-					else
-					{
-						auto const dy = ds * C0;
-						auto const dv = ds * K0;
-
-						k_ellipsoidLinearVelocity.y += dv;
-						k_ellipsoidPosition.y += dy;
-					}
-				}
-			}
-
-			if (k_y0 <= k_y1 && k_y1 > k_ellipsoidPosition.y)
-			{
-				k_yMax = k_y1 - k_ellipsoidRadiuses.y;
-			}
-
-			k_y0 = k_y1;
-			k_y1 = k_ellipsoidPosition.y;
-
-			return;
-		}
-
-		// for each solid
-		auto& solidShape = k_solidShape;
-		auto& solidIsGrounded = k_isEllipsoidGrounded;
-		auto& solidPosition = k_ellipsoidPosition;
-		auto& solidRotation = k_ellipsoidRotation;
-		auto& solidLinearVelocity = k_ellipsoidLinearVelocity;
-		auto& solidAngularVelocity = k_ellipsoidAngularVelocity;
-		auto& solidMass = k_ellipsoidMass;
-		auto const& solidInertia = solidMass / 5.0f * glm::mat3{
-			glm::vec3{0.5f * 0.5f + 2.0f * 2.0f, 0.0f, 0.0f},
-			glm::vec3{0.0f, 2.0f * 2.0f + 1.0f * 1.0f, 0.0f},
-			glm::vec3{0.0f, 0.0f, 1.0f * 1.0f + 0.5f * 0.5f} };
-		auto solidDampenerStrength = 2.0f * solidMass * solidMass * (1.0f - k_groundRestitution);
-		{
-			auto dt = simulationTimeStep;
-			auto const invertedSolidInertia = glm::inverse(solidInertia);
-
-			if (isPaused)
-			{
-				auto solidTransform = aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation);
-				for (auto& solidShapePart : solidShape.parts)
-				{
-					// TODO: For each triangle
-					auto const triangle = k_groundTriangle;
-
-					auto ellipsoidPos = cleanup(solidTransform * glm::vec4{ solidShapePart.position, 1.0f });
-					auto ellipsoidRot = k_ellipsoidRotation * solidShapePart.rotation;
-					auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(
-						ellipsoidPos, ellipsoidRot, solidShapePart.radiuses, triangle);
-					if (unitDist >= 0.0f)
-					{
-						continue;
-					}
-
-					// draw_line(*m_debugMeshWorldComponent, ellipsoidPoint, ellipsoidPoint + (trianglePoint - ellipsoidPoint) * 10.0f, aoegl::k_red);
-					// draw_sphere(*m_debugMeshWorldComponent, trianglePoint, 0.01f, aoegl::k_red);
-					// draw_sphere(*m_debugMeshWorldComponent, ellipsoidPoint, 0.01f, aoegl::k_azure);
-
-					auto const barycenterPoint = cleanup(solidTransform * glm::vec4{ solidShape.barycenter, 1.0f });
-					auto const leverVector = ellipsoidPoint - barycenterPoint;
-					auto const hitPointVelocity = solidLinearVelocity + glm::cross(solidAngularVelocity, leverVector);
-					// draw_line(*m_debugMeshWorldComponent, ellipsoidPoint, ellipsoidPoint + (hitPointVelocity) * 10.0f, aoegl::k_red);
-
-					auto const ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-					auto const penetrationDistSq = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle);
-					auto const hitNormal = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle) < glm::epsilon<float>()
-						? glm::normalize(ellipsoidPoint - ellipsoidPos) : glm::normalize(ellipsoidToTriangle);
-					auto const hitPointVelocityNormal = glm::dot(hitPointVelocity, hitNormal) * hitNormal;
-					auto const hitPointVelocityTangent = hitPointVelocity - hitPointVelocityNormal;
-					auto const penetrationDist = std::sqrt(penetrationDistSq);
-					auto const springForce = k_groundEllasticity * penetrationDist * hitNormal;
-					auto const dampenerForce = -solidDampenerStrength * hitPointVelocityNormal;
-					auto frictionForce = glm::vec3{ 0.0f };
-					if (glm::length(hitPointVelocityTangent) != 0.0f)
-					{
-						// TODO: where is dampenerForce here?
-						frictionForce = -glm::normalize(hitPointVelocityTangent)
-							* std::min(k_groundFriction * glm::length(springForce), 0.5f * glm::length(hitPointVelocityTangent) * solidMass / k_integrationTimeStep);
-					}
-
-					auto const hitForce = springForce + dampenerForce + frictionForce;
-					auto const dV = (k_gravity + hitForce / solidMass) * k_integrationTimeStep;
-					draw_line(*m_debugMeshWorldComponent, ellipsoidPoint, ellipsoidPoint + hitForce * 0.01f, aoegl::k_eggplant);
-
-					auto const localHitForce = glm::transpose(glm::mat3{ solidTransform }) * hitForce;
-					auto const localLeverVector = glm::transpose(glm::mat3{ solidTransform }) * leverVector;
-					auto const localDW = invertedSolidInertia * glm::cross(localLeverVector, localHitForce) * k_integrationTimeStep;
-					auto const dW = glm::mat3{ solidTransform } *localDW;
-
-				}
-
-				return;
-			}
-			else if (k_rk4)
-			{
-				struct rk4_source
-				{
-					solid_shape::part m_part;
-
-					triangle m_triangle;
-				};
-
-				while (dt > 0.0f)
-				{
-					auto solidTransform = aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation);
-					if (solidIsGrounded)
-					{
-						auto const ds = std::min(dt, k_integrationTimeStep);
-						std::vector<rk4_source> rk4Sources;
-
-						for (auto& solidShapePart : solidShape.parts)
-						{
-							// TODO: For each triangle
-							auto const triangle = k_groundTriangle;
-							auto ellipsoidPos = cleanup(solidTransform * glm::vec4{ solidShapePart.position, 1.0f });
-							auto ellipsoidRot = solidRotation * solidShapePart.rotation;
-							auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(
-								ellipsoidPos, ellipsoidRot, solidShapePart.radiuses, triangle);
-							if (unitDist > glm::epsilon<float>())
-							{
-								continue;
-							}
-
-							rk4Sources.emplace_back(solidShapePart, triangle);
-						}
-
-						if (rk4Sources.empty())
-						{
-							solidIsGrounded = false;
-						}
-						else
-						{
-							auto const rk4_step = [&](auto const t, auto const p, auto const r, auto const lv, auto const av)
-								{
-									auto const solidTransform = aoest::combine(p, r);
-									auto dlv = glm::vec3{ 0.0f };
-									auto dav = glm::vec3{ 0.0f };
-									auto ddlv = glm::vec3{ 0.0f };
-									auto ddav = glm::vec3{ 0.0f };
-
-									for (auto const& rk4Source : rk4Sources)
-									{
-										auto const pos = cleanup(solidTransform * glm::vec4{ rk4Source.m_part.position, 1.0f });
-										auto const rot = r * rk4Source.m_part.rotation;
-
-										auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(
-											pos, rot, rk4Source.m_part.radiuses, rk4Source.m_triangle);
-										if (unitDist >= 0.0f)
-										{
-											continue;
-										}
-
-										auto const lever = ellipsoidPoint - p;
-										auto const hitPointVelocity = lv + glm::cross(av, lever);
-										auto const ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-										auto const penetrationDistSq = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle);
-										auto const hitNormal = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle) < glm::epsilon<float>()
-											? glm::normalize(ellipsoidPoint - pos) : glm::normalize(ellipsoidToTriangle);
-										auto const hitPointNormalVelocity = glm::dot(hitPointVelocity, hitNormal) * hitNormal;
-										auto const hitPointTangentVelocity = hitPointVelocity - hitPointNormalVelocity;
-										auto const penetrationDist = std::sqrt(penetrationDistSq);
-
-										auto const springForce = k_groundEllasticity * penetrationDist * hitNormal;
-										auto const dampenerForce = -solidDampenerStrength * hitPointNormalVelocity;
-										auto frictionForce = glm::vec3{ 0.0f };
-										if (glm::length(hitPointTangentVelocity) > glm::epsilon<float>())
-										{
-											// TODO: friction should include dampenerForce?
-											frictionForce = -glm::normalize(hitPointTangentVelocity)
-												* std::min(k_groundFriction * glm::length(springForce), 0.5f * glm::length(hitPointTangentVelocity) * solidMass / t);
-										}
-
-										auto const hitForce = springForce + dampenerForce + frictionForce;
-
-										dlv += (k_gravity + hitForce / solidMass) * t / 2.0f;
-
-										ddlv += k_gravity + hitForce / solidMass;
-
-										auto const localHitForce = glm::transpose(glm::mat3{ solidTransform }) * hitForce;
-										auto const localLever = glm::transpose(glm::mat3{ solidTransform }) * lever;
-										auto const localDav = invertedSolidInertia * glm::cross(localLever, localHitForce);
-										dav += glm::mat3{ solidTransform } *localDav * t / 2.0f;
-
-										ddav += glm::mat3{ solidTransform } *localDav;
-									}
-
-									return std::make_pair(ddlv, ddav);
-								};
-
-							auto const t0 = 0.0f;
-							auto const lv0 = solidLinearVelocity;
-							auto const av0 = solidAngularVelocity;
-							auto const p0 = solidPosition;
-							auto const r0 = solidRotation;
-							auto const [klv0, kav0] = rk4_step(t0, p0, r0, lv0, av0);
-							auto const t1 = ds / 2.0f;
-							auto const lv1 = solidLinearVelocity + t1 * klv0;
-							auto const av1 = solidAngularVelocity + t1 * kav0;
-							auto const p1 = solidPosition + t1 * lv1;
-							auto const r1 = glm::quat{ t1 * av1 } *solidRotation;
-							auto const [klv1, kav1] = rk4_step(t1, p1, r1, lv1, av1);
-							auto const t2 = ds / 2.0f;
-							auto const lv2 = solidLinearVelocity + t2 * klv1;
-							auto const av2 = solidAngularVelocity + t2 * kav1;
-							auto const p2 = solidPosition + t2 * lv2;
-							auto const r2 = glm::quat{ t2 * av2 } *solidRotation;
-							auto const [klv2, kav2] = rk4_step(t2, p2, r2, lv2, av2);
-							auto const t3 = ds;
-							auto const lv3 = solidLinearVelocity + t3 * klv2;
-							auto const av3 = solidAngularVelocity + t3 * kav2;
-							auto const p3 = solidPosition + t3 * lv3;
-							auto const r3 = glm::quat{ t3, av3 } *solidRotation;
-							auto const [klv3, kav3] = rk4_step(t3, p3, r3, lv3, av3);
-
-							auto const dp = ds / 6.0f * (lv0 + 2.0f * lv1 + 2.0f * lv2 + lv3);
-							auto const dr = ds / 6.0f * (av0 + 2.0f * av1 + 2.0f * av2 + av3);
-							auto const dlv = ds / 6.0f * (klv0 + 2.0f * klv1 + 2.0f * klv2 + klv3);
-							auto const dav = ds / 6.0f * (kav0 + 2.0f * kav1 + 2.0f * kav2 + kav3);
-
-							k_ellipsoidPosition += dp;
-							k_ellipsoidRotation = glm::quat{ dr } *k_ellipsoidRotation;
-							k_ellipsoidLinearVelocity += dlv;
-							k_ellipsoidAngularVelocity += dav;
-
-							dt -= ds;
-						}
-					}
-
-					if (!solidIsGrounded)
-					{
-						solidLinearVelocity += k_gravity * dt;
-						auto linearMove = solidLinearVelocity * dt;
-						auto angularMove = solidAngularVelocity * dt;
-
-						auto closestHitTime = 1.0f;
-						for (auto& solidShapePart : solidShape.parts)
-						{
-							auto ellipsoidPos = cleanup(solidTransform * glm::vec4{ solidShapePart.position, 1.0f });
-							auto ellipsoidRot = k_ellipsoidRotation * solidShapePart.rotation;
-
-							std::vector<std::pair<glm::mat4, aoegl::rgba>> _testTransforms;
-							std::int32_t _testCount;
-							auto const [hitTime, ellipsoidPoint, trianglePoint] = _ellipsoid_move(
-								ellipsoidPos, ellipsoidRot, solidShapePart.radiuses, linearMove, angularMove, k_groundTriangle, _testTransforms, _testCount);
-							if (0 <= hitTime && hitTime < closestHitTime)
-							{
-								closestHitTime = hitTime;
-							}
-						}
-
-						// clamp to k_integrationTimeStep to make sure we are inside collision when integrating forces
-						auto const cheatedClosestHitTime = std::min(1.0f, closestHitTime + k_integrationTimeStep / dt);
-
-						k_ellipsoidPosition += cheatedClosestHitTime * linearMove;
-						k_ellipsoidRotation = glm::quat(cheatedClosestHitTime * angularMove) * k_ellipsoidRotation;
-						dt -= cheatedClosestHitTime * dt;
-						if (closestHitTime < 1.0f)
-						{
-							solidIsGrounded = true;
-						}
-					}
-				}
-				return;
-			}
-			else
-			{
-				while (dt > 0.0f)
-				{
-					auto solidTransform = aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation);
-					if (solidIsGrounded)
-					{
-						auto deepestPenetrationDistSq = -1.0f;
-						auto deepestEllipsoidPos = glm::vec3{ 0.0f };
-						auto deepestEllipsoidPoint = glm::vec3{ 0.0f };
-						auto deepestTrianglePoint = glm::vec3{ 0.0f };
-						auto deepestEllipsoidRot = glm::quat{};
-						auto const triangle = k_groundTriangle;
-						for (auto& solidShapePart : solidShape.parts) // & triangle pairs
-						{
-							// TODO: for each triangle
-
-							auto ellipsoidPos = cleanup(solidTransform * glm::vec4{ solidShapePart.position, 1.0f });
-							auto ellipsoidRot = k_ellipsoidRotation * solidShapePart.rotation;
-							auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(
-								ellipsoidPos, ellipsoidRot, solidShapePart.radiuses, triangle);
-							if (unitDist >= 0.0f)
-							{
-								continue;
-							}
-
-							auto const ellipsoidPointToTrianglePoint = trianglePoint - ellipsoidPoint;
-							auto const penetrationDistSq = glm::dot(ellipsoidPointToTrianglePoint, ellipsoidPointToTrianglePoint);
-							if (penetrationDistSq < deepestPenetrationDistSq)
-							{
-								continue;
-							}
-
-							deepestPenetrationDistSq = penetrationDistSq;
-							deepestEllipsoidPos = ellipsoidPos;
-							deepestEllipsoidPoint = ellipsoidPoint;
-							deepestTrianglePoint = trianglePoint;
-							deepestEllipsoidRot = ellipsoidRot;
-						}
-
-						auto const ds = std::min(dt, k_integrationTimeStep);
-						if (deepestPenetrationDistSq < 0.0f)
-						{
-							auto const dV = k_gravity * ds;
-							solidLinearVelocity = solidLinearVelocity + dV;
-
-							k_ellipsoidPosition += solidLinearVelocity * ds;
-							solidIsGrounded = false;
-						}
-						else
-						{
-							k_lastContactTrianglePosition = deepestTrianglePoint;
-							k_lastContactEllipsoidPosition = deepestEllipsoidPoint;
-							auto const invertedSolidInertia = glm::inverse(solidInertia);
-
-							auto const ellipsoidToTriangle = deepestTrianglePoint - deepestEllipsoidPoint;
-							auto const hitNormal = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle) < glm::epsilon<float>()
-								? glm::normalize(deepestEllipsoidPoint - deepestEllipsoidPos) : glm::normalize(ellipsoidToTriangle);
-							auto const penetrationDist = std::sqrt(deepestPenetrationDistSq);
-
-							auto const barycenterPoint = cleanup(solidTransform * glm::vec4{ solidShape.barycenter, 1.0f });
-							// auto const leverVector = deepestTrianglePoint - barycenterPoint;
-							auto const leverVector = deepestEllipsoidPoint - barycenterPoint;
-							auto const hitPointVelocity = solidLinearVelocity + glm::cross(solidAngularVelocity, leverVector);
-							auto const hitPointVelocityNormal = glm::dot(hitPointVelocity, hitNormal) * hitNormal;
-							auto const hitPointVelocityTangent = hitPointVelocity - hitPointVelocityNormal;
-							auto const springForce = k_groundEllasticity * penetrationDist * hitNormal;
-							auto const dampenerForce = -solidDampenerStrength * hitPointVelocityNormal;
-							auto frictionForce = glm::vec3{ 0.0f };
-							if (glm::length(hitPointVelocityTangent) != 0.0f)
-							{
-								// TODO: where is dampenerForce here?
-								frictionForce = -glm::normalize(hitPointVelocityTangent)
-									* std::min(k_groundFriction * glm::length(springForce), 0.5f * glm::length(hitPointVelocityTangent) * solidMass / ds);
-							}
-
-							// TODO: where is dampenerForce here?
-							auto const hitForce = springForce + dampenerForce + frictionForce / 2.0f;
-							k_lastContactForce = hitForce;
-
-							auto const dV = (k_gravity + hitForce / solidMass) * ds;
-							auto const localHitForce = glm::transpose(glm::mat3{ solidTransform }) * hitForce;
-							auto const localLeverVector = glm::transpose(glm::mat3{ solidTransform }) * leverVector;
-							auto const localDW = invertedSolidInertia * glm::cross(localLeverVector, localHitForce) * ds;
-							auto const dW = glm::mat3{ solidTransform } *localDW;
-
-							solidLinearVelocity = solidLinearVelocity + dV;
-							solidAngularVelocity = solidAngularVelocity - (solidAngularVelocity * k_groundRollingFriction * ds) + dW;
-
-							k_ellipsoidPosition += solidLinearVelocity * ds;
-
-							auto const theta = solidAngularVelocity * ds;
-							auto const thetaMagnitude = glm::length(theta);
-							if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
-							{
-								glm::vec3 axis = theta / thetaMagnitude;
-								float halfTheta = thetaMagnitude / 2.0f;
-
-								k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
-							}
-						}
-						dt -= ds;
-					}
-
-					if (!solidIsGrounded)
-					{
-						solidLinearVelocity += k_gravity * dt;
-						auto linearMove = solidLinearVelocity * dt;
-						auto angularMove = solidAngularVelocity * dt;
-
-						auto closestHitTime = 1.0f;
-						for (auto& solidShapePart : solidShape.parts)
-						{
-							auto ellipsoidPos = cleanup(solidTransform * glm::vec4{ solidShapePart.position, 1.0f });
-							auto ellipsoidRot = k_ellipsoidRotation * solidShapePart.rotation;
-
-							std::vector<std::pair<glm::mat4, aoegl::rgba>> _testTransforms;
-							std::int32_t _testCount;
-							auto const [hitTime, ellipsoidPoint, trianglePoint] = _ellipsoid_move(
-								ellipsoidPos, ellipsoidRot, solidShapePart.radiuses, linearMove, angularMove, k_groundTriangle, _testTransforms, _testCount);
-							if (0 <= hitTime && hitTime < closestHitTime)
-							{
-								closestHitTime = hitTime;
-							}
-						}
-
-						k_ellipsoidPosition += closestHitTime * linearMove;
-						k_ellipsoidRotation = glm::quat(closestHitTime * angularMove) * k_ellipsoidRotation;
-						dt -= closestHitTime * dt;
-						if (closestHitTime < 1.0f)
-						{
-							solidIsGrounded = true;
-						}
-					}
-				}
-			}
-
-			k_isEllipsoidGrounded = solidIsGrounded;
-
-			return;
-		}
-
-		if (false)
-		{
-			auto const ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::mat3{
-				glm::vec3{k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z, 0.0f, 0.0f},
-				glm::vec3{0.0f, k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x, 0.0f},
-				glm::vec3{0.0f, 0.0f, k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y} };
-
-			k_ellipsoidEnergy = calc_energy(k_ellipsoidMass, k_ellipsoidLinearVelocity, ellipsoidInertia, k_ellipsoidAngularVelocity, k_gravity, k_ellipsoidPosition);
-
-			auto integrate = [&](auto const maxTime)
-				{
-					auto z = 0.0f;
-					auto pos = k_ellipsoidPosition;
-					auto rot = k_ellipsoidRotation;
-					auto V = k_ellipsoidLinearVelocity;
-					auto W = k_ellipsoidAngularVelocity;
-
-					auto const m = k_ellipsoidMass;
-					auto const k = k_groundEllasticity;
-					auto const b = -std::log(k_groundRestitution) * std::sqrt(k_ellipsoidMass * k_groundEllasticity) / std::numbers::pi_v<float>;
-					auto const r = k_groundFriction;
-					// auto const N = glm::normalize(glm::cross(k_groundTriangle.m_p1 - k_groundTriangle.m_p0, k_groundTriangle.m_p2 - k_groundTriangle.m_p0));
-					auto const I = ellipsoidInertia;
-					auto const iI = glm::inverse(I);
-
-					auto S = 0.0f;
-					auto const ds = k_integrationTimeStep;
-					auto integrationStepsDone = 0;
-					while (z <= 0.001f && S <= maxTime)
-					{
-						++integrationStepsDone;
-#pragma region FOO
-						S += ds;
-						auto const Tr = aoest::combine(pos, rot);
-						glm::mat4 const iTr = glm::inverse(Tr);
-						//auto const [newZ, ellipsoidP, triangleP] =
-						//	ellipsoid_intersect2(glm::scale(Tr, k_ellipsoidRadiuses), glm::inverse(glm::scale(Tr, k_ellipsoidRadiuses)), k_groundTriangle);
-						auto const [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(pos, rot, k_ellipsoidRadiuses, k_groundTriangle);
-						if (unitDist > 0.001f)
-						{
-							V += k_gravity * (maxTime - S);
-							pos += V * (maxTime - S);
-							auto const theta = W * (maxTime - S);
-							auto const thetaMagnitude = glm::length(theta);
-							if (thetaMagnitude > glm::epsilon<float>())
-							{
-								glm::vec3 axis = theta / thetaMagnitude;
-								float halfTheta = thetaMagnitude / 2.0f;
-								rot = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rot;
-							}
-
-							z = 1;
-
-							break;
-						}
-
-						z = -glm::distance(trianglePoint, ellipsoidPoint);
-						auto const ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-						auto const N = glm::dot(ellipsoidToTriangle, ellipsoidToTriangle) < glm::epsilon<float>() ?
-							glm::normalize(ellipsoidPoint - pos) : glm::normalize(ellipsoidToTriangle);
-
-						// vob k_lastContactTrianglePosition = trianglePoint;
-						// vob k_lastContactEllipsoidPosition = ellipsoidPoint;
-
-						auto const iIw = glm::mat3{ Tr } *iI * glm::inverse(glm::mat3{ Tr });
-
-						auto const R = trianglePoint - pos;
-						auto const Vp = V + glm::cross(W, R);
-						auto const Vpn = glm::dot(Vp, N) * N;
-						auto const Vpt = Vp - Vpn;
-						auto const Fpn = -k * z * N;
-						auto const Fdamp = -b * Vpn; // not applied to angular momentum, else energy is just transfered
-
-						// For now assuming static friction = 2 * dynamic friction, or something like that
-						auto Fpt = glm::vec3{ 0.0f };
-						auto const maxFrictionlessSpeed = 2.0f * r / m * glm::length(Fpn);
-						if (glm::length(Vpt) != 0.0f)
-						{
-							Fpt = -glm::normalize(Vpt) * std::min(r * glm::length(Fpn), 0.5f * glm::length(Vpt) * m / ds);
-						}
-
-						auto const Fp = (Fpn + Fpt);
-
-						auto const dV = (k_gravity + (Fp + Fdamp) / m) * ds;
-
-						auto const lFp = glm::transpose(glm::mat3{ Tr }) * Fp;
-						auto const lR = glm::transpose(glm::mat3{ Tr }) * R;
-						auto const lDw = iI * glm::cross(lR, lFp) * ds;
-						auto const dW = glm::mat3{ Tr } *lDw;
-
-						V = V + dV;
-						W = W - (W * k_groundRollingFriction * ds) + dW;
-#pragma endregion
-
-						pos += V * ds;
-
-						auto const theta = W * ds;
-						auto const thetaMagnitude = glm::length(theta);
-						if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
-						{
-							glm::vec3 axis = theta / thetaMagnitude;
-							float halfTheta = thetaMagnitude / 2.0f;
-							rot = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rot;
-						}
-					}
-
-					if (integrationStepsDone > k_maxIntegrationStepsDone)
-					{
-						k_maxIntegrationStepsDone = integrationStepsDone;
-					}
-
-					k_isEllipsoidGrounded = z <= 0.001f;
-
-					k_ellipsoidLinearVelocity = V;
-					k_ellipsoidAngularVelocity = W;
-					k_ellipsoidPosition = pos;
-					k_ellipsoidRotation = rot;
-				};
-
-			if (k_isEllipsoidGrounded)
-			{
-				integrate(simulationTimeStep);
-			}
-			else if (!k_isEllipsoidGrounded)
-			{
-				k_ellipsoidLinearVelocity += k_gravity * simulationTimeStep;
-				auto linearMove = k_ellipsoidLinearVelocity * simulationTimeStep;
-				auto angularMove = k_ellipsoidAngularVelocity * simulationTimeStep;
-				std::vector<std::pair<glm::mat4, aoegl::rgba>> _testTransforms;
-				std::int32_t _testCount;
-				auto const [hitTime, ellipsoidPoint, trianglePoint] = _ellipsoid_move(k_ellipsoidPosition, k_ellipsoidRotation, k_ellipsoidRadiuses, linearMove, angularMove, k_groundTriangle, _testTransforms, _testCount);
-				if (0 <= hitTime && hitTime < 1.0f)
-				{
-					k_ellipsoidPosition += hitTime * linearMove;
-					k_ellipsoidRotation = glm::quat(hitTime * angularMove) * k_ellipsoidRotation;
-
-					integrate(simulationTimeStep * (1.0f - hitTime));
-				}
-				else
-				{
-					k_ellipsoidPosition += linearMove;
-					k_ellipsoidRotation = glm::quat(angularMove) * k_ellipsoidRotation;
-				}
+				draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->first, 0.1f, aoegl::k_red);
+				draw_line(*m_debugMeshWorldComponent, lastCollisionPoint->first, lastCollisionPoint->first + lastCollisionPoint->second, aoegl::k_orange);
+				draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->third, 0.1f, aoegl::k_yellow);
 			}
 		}
-
-		auto const computationStopTime = std::chrono::high_resolution_clock().now();
-		k_computationTime = (computationStopTime - computationStartTime).count() * 0.001f;
-	}
-
-	void test_system::update_v5() const
-	{
-
-		// 0. statics
-		// A. time
-		static auto k_useFixedTimeStep = true;
-		static auto k_maxDeltaTime = 1.0f / 30.0f;
-		static auto k_fixedTimeStep = 1.0f / 100.0f;
-		static auto k_integrationTimeStep = 1.0f / 400.0f;
-		static auto k_simulationStep = 0;
-
-		static auto k_unusedElapsedTime = 0.0f;
-		static auto k_computationTime = 0.0f;
-		auto const computationStartTime = std::chrono::high_resolution_clock().now();
-		// B. world
-		static auto k_gravity = glm::vec3{ 0.0f, -25.0f, 0.0f };
-		static auto k_groundTriangles = std::vector<triangle>();
-		static auto k_groundTriangle = triangle{
-			glm::vec3{ 0.0f, 0.0f, 0.0f },
-			glm::vec3{ 0.0f, 0.0f, 100.0f },
-			glm::vec3{ 100.0f, 0.0f, 0.0f }
-		};
-		static auto k_groundTriangle2 = triangle{
-			glm::vec3{ 0.0f, 1.0f, 0.0f },
-			glm::vec3{ 0.0f, 100.0f, 0.0f },
-			glm::vec3{ 0.0f, 1.0f, 100.0f }
-		};
-		static auto k_groundEllasticity = 100'000.0f;
-		static auto k_groundRestitution = 1.0f;
-		static auto k_groundFriction = 1.0f;
-		static auto k_groundRollingFriction = 1.0f; // how sticky+soft surface prevent rolling
-		// C. ellipsoid
-		static auto k_ellipsoidRadiuses = glm::vec3{ 3.0f, 3.0f, 1.0f };
-		static auto k_ellipsoidMass = 1.0f;
-		static auto k_ellipsoidStartPosition = glm::vec3{ 21.2f, 14.0f, 20.0f };
-		static auto k_ellipsoidStartRotation = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto k_ellipsoidStartLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto k_ellipsoidStartAngularVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
-
-		static auto k_ellipsoidPosition = k_ellipsoidStartPosition;
-		static auto k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-		static auto k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-		static auto k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-		static auto k_isEllipsoidGrounded = false;
-		static auto k_ellipsoidEnergy = 0.0f;
-		// D. physics
-		static auto k_lastContactTrianglePosition = glm::vec3{ 0.0f };
-		static auto k_lastContactEllipsoidPosition = glm::vec3{ 0.0f };
-		static auto k_lastContactForce = glm::vec3{ 0.0f };
-		static auto k_lastContactNormal = glm::vec3{ 0.0f };
-		static auto k_maxIntegrationStepsDone = 0;
-		static auto k_y0 = k_ellipsoidPosition.y;
-		static auto k_y1 = k_ellipsoidPosition.y;
-		static auto k_yMax = k_ellipsoidPosition.y - k_ellipsoidRadiuses.y;
-		// E. solid
-		solid_shape k_solidShape = solid_shape{
-			std::vector<solid_shape::part>{
-			// front axel
-			solid_shape::part{ glm::vec3{ -0.01553f, 0.36325f, -1.75357f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{glm::half_pi<float>(), glm::half_pi<float>(), 0.0f}), glm::vec3{0.385f, 0.905f, 0.283f}},
-				// mid axel
-				solid_shape::part{ glm::vec3{ 0.0f, 0.471f, -0.219f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.439f, 0.362f, 1.902f}},
-				// cockpit
-				solid_shape::part{ glm::vec3{ 0.0f, 0.65281f, 0.89763f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{1.021f, 0.515f, 1.038f}},
-				// chassis
-				solid_shape::part{ glm::vec3{ 0.0f, 0.44878f, 0.20792f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.968f, 0.363f, 1.682f}},
-				// front left wheel
-				solid_shape::part{ glm::vec3{ -0.86301f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.182f, 0.364f, 0.364f}},
-				// front right wheel
-				solid_shape::part{ glm::vec3{ 0.86299f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.182f, 0.364f, 0.364f}},
-				// back left wheel
-				solid_shape::part{ glm::vec3{ -0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.182f, 0.364f, 0.364f}},
-				// back right wheel
-				solid_shape::part{ glm::vec3{ 0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.182f, 0.364f, 0.364f}},
-			}
-		};
-
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::P].is_pressed())
-		{
-			k_ellipsoidLinearVelocity = k_ellipsoidStartLinearVelocity;
-			k_ellipsoidAngularVelocity = k_ellipsoidStartAngularVelocity;
-			k_ellipsoidPosition = k_ellipsoidStartPosition;
-			k_ellipsoidRotation = glm::quat(k_ellipsoidStartRotation);
-			k_isEllipsoidGrounded = false;
-			k_maxIntegrationStepsDone = 0;
-			k_simulationStep = 0;
-		}
-		if (m_inputs->mouse.buttons[aoein::mouse::button::Left].is_pressed())
-		{
-			k_ellipsoidPosition.y -= m_inputs->mouse.axes[aoein::mouse::axis::Y].get_change() * 0.01f;
-		}
-
-		// 1. imgui
-		ImGui::Begin("Test System");
-
-		ImGui::SeparatorText("Time Settings");
-		ImGui::InputFloat("Max Delta Time", &k_maxDeltaTime);
-		ImGui::Checkbox("Use Fixed Simulation Time Step", &k_useFixedTimeStep);
-		if (k_useFixedTimeStep)
-		{
-			ImGui::InputFloat("Fixed Simulation Time Step", &k_fixedTimeStep);
-		}
-		ImGui::InputFloat("Integration Time Step", &k_integrationTimeStep);
-		ImGui::BeginDisabled();
-		ImGui::InputFloat("Computation Time", &k_computationTime);
-		ImGui::InputInt("Step", &k_simulationStep);
-		auto fps = 1000.0f * m_simulationTimeContext->m_elapsedTime.get_value();
-		ImGui::InputFloat("Frame Time (ms)", &fps);
-		ImGui::EndDisabled();
-
-		ImGui::SeparatorText("World Settings");
-		ImGui::InputFloat3("Gravity", &k_gravity.x);
-		ImGui::InputFloat3("Ground Triangle P0", &k_groundTriangle.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle P1", &k_groundTriangle.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle P2", &k_groundTriangle.m_p2.x);
-		ImGui::InputFloat3("Ground Triangle 2 P0", &k_groundTriangle2.m_p0.x);
-		ImGui::InputFloat3("Ground Triangle 2 P1", &k_groundTriangle2.m_p1.x);
-		ImGui::InputFloat3("Ground Triangle 2 P2", &k_groundTriangle2.m_p2.x);
-		ImGui::InputFloat("Ground Ellasticity", &k_groundEllasticity);
-		ImGui::InputFloat("Ground Restitution", &k_groundRestitution);
-		ImGui::InputFloat("Ground Friction", &k_groundFriction);
-		ImGui::InputFloat("Ground Rolling Friction", &k_groundRollingFriction);
-
-		ImGui::SeparatorText("Ellipsoid Settings");
-		ImGui::InputFloat3("Radiuses", &k_ellipsoidRadiuses.x);
-		ImGui::InputFloat("Mass", &k_ellipsoidMass);
-		ImGui::InputFloat3("Start Position", &k_ellipsoidStartPosition.x);
-		ImGui::InputFloat3("Start Rotation", &k_ellipsoidStartRotation.x);
-		ImGui::InputFloat3("Start Linear Velocity", &k_ellipsoidStartLinearVelocity.x);
-		ImGui::InputFloat3("Start Angular Velocity", &k_ellipsoidStartAngularVelocity.x);
-
-		auto const frameTime = m_simulationTimeContext->m_elapsedTime.get_value();
-		k_unusedElapsedTime += std::clamp(frameTime, 0.0f, k_maxDeltaTime);
-		auto const isPaused = frameTime == 0.0f;
-		if (isPaused)
-		{
-			k_unusedElapsedTime = 0;
-		}
-		auto const simulationTimeStep = k_useFixedTimeStep ? (k_unusedElapsedTime > k_fixedTimeStep ? k_fixedTimeStep : 0.0f) : std::min(k_unusedElapsedTime, k_maxDeltaTime);
-		k_unusedElapsedTime = k_useFixedTimeStep ? k_unusedElapsedTime - simulationTimeStep : 0.0f;
-		if (simulationTimeStep > 0.0f)
-		{
-			++k_simulationStep;
-		}
-
-		ImGui::SeparatorText("State");
-		if (!isPaused)
-		{
-			ImGui::BeginDisabled();
-		}
-
-		ImGui::InputFloat3("Position", &k_ellipsoidPosition.x);
-		auto ellipsoidEuler = glm::eulerAngles(k_ellipsoidRotation);
-		ImGui::InputFloat3("Rotation", &ellipsoidEuler.x);
-		k_ellipsoidRotation = glm::quat(ellipsoidEuler);
-		ImGui::InputFloat3("Linear Velocity", &k_ellipsoidLinearVelocity.x);
-		ImGui::InputFloat3("Angular Velocity", &k_ellipsoidAngularVelocity.x);
-
-		if (isPaused)
-		{
-			ImGui::BeginDisabled();
-		}
-		ImGui::InputFloat("Energy", &k_ellipsoidEnergy);
-		ImGui::Checkbox("Is Grounded", &k_isEllipsoidGrounded);
-		ImGui::InputFloat("Max Y", &k_yMax);
-		ImGui::EndDisabled();
-		static bool k_rk4 = false;
-		ImGui::Checkbox("RK4", &k_rk4);
-
-		ImGui::End();
-
-		// 2. draw
-		draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle.m_p0, k_groundTriangle.m_p1, k_groundTriangle.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		// draw_triangle(*m_debugMeshWorldComponent, k_groundTriangle2.m_p0, k_groundTriangle2.m_p1, k_groundTriangle2.m_p2, aoegl::to_rgba(glm::vec4{ 0.25f }));
-		// vob draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.5f }));
-		draw_ellipsoid(*m_debugMeshWorldComponent, aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses, aoegl::to_rgba(glm::vec4{ 0.4f, 0.1f, 0.1f, 1.0f }));
-
-		// draw solid
-		for (auto const& solidPart : k_solidShape.parts)
-		{
-			/* draw_ellipsoid(
-				*m_debugMeshWorldComponent,
-				aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation) * aoest::combine(solidPart.position, solidPart.rotation),
-				solidPart.radiuses,
-				// vob aoegl::to_rgba(glm::vec4{ 0.4f, 0.1f, 0.1f, 1.0f }));
-				aoegl::to_rgba(glm::vec4{ 0.5f })); */
-		}
-		//draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidLinearVelocity, aoegl::k_green);
-		//draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidAngularVelocity, aoegl::k_red);
 
 		// draw hits
 		//draw_line(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, k_lastContactEllipsoidPosition + k_lastContactForce, aoegl::k_orange);
 		//draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.1f, aoegl::k_red);
+#pragma endregion
+
+
+
+
+
+		if (simulationTimeStep == 0.0f)
+		{
+			return;
+		}
+
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::Up].is_pressed())
+		{
+			k_ellipsoidLinearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+			k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
+		}
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::Down].is_pressed())
+		{
+			k_ellipsoidLinearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+			k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
+		}
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::Left].is_pressed())
+		{
+			auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
+
+			auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+			auto const theta = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } * simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
+			auto const thetaMagnitude = glm::length(theta);
+			if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+			{
+				glm::vec3 axis = theta / thetaMagnitude;
+				float halfTheta = thetaMagnitude / 2.0f;
+				k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
+			}
+
+			k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
+		}
+		if (m_inputs->keyboard.keys[aoein::keyboard::key::Right].is_pressed())
+		{
+			auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
+
+			auto const sign = glm::dot(localVelocity, glm::vec3{0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+			auto const theta = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
+			auto const thetaMagnitude = glm::length(theta);
+			if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+			{
+				glm::vec3 axis = theta / thetaMagnitude;
+				float halfTheta = thetaMagnitude / 2.0f;
+				k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
+			}
+
+			k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
+		}
+
 
 		// 3. physics
 		auto const ellipsoidTransform = glm::scale(aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses);
 		auto const ellipsoidTransformInv = glm::inverse(ellipsoidTransform);
 
-		auto const k_ellipsoidInertia = k_ellipsoidMass / 5.0f * glm::diagonal3x3(glm::vec3{
-			k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y + k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z,
-			k_ellipsoidRadiuses.z * k_ellipsoidRadiuses.z + k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x,
-			k_ellipsoidRadiuses.x * k_ellipsoidRadiuses.x + k_ellipsoidRadiuses.y * k_ellipsoidRadiuses.y });
-		auto const k_ellipsoidInertiaInv = glm::inverse(k_ellipsoidInertia);
+		// for each dynamic solid
+		auto const& solidShape = k_solidShape;
+		auto const solidMass = k_ellipsoidMass;
+		auto const solidInertiaLocal = k_ellipsoidInertia;
+		auto solidPosition = k_ellipsoidPosition;
+		auto solidLinearVelocity = k_ellipsoidLinearVelocity;
+		auto solidRotation = k_ellipsoidRotation;
+		auto solidAngularVelocityLocal = k_ellipsoidAngularVelocity;
 
-		auto dt = simulationTimeStep;
-		auto const dampenerFactor = -std::log(k_groundRestitution) * std::sqrt(k_ellipsoidMass * k_groundEllasticity) / std::numbers::pi_v<float>;
-		auto const gravityForce = k_gravity.y * k_ellipsoidMass;
-		while (dt > 0.0f)
+		// (pre-find static triangles to consider)
+		auto const staticTriangles = std::array<triangle, 2>{ k_groundTriangle, k_groundTriangle2 };
+		/* debug */k_lastCollisionPoints.clear();
+		/* debug */k_lastCollisionPoints.resize(k_solidShape.parts.size(), std::nullopt);
+
+		// for each integration step
+		auto const integrationStepDuration = simulationTimeStep / k_integrationStepCount;
+		for (auto integrationStepIndex = 0; integrationStepIndex < k_integrationStepCount; ++ integrationStepIndex)
 		{
-			auto const ds = std::min(dt, std::max(0.0001f, k_integrationTimeStep));
-
-			dt -= ds;
-
-			struct ellipsoid_state
+			// integrate with rk4
+			struct rk4_state
 			{
 				glm::vec3 position;
-				glm::vec3 velocity;
 				glm::quat rotation;
-				glm::vec3 angularVelocity;
+				glm::vec3 linearVelocity;
+				glm::vec3 angularVelocityLocal;
 			};
-
-			ellipsoid_state s{ k_ellipsoidPosition, k_ellipsoidLinearVelocity, k_ellipsoidRotation, k_ellipsoidAngularVelocity };
-
-			struct ellipsoid_derivative
-			{
-				glm::vec3 dPosition;
-				glm::vec3 dVelocity;
-				glm::quat dRotation;
-				glm::vec3 dAngularVelocity;
-			};
-
-			auto quatDerivative = [](glm::quat q, glm::vec3 omega)
+				
+			auto const rk4_derivate = [&](rk4_state const& a_state)
 				{
-					glm::quat omegaQuat(0.0f, omega.x, omega.y, omega.z);
-					return 0.5f * q * omegaQuat;
-				};
+					auto const solidRotationMatrix = glm::mat3_cast(a_state.rotation);
+					auto const solidInertia = solidRotationMatrix * solidInertiaLocal * glm::transpose(solidRotationMatrix);
+					auto const solidInertiaInv = glm::inverse(solidInertia);
 
-			auto integrateQuat = [](glm::quat q, glm::vec3 omega, float dt) -> glm::quat
-				{
-					float angle = glm::length(omega) * dt;
-					if (angle < glm::epsilon<float>()) return q;
+					auto force = k_gravity * solidMass;
+					auto torque = glm::vec3{ 0.0f };
 
-					glm::vec3 axis = glm::normalize(omega);
-					glm::quat dq = glm::angleAxis(angle, axis);
-					return glm::normalize(dq * q);
-				};
-
-			auto evaluate = [&](ellipsoid_state const& s) -> ellipsoid_derivative
-				{
-					glm::mat3 R = glm::mat3_cast(s.rotation);
-					glm::mat3 worldInertia = R * k_ellipsoidInertia * glm::transpose(R);
-					glm::mat3 worldInertiaInv = glm::inverse(worldInertia);
-
-					glm::vec3 force = k_gravity * k_ellipsoidMass;
-					glm::vec3 torque(0.0f);
-
-					auto [unitDist, ellipsoidPoint, trianglePoint] = _ellipsoid_intersect(s.position, s.rotation, k_ellipsoidRadiuses, k_groundTriangle);
-					if (unitDist < 0.0f)
+					auto contactPointCount = 0;
+					for (auto const& solidPart : solidShape.parts)
 					{
-						k_lastContactEllipsoidPosition = ellipsoidPoint;
+						auto const solidPartPosition = a_state.position + solidRotationMatrix * solidPart.position;
+						auto const solidPartRotation = a_state.rotation * solidPart.rotation;
+						auto const solidPartRadiuses = solidPart.radiuses;
 
-						auto lever = ellipsoidPoint - s.position;
-						auto hitPointVelocity = s.velocity + glm::cross(s.angularVelocity, lever);
-						auto ellipsoidToTriangle = trianglePoint - ellipsoidPoint;
-						auto penetration = glm::length(ellipsoidToTriangle);
-						auto hitNormal = penetration > glm::epsilon<float>() ? glm::normalize(ellipsoidToTriangle) : glm::vec3(0, 1, 0);
-
-						hitNormal.z = 0;
-
-						auto vN = glm::dot(hitPointVelocity, hitNormal) * hitNormal;
-						auto vT = hitPointVelocity - vN;
-
-						static float k_maxPenetration = 0.1f;
-						auto clampedPenetration = std::min(penetration, k_maxPenetration);
-
-						auto springForce = k_groundEllasticity * clampedPenetration * hitNormal;
-						auto const lne = std::log(k_groundRestitution);
-						auto k_zetaLow = std::sqrt(lne * lne / (lne * lne + std::numbers::pi_v<float> *std::numbers::pi_v<float>));
-						auto k_zetaHigh = k_zetaLow;// 1.0f;
-						float speed = glm::length(vN);
-						float zeta = glm::mix(k_zetaHigh, k_zetaLow, glm::smoothstep(0.01f, 0.2f, speed));
-						float dampingCoeff = 2.0f * std::sqrt(k_groundEllasticity * k_ellipsoidMass) * zeta;
-						auto dampenerForce = -dampingCoeff * vN;
-						glm::vec3 frictionForce(0.0f);
-						if (glm::length(vT) > glm::epsilon<float>())
+						for (auto const& staticTriangle : staticTriangles)
 						{
-							auto const frictionDir = -glm::normalize(vT);
-							auto const maxFriction = k_groundFriction * glm::length(springForce);
-							frictionForce = frictionDir * std::min(maxFriction, k_ellipsoidMass * glm::length(vT) / ds);
+							auto [staticTriangleDist, ellipsoidPoint, staticTrianglePoint] = _ellipsoid_intersect(solidPartPosition, solidPartRotation, solidPartRadiuses, staticTriangle);
+							if (staticTriangleDist < 0.0f)
+							{
+								++contactPointCount;
+								break;
+							}
+						}
+					}
+						
+					/* debug */ int32_t partIndex = 0;
+					for (auto const& solidPart : solidShape.parts)
+					{
+						/* debug */ ++partIndex;
+						auto const solidPartPosition = a_state.position + solidRotationMatrix * solidPart.position;
+						auto const solidPartRotation = a_state.rotation * solidPart.rotation;
+						auto const solidPartRadiuses = solidPart.radiuses;
+
+
+						auto closestStaticTriangleDist = 0.0f;
+						auto closestStaticTrianglePoint = glm::vec3{};
+						auto closestEllipsoidPoint = glm::vec3{};
+						auto closestStaticTriangle = triangle{};
+						for (auto const& staticTriangle : staticTriangles)
+						{
+							auto [staticTriangleDist, ellipsoidPoint, staticTrianglePoint] = _ellipsoid_intersect(solidPartPosition, solidPartRotation, solidPartRadiuses, staticTriangle);
+							if (staticTriangleDist < closestStaticTriangleDist)
+							{
+								closestStaticTriangleDist = staticTriangleDist;
+								closestStaticTrianglePoint = staticTrianglePoint;
+								closestEllipsoidPoint = ellipsoidPoint;
+								closestStaticTriangle = staticTriangle;
+							}
 						}
 
-						force += springForce + dampenerForce + frictionForce;
-						torque += glm::cross(lever, springForce + dampenerForce + frictionForce);
-						torque -= k_groundRollingFriction * s.angularVelocity;
-
-						if (penetration > k_maxPenetration && glm::dot(s.velocity, hitNormal) < 0.0f)
+						auto const ellipsoidToTriangle = closestStaticTrianglePoint - closestEllipsoidPoint;
+						auto const penetration = glm::length(ellipsoidToTriangle);
+						if (penetration > glm::epsilon<float>())
 						{
-							// force -= k_ellipsoidMass * glm::dot(s.velocity, hitNormal) * hitNormal / ds;
-						}
+							auto const lever = closestEllipsoidPoint - a_state.position;
+							auto const hitVelocity = a_state.linearVelocity + glm::cross(a_state.angularVelocityLocal, lever);
+							auto const hitNormal = glm::normalize(ellipsoidToTriangle);
+							auto const hitVelocityNormal = glm::dot(hitVelocity, hitNormal) * hitNormal;
+							auto const hitVelocityTangent = hitVelocity - hitVelocityNormal;
+							/* debug */ k_lastCollisionPoints[partIndex - 1] = { closestEllipsoidPoint, hitNormal, closestStaticTrianglePoint };
 
-						k_lastContactForce = force * 10.0f;
+							// spring
+							static auto k_maxPenetration = 0.1f;
+							auto const clampedPenetration = std::min(penetration, k_maxPenetration);
+							auto const springForce = k_groundEllasticity * clampedPenetration * hitNormal;
+
+							// dampener
+							auto const lne = std::log(k_groundRestitution);
+							auto const zetaLow = std::sqrt(lne * lne / (lne * lne + std::numbers::pi_v<float> *std::numbers::pi_v<float>));
+							auto const zetaHigh = zetaLow; // 1.0f;
+							auto const speedNormal = glm::length(hitVelocityNormal);
+							auto const zeta = glm::mix(zetaHigh, zetaLow, glm::smoothstep(0.01f, 0.2f, speedNormal));
+							auto const dampingCoefficient = 2.0f * std::sqrt(k_groundEllasticity * (solidMass / contactPointCount)) * zeta; // should I use something else than solidMass/contactPointCount ?
+							auto const dampenerForce = -dampingCoefficient * hitVelocityNormal;
+
+							// friction
+							auto frictionForce = glm::vec3{ 0.0f };
+							if (glm::length(hitVelocityTangent) > glm::epsilon<float>())
+							{
+								auto const frictionDir = -glm::normalize(hitVelocityTangent);
+								auto const maxFriction = k_groundFriction * glm::length(springForce);
+								frictionForce = frictionDir * std::min(maxFriction, (solidMass / contactPointCount) * glm::length(hitVelocityTangent) / integrationStepDuration);
+							}
+
+							force += springForce + dampenerForce + frictionForce;
+							torque += glm::cross(lever, springForce + dampenerForce + frictionForce);
+							// torque -= k_groundRollingFriction * angularVelocity -> how?
+							// if (penetration > k_maxPenetration && glm::dot(s.velocity, hitNormal) < 0.0f)
+							// {
+							//	force -= k_ellipsoidMass * glm::dot(s.velocity, hitNormal) * hitNormal / ds;
+							// } -> how?
+						}
 					}
 
-					ellipsoid_derivative d;
-					d.dPosition = s.velocity;
-					d.dVelocity = force / k_ellipsoidMass;
-					d.dRotation = quatDerivative(s.rotation, glm::transpose(R) * s.angularVelocity);
-					d.dAngularVelocity = worldInertiaInv * (torque - glm::cross(s.angularVelocity, worldInertia * s.angularVelocity));
-					return d;
+					rk4_state derivativeState;
+					derivativeState.position = a_state.linearVelocity;
+					derivativeState.linearVelocity = force / solidMass;
+					derivativeState.rotation = _differentiate_quaternion(a_state.rotation, glm::transpose(solidRotationMatrix) * a_state.angularVelocityLocal);
+					derivativeState.angularVelocityLocal = solidInertiaInv * (torque - glm::cross(a_state.angularVelocityLocal, solidInertia * a_state.angularVelocityLocal));
+					return derivativeState;
 				};
 
-			auto integrateRK4 = [&](ellipsoid_state& s, float dt)
+			auto const rk4_step = [&](rk4_state const& a_initialState, rk4_state const& a_prevDerivativeState, float const a_dt)
 				{
-					auto k1 = evaluate(s);
-					auto s2 = s;
-					s2.position += k1.dPosition * (dt / 2.0f);
-					s2.velocity += k1.dVelocity * (dt / 2.0f);
-					s2.rotation = glm::normalize(s2.rotation + k1.dRotation * (dt / 2.0f));
-					s2.angularVelocity += k1.dAngularVelocity * (dt / 2.0f);
+					rk4_state state = a_initialState;
+					state.position += a_prevDerivativeState.position * a_dt;
+					state.rotation = glm::normalize(state.rotation + a_prevDerivativeState.rotation * a_dt);
+					state.linearVelocity += a_prevDerivativeState.linearVelocity * a_dt;
+					state.angularVelocityLocal += a_prevDerivativeState.angularVelocityLocal * a_dt;
 
-					auto k2 = evaluate(s2);
-					s2 = s;
-					s2.position += k2.dPosition * (dt / 2.0f);
-					s2.velocity += k2.dVelocity * (dt / 2.0f);
-					s2.rotation = glm::normalize(s2.rotation + k2.dRotation * (dt / 2.0f));
-					s2.angularVelocity += k2.dAngularVelocity * (dt / 2.0f);
-
-					auto k3 = evaluate(s2);
-					s2 = s;
-					s2.position += k3.dPosition * dt;
-					s2.velocity += k3.dVelocity * dt;
-					s2.rotation = glm::normalize(s2.rotation + k3.dRotation * dt);
-					s2.angularVelocity += k3.dAngularVelocity * dt;
-
-					auto k4 = evaluate(s2);
-
-					k_ellipsoidPosition += (dt / 6.0f) * (k1.dPosition + 2.0f * k2.dPosition + 2.0f * k3.dPosition + k4.dPosition);
-					k_ellipsoidLinearVelocity += (dt / 6.0f) * (k1.dVelocity + 2.0f * k2.dVelocity + 2.0f * k3.dVelocity + k4.dVelocity);
-					k_ellipsoidRotation = glm::normalize(k_ellipsoidRotation + (dt / 6.0f) * (k1.dRotation + 2.0f * k2.dRotation + 2.0f * k3.dRotation + k4.dRotation));
-					k_ellipsoidAngularVelocity += (dt / 6.0f) * (k1.dAngularVelocity + 2.0f * k2.dAngularVelocity + 2.0f * k3.dAngularVelocity + k4.dAngularVelocity);
+					return rk4_derivate(state);
 				};
 
-			integrateRK4(s, ds);
+			auto const initialState = rk4_state{ solidPosition, solidRotation, solidLinearVelocity, solidAngularVelocityLocal };
 
-			//// Runge Kutta 4
-			//auto const f = [&](auto const t, auto ly, auto lv)
-			//	{
-			//		auto const z = ly - k_ellipsoidRadiuses.y;
-			//		auto const springForce = z < 0.0f ? -k_groundEllasticity * z : 0.0f;
-			//		auto const dampenerForce = z < 0.0f ? -dampenerFactor * lv : 0.0f;
-			//		return (springForce + dampenerForce + gravityForce) / k_ellipsoidMass;
-			//	};
+			auto const k1 = rk4_derivate(initialState);
+			auto const k2 = rk4_step(initialState, k1, integrationStepDuration / 2.0f);
+			auto const k3 = rk4_step(initialState, k2, integrationStepDuration / 2.0f);
+			auto const k4 = rk4_step(initialState, k3, integrationStepDuration);
 
-			//auto const v = k_ellipsoidLinearVelocity.y;
-			//auto const y = k_ellipsoidPosition.y;
-
-			//auto const C0 = v;
-			//auto const K0 = f(0.0f, y, C0);
-			//auto const C1 = v + ds / 2.0f * K0;
-			//auto const K1 = f(0.0f + ds / 2.0f, y + ds / 2.0f * C0, C1);
-			//auto const C2 = v + ds / 2.0f * K1;
-			//auto const K2 = f(0.0f + ds / 2.0f, y + ds / 2.0f * C1, C2);
-			//auto const C3 = v + ds * K2;
-			//auto const K3 = f(0.0f + ds, y + ds * C2, C3);
-
-			//auto const dy = ds / 6.0f * (C0 + 2.0f * C1 + 2.0f * C2 + C3);
-			//auto const dv = ds / 6.0f * (K0 + 2.0f * K1 + 2.0f * K2 + K3);
-
-			//k_ellipsoidLinearVelocity.y += dv;
-			//k_ellipsoidPosition.y += dy;
+			solidPosition += (integrationStepDuration / 6.0f) * (k1.position + 2.0f * k2.position + 2.0f * k3.position + k4.position);
+			solidLinearVelocity += (integrationStepDuration / 6.0f) * (k1.linearVelocity + 2.0f * k2.linearVelocity + 2.0f * k3.linearVelocity + k4.linearVelocity);
+			solidRotation = glm::normalize(solidRotation + (integrationStepDuration / 6.0f) * (k1.rotation + 2.0f * k2.rotation + 2.0f * k3.rotation + k4.rotation));
+			solidAngularVelocityLocal += (integrationStepDuration / 6.0f) * (k1.angularVelocityLocal + 2.0f * k2.angularVelocityLocal + 2.0f * k3.angularVelocityLocal + k4.angularVelocityLocal);
 		}
 
-		if (k_y0 <= k_y1 && k_y1 > k_ellipsoidPosition.y)
+		static bool k_specialPause = false;
+		if (!k_specialPause)
 		{
-			k_yMax = k_y1 - k_ellipsoidRadiuses.y;
+			k_ellipsoidPosition = solidPosition;
+			k_ellipsoidLinearVelocity = solidLinearVelocity;
+			k_ellipsoidRotation = solidRotation;
+			k_ellipsoidAngularVelocity = solidAngularVelocityLocal;
 		}
-
-		k_y0 = k_y1;
-		k_y1 = k_ellipsoidPosition.y;
-	}
-
-	void test_system::update_test() const
-	{
-		static auto k_radiuses = glm::vec3{ 1.0f, 2.0f, 1.0f };
-		static auto k_position = glm::vec3{ -1.5, 4.5f, 5.0f };
-		static auto k_rotation = glm::vec3{ 0.0f, 0.0f, 1.0f };
-		static auto k_linearMove = glm::vec3{ 0.0f, -5.0f, 0.0f };
-		static auto k_angularMove = glm::vec3{ 0.0f, 0.0f, 4.0f };
-
-
-		static auto k_p0 = glm::vec3{ 0.0f, 0.0f, 0.0f };
-		static auto k_p1 = glm::vec3{ 0.0f, 0.0f, 100.0f };
-		static auto k_p2 = glm::vec3{ 100.0f, 0.0f, 0.0f };
-
-		ImGui::Begin("Test System");
-		ImGui::InputFloat3("Radiuses", &k_radiuses.x);
-		ImGui::InputFloat3("Position", &k_position.x);
-		ImGui::InputFloat3("Rotation", &k_rotation.x);
-		ImGui::InputFloat3("P0", &k_p0.x);
-		ImGui::InputFloat3("P1", &k_p1.x);
-		ImGui::InputFloat3("P2", &k_p2.x);
-		ImGui::InputFloat3("Linear Move", &k_linearMove.x);
-		ImGui::InputFloat3("Angular Move", &k_angularMove.x);
-		ImGui::BeginDisabled();
-		static auto k_ratio = 0.0f;
-		static auto k_testCount = 0;
-		ImGui::InputFloat("Ratio", &k_ratio);
-		ImGui::InputInt("Count", &k_testCount);
-		ImGui::EndDisabled();
-		ImGui::End();
-
-
-		auto const transform = aoest::combine(k_position, glm::quat{ k_rotation });
-
-		draw_triangle(*m_debugMeshWorldComponent, k_p0, k_p1, k_p2, aoegl::k_forest);
-		draw_ellipsoid(*m_debugMeshWorldComponent, transform, k_radiuses, aoegl::k_gray);
-
-		std::vector<std::pair<glm::mat4, aoegl::rgba>> testTransforms;
-		auto const [ratio, ellipsoidPoint, trianglePoint] = _ellipsoid_move(
-			k_position, glm::quat{ k_rotation }, k_radiuses, k_linearMove, k_angularMove, triangle{ k_p0, k_p1, k_p2 }, testTransforms, k_testCount);
-		k_ratio = ratio;
-		auto const targetPosition = k_position + k_linearMove;
-		auto const targetRotation = glm::eulerAngles(glm::quat{ k_angularMove } *glm::quat{ k_rotation });
-		auto const targetTransform = aoest::combine(targetPosition, glm::quat{ targetRotation });
-		auto const finalPosition = k_position + ratio * k_linearMove;
-		auto const finalRotation = glm::eulerAngles(glm::quat{ ratio * k_angularMove } *glm::quat{ k_rotation });
-		auto const finalTransform = aoest::combine(finalPosition, glm::quat{ finalRotation });
-
-		if (m_inputs->mouse.buttons[aoein::mouse::button::Left].is_pressed())
-		{
-			k_position.x -= m_inputs->mouse.axes[aoein::mouse::axis::X].get_change() * 0.01f;
-			k_position.y -= m_inputs->mouse.axes[aoein::mouse::axis::Y].get_change() * 0.01f;
-		}
-
-		if (ratio < 1.0f)
-		{
-			draw_ellipsoid(*m_debugMeshWorldComponent, finalTransform, k_radiuses, aoegl::k_cyan);
-			draw_sphere(*m_debugMeshWorldComponent, trianglePoint, 0.05f, aoegl::k_red);
-			draw_sphere(*m_debugMeshWorldComponent, ellipsoidPoint, 0.05f, aoegl::k_orange);
-			draw_line(*m_debugMeshWorldComponent, ellipsoidPoint, ellipsoidPoint + 2.0f * _ellipsoid_normal(finalPosition, finalRotation, k_radiuses, ellipsoidPoint), aoegl::k_yellow);
-		}
-		else
-		{
-			draw_ellipsoid(*m_debugMeshWorldComponent, targetTransform, k_radiuses, aoegl::k_green);
-		}
-		auto prevTr = transform;
-		for (auto [testTransform, testColor] : testTransforms)
-		{
-			draw_ellipsoid(*m_debugMeshWorldComponent, testTransform, k_radiuses, testColor);
-			if (testColor == aoegl::k_red)
-			{
-				// draw_line(*m_debugMeshWorldComponent, aoest::get_position(prevTr), aoest::get_position(testTransform), testColor);
-			}
-			prevTr = testTransform;
-		}
-
-	}
-
-	void test_system::update() const
-	{
-		update_v5();
 	}
 }

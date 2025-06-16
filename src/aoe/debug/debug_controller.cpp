@@ -31,7 +31,6 @@ namespace vob::aoedb
 		, m_windowWorldComponent{ a_wdp }
 		, m_presentationTimeWorldComponent{ a_wdp }
 		, m_simulationTimeWorldComponent{ a_wdp }
-		, m_simulationPauseWorldComponent{ a_wdp }
 		, m_debugMeshWorldComponent{ a_wdp }
 		, m_queryRef{ a_wdp }
 		, m_debugControllerEntities{ a_wdp }
@@ -53,12 +52,12 @@ namespace vob::aoedb
 
 		if (switches.find(m_debugControllerWorldComponent->m_playSim)->was_pressed())
 		{
-			m_simulationPauseWorldComponent->m_state = aoest::timer_state::play;
+			m_simulationTimeWorldComponent->play_for_duration = -1_s;
 		}
 
 		if (switches.find(m_debugControllerWorldComponent->m_stepSim)->was_pressed())
 		{
-			m_simulationPauseWorldComponent->m_state = aoest::timer_state::step;
+			m_simulationTimeWorldComponent->play_for_duration = 1_s / 100;
 		}
 
 		auto debugControllerEntities = m_debugControllerEntities.get();
@@ -85,7 +84,7 @@ namespace vob::aoedb
 			moveDir.y = axes.find(verticalMapping)->get_value();
 			moveDir.z = -axes.find(longitudinalMapping)->get_value();
 
-			auto const dt = m_presentationTimeWorldComponent->m_elapsedTime.get_value();
+			auto const dt = m_presentationTimeWorldComponent->elapsed_time.get_value();
 
 			auto const move = moveDir * dt * m_debugControllerWorldComponent->m_moveSpeed;
 

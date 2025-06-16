@@ -285,4 +285,44 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 
 	auto& directorWorldComponent = entityRegistry.ctx().get<aoegl::director_world_component>();
 	directorWorldComponent.m_activeCamera = ghostControlledCamera;
+
+	auto const dynBody = entityRegistry.create();
+	{
+		entityRegistry.emplace<vob::aoest::position>(dynBody, 0.0f, 10.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(dynBody);
+		entityRegistry.emplace<vob::aoeph::linear_velocity>(dynBody);
+		entityRegistry.emplace<vob::aoeph::angular_velocity_local>(dynBody);
+		auto& dynamicBody = entityRegistry.emplace<vob::aoeph::dynamic_body>(dynBody);
+		// front axel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.01553f, 0.36325f, -1.75357f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.905f, 0.283f, 0.385f });
+		// mid axel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.471f, -0.219f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.439f, 0.362f, 1.902f });
+		// cockpit
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.65281f, 0.89763f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 1.021f, 0.515f, 1.038f });
+		// chassis
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.44878f, 0.20792f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.968f, 0.363f, 1.682f });
+		// front left wheel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.86301f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		// front right wheel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.86299f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		// rear left wheel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		// rear right wheel
+		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+	}
+
+	auto const staBody = entityRegistry.create();
+	{
+		entityRegistry.emplace<vob::aoest::position>(staBody, 0.0f, 0.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(staBody);
+		auto& staticBody = entityRegistry.emplace<vob::aoeph::static_body>(staBody);
+		auto& part = staticBody.parts.emplace_back(
+			vob::aoeph::physx_material{});
+		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{-5.0f, 2.0f, -5.0f},
+			glm::vec3{-5.0f, 2.0f, 20.0f},
+			glm::vec3{20.0f, 2.0f, -5.0f}
+		});
+		staticBody.bounds = vob::aoeph::aabb{ glm::vec3{-5.0f, 2.0f, -5.0f}, glm::vec3{20.0f, 2.0f, 20.0f} };
+	}
 }

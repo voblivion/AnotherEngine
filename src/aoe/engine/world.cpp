@@ -15,6 +15,7 @@ namespace vob::aoeng
 		system_allocator const& a_systemAllocator
 	)
 		: m_worldData{ a_registryAllocator, a_entityRegistryQueryAllocator }
+		, m_systemTasks{ a_systemAllocator }
 	{
 	}
 

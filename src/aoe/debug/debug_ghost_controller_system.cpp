@@ -16,7 +16,7 @@ namespace vob::aoedb
 	{
 		auto const switches = m_bindings->switches;
 		auto const axes = m_bindings->axes;
-		auto const dt = m_presentationTimeWorldComponent->m_elapsedTime.get_value();
+		auto const dt = m_presentationTimeWorldComponent->elapsed_time.get_value();
 
 		auto const ghostControllerEntities = m_ghostControllerEntities.get();
 		for (auto [entity, position, rotation, ghostController] : ghostControllerEntities.each())

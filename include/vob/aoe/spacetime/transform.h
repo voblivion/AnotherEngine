@@ -36,6 +36,18 @@ namespace vob::aoest
 		return rotationMatrix;
 	}
 
+	inline glm::vec3 apply(glm::mat4 const& a_transform, glm::vec3 const& a_position)
+	{
+		auto const transformedPosition = a_transform * glm::vec4{ a_position, 1.0f };
+		return glm::vec3{ transformedPosition } / transformedPosition.w;
+	}
+
+	inline glm::mat4x3 combine4x3(glm::vec3 const& a_position, glm::quat const& a_rotation)
+	{
+		auto const rotationMatrix = glm::mat3_cast(a_rotation);
+		return glm::mat4x3(rotationMatrix[0], rotationMatrix[1], rotationMatrix[2], a_position);
+	}
+
 	inline glm::vec3 normalize_safe(glm::vec3 const& a_vector, float a_epsilon = glm::epsilon<float>(), glm::vec3 const& a_defaultVector = glm::vec3{ 0.0f })
 	{
 		auto const lengthSquared = glm::dot(a_vector, a_vector);
