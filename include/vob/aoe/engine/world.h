@@ -48,6 +48,11 @@ namespace vob::aoeng
 			system_allocator const& a_systemAllocator = {}
 		);
 
+		world(world&&) = delete;
+		world(world const&) = delete;
+		auto operator=(world&&) = delete;
+		auto operator=(world const&) = delete;
+
 		world_data& get_data()
 		{
 			return m_worldData;
