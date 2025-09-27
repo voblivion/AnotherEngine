@@ -1,11 +1,5 @@
 #pragma once
 
-#include <vob/misc/multithread/worker.h>
-
-namespace vob::aoeng
-{
-	class world;
-}
-
+#include "vob/aoe/engine/world.h"
 
 void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a_schedule);

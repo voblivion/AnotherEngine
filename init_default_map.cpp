@@ -16,8 +16,8 @@
 
 // WIP vehicle / wheels
 #include <vob/aoe/physics/components/rigidbody.h>
+#include <vob/aoe/physics/vehicle_physics_component.h>
 #include <vob/aoe/physics/components/car_controller.h>
-#include <vob/aoe/physics/world_components/physics_world_component.h>
 #include <bullet/BulletCollision/CollisionShapes/btCylinderShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btBoxShape.h>
 #include <bullet/BulletCollision/CollisionShapes/btCompoundShape.h>
@@ -131,198 +131,240 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 		entityRegistry.emplace<vob::aoedb::controlled_tag>(ghostControlledCamera);
 	}
 
-	auto const car = entityRegistry.create();
-	{
-		entityRegistry.emplace<vob::aoest::position>(car, 0.0f, 20.0f, 0.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(car);
-		auto& carController = entityRegistry.emplace<vob::aoeph::car_controller>(car);
-		entityRegistry.emplace<vob::aoedb::controllable_tag>(car);
-
-		auto& ghostController = entityRegistry.emplace<vob::aoedb::debug_ghost_controller_component>(car);
-		ghostController.m_lateralMoveMapping = bindings.axes.add(aoein::binding_util::make_axis(
-			aoein::keyboard::key::S, aoein::keyboard::key::F));
-		ghostController.m_longitudinalMoveMapping = bindings.axes.add(aoein::binding_util::make_axis(
-			aoein::keyboard::key::E, aoein::keyboard::key::D));
-		ghostController.m_verticalMoveMapping = bindings.axes.add(aoein::binding_util::make_axis(
-			aoein::keyboard::key::Space, aoein::keyboard::key::LBracket));
-		ghostController.m_yawMapping = bindings.axes.add(aoein::binding_util::make_derived_axis(
-			aoein::mouse::axis::X, 0.001f));
-		ghostController.m_pitchMapping = bindings.axes.add(aoein::binding_util::make_derived_axis(
-			aoein::mouse::axis::Y, 0.001f));
-		ghostController.m_enableViewMapping = bindings.switches.add(aoein::binding_util::make_switch(
-			aoein::mouse::button::Right));
-		/*ghostController.m_decreaseSpeedMapping = bindings.switches.add(aoein::binding_util::make_switch(
-			aoein::mouse::button::ScrollDown));
-		ghostController.m_increaseSpeedMapping = bindings.switches.add(aoein::binding_util::make_switch(
-			aoein::mouse::button::ScrollUp));*/
-
-
-		entityRegistry.emplace<aoeph::rigidbody>(
-			car,
-			false,
-			1000.0f /* mass */,
-			glm::translate(glm::mat4{ 1.0f }, glm::vec3{ 0.0f, -10.0f, 0.0f }),
-			std::make_shared<btBoxShape>(btVector3{ 0.75f, 0.20f, 1.2f }),
-			std::make_shared<aoeph::material>(0.5f, 1.0f, 0.01f, 0.2f));
-
-
-		/*auto& physicsWorldCmp = a_world.get_world_component<vob::aoeph::physics_world_component>();
-
-		btCollisionShape* chassisShape = new btBoxShape(btVector3(0.75f, 0.25f, 1.2f));
-		carController.m_collisionShapes.emplace_back(chassisShape);
-		
-		btCompoundShape* compound = new btCompoundShape();
-		carController.m_collisionShapes.emplace_back(compound);
-		btTransform localTrans;
-		localTrans.setIdentity();
-		localTrans.setOrigin(btVector3(0, 1, 0));
-
-		compound->addChildShape(localTrans, chassisShape);
-		{
-			btCollisionShape* suppShape = new btBoxShape(btVector3(0.5f, 0.1f, 0.5f));
-			carController.m_collisionShapes.emplace_back(suppShape);
-
-			btTransform suppLocalTrans;
-			suppLocalTrans.setIdentity();
-			suppLocalTrans.setOrigin(btVector3(0, 1.0, 2.5));
-			compound->addChildShape(suppLocalTrans, suppShape);
-		}
-		
-		btTransform tr;
-		tr.setIdentity();
-		const btScalar fallHeight = 5.0f;
-		tr.setOrigin(btVector3(0, fallHeight, 0));
-		
-		btScalar chassisMass = 2.0f;
-		btVector3 localInertia(0, 0, 0);
-		compound->calculateLocalInertia(chassisMass, localInertia);
-		btDefaultMotionState* motionState = new btDefaultMotionState(tr);
-		btRigidBody::btRigidBodyConstructionInfo chassisConstructInfo(chassisMass, motionState, compound, localInertia);
-		btRigidBody* chassisBody = new btRigidBody(chassisConstructInfo);
-		physicsWorldCmp.m_world.get().addRigidBody(chassisBody);
-		carController.m_chassisRigidBody.reset(chassisBody);
-
-		btScalar wheelWidth = 0.5f;
-		btScalar wheelRadius = 0.37f;
-		btCylinderShapeX* wheelShape = new btCylinderShapeX(btVector3(wheelWidth, wheelRadius, wheelRadius));
-		carController.m_collisionShapes.emplace_back(wheelShape);
-
-		btScalar wheelMass = 1.0f;
-		btVector3 wheelPos[4] = {
-			btVector3(-0.75, fallHeight - 0.125, 0.7),
-			btVector3(0.75, fallHeight - 0.125, 0.7),
-			btVector3(0.75, fallHeight - 0.125, -0.7),
-			btVector3(-0.75, fallHeight - 0.125, -0.7)
-		};
-
-		chassisBody->setActivationState(DISABLE_DEACTIVATION);
-		for (int i = 0; i < 4; ++i)
-		{
-			btTransform wTr;
-			wTr.setIdentity();
-			wTr.setOrigin(wheelPos[i]);
-
-			btVector3 wLocalInertia(0, 0, 0);
-			wheelShape->calculateLocalInertia(wheelMass, wLocalInertia);
-			btDefaultMotionState* wMotionState = new btDefaultMotionState(wTr);
-			btRigidBody::btRigidBodyConstructionInfo wConstructInfo(wheelMass, wMotionState, wheelShape, wLocalInertia);
-			btRigidBody* wheelBody = new btRigidBody(wConstructInfo);
-			carController.m_wheelRigidBodies.emplace_back(wheelBody, vob::aoeph::to_glm(wheelPos[i]));
-			wheelBody->setUserIndex(-1);
-			physicsWorldCmp.m_world.get().addRigidBody(wheelBody);
-			wheelBody->setFriction(1110);
-			wheelBody->setActivationState(DISABLE_DEACTIVATION);
-
-			btVector3 parentAxis(0, 1, 0);
-			btVector3 childAxis(1, 0, 0);
-			btVector3 anchor = tr.getOrigin();
-			btHinge2Constraint* pHinge2 = new btHinge2Constraint(*chassisBody, *wheelBody, anchor, parentAxis, childAxis);
-			physicsWorldCmp.m_world.get().addConstraint(pHinge2, true);
-			carController.m_wheelHinges.emplace_back(pHinge2);
-
-			// drive engine
-			pHinge2->enableMotor(3, true);
-			pHinge2->setMaxMotorForce(3, 1000);
-			pHinge2->setTargetVelocity(3, 0);
-
-			// steer engine
-			pHinge2->enableMotor(5, true);
-			pHinge2->setMaxMotorForce(5, 1000);
-			pHinge2->setTargetVelocity(5, 0);
-			pHinge2->setParam(BT_CONSTRAINT_CFM, 0.15f, 2);
-			pHinge2->setParam(BT_CONSTRAINT_ERP, 0.35f, 2);
-
-			pHinge2->setDamping(2, 2.0);
-			pHinge2->setStiffness(2, 40.0f);
-
-			pHinge2->setDbgDrawSize(btScalar(5.f));
-		}*/
-	}
-	auto const carCamera1 = entityRegistry.create();
-	{
-		entityRegistry.emplace<vob::aoest::position>(carCamera1, 0.0f, 20.0f, 0.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(carCamera1);
-		entityRegistry.emplace<vob::aoest::soft_follow>(
-			carCamera1, car, glm::vec3{ 0.0f, 0.0f, -5.0f }, glm::vec3{ 0.0f, 5.0f, 10.0f });
-		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera1);
-	}
-	auto const carCamera3 = entityRegistry.create();
-	{
-		entityRegistry.emplace<vob::aoest::position>(carCamera3, 0.0f, 20.0f, 0.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(carCamera3);
-		entityRegistry.emplace<vob::aoest::soft_follow>(
-			carCamera3, car, glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 0.5f, 00.0f }, 0.0f);
-		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera3);
-	}
-	auto const carCamera4 = entityRegistry.create();
-	{
-		entityRegistry.emplace<vob::aoest::position>(carCamera4, 0.0f, 20.0f, 0.0f);
-		entityRegistry.emplace<vob::aoest::rotation>(carCamera4);
-		entityRegistry.emplace<vob::aoest::soft_follow>(
-			carCamera4, car, glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 1.0f, 2.0f }, 0.0f);
-		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera4);
-	}
-
-	auto& directorWorldComponent = entityRegistry.ctx().get<aoegl::director_world_component>();
-	directorWorldComponent.m_activeCamera = ghostControlledCamera;
-
 	auto const dynBody = entityRegistry.create();
 	{
-		entityRegistry.emplace<vob::aoest::position>(dynBody, 0.0f, 10.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::position>(dynBody, 0.0f, 3.0f, 0.0f);
 		entityRegistry.emplace<vob::aoest::rotation>(dynBody);
 		entityRegistry.emplace<vob::aoeph::linear_velocity>(dynBody);
 		entityRegistry.emplace<vob::aoeph::angular_velocity_local>(dynBody);
+
+		auto& carCollider = entityRegistry.emplace<vob::aoeph::car_collider>(dynBody);
+		// front axel
+		carCollider.chassisParts.emplace_back(glm::vec3{ -0.01553f, 0.36325f, -1.75357f }, glm::quat{ glm::vec3{0.0f} }, glm::vec3{ 0.905f, 0.283f, 0.385f });
+		// mid axel
+		carCollider.chassisParts.emplace_back(glm::vec3{ 0.0f, 0.471f, -0.219f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.439f, 0.362f, 1.902f });
+		// cockpit
+		carCollider.chassisParts.emplace_back(glm::vec3{ 0.0f, 0.65281f, 0.89763f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 1.021f, 0.515f, 1.038f });
+		// chassis
+		carCollider.chassisParts.emplace_back(glm::vec3{ 0.0f, 0.44878f, 0.20792f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.968f, 0.363f, 1.682f });
+
+		// front left wheel
+		carCollider.wheels.emplace_back(glm::vec3{ -0.86301f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).turnFactor = 1.0f;
+		// front right wheel
+		carCollider.wheels.emplace_back(glm::vec3{ 0.86299f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).turnFactor = 1.0f;
+		// rear left wheel
+		carCollider.wheels.emplace_back(glm::vec3{ -0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		// rear right wheel
+		carCollider.wheels.emplace_back(glm::vec3{ 0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f });
+
+		carCollider.mass = 1'000.0f;
+		carCollider.barycenter = glm::vec3{ 0.0f, 0.0f, -0.288295f };
+		carCollider.inertia = glm::mat3{ carCollider.mass / 5.0f };
+		carCollider.inertia[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
+		carCollider.inertia[1][1] *= (1.6f * 1.6f + 0.9f * 0.9f);
+		carCollider.inertia[2][2] *= (0.9f * 0.9f + 0.7f * 0.7f);
+
+		/*
 		auto& dynamicBody = entityRegistry.emplace<vob::aoeph::dynamic_body>(dynBody);
 		// front axel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.01553f, 0.36325f, -1.75357f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.905f, 0.283f, 0.385f });
+		dynamicBody.parts.emplace_back(glm::vec3{ -0.01553f, 0.36325f, -1.75357f }, glm::quat{ glm::vec3{0.0f} }, glm::vec3{ 0.905f, 0.283f, 0.385f });
 		// mid axel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.471f, -0.219f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.439f, 0.362f, 1.902f });
+		dynamicBody.parts.emplace_back(glm::vec3{ 0.0f, 0.471f, -0.219f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{0.439f, 0.362f, 1.902f});
 		// cockpit
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.65281f, 0.89763f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 1.021f, 0.515f, 1.038f });
+		dynamicBody.parts.emplace_back(glm::vec3{ 0.0f, 0.65281f, 0.89763f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 1.021f, 0.515f, 1.038f });
 		// chassis
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.0f, 0.44878f, 0.20792f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.968f, 0.363f, 1.682f });
+		dynamicBody.parts.emplace_back(glm::vec3{ 0.0f, 0.44878f, 0.20792f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.968f, 0.363f, 1.682f });
 		// front left wheel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.86301f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		dynamicBody.parts.emplace_back(glm::vec3{ -0.86301f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).debug_draw_enabled = false;
 		// front right wheel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.86299f, 0.3525f, -1.78209f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		dynamicBody.parts.emplace_back(glm::vec3{ 0.86299f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).debug_draw_enabled = false;
 		// rear left wheel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ -0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		dynamicBody.parts.emplace_back(glm::vec3{ -0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).debug_draw_enabled = false;
 		// rear right wheel
-		dynamicBody.parts.emplace_back(vob::aoeph::physx_material{}, glm::vec3{ 0.885f, 0.3525f, 1.2055f } - glm::vec3{ 0.0f, 0.35f, 0.0f }, glm::quat(), glm::vec3{ 0.182f, 0.364f, 0.364f });
+		dynamicBody.parts.emplace_back(glm::vec3{ 0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }).debug_draw_enabled = false;
+		dynamicBody.barycenter = glm::vec3{ 0.0f, 0.0f, -.288295f };
+
+		dynamicBody.mass = 1'000.0f;
+		dynamicBody.inertia = glm::mat3{ dynamicBody.mass / 5.0f };
+		dynamicBody.inertia[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
+		dynamicBody.inertia[1][1] *= (1.6f * 1.6f + 0.9f * 0.9f);
+		dynamicBody.inertia[2][2] *= (0.9f * 0.9f + 0.7f * 0.7f);*/
+
+		/*auto& vehiclePhysicsCmp = entityRegistry.emplace<vob::aoeph::vehicle_physics_component>(dynBody);
+		// front left
+		vehiclePhysicsCmp.wheels.emplace_back(glm::vec3{ -0.86301f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }, 1.f);
+		vehiclePhysicsCmp.wheels.emplace_back(glm::vec3{ 0.86301f, 0.3525f, -1.78209f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }, 1.f);
+		vehiclePhysicsCmp.wheels.emplace_back(glm::vec3{ -0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }, 0.f);
+		vehiclePhysicsCmp.wheels.emplace_back(glm::vec3{ 0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f }, 0.f);*/
 	}
 
 	auto const staBody = entityRegistry.create();
 	{
 		entityRegistry.emplace<vob::aoest::position>(staBody, 0.0f, 0.0f, 0.0f);
 		entityRegistry.emplace<vob::aoest::rotation>(staBody);
-		auto& staticBody = entityRegistry.emplace<vob::aoeph::static_body>(staBody);
-		auto& part = staticBody.parts.emplace_back(
-			vob::aoeph::physx_material{});
+		auto& staticCollider = entityRegistry.emplace<vob::aoeph::static_collider>(staBody);
+		auto& part = staticCollider.parts.emplace_back(vob::aoeph::material{});
 		part.triangles.emplace_back(vob::aoeph::triangle{
 			glm::vec3{-5.0f, 2.0f, -5.0f},
-			glm::vec3{-5.0f, 2.0f, 20.0f},
-			glm::vec3{20.0f, 2.0f, -5.0f}
+			glm::vec3{-5.0f, 2.0f, 200.0f},
+			glm::vec3{200.0f, 2.0f, -5.0f}
 		});
-		staticBody.bounds = vob::aoeph::aabb{ glm::vec3{-5.0f, 2.0f, -5.0f}, glm::vec3{20.0f, 2.0f, 20.0f} };
+		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{-5.0f, 2.0f, -5.0f},
+			glm::vec3{-200.0f, 20.0f, -5.0f},
+			glm::vec3{-5.0f, 2.0f, 200.0f}
+		});
+
+		// Looping
+		auto const width = 16.0f;
+		auto const radius = 16.0f;
+		auto const segments = 24;
+		for (int i = 0; i < segments; ++i)
+		{
+			auto const r0 = static_cast<float>(i + 0) / segments;
+			auto const r1 = static_cast<float>(i + 1) / segments;
+
+			auto const x00 = -5.0f + r0 * width;
+			auto const x01 = x00 + width;
+			auto const x10 = -5.0f + r1 * width;
+			auto const x11 = x10 + width;
+			auto const a0 = 2.0f * 3.141592f * r0;
+			auto const a1 = 2.0f * 3.141592f * r1;
+			auto const z0 = radius - radius * std::sin(a0);
+			auto const y0 = 2.0f + radius - radius * std::cos(a0);
+			auto const z1 = radius - radius * std::sin(a1);
+			auto const y1 = 2.0f + radius - radius * std::cos(a1);
+
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{x00, y0, z0},
+				glm::vec3{x01, y0, z0},
+				glm::vec3{x10, y1, z1}});
+
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{x10, y1, z1},
+				glm::vec3{x01, y0, z0},
+				glm::vec3{x11, y1, z1}});
+		}
+
+		// Half pipes
+		for (int k = 0; k < 2; ++k)
+		{
+			auto lastX0 = 0.0f;
+			auto lastX1 = 0.0f;
+			auto lastY1 = 0.0f;
+			auto lastZ1 = 0.0f;
+			for (int i = 0; i < segments * 2 / 4; ++i)
+			{
+				auto const r0 = static_cast<float>(i + 0) / segments / 2;
+				auto const r1 = static_cast<float>(i + 1) / segments / 2;
+
+				auto const x0 = 45.0f + k * (2 * width);
+				auto const x1 = x0 + width;
+				auto const a0 = 2.0f * 3.141592f * r0;
+				auto const a1 = 2.0f * 3.141592f * r1;
+				auto const z0 = radius - radius * std::sin(a0);
+				auto const y0 = 2.0f + radius - radius * std::cos(a0);
+				auto const z1 = radius - radius * std::sin(a1);
+				auto const y1 = 2.0f + radius - radius * std::cos(a1);
+
+				lastX0 = x0;
+				lastX1 = x1;
+				lastY1 = y1;
+				lastZ1 = z1;
+
+				part.triangles.emplace_back(vob::aoeph::triangle{
+					glm::vec3{x0, y0, z0},
+					glm::vec3{x1, y0, z0},
+					glm::vec3{x0, y1, z1} });
+
+				part.triangles.emplace_back(vob::aoeph::triangle{
+					glm::vec3{x0, y1, z1},
+					glm::vec3{x1, y0, z0},
+					glm::vec3{x1, y1, z1} });
+
+				// side walls
+				part.triangles.emplace_back(vob::aoeph::triangle{
+					glm::vec3{x0, y0, z0},
+					glm::vec3{x0, y1, z1},
+					glm::vec3{x0, 2.0f, z1} });
+				part.triangles.emplace_back(vob::aoeph::triangle{
+					glm::vec3{x1, y0, z0},
+					glm::vec3{x1, 2.0f, z1},
+					glm::vec3{x1, y1, z1} });
+				if (i != 0)
+				{
+					part.triangles.emplace_back(vob::aoeph::triangle{
+						glm::vec3{x0, 2.0f, z1},
+						glm::vec3{x0, 2.0f, z0},
+						glm::vec3{x0, y0, z0} });
+					part.triangles.emplace_back(vob::aoeph::triangle{
+						glm::vec3{x1, 2.0f, z1},
+						glm::vec3{x1, y0, z0},
+						glm::vec3{x1, 2.0f, z0} });
+				}
+			}
+
+			// back wall
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{lastX1, 2.0f, lastZ1},
+				glm::vec3{lastX0, 2.0f, lastZ1},
+				glm::vec3{lastX0, lastY1, lastZ1} });
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{lastX1, 2.0f, lastZ1},
+				glm::vec3{lastX0, lastY1, lastZ1},
+				glm::vec3{lastX1, lastY1, lastZ1} });
+			// top wall
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{lastX0, lastY1, lastZ1},
+				glm::vec3{lastX1, lastY1, lastZ1},
+				glm::vec3{lastX0, lastY1 + 4.0f, lastZ1} });
+			part.triangles.emplace_back(vob::aoeph::triangle{
+				glm::vec3{lastX0, lastY1 + 4.0f, lastZ1},
+				glm::vec3{lastX1, lastY1, lastZ1},
+				glm::vec3{lastX1, lastY1 + 4.0f, lastZ1} });
+		}
+
+		// some wall
+		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{120.0f, 2.0f, 5.0f},
+			glm::vec3{120.0f, 2.0f, 50.0f},
+			glm::vec3{120.0f, 20.0f, 5.0f}
+			});
+		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{120.0f, 2.0f, 50.0f},
+			glm::vec3{120.0f, 20.0f, 50.0f},
+			glm::vec3{120.0f, 20.0f, 5.0f}
+			});
+
+		staticCollider.bounds = vob::aoeph::aabb{ glm::vec3{-200.0f, 2.0f, -5.0f}, glm::vec3{200.0f, 34.0f, 200.0f} };
 	}
+
+	auto const carCamera1 = entityRegistry.create();
+	{
+		entityRegistry.emplace<vob::aoest::position>(carCamera1, 0.0f, 20.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(carCamera1);
+		entityRegistry.emplace<vob::aoest::soft_follow>(
+			carCamera1, dynBody, glm::vec3{ 0.0f, 0.0f, -5.0f }, glm::vec3{ 0.0f, 5.0f, 10.0f }, 5.0f, 0.99f);
+		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera1);
+	}
+	auto const carCamera3 = entityRegistry.create();
+	{
+		entityRegistry.emplace<vob::aoest::position>(carCamera3, 0.0f, 20.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(carCamera3);
+		entityRegistry.emplace<vob::aoest::attachment_component>(
+			carCamera3, dynBody, aoest::combine(glm::vec3{ 0.0f, 1.0f, -1.0f }, glm::quat()));
+		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera3);
+	}
+	/* auto const carCamera4 = entityRegistry.create();
+	{
+		entityRegistry.emplace<vob::aoest::position>(carCamera4, 0.0f, 20.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::rotation>(carCamera4);
+		entityRegistry.emplace<vob::aoest::soft_follow>(
+			carCamera4, dynBody, glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 1.0f, 2.0f }, 0.0f);
+		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera4);
+	}*/
+
+	auto& directorWorldComponent = entityRegistry.ctx().get<aoegl::director_world_component>();
+	directorWorldComponent.m_activeCamera = carCamera1;
+
 }

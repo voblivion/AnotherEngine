@@ -19,7 +19,6 @@
 #include <vob/aoe/data/string_loader.h>
 #include <vob/aoe/data/filesystem_util.h>
 #include <vob/aoe/debug/debug_controller.h>
-#include <vob/aoe/physics/material.h>
 #include <vob/aoe/physics/components/rigidbody.h>
 #include <vob/aoe/rendering/components/camera_component.h>
 #include <vob/aoe/rendering/components/model_component.h>
@@ -152,8 +151,6 @@ namespace vob::aoe
 		misvi::pmr::applicator<false, misvi::pmr::json_reader<context>> jsonLoadApplicator;
 		aoedt::filesystem_database<aoedt::json_file_loader<aoegl::program_data, context_factory>>
 			shaderProgramDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
-		aoedt::filesystem_database<aoedt::json_file_loader<aoeph::material, context_factory>>
-			physicMaterialDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
 		aoedt::filesystem_database<aoedt::json_file_loader<aoecs::component_set, context_factory>>
 			componentSetDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
 
@@ -164,13 +161,10 @@ namespace vob::aoe
 			multiDatabase.register_database(modelDatabase);
 
 			multiDatabase.register_database(shaderProgramDatabase);
-			multiDatabase.register_database(physicMaterialDatabase);
 			multiDatabase.register_database(componentSetDatabase);
 
 			auto foo = shaderProgramDatabase.find(
 				filesystemIndexer.get_runtime_id("data/shaders/shader_new_db_test.json"));
-			auto bar = physicMaterialDatabase.find(
-				filesystemIndexer.get_runtime_id("data/physics/new_material.json"));
 			auto joh = componentSetDatabase.find(
 				filesystemIndexer.get_runtime_id("data/player_v2.json"));
 		}

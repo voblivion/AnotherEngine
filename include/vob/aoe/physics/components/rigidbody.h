@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vob/aoe/physics/material.h>
-#include <vob/aoe/physics/math_util.h>
+#include <vob/aoe/physics/maths.h>
+#include <vob/aoe/physics/shapes.h>
 
 #include <vob/aoe/data/database.h>
 
@@ -18,117 +18,153 @@
 
 namespace vob::aoeph
 {
-	struct rigidbody
+	struct material
 	{
-		bool m_isStatic;
-		float m_mass;
-		glm::mat4 m_centerOfMassOffset;
-
-		std::shared_ptr<btCollisionShape> m_collisionShape;
-		std::shared_ptr<material const> m_material;
-
-		std::unique_ptr<btRigidBody> m_instance = nullptr;
-	};
-
-	struct aabb
-	{
-		glm::vec3 min;
-		glm::vec3 max;
-	};
-
-	struct linear_velocity : public glm::vec3
-	{
-	};
-
-	struct angular_velocity_local : public glm::vec3
-	{
-
-	};
-
-	struct physx_material
-	{
-		float ellasticity = 100'000.0f;
+		float ellasticity = 10'000'000.0f;
 		float restitution = 0.5f;
-		float friction = 0.128f;
-		float rolling_friction = 1.0f;
+		float friction = 0.5f;
 
 		float logRestitution = std::log(restitution);
 		float zetaLow = std::sqrt(logRestitution * logRestitution / (logRestitution * logRestitution + std::numbers::pi_v<float> *std::numbers::pi_v<float>));
 		float zetaHigh = zetaLow; // or 1.0f
 	};
 
+	struct static_collider
+	{
+		struct part
+		{
+			material material;
+			std::vector<triangle> triangles;
+
+			// TMP debug:
+			std::vector<int32_t> debugTriangleIndices;
+		};
+
+		std::vector<part> parts;
+
+		aabb bounds;
+	};
+
+	struct debug_contact
+	{
+		std::chrono::high_resolution_clock::time_point time;
+		glm::vec3 groundPosition;
+		glm::vec3 groundNormal;
+	};
+
+	struct car_collider
+	{
+		struct chassis_part
+		{
+			glm::vec3 position = glm::vec3{ 0.0f };
+			glm::quat rotation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+			glm::vec3 radiuses = glm::vec3{ 1.0f };
+			material material;
+
+			std::vector<debug_contact> debugContacts;
+		};
+
+		std::vector<chassis_part> chassisParts;
+
+		struct wheel
+		{
+			// -- Config
+			glm::vec3 attachPosition;
+			glm::quat rotation;
+			glm::vec3 radiuses = glm::vec3{ 1.0f };
+
+			material rimMaterial;
+
+			float suspensionMaxLength = 0.2f;
+			float suspensionEllasticity = 32'894.0f;
+			float suspensionDamper = 5'735.0f;
+
+			float tireMaxAngle = std::numbers::pi_v<float> / 4.0f;
+			float turnFactor = 0.0f;
+
+			// -- State
+			float suspensionLength = 0.0f;
+			float suspensionVelocity = 0.0f;
+			float isTireGrounded = false;
+
+			bool isGrounded = false;
+			glm::vec3 groundNormal = glm::vec3{ 0.0f };
+			glm::vec3 groundPosition = glm::vec3{ 0.0f };
+
+			// TMP debug:
+			std::vector<debug_contact> debugRimContacts;
+			std::vector<debug_contact> debugTireContacts;
+		};
+
+		std::vector<wheel> wheels;
+
+		glm::vec3 force{ 0.0f };
+		glm::vec3 torque{ 0.0f };
+
+		float mass = 1.0f;
+		glm::mat3 inertia = glm::mat3{ 1.0f };
+		glm::vec3 barycenter = glm::vec3{ 0.0f };
+	};
+
+	/*
+		chassis
+			position, rotation, radiuses
+			material
+		wheel
+			position, rotation, radiuses
+			suspension
+			rimMaterial
+			
+			tireMaterial
+			maxTireAngle
+			turnAngle
+	*/
+
+
+
+
+	struct linear_velocity : public glm::vec3
+	{
+		template <typename... TArgs>
+		linear_velocity(TArgs&&... a_args)
+			: glm::vec3{ std::forward<TArgs>(a_args)... }
+		{}
+	};
+
+	struct angular_velocity_local : public glm::vec3
+	{
+		template <typename... TArgs>
+		angular_velocity_local(TArgs&&... a_args)
+			: glm::vec3{ std::forward<TArgs>(a_args)... }
+		{}
+	};
+
 	struct dynamic_body
 	{
 		struct part
 		{
-			physx_material material;
 			glm::vec3 position = glm::vec3{ 0.0f };
-			glm::quat rotation = glm::quat();
+			glm::quat rotation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			glm::vec3 radiuses = glm::vec3{ 1.0f };
+			material material;
+
+			// TODO: debug only
+			bool debug_draw_enabled = true;
+			struct contact
+			{
+				glm::vec3 ellipsoid_point;
+				glm::vec3 static_point;
+			};
+			mutable std::optional<contact> debug_contact;
 		};
 
 		std::vector<part> parts;
-
-		glm::vec3 barycenter = glm::vec3{ 0.0f };
 
 		float mass = 1.0f;
 		glm::mat3 inertia = glm::mat3{ 1.0f };
+		glm::vec3 barycenter = glm::vec3{ 0.0f };
 
 		glm::vec3 force = glm::vec3{ 0.0f };
 		glm::vec3 torque = glm::vec3{ 0.0f };
-
-		aabb bounds;
 	};
-
-	struct triangle
-	{
-		glm::vec3 p0;
-		glm::vec3 p1;
-		glm::vec3 p2;
-	};
-
-	struct static_body
-	{
-		struct part
-		{
-			physx_material material;
-			std::vector<triangle> triangles;
-		};
-
-		std::vector<part> parts;
-
-		aabb bounds;
-	};
-
-}
-
-namespace vob::misvi
-{
-	VOB_MISVI_ACCEPT(aoeph::rigidbody)
-	{
-		VOB_MISVI_NVP("Collision Shape", collisionShape);
-
-		a_visitor.visit(nvp("Mass", a_value.m_mass));
-		a_visitor.visit(nvp("Offset", a_value.m_centerOfMassOffset));
-		glm::vec3 linearFactor;
-		a_visitor.visit(nvp("Linear Factor", linearFactor));
-		glm::vec3 angularFactor;
-		a_visitor.visit(nvp("Angular Factor", angularFactor));
-
-		aoeph::rigidbody& value = a_value;
-		// TODO: remove? trying with unique_ptr<motion_state> for now
-		/* value.m_motionState = std::make_shared<btDefaultMotionState>(
-			btTransform::getIdentity(), aoeph::to_bt(glm::translate(glm::mat4{ 1.0f }, offset))); */
-
-		// TODO: remove? done when adding component to world
-		/*btVector3 inertia{0.0, 0.0, 0.0};
-		if (mass != btScalar{ 0.0 } && value.m_collisionShape != nullptr)
-		{
-			value.m_collisionShape->calculateLocalInertia(mass, inertia);
-		}
-
-		value.m_instance = std::make_unique<btRigidBody>(
-			mass, value.m_motionState.get(), value.m_collisionShape.get(), inertia);
-		return true;*/
-	}
 }

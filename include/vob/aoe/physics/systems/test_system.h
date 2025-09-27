@@ -12,6 +12,7 @@
 #include <vob/aoe/spacetime/time_world_component.h>
 #include <vob/aoe/spacetime/transform.h>
 #include <vob/aoe/window/window_world_component.h>
+#include <vob/aoe/physics/components/rigidbody.h>
 
 // vob/
 
@@ -36,5 +37,6 @@ namespace vob::aoeph
 		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeContext;
 
 		aoeng::registry_view_ref<aoest::position const, aoest::rotation const, aoegl::camera_component const> m_cameraEntities;
+		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, dynamic_body> m_dynamicBodyEntities;
 	};
 }

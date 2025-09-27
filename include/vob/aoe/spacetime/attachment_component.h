@@ -13,8 +13,9 @@ namespace vob::aoest
 	{
 #pragma message(VOB_MISTD_TODO "bone?")
 
-		bool m_needsUpdate = false;
 		aoeng::entity m_parent = entt::tombstone;
 		glm::mat4 m_localTransform = glm::mat4{ 1.0f };
+
+		bool m_needsUpdate = false;
 	};
 }

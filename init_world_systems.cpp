@@ -4,10 +4,9 @@
 #include <vob/aoe/debug/debug_ghost_controller_system.h>
 #include <vob/aoe/engine/world.h>
 #include <vob/aoe/input/binding_system.h>
-#include <vob/aoe/physics/systems/physics_debug_system.h>
-#include <vob/aoe/physics/systems/physics_system.h>
-#include <vob/aoe/physics/systems/rigidbody_system.h>
+#include <vob/aoe/physics/physics_system.h>
 #include <vob/aoe/physics/systems/test_system.h>
+#include <vob/aoe/physics/vehicle_physics_system.h>
 #include <vob/aoe/spacetime/lifetime_system.h>
 #include <vob/aoe/spacetime/time_system.h>
 #include <vob/aoe/window/poll_events_system.h>
@@ -27,7 +26,6 @@
 #include <vob/aoe/spacetime/soft_follow_system.h>
 
 
-
 using namespace vob;
 
 void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a_schedule)
@@ -42,10 +40,8 @@ void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a
 	auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
 	auto const testSystemId = a_world.add_system<aoeph::test_system>();
 	auto const physicsSystemId = a_world.add_system<aoeph::physics_system>();
-	auto const rigidbodySystemId = a_world.add_system<aoeph::rigidbody_system>();
+	auto const vehiclePhysicsSystemId = a_world.add_system<aoeph::vehicle_physics_system>();
 	auto const physicsDebugSystemId = a_world.add_system<aoeph::physics_debug_system>();
-	auto const physxSystemId = a_world.add_system<aoeph::physx_system>();
-	auto const physxDebugSystemId = a_world.add_system<aoeph::physx_debug_system>();
 	auto const attachmentSystemId = a_world.add_system<aoest::attachment_system>();
 	auto const softFollowSystemId = a_world.add_system<aoest::soft_follow_system>();
 	auto const lifetimeSystemId = a_world.add_system<aoest::lifetime_system>();
@@ -67,17 +63,18 @@ void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a
 	// ^Rendering
 
 	a_schedule.clear();
-	a_schedule.emplace_back(mismt::pmr::thread_schedule{
+	a_schedule.emplace_back("MainThread", mismt::pmr::thread_schedule{
 		{timeSystemId, {}},
 		{pollEventsSystemId, {}},
 		{windowInputSystemId, {}},
 		{bindingSystemId, {}},
 		{debugGameModeSystemId, {}},
 		{debugGhostControllerSystemId, {}},
-		{testSystemId},
+		// {testSystemId},
 		{debugControllerSystemId, {}},
 		{lifetimeSystemId, {}},
 		{debugRenderCameraSystemId, {attachmentSystemId}},
+		{physicsDebugSystemId},
 		{modelDataResourceSystemId, {}},
 		{bindSceneFramebufferSystemId, {}},
 		{renderModelsSystemId, {}},
@@ -87,12 +84,9 @@ void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a
 		{renderImguiSystemId, {}},
 		{swapBuffersSystemId, {}} });
 
-	a_schedule.emplace_back(mismt::pmr::thread_schedule{
+	a_schedule.emplace_back("PhysicsThread", mismt::pmr::thread_schedule{
 		{physicsSystemId, {debugControllerSystemId}},
-		{rigidbodySystemId},
-		{physicsDebugSystemId},
-		{physxSystemId},
-		{physxDebugSystemId},
+		{vehiclePhysicsSystemId},
 		{softFollowSystemId, {}},
 		{attachmentSystemId, {}} });
 }

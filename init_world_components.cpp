@@ -4,8 +4,8 @@
 #include <vob/aoe/debug/debug_game_mode_world_component.h>
 #include <vob/aoe/input/binding_util.h>
 #include <vob/aoe/physics/components/car_controller.h>
-#include <vob/aoe/physics/world_components/physics_debug_world_component.h>
-#include <vob/aoe/physics/world_components/physics_world_component.h>
+#include <vob/aoe/physics/physics_context.h>
+#include <vob/aoe/physics/physics_debug_context.h>
 #include <vob/aoe/rendering/data/model_data_resource_manager.h>
 #include <vob/aoe/rendering/data/texture_data_resource_manager.h>
 #include <vob/aoe/rendering/world_components/debug_render_world_component.h>
@@ -216,13 +216,6 @@ void init_world_components(
 	auto& textureDataResourceManager = a_world.add_world_component<aoegl::texture_data_resource_manager>();
 	a_world.add_world_component<aoegl::model_data_resource_manager>(textureDataResourceManager);
 
-	auto& physicsWorldComponent = a_world.add_world_component<aoeph::physics_world_component>(a_data.m_dynamicsWorld);
-	auto& physicsDebugWorldComponent = a_world.add_world_component<aoeph::physics_debug_world_component>();
-	{
-		physicsDebugWorldComponent.m_cycleDebugDrawModeBinding = bindings.switches.add(
-			aoein::binding_util::make_switch(aoein::keyboard::key::T));
-	}
-
-	a_world.add_world_component<aoeph::physx_context>();
-	a_world.add_world_component<aoeph::physx_debug_context>();
+	a_world.add_world_component<aoeph::physics_context>();
+	a_world.add_world_component<aoeph::physics_debug_context>();
 }

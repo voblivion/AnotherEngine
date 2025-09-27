@@ -27,7 +27,7 @@ namespace vob::aoeph
 		float m_friction;
 	};
 
-	struct wheel
+	struct _wheel
 	{
 		glm::vec3 m_attachmentRelativePosition = {};
 		float m_rotationFactor = 0.0f;
@@ -80,13 +80,13 @@ namespace vob::aoeph
 	{
 		explicit car_controller(float a_track = 1.72f, float a_wheelbase = 2.4f)
 		{
-			m_wheels[0] = wheel{ glm::vec3{a_track / 2, 0.125, a_wheelbase / 2} };
-			m_wheels[1] = wheel{ glm::vec3{a_track / 2, 0.125f, -a_wheelbase / 2}, 1.0f };
-			m_wheels[2] = wheel{ glm::vec3{-a_track / 2, 0.125f, a_wheelbase / 2} };
-			m_wheels[3] = wheel{ glm::vec3{-a_track / 2, 0.125f, -a_wheelbase / 2}, 1.0f };
+			m_wheels[0] = _wheel{ glm::vec3{a_track / 2, 0.125, a_wheelbase / 2} };
+			m_wheels[1] = _wheel{ glm::vec3{a_track / 2, 0.125f, -a_wheelbase / 2}, 1.0f };
+			m_wheels[2] = _wheel{ glm::vec3{-a_track / 2, 0.125f, a_wheelbase / 2} };
+			m_wheels[3] = _wheel{ glm::vec3{-a_track / 2, 0.125f, -a_wheelbase / 2}, 1.0f };
 		}
 
-		std::array<wheel, 4> m_wheels;
+		std::array<_wheel, 4> m_wheels;
 		
 		std::vector<std::unique_ptr<btCollisionShape>> m_collisionShapes;
 		std::unique_ptr<btRigidBody> m_chassisRigidBody;
@@ -117,9 +117,9 @@ namespace vob::aoeph
 * Input Is Braking			| bool		| 0, 1			|
 * Input Gas Pedal			| bool		| 0, 1			|
 * Input Brake Pedal			| bool		| 0, 1			|
-* Is Ground Contact			| bool		| 0, 1			| any wheel
-* Is Wheels Burning			| bool		| 0, 1			| complex condition, triggered by a brake, but not just if any wheel sliding
-* Ground Dist				| float		| 0 .. inf		| raycast from vehicle's center, 0.0025 at rest (so with wheel radius and damper len...)
+* Is Ground Contact			| bool		| 0, 1			| any _wheel
+* Is Wheels Burning			| bool		| 0, 1			| complex condition, triggered by a brake, but not just if any _wheel sliding
+* Ground Dist				| float		| 0 .. inf		| raycast from vehicle's center, 0.0025 at rest (so with _wheel radius and damper len...)
 * Cur Gear					| int		| 1 .. 5		| mostly speed based
 * World Vel					| vec3		| - .. +277.5	| mps, always slight drift
 * Front Speed				| float		| 0 .. 277.5	| car speed in mps
@@ -132,7 +132,7 @@ namespace vob::aoeph
 * Ground Contact Material	| enum		| <var>			|
 * Steer Angle				| float		| - .. +0.698	| from 40deg (0kph) to 25deg (200kph)
 * Wheel Rot					| float		| 0 .. 512pi	| 256 turns
-* Wheel Rot Speed			| float		| - .. +762.36	| max 200 while airborn -> 0.364 radius? (max front speed / max wheel rot speed) width = .3, wheel to wheel 1.72
+* Wheel Rot Speed			| float		| - .. +762.36	| max 200 while airborn -> 0.364 radius? (max front speed / max _wheel rot speed) width = .3, _wheel to _wheel 1.72
 * Damper Len				| float		| 0.01 .. 0.2	| 0.2 in the air or turtle or touching upside down
 * Slip Coef					| float		| 0, 1			| when tire sliding / drifting
 * 

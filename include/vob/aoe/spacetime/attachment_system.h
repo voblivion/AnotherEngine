@@ -44,8 +44,8 @@ namespace vob::aoest
 			}
 
 			auto const transform = parentTransform * a_attachment.m_localTransform;
-			a_position = transform[3];
-			a_rotation = glm::quat_cast(transform);
+			a_position = aoest::get_position(transform);
+			a_rotation = aoest::get_rotation(transform);
 		}
 	}
 

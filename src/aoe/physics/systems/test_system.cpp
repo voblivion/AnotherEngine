@@ -1,7 +1,5 @@
 #include <vob/aoe/physics/systems/test_system.h>
 
-#include <vob/aoe/physics/debug_drawer.h>
-
 #include <vob/aoe/rendering/camera_util.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -34,19 +32,19 @@ glm::vec3 cleanup(glm::vec4 const& a_vector)
 namespace vob::aoeph
 {
 #pragma region Structures
-	struct segment
+	struct _segment
 	{
 		glm::vec3 m_origin;
 		glm::vec3 m_displacement;
 	};
 
-	struct plane
+	struct _plane
 	{
 		glm::vec3 m_origin;
 		glm::vec3 m_normal;
 	};
 
-	struct triangle
+	struct _triangle
 	{
 		glm::vec3 m_p0;
 		glm::vec3 m_p1;
@@ -55,19 +53,19 @@ namespace vob::aoeph
 #pragma endregion
 
 #pragma region Intersection
-	static inline float intersection_time(glm::vec3 const& a_point, glm::vec3 const& a_displacement, plane const& a_plane)
+	static inline float intersection_time(glm::vec3 const& a_point, glm::vec3 const& a_displacement, _plane const& a_plane)
 	{
 		return -glm::dot(a_point - a_plane.m_origin, a_plane.m_normal) / glm::dot(a_displacement, a_plane.m_normal);
 	}
 
-	static inline glm::vec3 unit_sphere_intersection_point(glm::vec3 const& a_displacement, plane const& a_plane)
+	static inline glm::vec3 unit_sphere_intersection_point(glm::vec3 const& a_displacement, _plane const& a_plane)
 	{
 		auto const spherePoint = -a_plane.m_normal;
 		auto const t = intersection_time(-a_plane.m_normal, a_displacement, a_plane);
 		return spherePoint + t * a_displacement;
 	}
 
-	static inline bool is_inside(glm::vec3 const& a_point, triangle const& a_triangle)
+	static inline bool is_inside(glm::vec3 const& a_point, _triangle const& a_triangle)
 	{
 		auto const normal = glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0);
 		auto const d0 = glm::dot(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_point - a_triangle.m_p0), normal);
@@ -89,9 +87,9 @@ namespace vob::aoeph
 		return (-b - std::sqrt(delta)) / (2.0f * a);
 	}
 
-	static inline std::pair<float, glm::vec3> unit_sphere_cast(glm::vec3 const& a_displacement, segment const& a_segment)
+	static inline std::pair<float, glm::vec3> unit_sphere_cast(glm::vec3 const& a_displacement, _segment const& a_segment)
 	{
-		// 1. segment equation: P = s.origin + t * s.displacement
+		// 1. _segment equation: P = s.origin + t * s.displacement
 		// 2. sphere equation: (Px-displacementx)^2 + (Py-displacementy)^2 + (Pz-displacementz)^2 = 1
 		// 3. inject 1 into 2
 		// 4. intersection => 1 solution in t => b^2 - 4*a*c = 0
@@ -134,28 +132,28 @@ namespace vob::aoeph
 		return { t0, segmentPoint0 };
 	}
 
-	static inline std::pair<float, glm::vec3> unit_sphere_cast(glm::vec3 const& a_displacement, triangle const& a_triangle)
+	static inline std::pair<float, glm::vec3> unit_sphere_cast(glm::vec3 const& a_displacement, _triangle const& a_triangle)
 	{
 		auto const planeNormal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
-		auto const planePoint = unit_sphere_intersection_point(a_displacement, plane{ a_triangle.m_p0, planeNormal });
+		auto const planePoint = unit_sphere_intersection_point(a_displacement, _plane{ a_triangle.m_p0, planeNormal });
 		if (is_inside(planePoint, a_triangle))
 		{
 			auto const t = unit_sphere_intersection_time(planePoint, -a_displacement);
 			return { t, planePoint };
 		}
 
-		auto const [t0, p0] = unit_sphere_cast(a_displacement, segment{ a_triangle.m_p0, a_triangle.m_p1 - a_triangle.m_p0 });
-		auto const [t1, p1] = unit_sphere_cast(a_displacement, segment{ a_triangle.m_p1, a_triangle.m_p2 - a_triangle.m_p1 });
-		auto const [t2, p2] = unit_sphere_cast(a_displacement, segment{ a_triangle.m_p2, a_triangle.m_p0 - a_triangle.m_p2 });
+		auto const [t0, p0] = unit_sphere_cast(a_displacement, _segment{ a_triangle.m_p0, a_triangle.m_p1 - a_triangle.m_p0 });
+		auto const [t1, p1] = unit_sphere_cast(a_displacement, _segment{ a_triangle.m_p1, a_triangle.m_p2 - a_triangle.m_p1 });
+		auto const [t2, p2] = unit_sphere_cast(a_displacement, _segment{ a_triangle.m_p2, a_triangle.m_p0 - a_triangle.m_p2 });
 
 		return t0 < t1 ? (t0 < t2 ? std::pair{ t0, p0 } : std::pair{ t2, p2 }) : (t1 < t2 ? std::pair{ t1, p1 } : std::pair{ t2, p2 });
 	}
 
-	static inline std::pair<float, glm::vec3> ellipsoid_cast(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_move, triangle const& a_triangle)
+	static inline std::pair<float, glm::vec3> ellipsoid_cast(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_move, _triangle const& a_triangle)
 	{
 		auto [hitTime, hitPos] = unit_sphere_cast(
 			glm::vec3{ a_invTransform * glm::vec4{ a_move, 0.0f } },
-			triangle{
+			_triangle{
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -163,12 +161,12 @@ namespace vob::aoeph
 		return { hitTime, cleanup(a_transform * glm::vec4{hitPos, 1.0f}) };
 	}
 
-	static inline bool unit_sphere_intersect_test(plane const& a_plane)
+	static inline bool unit_sphere_intersect_test(_plane const& a_plane)
 	{
 		return glm::dot(-a_plane.m_origin, a_plane.m_normal) * glm::dot(-a_plane.m_origin - a_plane.m_normal, a_plane.m_normal) < 0.0f;
 	}
 
-	static inline std::tuple<glm::vec3, float, float, float> origin_closest_point(segment const& a_segment)
+	static inline std::tuple<glm::vec3, float, float, float> origin_closest_point(_segment const& a_segment)
 	{
 		auto const t = -glm::dot(a_segment.m_origin, a_segment.m_displacement) / glm::dot(a_segment.m_displacement, a_segment.m_displacement);
 		auto const originClosestPoint = a_segment.m_origin + glm::clamp(t, 0.0f, 1.0f) * a_segment.m_displacement;
@@ -241,14 +239,14 @@ namespace vob::aoeph
 		return unit_circle_triangle_corner_uncovered_surface_ratio((i0 - c0) / r, (i1 - c0) / r, (z - c0) / r);
 	}
 
-	static inline std::tuple<glm::vec3, glm::vec3, float> unit_sphere_intersect(triangle const& a_triangle)
+	static inline std::tuple<glm::vec3, glm::vec3, float> unit_sphere_intersect(_triangle const& a_triangle)
 	{
 		auto const planeNormal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
 		auto const planeDist = glm::dot(-planeNormal, a_triangle.m_p0 + planeNormal);
 		auto const planePoint = -planeNormal * (1 + planeDist);
-		auto const [p0, delta0, r00, r01] = origin_closest_point(segment{ a_triangle.m_p0, a_triangle.m_p1 - a_triangle.m_p0 });
-		auto const [p1, delta1, r10, r11] = origin_closest_point(segment{ a_triangle.m_p1, a_triangle.m_p2 - a_triangle.m_p1 });
-		auto const [p2, delta2, r20, r21] = origin_closest_point(segment{ a_triangle.m_p2, a_triangle.m_p0 - a_triangle.m_p2 });
+		auto const [p0, delta0, r00, r01] = origin_closest_point(_segment{ a_triangle.m_p0, a_triangle.m_p1 - a_triangle.m_p0 });
+		auto const [p1, delta1, r10, r11] = origin_closest_point(_segment{ a_triangle.m_p1, a_triangle.m_p2 - a_triangle.m_p1 });
+		auto const [p2, delta2, r20, r21] = origin_closest_point(_segment{ a_triangle.m_p2, a_triangle.m_p0 - a_triangle.m_p2 });
 		auto const d0Sq = glm::dot(p0, p0);
 		auto const d1Sq = glm::dot(p1, p1);
 		auto const d2Sq = glm::dot(p2, p2);
@@ -288,10 +286,10 @@ namespace vob::aoeph
 		return d0Sq < d1Sq ? (d0Sq < d2Sq ? result(p0, d0Sq) : result(p2, d2Sq)) : (d1Sq < d2Sq ? result(p1, d1Sq) : result(p2, d2Sq));
 	}
 
-	static inline std::tuple<float, glm::vec3, glm::vec3, float> ellipsoid_intersect(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, triangle const& a_triangle)
+	static inline std::tuple<float, glm::vec3, glm::vec3, float> ellipsoid_intersect(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, _triangle const& a_triangle)
 	{
 		auto const [sphereTrianglePos, spherePos, coverRatio] = unit_sphere_intersect(
-			triangle{
+			_triangle{
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -308,10 +306,10 @@ namespace vob::aoeph
 		return { glm::dot(planeNormal, aoest::get_position(a_transform) - a_triangle.m_p0) < 0.0f ? -dist : dist, ellipsoidPos - dist * planeNormal, ellipsoidPos, coverRatio};
 	}
 
-	static inline std::tuple<float, glm::vec3, glm::vec3> ellipsoid_intersect2(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, triangle const& a_triangle)
+	static inline std::tuple<float, glm::vec3, glm::vec3> ellipsoid_intersect2(glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, _triangle const& a_triangle)
 	{
 		auto const [sphereTrianglePos, spherePos, coverRatio] = unit_sphere_intersect(
-			triangle{
+			_triangle{
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 				cleanup(a_invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -336,7 +334,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		triangle const& a_triangle,
+		_triangle const& a_triangle,
 		std::pair<float, float> const& a_timeRange)
 	{
 		if (a_timeRange.second - a_timeRange.first < 0.0001f)
@@ -347,7 +345,7 @@ namespace vob::aoeph
 			auto const invTransform = glm::inverse(transform);
 
 			auto const [point, normal, coverRatio] = unit_sphere_intersect(
-				triangle{
+				_triangle{
 					cleanup(invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 					cleanup(invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 					cleanup(invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -385,7 +383,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		triangle const& a_triangle,
+		_triangle const& a_triangle,
 		std::pair<float, float> const& a_timeRange)
 	{
 		if (a_timeRange.second - a_timeRange.first < 0.0001f)
@@ -396,7 +394,7 @@ namespace vob::aoeph
 			auto const invTransform = glm::inverse(transform);
 
 			auto const [point, normal, coverRatio] = unit_sphere_intersect(
-				triangle{
+				_triangle{
 					cleanup(invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 					cleanup(invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 					cleanup(invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -434,7 +432,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		triangle const& a_triangle)
+		_triangle const& a_triangle)
 	{
 		auto const startTransform = glm::scale(aoest::combine(a_position, a_rotation), a_radiuses);
 		auto const invStartTransform = glm::inverse(startTransform);
@@ -488,10 +486,10 @@ namespace vob::aoeph
 
 	void _draw_ellipsoid(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::mat4 const& a_transform, glm::vec3 const& a_radiuses, aoegl::rgba const& a_color)
 	{
-		constexpr auto kHorizontalSlices = 7;
-		constexpr auto kHorizontalSubdivisions = 8;
-		constexpr auto kVerticalSlices = 8;
-		constexpr auto kVerticalSubdivisions = 8;
+		constexpr auto kHorizontalSlices = 3;
+		constexpr auto kHorizontalSubdivisions = 4;
+		constexpr auto kVerticalSlices = 4;
+		constexpr auto kVerticalSubdivisions = 4;
 
 		for (int h = 0; h < kHorizontalSlices; ++h)
 		{
@@ -572,7 +570,7 @@ namespace vob::aoeph
 		}
 	}
 
-	void draw_sphere(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::vec3 const& a_position, float a_radius, aoegl::rgba const& a_color)
+	void _draw_sphere(aoegl::debug_mesh_world_component& a_debugMeshContext, glm::vec3 const& a_position, float a_radius, aoegl::rgba const& a_color)
 	{
 		_draw_ellipsoid(a_debugMeshContext, aoest::combine(a_position, glm::quat{}), glm::vec3{ a_radius }, a_color);
 	}
@@ -589,12 +587,13 @@ namespace vob::aoeph
 		, m_debugMeshWorldComponent{ a_wdp }
 		, m_directorWorldComponent{ a_wdp }
 		, m_cameraEntities{ a_wdp }
+		, m_dynamicBodyEntities{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
 		, m_simulationTimeContext{ a_wdp }
 	{}
 
 	float test(glm::vec3 const& a_radiuses, glm::vec3 const& a_position, glm::vec3 const& a_rotation,
-		glm::vec3 const& a_linearVelocity, glm::vec3 const& a_angularVelocity, triangle const& a_triangle,
+		glm::vec3 const& a_linearVelocity, glm::vec3 const& a_angularVelocity, _triangle const& a_triangle,
 		float dt, float minDt, float maxDt, float minStep)
 	{
 		glm::vec3 move = dt * a_linearVelocity;
@@ -679,7 +678,7 @@ namespace vob::aoeph
 	{
 		assert(z <= 0.0f);
 
-		// too far from sphere in z or null segment
+		// too far from sphere in z or null _segment
 		if (std::abs(z) >= 1.0f || glm::dot(p1 - p0, p1 - p0) < glm::epsilon<float>())
 		{
 			return std::nullopt;
@@ -689,7 +688,7 @@ namespace vob::aoeph
 		auto const p0Sq = glm::dot(p0, p0);
 		auto const p1Sq = glm::dot(p1, p1);
 
-		// segment entirely inside sphere
+		// _segment entirely inside sphere
 		if (p0Sq <= zRadiusSq && p1Sq <= zRadiusSq)
 		{
 			return std::pair{ p0, p1 };
@@ -701,7 +700,7 @@ namespace vob::aoeph
 		auto const c = glm::dot(p0, p0) - zRadiusSq;
 		auto const d = b * b - 4.0f * a * c;
 
-		// segment coming out
+		// _segment coming out
 		if (p0Sq <= zRadiusSq)
 		{
 			auto const r = (-b + std::sqrt(d)) / (2.0f * a);
@@ -709,7 +708,7 @@ namespace vob::aoeph
 
 			return std::pair{ p0, q };
 		}
-		// segment coming in
+		// _segment coming in
 		else if (p1Sq <= zRadiusSq)
 		{
 			auto const r = (-b - std::sqrt(d)) / (2.0f * a);
@@ -717,12 +716,12 @@ namespace vob::aoeph
 
 			return std::pair{ p0, q };
 		}
-		// segment always out
+		// _segment always out
 		else if (d < 0.0f)
 		{
 			return std::nullopt;
 		}
-		// segment comes in and out
+		// _segment comes in and out
 		else
 		{
 			auto const r0 = (-b - std::sqrt(d)) / (2.0f * a);
@@ -771,7 +770,7 @@ namespace vob::aoeph
 		return std::atanh(x / y);
 	}
 
-	struct static_body
+	struct _static_body
 	{
 		struct part
 		{
@@ -780,7 +779,7 @@ namespace vob::aoeph
 			float linear_resitution = 0.1f;
 			float friction = 1.0f;
 
-			std::vector<triangle> triangles;
+			std::vector<_triangle> triangles;
 		};
 
 		glm::mat4 transform;
@@ -788,28 +787,28 @@ namespace vob::aoeph
 		std::vector<part> parts;
 	};
 
-	static inline std::optional<std::tuple<float, glm::vec3, glm::vec3>> _unit_ellipsoid_intersect2(glm::vec3 const& a_radiuses, triangle const& a_triangle)
+	static inline std::optional<std::tuple<float, glm::vec3, glm::vec3>> _unit_ellipsoid_intersect2(glm::vec3 const& a_radiuses, _triangle const& a_triangle)
 	{
 		// The "fake" variables refer to those for calculations done in the skewed space where ellispoid is the unit-sphere.
 		auto const fakeP0 = a_triangle.m_p0 / a_radiuses;
 		auto const fakeP1 = a_triangle.m_p1 / a_radiuses;
 		auto const fakeP2 = a_triangle.m_p2 / a_radiuses;
 
-		// 1. Ellipsoid's center is below triangle
+		// 1. Ellipsoid's center is below _triangle
 		auto const fakeNormal = glm::normalize(glm::cross(fakeP1 - fakeP0, fakeP2 - fakeP0));
 		if (glm::dot(fakeNormal, -fakeP0) < 0.0f)
 		{
 			return std::nullopt;
 		}
 
-		// 2. Ellipsoid is above triangle
+		// 2. Ellipsoid is above _triangle
 		auto const fakePlaneDist = glm::dot(-fakeNormal, fakeP0 + fakeNormal);
 		if (fakePlaneDist > 0.0f)
 		{
 			return std::nullopt;
 		}
 
-		// 3. Deepest point of triangle's plane inside ellipsoid belongs to the triangle
+		// 3. Deepest point of _triangle's _plane inside ellipsoid belongs to the _triangle
 		auto const fakePlanePoint = -fakePlaneDist * fakeNormal;
 		auto const normal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
 		auto const deepestEllipsoidPointInPlane = -fakeNormal * a_radiuses;
@@ -819,7 +818,7 @@ namespace vob::aoeph
 			return std::make_tuple(glm::dot(deepestEllipsoidPointInPlane - planePoint, normal), planePoint, deepestEllipsoidPointInPlane);
 		}
 
-		// Compute what point of a triangle's edge is deepest inside ellipsoid
+		// Compute what point of a _triangle's edge is deepest inside ellipsoid
 		// (I think it's an approximation but unsure...).
 		auto const t01 = -glm::dot(fakeP0, fakeP1 - fakeP0) / glm::dot(fakeP1 - fakeP0, fakeP1 - fakeP0);
 		auto const fakeSegmentPoint01 = fakeP0 + glm::clamp(t01, 0.0f, 1.0f) * (fakeP1 - fakeP0);
@@ -832,7 +831,7 @@ namespace vob::aoeph
 		auto const d20Sq = glm::dot(fakeSegmentPoint20, fakeSegmentPoint20);
 		auto const fakeTrianglePoint = d01Sq < d12Sq ? (d01Sq < d20Sq ? fakeSegmentPoint01 : fakeSegmentPoint20) : (d12Sq < d20Sq ? fakeSegmentPoint12 : fakeSegmentPoint20);
 
-		// 4. Ellipsoid doesn't intersect triangle
+		// 4. Ellipsoid doesn't intersect _triangle
 		if (glm::dot(fakeTrianglePoint, fakeTrianglePoint) > 1.0f)
 		{
 			return std::nullopt;
@@ -895,11 +894,11 @@ namespace vob::aoeph
 	}
 
 	static inline std::optional<std::tuple<float, glm::vec3, glm::vec3>> _ellipsoid_intersect(
-		glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_radiuses, triangle const& a_triangle)
+		glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_radiuses, _triangle const& a_triangle)
 	{
 		auto unitResult = _unit_ellipsoid_intersect2(
 			a_radiuses,
-			triangle{
+			_triangle{
 				cleanup(a_invTransform * glm::vec4{ a_triangle.m_p0, 1.0f }),
 				cleanup(a_invTransform * glm::vec4{ a_triangle.m_p1, 1.0f }),
 				cleanup(a_invTransform * glm::vec4{ a_triangle.m_p2, 1.0f }) });
@@ -914,12 +913,12 @@ namespace vob::aoeph
 	}
 
 	static inline std::optional<std::tuple<float, glm::vec3, glm::vec3>> _ellipsoid_intersect(
-		glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_radiuses, std::vector<triangle> const& a_triangles)
+		glm::mat4 const& a_transform, glm::mat4 const& a_invTransform, glm::vec3 const& a_radiuses, std::vector<_triangle> const& a_triangles)
 	{
 		std::optional<std::tuple<float, glm::vec3, glm::vec3>> deepestIntersection = std::nullopt;
-		for (auto const& triangle : a_triangles)
+		for (auto const& _triangle : a_triangles)
 		{
-			auto const intersection = _ellipsoid_intersect(a_transform, a_invTransform, a_radiuses, triangle);
+			auto const intersection = _ellipsoid_intersect(a_transform, a_invTransform, a_radiuses, _triangle);
 			if (intersection == std::nullopt)
 			{
 				continue;
@@ -946,7 +945,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		triangle const& a_triangle)
+		_triangle const& a_triangle)
 	{
 		auto const startTransform = glm::scale(aoest::combine(a_position, a_rotation), a_radiuses);
 		auto const invStartTransform = glm::inverse(startTransform);
@@ -978,12 +977,12 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		std::vector<triangle> const& a_triangles)
+		std::vector<_triangle> const& a_triangles)
 	{
 		std::pair<float, glm::vec3> closestContact = std::make_tuple(1.0f, glm::vec3{0.0f});
-		for (auto const& triangle : a_triangles)
+		for (auto const& _triangle : a_triangles)
 		{
-			auto const contact = _ellipsoid_move2(a_position, a_rotation, a_radiuses, a_linearMove, a_angularMove, triangle);
+			auto const contact = _ellipsoid_move2(a_position, a_rotation, a_radiuses, a_linearMove, a_angularMove, _triangle);
 			if (0 <= contact.first && contact.first < closestContact.first)
 			{
 				closestContact = contact;
@@ -1017,7 +1016,7 @@ namespace vob::aoeph
 		return point / denom;
 	}
 
-	static inline glm::vec3 _closest_triangle_point(glm::vec3 const& a_point, triangle const& a_triangle)
+	static inline glm::vec3 _closest_triangle_point(glm::vec3 const& a_point, _triangle const& a_triangle)
 	{
 		auto const a = a_triangle.m_p0;
 		auto const b = a_triangle.m_p1;
@@ -1063,7 +1062,7 @@ namespace vob::aoeph
 			return b + w * (c - b);
 		}
 
-		// Inside triangle
+		// Inside _triangle
 		float denom = glm::dot(ab, ab) * glm::dot(ac, ac) - glm::dot(ab, ac) * glm::dot(ab, ac);
 		float v = (glm::dot(ac, ac) * glm::dot(ap, ab) - glm::dot(ab, ac) * glm::dot(ap, ac)) / denom;
 		float w = (glm::dot(ab, ab) * glm::dot(ap, ac) - glm::dot(ab, ac) * glm::dot(ap, ab)) / denom;
@@ -1100,9 +1099,9 @@ namespace vob::aoeph
 		return a_point * r2 / (r2 + lambda);
 	}
 
-	static inline std::tuple<float, glm::vec3, glm::vec3> _unit_ellipsoid_intersect(glm::vec3 const& a_radiuses, triangle const& a_triangle)
+	static inline std::tuple<float, glm::vec3, glm::vec3> _unit_ellipsoid_intersect(glm::vec3 const& a_radiuses, _triangle const& a_triangle)
 	{
-		// returns signed distance, ellipsoid point, and triangle point
+		// returns signed distance, ellipsoid point, and _triangle point
 
 		auto const normal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
 
@@ -1128,21 +1127,21 @@ namespace vob::aoeph
 		//	auto const fakeP1 = a_triangle.m_p1 / a_radiuses;
 		//	auto const fakeP2 = a_triangle.m_p2 / a_radiuses;
 
-		//	// 1. Ellipsoid's center is below triangle
+		//	// 1. Ellipsoid's center is below _triangle
 		//	auto const fakeNormal = glm::normalize(glm::cross(fakeP1 - fakeP0, fakeP2 - fakeP0));
 		//	if (glm::dot(fakeNormal, -fakeP0) < 0.0f)
 		//	{
 		//		return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
 		//	}
 
-		//	// 2. Ellipsoid is above triangle
+		//	// 2. Ellipsoid is above _triangle
 		//	auto const fakePlaneDist = glm::dot(-fakeNormal, fakeP0 + fakeNormal);
 		//	if (fakePlaneDist > 1.0f)
 		//	{
 		//		return { 0.0f, glm::vec3{ 0.0f }, glm::vec3{ 0.0f } };
 		//	}
 
-		//	// 3. Deepest point of triangle's plane inside ellipsoid belongs to the triangle
+		//	// 3. Deepest point of _triangle's _plane inside ellipsoid belongs to the _triangle
 		//	auto const fakePlanePoint = -fakePlaneDist * fakeNormal;
 		//	auto const normal = glm::normalize(glm::cross(a_triangle.m_p1 - a_triangle.m_p0, a_triangle.m_p2 - a_triangle.m_p0));
 		//	auto const deepestEllipsoidPointInPlane = -fakeNormal * a_radiuses;
@@ -1152,7 +1151,7 @@ namespace vob::aoeph
 		//		return std::make_tuple(glm::dot(deepestEllipsoidPointInPlane - planePoint, normal), deepestEllipsoidPointInPlane, planePoint);
 		//	}
 
-		//	// Compute what point of a triangle's edge is deepest inside ellipsoid
+		//	// Compute what point of a _triangle's edge is deepest inside ellipsoid
 		//	// (I think it's an approximation but unsure...).
 		//	auto const t01 = -glm::dot(fakeP0, fakeP1 - fakeP0) / glm::dot(fakeP1 - fakeP0, fakeP1 - fakeP0);
 		//	auto const fakeSegmentPoint01 = fakeP0 + glm::clamp(t01, 0.0f, 1.0f) * (fakeP1 - fakeP0);
@@ -1165,7 +1164,7 @@ namespace vob::aoeph
 		//	auto const d20Sq = glm::dot(fakeSegmentPoint20, fakeSegmentPoint20);
 		//	auto const fakeTrianglePoint = d01Sq < d12Sq ? (d01Sq < d20Sq ? fakeSegmentPoint01 : fakeSegmentPoint20) : (d12Sq < d20Sq ? fakeSegmentPoint12 : fakeSegmentPoint20);
 
-		//	// 4. Ellipsoid doesn't intersect triangle
+		//	// 4. Ellipsoid doesn't intersect _triangle
 		//	if (glm::dot(fakeTrianglePoint, fakeTrianglePoint) > 1.0f)
 		//	{
 		//		return { 0.0f, fakeTrianglePoint * a_radiuses, fakeTrianglePoint * a_radiuses };
@@ -1183,14 +1182,14 @@ namespace vob::aoeph
 		glm::vec3 const& a_position,
 		glm::quat const& a_rotation,
 		glm::vec3 const& a_radiuses,
-		triangle const& a_triangle)
+		_triangle const& a_triangle)
 	{
 		auto const transform = aoest::combine(a_position, a_rotation);
 		auto const invTransform = glm::inverse(transform);
 
 		auto [dist, unitEllipsoidPoint, unitTrianglePoint] = _unit_ellipsoid_intersect(
 			a_radiuses,
-			triangle{
+			_triangle{
 				cleanup(invTransform * glm::vec4{ a_triangle.m_p0, 1.0f }),
 				cleanup(invTransform * glm::vec4{ a_triangle.m_p1, 1.0f }),
 				cleanup(invTransform * glm::vec4{ a_triangle.m_p2, 1.0f }) });
@@ -1206,14 +1205,14 @@ namespace vob::aoeph
 		glm::quat const& a_rotation,
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
-		triangle const& a_triangle)
+		_triangle const& a_triangle)
 	{
 		auto const transform = glm::scale(aoest::combine(a_position, a_rotation), a_radiuses);
 		auto const invTransform = glm::inverse(transform);
 
 		auto [hitTime, hitPos] = unit_sphere_cast(
 			glm::vec3{ invTransform * glm::vec4{ a_linearMove, 0.0f } },
-			triangle{
+			_triangle{
 				cleanup(invTransform * glm::vec4{a_triangle.m_p0, 1.0f}),
 				cleanup(invTransform * glm::vec4{a_triangle.m_p1, 1.0f}),
 				cleanup(invTransform * glm::vec4{a_triangle.m_p2, 1.0f})
@@ -1228,7 +1227,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_radiuses,
 		glm::vec3 const& a_linearMove,
 		glm::vec3 const& a_angularMove,
-		triangle const& a_triangle,
+		_triangle const& a_triangle,
 		std::vector<std::pair<glm::mat4, aoegl::rgba>>& a_testTransforms,
 		std::int32_t& a_testCount)
 	{
@@ -1353,7 +1352,6 @@ namespace vob::aoeph
 		return glm::normalize(glm::angleAxis(angle, axis) * a_rotation);
 	}
 
-#pragma optimize("", off)
 	void test_system::update() const
 	{
 
@@ -1373,13 +1371,13 @@ namespace vob::aoeph
 		auto const computationStartTime = std::chrono::high_resolution_clock().now();
 		// B. world
 		static auto k_gravity = glm::vec3{ 0.0f, -10.0f, 0.0f };
-		static auto k_groundTriangles = std::vector<triangle>();
-		static auto k_groundTriangle = triangle{
-			glm::vec3{ -5.0f, 2.0f, -5.0f },
-			glm::vec3{ -5.0f, 2.0f, 20.0f },
-			glm::vec3{ 20.0f, 2.0f, -5.0f }
+		static auto k_groundTriangles = std::vector<_triangle>();
+		static auto k_groundTriangle = _triangle{
+			glm::vec3{ 20.0f, 1.0f, 20.0f },
+			glm::vec3{ 20.0f, 1.0f, 500.0f },
+			glm::vec3{ 500.0f, 1.0f, 20.0f }
 		};
-		static auto k_groundTriangle2 = triangle{
+		static auto k_groundTriangle2 = _triangle{
 			glm::vec3{ -10.0f, 1.0f, 0.0f },
 			glm::vec3{ -10.0f, 100.0f, 0.0f },
 			glm::vec3{ -10.0f, 1.0f, 100.0f }
@@ -1391,7 +1389,7 @@ namespace vob::aoeph
 		// C. ellipsoid
 		static auto k_ellipsoidRadiuses = glm::vec3{ 1.067f, 0.818f, 2.146f };
 		static auto k_ellipsoidMass = 1.0f;
-		static auto k_ellipsoidStartPosition = glm::vec3{ 0.0f, 10.0f, 0.0f };
+		static auto k_ellipsoidStartPosition = glm::vec3{ 30.0f, 10.0f, 30.0f };
 		static auto k_ellipsoidStartRotation = glm::vec3{ 0.0f, 0.0f, 0.0f };
 		static auto k_ellipsoidStartLinearVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
 		static auto k_ellipsoidStartAngularVelocity = glm::vec3{ 0.0f, 0.0f, 0.0f };
@@ -1589,67 +1587,108 @@ namespace vob::aoeph
 		{
 			if (lastCollisionPoint.has_value())
 			{
-				draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->first, 0.1f, aoegl::k_red);
+				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->first, 0.1f, aoegl::k_red);
 				draw_line(*m_debugMeshWorldComponent, lastCollisionPoint->first, lastCollisionPoint->first + lastCollisionPoint->second, aoegl::k_orange);
-				draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->third, 0.1f, aoegl::k_yellow);
+				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->third, 0.1f, aoegl::k_yellow);
 			}
 		}
 
 		// draw hits
 		//draw_line(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, k_lastContactEllipsoidPosition + k_lastContactForce, aoegl::k_orange);
-		//draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.1f, aoegl::k_red);
+		//_draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.1f, aoegl::k_red);
 #pragma endregion
 
-
-
-
-
-		if (simulationTimeStep == 0.0f)
+		/*if (simulationTimeStep == 0.0f)
+		{
+			return;
+		}*/
+		if (k_lastUpdateTime + std::chrono::high_resolution_clock::duration(vob::misph::measure_time{ 0.01f })
+			> m_simulationTimeContext->tick_start_time)
 		{
 			return;
 		}
+		k_lastUpdateTime += std::chrono::high_resolution_clock::duration(vob::misph::measure_time{ 0.01f });
+		simulationTimeStep = 0.01f;
+		
+		{
+			auto dynamicBodyEntitiesView = m_dynamicBodyEntities.get();
+			auto dynamicBodyEntity = dynamicBodyEntitiesView.front();
+			auto [position, rotation, linearVelocity, angularVelocityLocal, dynamicBody] = dynamicBodyEntitiesView.get(dynamicBodyEntity);
 
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::Up].is_pressed())
-		{
-			k_ellipsoidLinearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-			k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
-		}
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::Down].is_pressed())
-		{
-			k_ellipsoidLinearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-			k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
-		}
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::Left].is_pressed())
-		{
-			auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
-
-			auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-			auto const theta = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } * simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
-			auto const thetaMagnitude = glm::length(theta);
-			if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+			if (m_inputs->keyboard.keys[aoein::keyboard::key::Up].is_pressed())
 			{
-				glm::vec3 axis = theta / thetaMagnitude;
-				float halfTheta = thetaMagnitude / 2.0f;
-				k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
+				k_ellipsoidLinearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+				k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
+
+				linearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, rotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+				angularVelocityLocal = glm::vec3{ 0.0f };
 			}
-
-			k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
-		}
-		if (m_inputs->keyboard.keys[aoein::keyboard::key::Right].is_pressed())
-		{
-			auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
-
-			auto const sign = glm::dot(localVelocity, glm::vec3{0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-			auto const theta = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
-			auto const thetaMagnitude = glm::length(theta);
-			if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+			if (m_inputs->keyboard.keys[aoein::keyboard::key::Down].is_pressed())
 			{
-				glm::vec3 axis = theta / thetaMagnitude;
-				float halfTheta = thetaMagnitude / 2.0f;
-				k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
-			}
+				k_ellipsoidLinearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+				k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
 
-			k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
+				linearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, rotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
+				angularVelocityLocal = glm::vec3{ 0.0f };
+			}
+			if (m_inputs->keyboard.keys[aoein::keyboard::key::Left].is_pressed())
+			{
+				auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
+
+				auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+				auto const theta = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
+				auto const thetaMagnitude = glm::length(theta);
+				if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+				{
+					glm::vec3 axis = theta / thetaMagnitude;
+					float halfTheta = thetaMagnitude / 2.0f;
+					k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
+				}
+
+				k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
+
+				auto lv = glm::inverse(glm::mat3{ rotation }) * linearVelocity;
+				auto const s = glm::dot(lv, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+				auto const th = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(lv) / 10.0f);
+				auto const thm = glm::length(th);
+				if (thm > glm::epsilon<float>())
+				{
+					glm::vec3 axis = th / thm;
+					float halfTheta = thm / 2.0f;
+					rotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rotation;
+				}
+
+				linearVelocity = glm::mat3{ rotation } *lv;
+			}
+			if (m_inputs->keyboard.keys[aoein::keyboard::key::Right].is_pressed())
+			{
+				auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
+
+				auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+				auto const theta = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
+				auto const thetaMagnitude = glm::length(theta);
+				if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
+				{
+					glm::vec3 axis = theta / thetaMagnitude;
+					float halfTheta = thetaMagnitude / 2.0f;
+					k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
+				}
+
+				k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
+
+				auto lv = glm::inverse(glm::mat3{ rotation }) * linearVelocity;
+				auto const s = glm::dot(lv, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
+				auto const th = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(lv) / 10.0f);
+				auto const thm = glm::length(th);
+				if (thm > glm::epsilon<float>())
+				{
+					glm::vec3 axis = th / thm;
+					float halfTheta = thm / 2.0f;
+					rotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rotation;
+				}
+
+				linearVelocity = glm::mat3{ rotation } *lv;
+			}
 		}
 
 
@@ -1667,7 +1706,7 @@ namespace vob::aoeph
 		auto solidAngularVelocityLocal = k_ellipsoidAngularVelocity;
 
 		// (pre-find static triangles to consider)
-		auto const staticTriangles = std::array<triangle, 2>{ k_groundTriangle, k_groundTriangle2 };
+		auto const staticTriangles = std::array<_triangle, 2>{ k_groundTriangle, k_groundTriangle2 };
 		/* debug */k_lastCollisionPoints.clear();
 		/* debug */k_lastCollisionPoints.resize(k_solidShape.parts.size(), std::nullopt);
 
@@ -1723,7 +1762,7 @@ namespace vob::aoeph
 						auto closestStaticTriangleDist = 0.0f;
 						auto closestStaticTrianglePoint = glm::vec3{};
 						auto closestEllipsoidPoint = glm::vec3{};
-						auto closestStaticTriangle = triangle{};
+						auto closestStaticTriangle = _triangle{};
 						for (auto const& staticTriangle : staticTriangles)
 						{
 							auto [staticTriangleDist, ellipsoidPoint, staticTrianglePoint] = _ellipsoid_intersect(solidPartPosition, solidPartRotation, solidPartRadiuses, staticTriangle);

@@ -8,8 +8,6 @@
 #include <vob/aoe/rendering/data/model_data.h>
 #include <vob/aoe/rendering/components/model_component.h>
 #include <vob/aoe/rendering/components/model_data_component.h>
-#include <vob/aoe/physics/_collider_component.h>
-#include <vob/aoe/physics/_pawn_component.h>
 #include <vob/aoe/physics/components/rigidbody.h>
 #include <vob/aoe/spacetime/attachment_component.h>
 #include <vob/aoe/spacetime/lifetime_component.h>
@@ -119,14 +117,6 @@ namespace vob::aoedb
 							*m_debugControllerWorldComponent->m_itemComponents.find<aoest::lifetime_component>());
 
 						a_registry.emplace<aoedb::controllable_tag>(itemEntity);
-
-						a_registry.emplace<aoeph::rigidbody>(
-							itemEntity,
-							false,
-							1.0f /* mass */,
-							glm::rotate(glm::mat4{1.0f}, glm::half_pi<btScalar>(), glm::vec3{1.0f, 0.0f, 0.0f}) /* center of mass offset */,
-							std::make_shared<btCylinderShape>(btVector3{1.0f, 1.1f, 1.0f}),
-							std::make_shared<aoeph::material>(0.5f, 1.0f, 0.01f, 0.2f));
 
 						// a_registry.emplace<aoeph::pawn_component>(itemEntity);
 
@@ -345,14 +335,6 @@ namespace vob::aoedb
 					a_registry.emplace<aoegl::model_data_component>(
 						terrainEntity,
 						*m_debugControllerWorldComponent->m_terrainComponents.find<aoegl::model_data_component>());
-
-					a_registry.emplace<aoeph::rigidbody>(
-						terrainEntity,
-						false,
-						0.0f /* mass */,
-						aoest::combine(glm::vec3{ 0.0f, (maxH + minH) / 2, 0.0f }, {}) /* center of mass offset */,
-						terrainShape,
-						std::make_shared<aoeph::material>(0.2f, 0.9f, 0.01f, 0.1f));
 
 					std::swap(
 						m_debugControllerWorldComponent->m_currentHeights,
