@@ -53,6 +53,8 @@ char const* xinputMapping = "78696e70757401000000000000000000,Xbox Controller,pl
 
 int main()
 {
+	OPTICK_APP("AOE")
+
 	// Create data
 	aoe::DataHolder data;
 
