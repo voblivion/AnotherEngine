@@ -12,9 +12,14 @@
 
 #include <vob/aoe/engine/world.h>
 
+#include <vob/aoe/engine/game.h>
+#include <vob/aoe/engine/multi_world.h>
+#include <vob/aoe/engine/EcsWorld.h>
+
+
 #include <vob/aoe/input/bindings.h>
 #include <vob/aoe/input/binding_util.h>
-#include <vob/aoe/input/inputs.h>
+#include <vob/aoe/input/_inputs.h>
 
 #include <vob/aoe/terrain/procedural_terrain.h>
 
@@ -38,8 +43,8 @@ using namespace vob;
 using namespace misph::literals;
 using namespace mishs::literals;
 
-const std::uint32_t g_width = 2048u;
-const std::uint32_t g_height = 1024u;
+const std::uint32_t g_width = static_cast<uint32_t>(2560u / 1.05);
+const std::uint32_t g_height = static_cast<uint32_t>(1440u / 1.05);
 
 #include <filesystem>
 #include <unordered_map>
@@ -51,8 +56,21 @@ void glfwErrorCallback(int code, const char* description)
 
 char const* xinputMapping = "78696e70757401000000000000000000,Xbox Controller,platform:Windows,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7,guide:b8,leftstick:b9,rightstick:b10,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:a4,righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,";
 
+struct DummyWorld : public aoeng::IWorld
+{
+	void start(aoeng::IGameController& a_gameController) override {}
+	void update() override {}
+	void stop() override {}
+};
+
+
+#include "DefaultWorld.h"
+#include <vob/aoe/window/GlfwWindow.h>
+#include <vob/aoe/rendering/ImGuiUtils.h>
+
 int main()
 {
+
 	OPTICK_APP("AOE")
 
 	// Create data
@@ -87,6 +105,27 @@ int main()
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_REFRESH_RATE, 0);
 
+	// ver 2.0
+	{
+		// Init window
+		aoewi::GlfwWindow window{ glm::ivec2{ g_width, g_height }, "An Other Engine v2" };
+		glfwMakeContextCurrent(window.getNativeHandle());
+		glfwSwapInterval(0);
+		glEnable(GL_MULTISAMPLE);
+		std::cout << glGetString(GL_VERSION) << std::endl;
+
+		// Init ImGui
+		aoegl::initializeImGui(window);
+
+		aoeng::Game myGame;
+		std::shared_ptr<aoeng::IWorld> world = createDefaultWorld(window);
+		myGame.run(world);
+
+		// Finalize ImGui
+		aoegl::terminateImGui();
+	}
+
+	// ver 1.0
 	{
 		aoewi::glfw_window window{ glm::ivec2{ g_width, g_height }, "An Other Engine" };
 
@@ -101,6 +140,8 @@ int main()
 		init_world_components(world, data, window);
 		init_world_systems(world, schedule);
 		init_default_map(world, data);
+
+		std::cout << schedule.size() << std::endl;
 
 		// Run game
 		world.start(schedule);

@@ -15,7 +15,7 @@ namespace vob::aoest
 
 		aoeng::entity m_parent = entt::tombstone;
 		glm::mat4 m_localTransform = glm::mat4{ 1.0f };
-
+		glm::vec3 lockedPositionAxis = glm::vec3{ 1.0f, 1.0f, 1.0f };
 		bool m_needsUpdate = false;
 	};
 }

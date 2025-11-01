@@ -21,10 +21,28 @@ namespace vob::aoest
 		{}
 	};
 
+	struct Position : public glm::vec3
+	{
+		template <typename... TArgs>
+		Position(TArgs&&... a_args)
+			: glm::vec3{ std::forward<TArgs>(a_args)... }
+		{}
+	};
+
 	struct rotation : public glm::quat
 	{
 		template <typename... TArgs>
 		rotation(TArgs&&... a_args)
+			: glm::quat{ std::forward<TArgs>(a_args)... }
+		{}
+	};
+
+	struct Rotation : public glm::quat
+	{
+		Rotation() : glm::quat() {}
+
+		template <typename... TArgs>
+		Rotation(TArgs&&... a_args)
 			: glm::quat{ std::forward<TArgs>(a_args)... }
 		{}
 	};

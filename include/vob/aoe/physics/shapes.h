@@ -5,6 +5,21 @@
 
 namespace vob::aoeph
 {
+	struct Aabb
+	{
+		glm::vec3 min;
+		glm::vec3 max;
+	};
+
+	struct Triangle
+	{
+		glm::vec3 p0;
+		glm::vec3 p1;
+		glm::vec3 p2;
+	};
+
+
+
 	struct aabb
 	{
 		glm::vec3 min;

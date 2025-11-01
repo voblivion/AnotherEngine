@@ -21,9 +21,9 @@ namespace vob::misvi
 {
 	VOB_MISVI_ACCEPT(vob::aoegl::camera_component)
 	{
-		VOB_MISVI_NVP("Field Of View", fov);
-		VOB_MISVI_NVP("Near Clip", nearClip);
-		VOB_MISVI_NVP("Far Clip", farClip);
+		VOB_MISVI_NVP("Field Of View", m_fov);
+		VOB_MISVI_NVP("Near Clip", m_nearClip);
+		VOB_MISVI_NVP("Far Clip", m_farClip);
 		return true;
 	}
 }

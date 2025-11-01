@@ -587,7 +587,6 @@ namespace vob::aoeph
 		, m_debugMeshWorldComponent{ a_wdp }
 		, m_directorWorldComponent{ a_wdp }
 		, m_cameraEntities{ a_wdp }
-		, m_dynamicBodyEntities{ a_wdp }
 		, m_windowWorldComponent{ a_wdp }
 		, m_simulationTimeContext{ a_wdp }
 	{}
@@ -979,7 +978,7 @@ namespace vob::aoeph
 		glm::vec3 const& a_angularMove,
 		std::vector<_triangle> const& a_triangles)
 	{
-		std::pair<float, glm::vec3> closestContact = std::make_tuple(1.0f, glm::vec3{0.0f});
+		std::pair<float, glm::vec3> closestContact = std::make_pair(1.0f, glm::vec3{0.0f});
 		for (auto const& _triangle : a_triangles)
 		{
 			auto const contact = _ellipsoid_move2(a_position, a_rotation, a_radiuses, a_linearMove, a_angularMove, _triangle);
@@ -1282,14 +1281,14 @@ namespace vob::aoeph
 
 			timeRange.first = midTime;
 			timeRange.second = 1.0f;
-			// a_testTransforms.emplace_back(aoest::combine(a_position + midTime * linearMove, midRotation), aoegl::k_gray);
+			// a_testTransforms.emplace_back(aoest::combine(a_position + midTime * linearMove, midRotation), aoegl::_k_gray);
 
 			++a_testCount;
 		}
 
 		auto const leftPosition = a_position + timeRange.first * linearMove;
 		auto const leftRotation = glm::quat{ angularMove * timeRange.first } * a_rotation;
-		// a_testTransforms.emplace_back(aoest::combine(leftPosition, leftRotation), aoegl::k_cyan);
+		// a_testTransforms.emplace_back(aoest::combine(leftPosition, leftRotation), aoegl::_k_cyan);
 		auto const finalCastDist = _ellipsoid_cast(leftPosition, leftRotation, a_radiuses, linearMove * (timeRange.second - timeRange.first), a_triangle);
 
 		if (finalCastDist < 0.0f)
@@ -1580,22 +1579,22 @@ namespace vob::aoeph
 				// vob aoegl::to_rgba(glm::vec4{ 0.4f, 0.1f, 0.1f, 1.0f }));
 				aoegl::to_rgba(glm::vec4{ 0.5f }));
 		}
-		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidLinearVelocity, aoegl::k_green);
-		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidAngularVelocity, aoegl::k_red);
+		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidLinearVelocity, aoegl::_k_green);
+		draw_line(*m_debugMeshWorldComponent, k_ellipsoidPosition, k_ellipsoidPosition + k_ellipsoidAngularVelocity, aoegl::_k_red);
 
 		for (auto const& lastCollisionPoint : k_lastCollisionPoints)
 		{
 			if (lastCollisionPoint.has_value())
 			{
-				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->first, 0.1f, aoegl::k_red);
-				draw_line(*m_debugMeshWorldComponent, lastCollisionPoint->first, lastCollisionPoint->first + lastCollisionPoint->second, aoegl::k_orange);
-				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->third, 0.1f, aoegl::k_yellow);
+				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->first, 0.1f, aoegl::_k_red);
+				draw_line(*m_debugMeshWorldComponent, lastCollisionPoint->first, lastCollisionPoint->first + lastCollisionPoint->second, aoegl::_k_orange);
+				_draw_sphere(*m_debugMeshWorldComponent, lastCollisionPoint->third, 0.1f, aoegl::_k_yellow);
 			}
 		}
 
 		// draw hits
-		//draw_line(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, k_lastContactEllipsoidPosition + k_lastContactForce, aoegl::k_orange);
-		//_draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.1f, aoegl::k_red);
+		//draw_line(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, k_lastContactEllipsoidPosition + k_lastContactForce, aoegl::_k_orange);
+		//_draw_sphere(*m_debugMeshWorldComponent, k_lastContactEllipsoidPosition, 0.1f, aoegl::_k_red);
 #pragma endregion
 
 		/*if (simulationTimeStep == 0.0f)
@@ -1609,88 +1608,6 @@ namespace vob::aoeph
 		}
 		k_lastUpdateTime += std::chrono::high_resolution_clock::duration(vob::misph::measure_time{ 0.01f });
 		simulationTimeStep = 0.01f;
-		
-		{
-			auto dynamicBodyEntitiesView = m_dynamicBodyEntities.get();
-			auto dynamicBodyEntity = dynamicBodyEntitiesView.front();
-			auto [position, rotation, linearVelocity, angularVelocityLocal, dynamicBody] = dynamicBodyEntitiesView.get(dynamicBodyEntity);
-
-			if (m_inputs->keyboard.keys[aoein::keyboard::key::Up].is_pressed())
-			{
-				k_ellipsoidLinearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-				k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
-
-				linearVelocity += 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, rotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-				angularVelocityLocal = glm::vec3{ 0.0f };
-			}
-			if (m_inputs->keyboard.keys[aoein::keyboard::key::Down].is_pressed())
-			{
-				k_ellipsoidLinearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, k_ellipsoidRotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-				k_ellipsoidAngularVelocity = glm::vec3{ 0.0f };
-
-				linearVelocity -= 10.0f * simulationTimeStep * glm::vec3{ aoest::combine(glm::vec3{0.0f}, rotation) * glm::vec4{0.0f, 0.0f, -1.0f, 1.0f} };
-				angularVelocityLocal = glm::vec3{ 0.0f };
-			}
-			if (m_inputs->keyboard.keys[aoein::keyboard::key::Left].is_pressed())
-			{
-				auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
-
-				auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-				auto const theta = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
-				auto const thetaMagnitude = glm::length(theta);
-				if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
-				{
-					glm::vec3 axis = theta / thetaMagnitude;
-					float halfTheta = thetaMagnitude / 2.0f;
-					k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
-				}
-
-				k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
-
-				auto lv = glm::inverse(glm::mat3{ rotation }) * linearVelocity;
-				auto const s = glm::dot(lv, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-				auto const th = sign * glm::vec3{ 0.0f, 1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(lv) / 10.0f);
-				auto const thm = glm::length(th);
-				if (thm > glm::epsilon<float>())
-				{
-					glm::vec3 axis = th / thm;
-					float halfTheta = thm / 2.0f;
-					rotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rotation;
-				}
-
-				linearVelocity = glm::mat3{ rotation } *lv;
-			}
-			if (m_inputs->keyboard.keys[aoein::keyboard::key::Right].is_pressed())
-			{
-				auto const localVelocity = glm::inverse(glm::mat3{ k_ellipsoidRotation }) * k_ellipsoidLinearVelocity;
-
-				auto const sign = glm::dot(localVelocity, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-				auto const theta = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(localVelocity) / 10.0f);
-				auto const thetaMagnitude = glm::length(theta);
-				if (thetaMagnitude > glm::epsilon<float>()) // some friction constant?
-				{
-					glm::vec3 axis = theta / thetaMagnitude;
-					float halfTheta = thetaMagnitude / 2.0f;
-					k_ellipsoidRotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * k_ellipsoidRotation;
-				}
-
-				k_ellipsoidLinearVelocity = glm::mat3{ k_ellipsoidRotation } *localVelocity;
-
-				auto lv = glm::inverse(glm::mat3{ rotation }) * linearVelocity;
-				auto const s = glm::dot(lv, glm::vec3{ 0.0f, 0.0f, -1.0f }) > 0.0f ? 1.0f : -1.0f;
-				auto const th = sign * glm::vec3{ 0.0f, -1.0f, 0.0f } *simulationTimeStep * std::sqrt(glm::length(lv) / 10.0f);
-				auto const thm = glm::length(th);
-				if (thm > glm::epsilon<float>())
-				{
-					glm::vec3 axis = th / thm;
-					float halfTheta = thm / 2.0f;
-					rotation = glm::quat(std::cos(halfTheta), axis * std::sin(halfTheta)) * rotation;
-				}
-
-				linearVelocity = glm::mat3{ rotation } *lv;
-			}
-		}
-
 
 		// 3. physics
 		auto const ellipsoidTransform = glm::scale(aoest::combine(k_ellipsoidPosition, k_ellipsoidRotation), k_ellipsoidRadiuses);

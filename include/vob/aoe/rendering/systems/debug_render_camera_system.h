@@ -44,14 +44,14 @@ namespace vob::aoegl
 				auto const viewProjectionTransform = viewTransform * invTransform;
 				auto rev = glm::inverse(viewProjectionTransform);
 
-				auto lbf = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, -1.0f, -1.0f, 1.0f } ), k_red };
-				auto lbb = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, -1.0f, 1.0f, 1.0f } ), k_red };
-				auto ltf = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, 1.0f, -1.0f, 1.0f } ), k_red };
-				auto ltb = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, 1.0f, 1.0f, 1.0f } ), k_red };
-				auto rbf = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, -1.0f, -1.0f, 1.0f } ), k_red };
-				auto rbb = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, -1.0f, 1.0f, 1.0f } ), k_red };
-				auto rtf = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, 1.0f, -1.0f, 1.0f } ), k_red };
-				auto rtb = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f } ), k_red };
+				auto lbf = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, -1.0f, -1.0f, 1.0f } ), _k_red };
+				auto lbb = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, -1.0f, 1.0f, 1.0f } ), _k_red };
+				auto ltf = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, 1.0f, -1.0f, 1.0f } ), _k_red };
+				auto ltb = debug_vertex{ cleanup( rev * glm::vec4{ -1.0f, 1.0f, 1.0f, 1.0f } ), _k_red };
+				auto rbf = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, -1.0f, -1.0f, 1.0f } ), _k_red };
+				auto rbb = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, -1.0f, 1.0f, 1.0f } ), _k_red };
+				auto rtf = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, 1.0f, -1.0f, 1.0f } ), _k_red };
+				auto rtb = debug_vertex{ cleanup( rev * glm::vec4{ 1.0f, 1.0f, 1.0f, 1.0f } ), _k_red };
 
 
 

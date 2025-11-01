@@ -1,13 +1,14 @@
 #pragma once
 
 #include <vob/aoe/input/binding_base.h>
-#include <vob/aoe/input/inputs.h>
+#include <vob/aoe/input/_inputs.h>
 
 #include <vob/misc/std/id_map.h>
 
 
 namespace vob::aoein
 {
+
 	template <typename TBindingBase>
 	class input_bindings
 	{
@@ -83,4 +84,5 @@ namespace vob::aoein
 			switches.update(a_inputs, a_elapsedTime);
 		}
 	};
+
 }

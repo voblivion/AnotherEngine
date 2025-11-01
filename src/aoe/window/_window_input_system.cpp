@@ -1,13 +1,15 @@
 #include <vob/aoe/window/window_input_system.h>
 
-#include <vob/aoe/input/inputs.h>
+#include <vob/aoe/input/_inputs.h>
 
 #include <iostream>
+
 
 namespace vob::aoewi
 {
 	namespace
 	{
+
 		void process_event(
 			key_event const& a_keyEvent,
 			aoewi::window_input_world_component const& inputWorldComponent,
@@ -102,7 +104,7 @@ namespace vob::aoewi
 
 		process_events(window, *m_windowInputWorldComponent, *m_inputs);
 
-		for (int g = 0; g < aoein::k_maxGamepadCount; ++g)
+		for (int g = 0; g < aoein::_k_maxGamepadCount; ++g)
 		{
 			auto& gamepad = m_inputs->gamepads[g];
 
@@ -121,4 +123,5 @@ namespace vob::aoewi
 			}
 		}
 	}
+
 }

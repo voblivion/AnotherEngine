@@ -5,6 +5,7 @@
 #include <vob/aoe/debug/controlled_tag.h>
 #include <vob/aoe/debug/debug_ghost_controller_component.h>
 
+#include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/engine/world_data_provider.h>
 #include <vob/aoe/input/bindings.h>
 #include <vob/aoe/spacetime/transform.h>

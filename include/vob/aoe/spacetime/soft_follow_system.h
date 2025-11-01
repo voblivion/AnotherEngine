@@ -37,12 +37,21 @@ namespace vob::aoest
 
 				auto const followedTransform = aoest::combine(followedPosition, followedRotation);
 
-				auto const desiredPosition =
-					glm::vec3{ followedTransform * glm::vec4{softFollow.m_posTarget, 1.0f} };
+				auto followedForward = followedRotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
+				followedForward.y = 0.0f;
+				followedForward = aoest::normalize_safe(followedForward, 0.01f, glm::vec3{ 0.0f, -1.0f, 0.0f });
+
+				auto const desiredPosition = followedPosition - softFollow.m_posTarget.z * followedForward + softFollow.m_posTarget.y * glm::vec3{ 0.0f, 1.0f, 0.0f };
+				//	glm::vec3{ followedTransform * glm::vec4{softFollow.m_posTarget, 1.0f} };
 				if (position != desiredPosition)
 				{
 					auto const toDesiredPosition = desiredPosition - position;
-					auto const desiredPositionDist = glm::length(toDesiredPosition);
+					auto const force = softFollow.ellasticity * toDesiredPosition - softFollow.damping * softFollow.velocity;
+					position += softFollow.velocity * dt * 0.5f;
+					softFollow.velocity += force / softFollow.mass * dt;
+					position += softFollow.velocity * dt * 0.5f;
+
+					/*auto const desiredPositionDist = glm::length(toDesiredPosition);
 					auto const desiredDir = toDesiredPosition / desiredPositionDist;
 					if (desiredPositionDist > softFollow.m_maxDist)
 					{
@@ -51,15 +60,18 @@ namespace vob::aoest
 					else
 					{
 						position += toDesiredPosition * softFollow.m_smoothing * dt;
-					}
+					}*/
 				}
 
-				m_debugMeshWorldComponent->add_line(position, desiredPosition, aoegl::k_black);
+				m_debugMeshWorldComponent->add_line(position, desiredPosition, aoegl::_k_black);
 				auto const desiredAimPosition =
 					glm::vec3{ followedTransform * glm::vec4{softFollow.m_aimTarget, 1.0f} };
 
-				auto const desiredAimDir = glm::normalize(desiredAimPosition - position);
-				rotation = glm::quatLookAt(desiredAimDir, glm::vec3{ 0.0f, 1.0f, 0.0f });
+				if (glm::length(desiredAimPosition) > 0.01f)
+				{
+					auto const desiredAimDir = glm::normalize(desiredAimPosition - position);
+					rotation = glm::quatLookAt(desiredAimDir, glm::vec3{ 0.0f, 1.0f, 0.0f });
+				}
 				/*
 				rotation = glm::rotate(glm::quat{})
 				rotation = glm::quat{

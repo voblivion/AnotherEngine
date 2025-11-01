@@ -3,6 +3,7 @@
 #include <vob/aoe/api.h>
 #include <vob/aoe/engine/world_data_provider.h>
 
+#include <vob/aoe/physics/physics_context.h>
 #include <vob/aoe/physics/vehicle_physics_component.h>
 #include <vob/aoe/physics/components/rigidbody.h>
 #include <vob/aoe/rendering/world_components/debug_mesh_world_component.h>
@@ -21,9 +22,9 @@ namespace vob::aoeph
 
 	private:
 		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeContext;
+		aoeng::world_component_ref<physics_context> m_physicsContext;
 		aoeng::world_component_ref<aoegl::debug_mesh_world_component> m_debugMeshContext;
 
-		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, aoeph::dynamic_body, vehicle_physics_component> m_vehicleEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, static_collider> m_blockerEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, car_collider> m_carColliderEntities;
 

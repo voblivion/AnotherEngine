@@ -19,7 +19,7 @@ namespace vob::misvi
 {
 	VOB_MISVI_ACCEPT(aoegl::rig_data_component)
 	{
-		VOB_MISVI_NVP("Rig Data", rigData);
+		VOB_MISVI_NVP("Rig Data", m_rigData);
 		return true;
 	}
 }

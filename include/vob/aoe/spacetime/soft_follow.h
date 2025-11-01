@@ -14,5 +14,10 @@ namespace vob::aoest
 		glm::vec3 m_posTarget = glm::vec3{ 0.0f };
 		float m_maxDist = 100.0f;
 		float m_smoothing = 0.9f;
+
+		float ellasticity = 800.0f;
+		float mass = 1.0f;
+		float damping = 80.0f;
+		glm::vec3 velocity = glm::vec3{ 0.0f };
 	};
 }

@@ -3,10 +3,11 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/input/bindings.h>
-#include <vob/aoe/input/inputs.h>
+#include <vob/aoe/input/_inputs.h>
 
 #include <vob/aoe/spacetime/time_world_component.h>
 
+#include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/engine/world_data_provider.h>
 
 

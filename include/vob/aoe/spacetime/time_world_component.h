@@ -21,6 +21,6 @@ namespace vob::aoest
 	{
 		std::chrono::time_point<std::chrono::high_resolution_clock> tick_start_time = {};
 		misph::measure_time elapsed_time = 0.0_s;
-		misph::measure_time play_for_duration = -1.0_s;
+		misph::measure_time play_for_duration = 0.0_s;
 	};
 }

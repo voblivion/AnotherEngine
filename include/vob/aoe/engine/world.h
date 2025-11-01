@@ -9,7 +9,6 @@
 #include "optick.h"
 #define VOB_MISMT_PROFILE_THREAD(ThreadName) OPTICK_THREAD(ThreadName)
 #define VOB_MISMT_PROFILE_FRAME(FrameName) OPTICK_FRAME(FrameName)
-#define VOB_MISMT_PROFILE_EVENT(EventName) OPTICK_EVENT_DYNAMIC(EventName)
 #include <vob/misc/multithread/worker.h>
 #include <vob/misc/std/message_macros.h>
 
@@ -30,13 +29,8 @@ namespace vob::aoeng
 
 			void execute() const override
 			{
+				OPTICK_EVENT();
 				m_system.update();
-			}
-
-			char const* name() const override
-			{
-				static const std::string cachedName = typeid(TSystem).name();
-				return cachedName.c_str();
 			}
 
 		private:

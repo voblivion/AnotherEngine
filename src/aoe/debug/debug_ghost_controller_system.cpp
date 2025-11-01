@@ -3,6 +3,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
 
+#include <numbers>
+
 
 namespace vob::aoedb
 {

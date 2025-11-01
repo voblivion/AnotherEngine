@@ -35,31 +35,35 @@ void init_world_systems(vob::aoeng::world& a_world, vob::mismt::pmr::schedule& a
 	auto const pollEventsSystemId = a_world.add_system<aoewi::poll_events_system>();
 	auto const windowInputSystemId = a_world.add_system<aoewi::window_input_system>();
 	auto const bindingSystemId = a_world.add_system<aoein::binding_system>();
-	auto const debugGameModeSystemId = a_world.add_system<aoedb::debug_game_mode_system>();
 	auto const debugGhostControllerSystemId = a_world.add_system<aoedb::debug_ghost_controller_system>();
-	auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
-	auto const testSystemId = a_world.add_system<aoeph::test_system>();
 	auto const physicsSystemId = a_world.add_system<aoeph::physics_system>();
+	
 	auto const vehiclePhysicsSystemId = a_world.add_system<aoeph::vehicle_physics_system>();
-	auto const physicsDebugSystemId = a_world.add_system<aoeph::physics_debug_system>();
-	auto const attachmentSystemId = a_world.add_system<aoest::attachment_system>();
+	/*&*/auto const physicsDebugSystemId = a_world.add_system<aoeph::physics_debug_system>();
+	/*&*/auto const attachmentSystemId = a_world.add_system<aoest::attachment_system>();
 	auto const softFollowSystemId = a_world.add_system<aoest::soft_follow_system>();
-	auto const lifetimeSystemId = a_world.add_system<aoest::lifetime_system>();
 
 	// Rendering
-	auto const debugRenderCameraSystemId = a_world.add_system<aoegl::debug_render_camera_system>();
-	auto const modelDataResourceSystemId = a_world.add_system<aoegl::model_data_resource_system>();
+	/*&*/auto const debugRenderCameraSystemId = a_world.add_system<aoegl::debug_render_camera_system>();
 
 	auto const bindSceneFramebufferSystemId = a_world.add_system<aoegl::bind_scene_framebuffer_system>();
-	auto const renderModelsSystemId = a_world.add_system<aoegl::render_models_system>();
+	/*&*/auto const renderModelsSystemId = a_world.add_system<aoegl::render_models_system>();
 	auto const renderDebugMeshSystemId = a_world.add_system<aoegl::render_debug_mesh_system>();
 
 	auto const bindWindowFramebufferSystemId = a_world.add_system<aoegl::bind_window_framebuffer_system>();
 	auto const renderSceneSystemId = a_world.add_system<aoegl::render_scene_system>();
 
-	auto const renderImguiSystemId = a_world.add_system<aoegl::render_imgui_system>();
+	/*&*/auto const renderImguiSystemId = a_world.add_system<aoegl::render_imgui_system>();
 
 	auto const swapBuffersSystemId = a_world.add_system<aoewi::swap_buffers_system>();
+
+	// do I convert them?
+	auto const debugGameModeSystemId = a_world.add_system<aoedb::debug_game_mode_system>();
+	auto const debugControllerSystemId = a_world.add_system<aoedb::debug_controller_system>();
+	auto const testSystemId = a_world.add_system<aoeph::test_system>();
+	auto const lifetimeSystemId = a_world.add_system<aoest::lifetime_system>();
+	auto const modelDataResourceSystemId = a_world.add_system<aoegl::model_data_resource_system>();
+
 	// ^Rendering
 
 	a_schedule.clear();

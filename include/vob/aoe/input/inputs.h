@@ -2,34 +2,33 @@
 
 #include <vob/misc/std/enum_map.h>
 
+#include <array>
+#include <cstdint>
 #include <string_view>
 
 
 namespace vob::aoein
 {
-	/// <summary>
-	/// A one/off type of input, such as a key on a keyboard, a mouse button, etc.
-	/// </summary>
-	class axis_input
+	class AxisInput
 	{
 	public:
-		float get_change() const
+		float getChange() const
 		{
 			return m_change;
 		}
 
-		float get_value() const
+		float getValue() const
 		{
 			return m_value;
 		}
 
-		void update_state(float const a_value)
+		void updateState(float const a_value)
 		{
 			m_change = a_value - m_value;
 			m_value = a_value;
 		}
 
-		void reset_changed_state()
+		void resetChangedState()
 		{
 			m_change = 0.0f;
 		}
@@ -39,36 +38,33 @@ namespace vob::aoein
 		float m_value = -1.0f;
 	};
 
-	/// <summary>
-	/// A linear type of input, such as a trigger on a controller or the mouse's x/y positions.
-	/// </summary>
-	struct switch_input
+	struct SwitchInput
 	{
 	public:
-		bool has_changed() const
+		bool hasChanged() const
 		{
 			return m_hasChanged;
 		}
 
-		bool is_pressed() const
+		bool isPressed() const
 		{
 			return m_isPressed;
 		}
 
-		void update_state(bool const a_isPressed)
+		void updateState(bool const a_isPressed)
 		{
 			m_hasChanged = m_isPressed != a_isPressed;
 			m_isPressed = a_isPressed;
 		}
 
-		void reset_changed_state()
+		void resetChangedState()
 		{
 			m_hasChanged = false;
 		}
 
-		bool was_pressed() const
+		bool wasPressed() const
 		{
-			return has_changed() && is_pressed();
+			return hasChanged() && isPressed();
 		}
 
 	private:
@@ -76,12 +72,9 @@ namespace vob::aoein
 		bool m_hasChanged = false;
 	};
 
-	/// <summary>
-	/// State of mouse inputs (hover, positions, buttons).
-	/// </summary>
-	struct mouse
+	struct Mouse
 	{
-		enum class axis
+		enum class Axis
 		{
 			unkown = -1,
 			X = 0,
@@ -89,9 +82,9 @@ namespace vob::aoein
 			count
 		};
 
-		enum class button
+		enum class Button
 		{
-			unknown = -1,
+			Unknown = -1,
 			M1 = 0,
 			M2,
 			M3,
@@ -112,38 +105,35 @@ namespace vob::aoein
 			X2 = M5
 		};
 
-		switch_input hover;
-		mistd::enum_map<axis, axis_input> axes;
-		mistd::enum_map<button, switch_input> buttons;
+		SwitchInput hover;
+		mistd::enum_map<Axis, AxisInput> axes;
+		mistd::enum_map<Button, SwitchInput> buttons;
 
-		void reset_changed_states()
+		void resetChangedStates()
 		{
-			hover.reset_changed_state();
+			hover.resetChangedState();
 
 			for (auto& axis : axes)
 			{
-				axis.reset_changed_state();
+				axis.resetChangedState();
 			}
 
 			for (auto& button : buttons)
 			{
-				button.reset_changed_state();
+				button.resetChangedState();
 			}
 
 			// Scroll wheel only provides changes (could be an axis but not great)
-			buttons[button::ScrollUp].update_state(false);
-			buttons[button::ScrollDown].update_state(false);
+			buttons[Button::ScrollUp].updateState(false);
+			buttons[Button::ScrollDown].updateState(false);
 		}
 	};
 
-	/// <summary>
-	/// State of keyboard inputs (keys).
-	/// </summary>
-	struct keyboard
+	struct Keyboard
 	{
-		enum class key
+		enum class Key
 		{
-			unknown = -1
+			Unknown = -1
 			, A = 0
 			, B
 			, C
@@ -270,25 +260,22 @@ namespace vob::aoein
 			, count
 		};
 
-		mistd::enum_map<key, switch_input> keys;
+		mistd::enum_map<Key, SwitchInput> keys;
 
-		void reset_changed_states()
+		void resetChangedStates()
 		{
 			for (auto& key : keys)
 			{
-				key.reset_changed_state();
+				key.resetChangedState();
 			}
 		}
 	};
 
-	/// <summary>
-	/// State of a gamepad inputs (is_connected, name, buttons, axes).
-	/// </summary>
-	struct gamepad
+	struct Gamepad
 	{
-		enum class button
+		enum class Button
 		{
-			unknown = -1,
+			Unknown = -1,
 
 			// Default | Xbox
 			A = 0,
@@ -308,7 +295,7 @@ namespace vob::aoein
 			Left,
 			count,
 
-			// Playstation
+			// PlayStation
 			Cross = A,
 			Circle = B,
 			Square = X,
@@ -330,9 +317,9 @@ namespace vob::aoein
 			DpadRight = Right
 		};
 
-		enum class axis
+		enum class Axis
 		{
-			unknown = -1,
+			Unknown = -1,
 
 			// Default | Xbox
 			LX = 0,
@@ -343,7 +330,7 @@ namespace vob::aoein
 			RT,
 			count,
 
-			// Playstation
+			// PlayStation
 			L2 = LT,
 			R2 = RT,
 
@@ -354,47 +341,43 @@ namespace vob::aoein
 			RightY = RY
 		};
 
-		switch_input is_connected;
+		SwitchInput isConnected;
 		std::string_view name;
-		mistd::enum_map<button, switch_input> buttons;
-		mistd::enum_map<axis, axis_input> axes;
+		mistd::enum_map<Button, SwitchInput> buttons;
+		mistd::enum_map<Axis, AxisInput> axes;
 
-		void reset_changed_states()
+		void resetChangedStates()
 		{
-			is_connected.reset_changed_state();
+			isConnected.resetChangedState();
 
 			for (auto& button : buttons)
 			{
-				button.reset_changed_state();
+				button.resetChangedState();
 			}
 
 			for (auto& axis : axes)
 			{
-				axis.reset_changed_state();
+				axis.resetChangedState();
 			}
 		}
 	};
 
-	using gamepad_index = size_t;
+	static constexpr int32_t k_maxGamepadCount = 16;
 
-	constexpr gamepad_index k_maxGamepadCount = 16;
-
-	/// <summary>
-	/// State of a computer inputs (mouse, keyboard, gamepad(s)).
-	/// </summary>
-	struct inputs
+	// TODO: why is it in this namespace? seems like input and window belong to the same simpler module.
+	struct Inputs
 	{
-		mouse mouse;
-		keyboard keyboard;
-		std::array<gamepad, k_maxGamepadCount> gamepads;
+		Mouse mouse;
+		Keyboard keyboard;
+		std::array<Gamepad, k_maxGamepadCount> gamepads;
 
-		void reset_changed_states()
+		void resetChangedStates()
 		{
-			mouse.reset_changed_states();
-			keyboard.reset_changed_states();
+			mouse.resetChangedStates();
+			keyboard.resetChangedStates();
 			for (auto& gamepad : gamepads)
 			{
-				gamepad.reset_changed_states();
+				gamepad.resetChangedStates();
 			}
 		}
 	};

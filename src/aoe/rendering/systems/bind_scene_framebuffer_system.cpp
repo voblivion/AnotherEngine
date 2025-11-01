@@ -1,6 +1,6 @@
 #include <vob/aoe/rendering/systems/bind_scene_framebuffer_system.h>
 
-#include <vob/aoe/rendering/color.h>
+#include <vob/aoe/rendering/_color.h>
 
 
 namespace vob::aoegl
@@ -12,7 +12,7 @@ namespace vob::aoegl
 	void bind_scene_framebuffer_system::update() const
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, m_sceneTextureWorldComponent->m_sceneTexture.m_framebuffer);
-		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
+		glClearColor(_k_blueprint.r, _k_blueprint.g, _k_blueprint.b, _k_blueprint.a);
 		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}

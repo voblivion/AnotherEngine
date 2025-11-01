@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/rendering/color.h>
+#include <vob/aoe/rendering/_color.h>
 #include <vob/aoe/rendering/graphic_types.h>
 #include <vob/aoe/rendering/uniform_util.h>
 #include <vob/aoe/rendering/resources/debug_mesh.h>
@@ -118,7 +118,7 @@ namespace vob::aoegl
 			post_process_program m_postProcessProgram;
 		};
 
-		void use_framebuffer(graphic_id a_framebuffer, rgba const& a_clearColor = k_cyan);
+		void use_framebuffer(graphic_id a_framebuffer, rgba const& a_clearColor = _k_cyan);
 
 		void use_program(debug_program const& a_debugProgram);
 

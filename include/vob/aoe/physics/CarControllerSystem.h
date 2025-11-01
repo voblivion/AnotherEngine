@@ -1,0 +1,25 @@
+#pragma once
+
+#include <vob/aoe/api.h>
+
+#include <vob/aoe/physics/Collider.h>
+#include <vob/aoe/physics/CarControllerComponent.h>
+
+#include <vob/aoe/engine/EcsWorldDataAccess.h>
+#include <vob/aoe/input/InputBindings.h>
+#include <vob/aoe/spacetime/Transform.h>
+
+
+namespace vob::aoeph
+{
+	class VOB_AOE_API CarControllerSystem
+	{
+	public:
+		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar);
+		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
+
+	private:
+		aoeng::EcsWorldContextRef<aoein::InputBindings const> m_inputBindings;
+		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, CarCollider, CarControllerComponent> m_carEntities;
+	};
+}

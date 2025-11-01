@@ -37,6 +37,5 @@ namespace vob::aoeph
 		aoeng::world_component_ref<aoest::simulation_time_context> m_simulationTimeContext;
 
 		aoeng::registry_view_ref<aoest::position const, aoest::rotation const, aoegl::camera_component const> m_cameraEntities;
-		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, dynamic_body> m_dynamicBodyEntities;
 	};
 }

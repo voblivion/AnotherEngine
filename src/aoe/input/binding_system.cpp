@@ -1,5 +1,3 @@
-#pragma once
-
 #include <vob/aoe/input/binding_system.h>
 
 

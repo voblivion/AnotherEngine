@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/rendering/color.h>
+#include <vob/aoe/rendering/_color.h>
 #include <vob/aoe/rendering/primitives.h>
 
 #include <vob/aoe/spacetime/measures.h>
@@ -139,6 +139,24 @@ namespace vob::aoegl
 			add_line(glm::vec3{ a_min.x, a_max.y, a_max.z }, glm::vec3{ a_max.x, a_max.y, a_max.z }, a_color);
 			add_line(glm::vec3{ a_max.x, a_max.y, a_max.z }, glm::vec3{ a_max.x, a_max.y, a_min.z }, a_color);
 			add_line(glm::vec3{ a_max.x, a_max.y, a_min.z }, glm::vec3{ a_min.x, a_max.y, a_min.z }, a_color);
+		}
+
+		void add_obb(glm::mat4x3 const& a_transform, glm::vec3 const& a_min, glm::vec3 const& a_max, rgba a_color)
+		{
+			add_line(a_transform * glm::vec4{ a_min.x, a_min.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_min.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_min.x, a_min.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_min.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_min.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_min.y, a_min.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_min.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_min.y, a_min.z, 1.0f }, a_color);
+
+			add_line(a_transform * glm::vec4{ a_min.x, a_min.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_max.y, a_min.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_min.x, a_min.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_max.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_min.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_max.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_min.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_max.y, a_min.z, 1.0f }, a_color);
+
+			add_line(a_transform * glm::vec4{ a_min.x, a_max.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_max.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_min.x, a_max.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_max.y, a_max.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_max.y, a_max.z, 1.0f }, a_transform * glm::vec4{ a_max.x, a_max.y, a_min.z, 1.0f }, a_color);
+			add_line(a_transform * glm::vec4{ a_max.x, a_max.y, a_min.z, 1.0f }, a_transform * glm::vec4{ a_min.x, a_max.y, a_min.z, 1.0f }, a_color);
 		}
 
 		void add_sphere(glm::vec3 const& a_position,

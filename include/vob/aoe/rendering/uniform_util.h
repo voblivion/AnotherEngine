@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/rendering/color.h>
+#include <vob/aoe/rendering/_color.h>
 #include <vob/aoe/rendering/graphic_types.h>
 
 #include <vob/misc/std/message_macros.h>

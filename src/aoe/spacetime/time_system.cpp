@@ -1,10 +1,18 @@
 #include <vob/aoe/spacetime/time_system.h>
 
+#include <thread>
+
+
 namespace vob::aoest
 {
 	void time_system::update() const
 	{
 		auto const currentTime = std::chrono::high_resolution_clock::now();
+
+		if (currentTime < m_presentationTimeContext->tick_start_time + std::chrono::milliseconds(10))
+		{
+			std::this_thread::sleep_for(m_presentationTimeContext->tick_start_time + std::chrono::nanoseconds(9900) - currentTime);
+		}
 
 		auto& tickStartTime = m_presentationTimeContext->tick_start_time;
 		auto const elapsedTime = currentTime - tickStartTime;
@@ -32,4 +40,5 @@ namespace vob::aoest
 			m_simulationTimeContext->elapsed_time = 0_s;
 		}
 	}
+
 }

@@ -18,7 +18,7 @@ namespace vob::misvi
 {
 	VOB_MISVI_ACCEPT(aoegl::model_data_component)
 	{
-		VOB_MISVI_NVP("Model Data", modelData);
+		VOB_MISVI_NVP("Model Data", m_modelData);
 		return true;
 	}
 }

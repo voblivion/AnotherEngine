@@ -26,6 +26,251 @@
 #include <bullet/BulletDynamics/ConstraintSolver/btHinge2Constraint.h>
 
 
+std::vector<vob::aoeph::triangle> transform_surface(glm::vec3 const& a_position, glm::quat const& a_rotation, std::vector<vob::aoeph::triangle> const& a_triangles)
+{
+	std::vector<vob::aoeph::triangle> result;
+	for (auto& tr : a_triangles)
+	{
+		result.emplace_back(
+			a_position + a_rotation * tr.p0,
+			a_position + a_rotation * tr.p1,
+			a_position + a_rotation * tr.p2);
+	}
+	return result;
+}
+
+std::vector<vob::aoeph::triangle> create_flat_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	std::vector<vob::aoeph::triangle> triangles;
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 2.0f, 32.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 2.0f, 32.0f },
+		glm::vec3{ 32.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 2.0f, 32.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{0.0f, 2.0f, 0.0f},
+		glm::vec3{0.0f, 0.0f, 0.0f},
+		glm::vec3{0.0f, 2.0f, 32.0f}
+	);
+	triangles.emplace_back(
+		glm::vec3{ 0.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 0.0f, 0.0f },
+		glm::vec3{ 0.0f, 2.0f, 32.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{ 0.0f, 0.0f, 0.0f },
+		glm::vec3{ 0.0f, 0.0f, 32.0f },
+		glm::vec3{ 0.0f, 2.0f, 32.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 2.0f, 0.0f },
+		glm::vec3{ 32.0f, 2.0f, 32.0f },
+		glm::vec3{ 32.0f, 0.0f, 0.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 2.0f, 32.0f },
+		glm::vec3{ 32.0f, 0.0f, 32.0f },
+		glm::vec3{ 32.0f, 0.0f, 0.0f }
+	);
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> create_slope_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	std::vector<vob::aoeph::triangle> triangles;
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 18.0f, 32.0f }
+	);
+	triangles.emplace_back(
+		glm::vec3{ 32.0f, 18.0f, 32.0f },
+		glm::vec3{ 32.0f, 2.0f, 0.0f },
+		glm::vec3{ 0.0f, 18.0f, 32.0f }
+	);
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::pair<float, float> bezier_cubic(float y0, float x1, float y1, float x2, float y2, float x3, float y3, float t)
+{
+	auto const u = (1.0f - t);
+	auto const x = u * u * u * 0.f + 3.0f * u * u * t * x1 + 3.0f * u * t * t * x2 + t * t * t * x3;
+	auto const y = u * u * u * y0 + 3.0f * u * u * t * y1 + 3.0f * u * t * t * y2 + t * t * t * y3;
+	return std::make_pair(x, y);
+}
+
+std::vector<vob::aoeph::triangle> create_smooth_step_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	constexpr int32_t k_subdivisions = 32;
+
+	auto p = [](int32_t s, int32_t subdivisions) {
+		return bezier_cubic(0.0f, 16.0f, 0.0f, 16.0f, 8.0f, 32.0f, 8.0f, static_cast<float>(s) / k_subdivisions);
+	};
+
+	std::vector<vob::aoeph::triangle> triangles;
+	for (int32_t s = 0; s < k_subdivisions; ++s)
+	{
+		auto const [x0, y0] = p(s, k_subdivisions);
+		auto const [x1, y1] = p(s + 1, k_subdivisions);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y1, x1 },
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+	}
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> create_smooth_step2_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	constexpr int32_t k_subdivisions = 32;
+
+	auto p = [](int32_t s, int32_t subdivisions) {
+		return bezier_cubic(0.0f, 16.0f, 0.0f, 16.0f, 16.0f, 32.0f, 16.0f, static_cast<float>(s) / k_subdivisions);
+		};
+
+	std::vector<vob::aoeph::triangle> triangles;
+	for (int32_t s = 0; s < k_subdivisions; ++s)
+	{
+		auto const [x0, y0] = p(s, k_subdivisions);
+		auto const [x1, y1] = p(s + 1, k_subdivisions);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y1, x1 },
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+	}
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> create_smooth_start_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	constexpr int32_t k_subdivisions = 32;
+
+	auto p = [](int32_t s, int32_t subdivisions) {
+		return bezier_cubic(0.0f, 16.0f, 0.0f, 16.0f, 0.0f, 32.0f, 8.0f, static_cast<float>(s) / k_subdivisions);
+		};
+
+	std::vector<vob::aoeph::triangle> triangles;
+	for (int32_t s = 0; s < k_subdivisions; ++s)
+	{
+		auto const [x0, y0] = p(s, k_subdivisions);
+		auto const [x1, y1] = p(s + 1, k_subdivisions);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y1, x1 },
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+	}
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> create_smooth_stop_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	constexpr int32_t k_subdivisions = 32;
+
+	auto p = [](int32_t s, int32_t subdivisions) {
+		return bezier_cubic(0.0f, 16.0f, 8.0f, 16.0f, 8.0f, 32.0f, 8.0f, static_cast<float>(s) / k_subdivisions);
+		};
+
+	std::vector<vob::aoeph::triangle> triangles;
+	for (int32_t s = 0; s < k_subdivisions; ++s)
+	{
+		auto const [x0, y0] = p(s, k_subdivisions);
+		auto const [x1, y1] = p(s + 1, k_subdivisions);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+		triangles.emplace_back(
+			glm::vec3{ 32.0f, 2.0f + y1, x1 },
+			glm::vec3{ 32.0f, 2.0f + y0, x0 },
+			glm::vec3{ 0.0f, 2.0f + y1, x1 }
+		);
+	}
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> _create_turn_surface(glm::vec3 const& a_position, glm::quat const& a_rotation, int32_t a_size)
+{
+	constexpr int32_t k_subdivisions = 32;
+
+	auto const minR = 32.0f * a_size;
+	auto const maxR = 32.0f * (a_size + 1);
+
+	std::vector<vob::aoeph::triangle> triangles;
+	for (int32_t s = 0; s < k_subdivisions; ++s)
+	{
+		auto const r0 = 3.141592f / 2.0f * static_cast<float>(s) / k_subdivisions;
+		auto const r1 = 3.141592f / 2.0f * static_cast<float>(s + 1) / k_subdivisions;
+		triangles.emplace_back(
+			glm::vec3{ maxR - minR * std::cos(r0), 2.0f, minR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r0), 2.0f, maxR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r1), 2.0f, maxR * std::sin(r1) }
+		);
+		triangles.emplace_back(
+			glm::vec3{ maxR - minR * std::cos(r1), 2.0f, minR * std::sin(r1) },
+			glm::vec3{ maxR - minR * std::cos(r0), 2.0f, minR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r1), 2.0f, maxR * std::sin(r1) }
+		);
+		triangles.emplace_back(
+			glm::vec3{ maxR - maxR * std::cos(r0), 2.0f, maxR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r0), 0.0f, maxR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r1), 2.0f, maxR * std::sin(r1) });
+		triangles.emplace_back(
+			glm::vec3{ maxR - maxR * std::cos(r0), 0.0f, maxR * std::sin(r0) },
+			glm::vec3{ maxR - maxR * std::cos(r1), 0.0f, maxR * std::sin(r1) },
+			glm::vec3{ maxR - maxR * std::cos(r1), 2.0f, maxR * std::sin(r1) });
+		triangles.emplace_back(
+			glm::vec3{ maxR - minR * std::cos(r1), 2.0f, minR * std::sin(r1) },
+			glm::vec3{ maxR - minR * std::cos(r1), 0.0f, minR * std::sin(r1) },
+			glm::vec3{ maxR - minR * std::cos(r0), 2.0f, minR * std::sin(r0) }
+		);
+		triangles.emplace_back(
+			glm::vec3{ maxR - minR * std::cos(r1), 0.0f, minR * std::sin(r1) },
+			glm::vec3{ maxR - minR * std::cos(r0), 0.0f, minR * std::sin(r0) },
+			glm::vec3{ maxR - minR * std::cos(r0), 2.0f, minR * std::sin(r0) }
+		);
+	}
+	return transform_surface(a_position, a_rotation, triangles);
+}
+
+std::vector<vob::aoeph::triangle> create_turn0_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	return _create_turn_surface(a_position, a_rotation, 0);
+}
+
+std::vector<vob::aoeph::triangle> create_turn_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	return _create_turn_surface(a_position, a_rotation, 1);
+}
+
+std::vector<vob::aoeph::triangle> create_turn2_surface(glm::vec3 const& a_position, glm::quat const& a_rotation)
+{
+	return _create_turn_surface(a_position, a_rotation, 2);
+}
+
 void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 {
 	auto& worldData = a_world.get_data();
@@ -133,7 +378,7 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 
 	auto const dynBody = entityRegistry.create();
 	{
-		entityRegistry.emplace<vob::aoest::position>(dynBody, 0.0f, 3.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::position>(dynBody, 0.0f, 3.0f, 100.0f);
 		entityRegistry.emplace<vob::aoest::rotation>(dynBody);
 		entityRegistry.emplace<vob::aoeph::linear_velocity>(dynBody);
 		entityRegistry.emplace<vob::aoeph::angular_velocity_local>(dynBody);
@@ -157,12 +402,46 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 		// rear right wheel
 		carCollider.wheels.emplace_back(glm::vec3{ 0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f });
 
-		carCollider.mass = 1'000.0f;
+		carCollider.mass = 1'500.0f;
 		carCollider.barycenter = glm::vec3{ 0.0f, 0.0f, -0.288295f };
 		carCollider.inertia = glm::mat3{ carCollider.mass / 5.0f };
 		carCollider.inertia[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
 		carCollider.inertia[1][1] *= (1.6f * 1.6f + 0.9f * 0.9f);
 		carCollider.inertia[2][2] *= (0.9f * 0.9f + 0.7f * 0.7f);
+
+		auto bounds = aoeph::aabb{ glm::vec3{ std::numeric_limits<float>::max() }, glm::vec3{ -std::numeric_limits<float>::max() } };
+
+		for (auto const& chassisPart : carCollider.chassisParts)
+		{
+			auto const matrix = glm::mat3(glm::quat{ chassisPart.rotation });
+			auto partExtents =
+				glm::abs(matrix[0]) * chassisPart.radiuses +
+				glm::abs(matrix[1]) * chassisPart.radiuses +
+				glm::abs(matrix[2]) * chassisPart.radiuses;
+
+			bounds.min = glm::min(bounds.min, chassisPart.position - partExtents);
+			bounds.max = glm::max(bounds.max, chassisPart.position + partExtents);
+		}
+
+		for (auto const& wheel : carCollider.wheels)
+		{
+
+			auto const matrix = glm::mat3(glm::quat{ wheel.rotation });
+			auto partExtents =
+				glm::abs(matrix[0]) * wheel.radiuses +
+				glm::abs(matrix[1]) * wheel.radiuses +
+				glm::abs(matrix[2]) * wheel.radiuses;
+
+			auto const wheelHighPosition = wheel.attachPosition;
+			bounds.min = glm::min(bounds.min, wheelHighPosition - partExtents);
+			bounds.max = glm::max(bounds.max, wheelHighPosition + partExtents);
+			auto const wheelLowPosition = wheelHighPosition - wheel.rotation * glm::vec3{ 0.0f, -wheel.suspensionMaxLength, 0.0f };
+			bounds.min = glm::min(bounds.min, wheelLowPosition - partExtents);
+			bounds.max = glm::max(bounds.max, wheelLowPosition + partExtents);
+		}
+
+		// TODO: this 2.778f should be added at search time, whatever
+		carCollider.boundsLocal = aoeph::aabb{ bounds.min - glm::vec3{2.778f}, bounds.max + glm::vec3{2.778f} };
 
 		/*
 		auto& dynamicBody = entityRegistry.emplace<vob::aoeph::dynamic_body>(dynBody);
@@ -210,15 +489,27 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 			glm::vec3{200.0f, 2.0f, -5.0f}
 		});
 		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{200.0f, 2.0f, -5.0f},
+			glm::vec3{-5.0f, 2.0f, 200},
+			glm::vec3{200.0f, -2.0f, -5.0f}
+		});
+		part.triangles.emplace_back(vob::aoeph::triangle{
 			glm::vec3{-5.0f, 2.0f, -5.0f},
 			glm::vec3{-200.0f, 20.0f, -5.0f},
 			glm::vec3{-5.0f, 2.0f, 200.0f}
 		});
-
+		part.triangles.emplace_back(vob::aoeph::triangle{
+			glm::vec3{-200.0f, 2.0f, -5.0f},
+			glm::vec3{200.0f, 2.0f, -5.0f},
+			glm::vec3{0.0f, 2.0f, -200.0f}
+		});
+		staticCollider.bounds = vob::aoeph::aabb{ glm::vec3{-500.0f, -2.0f, -500.0f}, glm::vec3{500.0f, 264.0f, 500.0f} };
+		
+		/*
 		// Looping
 		auto const width = 16.0f;
 		auto const radius = 16.0f;
-		auto const segments = 24;
+		auto const segments = 48;
 		for (int i = 0; i < segments; ++i)
 		{
 			auto const r0 = static_cast<float>(i + 0) / segments;
@@ -336,15 +627,88 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 			glm::vec3{120.0f, 20.0f, 5.0f}
 			});
 
-		staticCollider.bounds = vob::aoeph::aabb{ glm::vec3{-200.0f, 2.0f, -5.0f}, glm::vec3{200.0f, 34.0f, 200.0f} };
+		*/
+
+		auto addPart = [&entityRegistry](auto const a_type, float x, float y, float z, float r)
+			{
+				auto const staticEntity = entityRegistry.create();
+				auto& staticCollider = entityRegistry.emplace<vob::aoeph::static_collider>(staticEntity);
+				auto& staticPart = staticCollider.parts.emplace_back(vob::aoeph::material{});
+
+				auto& pos = entityRegistry.emplace<vob::aoest::position>(staticEntity, glm::vec3{ x * 32.0f, y * 8.0f, 100.0f + z * 32.0f });
+				auto& rot = entityRegistry.emplace<vob::aoest::rotation>(staticEntity, glm::angleAxis(r * 3.141592f / 2.0f, glm::vec3{ 0.0f, 1.0f, 0.0f }));
+				staticPart.triangles = a_type(glm::vec3{ 0.0f }, glm::quat(glm::vec3{ 0.0f }));
+
+				staticCollider.bounds = aoeph::aabb{ glm::vec3{ std::numeric_limits<float>::max() }, glm::vec3{ -std::numeric_limits<float>::max() } };
+				for (auto& triangle : staticPart.triangles)
+				{
+					staticCollider.bounds.min = glm::min(staticCollider.bounds.min, pos + rot * triangle.p0);
+					staticCollider.bounds.min = glm::min(staticCollider.bounds.min, pos + rot * triangle.p1);
+					staticCollider.bounds.min = glm::min(staticCollider.bounds.min, pos + rot * triangle.p2);
+					staticCollider.bounds.max = glm::max(staticCollider.bounds.max, pos + rot * triangle.p0);
+					staticCollider.bounds.max = glm::max(staticCollider.bounds.max, pos + rot * triangle.p1);
+					staticCollider.bounds.max = glm::max(staticCollider.bounds.max, pos + rot * triangle.p2);
+				}
+
+				// auto& part0 = staticCollider.parts.emplace_back(vob::aoeph::material{});
+				// part0.triangles = a_type(glm::vec3{ x * 32.0f, y * 8.0f, 100.0f + z * 32.0f }, );
+			};
+
+		addPart(create_flat_surface, 0, 0, 0, 0);
+		addPart(create_smooth_start_surface, 0, 0, 1, 0);
+		addPart(create_slope_surface, 0, 1, 2, 0);
+		addPart(create_smooth_stop_surface, 0, 3, 3, 0);
+		addPart(create_flat_surface, 0, 4, 4, 0);
+		addPart(create_flat_surface, 0, 4, 5, 0);
+		addPart(create_flat_surface, 0, 4, 6, 0);
+		addPart(create_flat_surface, 0, 4, 7, 0);
+		addPart(create_turn_surface, 0, 4, 8, 0);
+		addPart(create_turn2_surface, 2, 4, 10, 1);
+		addPart(create_turn_surface, 6, 4, 5, -1);
+		addPart(create_smooth_step2_surface, 7, 2, 5, -1);
+		addPart(create_turn_surface, 7, 2, 6, 1);
+		addPart(create_smooth_step_surface, 8, 1, 3, 0);
+		addPart(create_smooth_step_surface, 9, 1, 3, 0);
+		addPart(create_flat_surface, 8, 1, 2, 0);
+		addPart(create_flat_surface, 9, 1, 2, 0);
+		addPart(create_flat_surface, 8, 1, 1, 0);
+		addPart(create_flat_surface, 9, 1, 1, 0);
+		addPart(create_flat_surface, 8, 1, 0, 0);
+		addPart(create_flat_surface, 9, 1, 0, 0);
+		addPart(create_flat_surface, 8, 0, -1, 0);
+		addPart(create_flat_surface, 9, 0, -1, 0);
+		addPart(create_turn2_surface, 9, 0, -1, 2);
+		addPart(create_flat_surface, 5, 0, -4, 0);
+
+
+		addPart(create_smooth_step2_surface, 0, 0, -7, 0);
+		addPart(create_flat_surface, 0, 2, -6, 0);
+		addPart(create_smooth_step2_surface, 1, 0, -7, 1);
+		addPart(create_flat_surface, 2, 2, -8, 0);
+		addPart(create_smooth_step2_surface, 1, 0, -8, 2);
+		addPart(create_flat_surface, 0, 2, -10, 0);
+		addPart(create_slope_surface, 0, 0, -8, 3);
+		addPart(create_flat_surface, -2, 2, -8, 0);
+
+		addPart(create_smooth_step2_surface, 3, 0, -5, 1);
+		addPart(create_smooth_step2_surface, 3, 0, -6, 1);
+		addPart(create_smooth_step2_surface, 3, 0, -6, 2);
+		addPart(create_smooth_step2_surface, 3, 0, -6, 3);
+		addPart(create_smooth_step2_surface, 3, 0, -7, 3);
+		addPart(create_smooth_step2_surface, 4, 0, -6, 2);
+
+		addPart(create_turn0_surface, -5, 0.f, 0, 0);
+		addPart(create_turn0_surface, -4, 0.f, 1, 1);
+		addPart(create_turn0_surface, -3, 0.f, 0, 2);
+		addPart(create_turn0_surface, -4, 0.f, -1, 3);
 	}
 
 	auto const carCamera1 = entityRegistry.create();
 	{
-		entityRegistry.emplace<vob::aoest::position>(carCamera1, 0.0f, 20.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::position>(carCamera1, 0.0f, 8.0f, 110.0f);
 		entityRegistry.emplace<vob::aoest::rotation>(carCamera1);
 		entityRegistry.emplace<vob::aoest::soft_follow>(
-			carCamera1, dynBody, glm::vec3{ 0.0f, 0.0f, -5.0f }, glm::vec3{ 0.0f, 5.0f, 10.0f }, 5.0f, 0.99f);
+			carCamera1, dynBody, glm::vec3{ 0.0f, 0.0f, -50.0f }, glm::vec3{ 0.0f, 3.0f, 5.0f }, 5.0f, 0.1f);
 		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera1);
 	}
 	auto const carCamera3 = entityRegistry.create();
@@ -355,14 +719,14 @@ void init_default_map(vob::aoeng::world& a_world, vob::aoe::DataHolder& a_data)
 			carCamera3, dynBody, aoest::combine(glm::vec3{ 0.0f, 1.0f, -1.0f }, glm::quat()));
 		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera3);
 	}
-	/* auto const carCamera4 = entityRegistry.create();
+	auto const carCamera4 = entityRegistry.create();
 	{
-		entityRegistry.emplace<vob::aoest::position>(carCamera4, 0.0f, 20.0f, 0.0f);
+		entityRegistry.emplace<vob::aoest::position>(carCamera4, -8.0f, 2.0f, 0.0f);
 		entityRegistry.emplace<vob::aoest::rotation>(carCamera4);
-		entityRegistry.emplace<vob::aoest::soft_follow>(
-			carCamera4, dynBody, glm::vec3{ 0.0f, 0.0f, -2.0f }, glm::vec3{ 0.0f, 1.0f, 2.0f }, 0.0f);
+		entityRegistry.emplace<vob::aoest::attachment_component>(
+			carCamera4, dynBody, aoest::combine(glm::vec3{ -8.0f, 0.0f, 0.0f }, glm::angleAxis(-3.141592f / 2, glm::vec3{0.0f, 1.0f, 0.0f})), glm::vec3{1.0f, 0.0f, 1.0f});
 		entityRegistry.emplace<vob::aoegl::camera_component>(carCamera4);
-	}*/
+	}
 
 	auto& directorWorldComponent = entityRegistry.ctx().get<aoegl::director_world_component>();
 	directorWorldComponent.m_activeCamera = carCamera1;

@@ -1,6 +1,6 @@
 #include <vob/aoe/rendering/context.h>
 
-#include <vob/aoe/rendering/color.h>
+#include <vob/aoe/rendering/_color.h>
 #include <vob/aoe/rendering/uniform_util.h>
 
 #include <vob/aoe/spacetime/measures.h>

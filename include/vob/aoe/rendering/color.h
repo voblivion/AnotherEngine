@@ -1,97 +1,92 @@
 #pragma once
 
-#include <vob/misc/physics/measure.h>
-
 #define GLM_ENABLE_EXPERIMENTAL
 #define GLM_FORCE_CXX17
 #include <glm/glm.hpp>
 
-#include <vob/misc/std/message_macros.h>
-
 
 namespace vob::aoegl
 {
-	struct color_channel
+	struct ColorChannel
 	{
-		float m_value;
+		float value;
 
 		operator float() const
 		{
-			return m_value;
+			return value;
 		}
 	};
 
 	template <std::size_t t_channels>
-	using color = glm::vec<t_channels, color_channel>;
+	using Color = glm::vec<t_channels, ColorChannel>;
 
-	using rgb = color<3>;
-	using rgba = color<4>;
+	using Rgb = Color<3>;
+	using Rgba = Color<4>;
 
-	inline auto to_rgba(const std::uint32_t a_hex)
+	inline auto toRgba(const std::uint32_t a_hex)
 	{
-		return rgba{
-			color_channel{static_cast<float>((a_hex & 0xff000000) >> 24) / 256.0f},
-			color_channel{static_cast<float>((a_hex & 0x00ff0000) >> 16) / 256.0f},
-			color_channel{static_cast<float>((a_hex & 0x0000ff00) >> 8) / 256.0f},
-			color_channel{static_cast<float>((a_hex & 0x000000ff) >> 0) / 256.0f},
+		return Rgba{
+			ColorChannel{static_cast<float>((a_hex & 0xff000000) >> 24) / 256.0f},
+			ColorChannel{static_cast<float>((a_hex & 0x00ff0000) >> 16) / 256.0f},
+			ColorChannel{static_cast<float>((a_hex & 0x0000ff00) >> 8) / 256.0f},
+			ColorChannel{static_cast<float>((a_hex & 0x000000ff) >> 0) / 256.0f},
 		};
 	}
 
-#pragma message(VOB_MISTD_TODO "glm cannot use constexpr...")
-	static const rgba k_white = rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
-	static const rgba k_gray = rgba{ 0.5f, 0.5f, 0.5f, 1.0f };
-	static const rgba k_black = rgba{ 0.0f, 0.0f, 0.0f, 1.0f };
-	static const rgba k_red = rgba{ 1.0f, 0.0f, 0.0f, 1.0f };
-	static const rgba k_maroon = rgba{ 0.5f, 0.0f, 0.0f, 1.0f };
-	static const rgba k_green = rgba{ 0.0f, 1.0f, 0.0f, 1.0f };
-	static const rgba k_forest = rgba{ 0.0f, 0.5f, 0.0f, 1.0f };
-	static const rgba k_blue = rgba{ 0.0f, 0.0f, 1.0f, 1.0f };
-	static const rgba k_navy = rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
-	static const rgba k_blueprint = to_rgba(0x14252e);
-	static const rgba k_yellow = rgba{ 1.0f, 1.0f, 0.0f, 1.0f };
-	static const rgba k_olive = rgba{ 0.5f, 0.5f, 0.0f, 1.0f };
-	static const rgba k_magenta = rgba{ 1.0f, 0.0f, 1.0f, 1.0f };
-	static const rgba k_eggplant = rgba{ 0.5f, 0.0f, 0.5f, 1.0f };
-	static const rgba k_cyan = rgba{ 0.0f, 1.0f, 1.0f, 1.0f };
-	static const rgba k_teal = rgba{ 0.0f, 0.5f, 0.5f, 1.0f };
-	static const rgba k_orange = rgba{ 1.0f, 0.5f, 0.0f, 1.0f };
-	static const rgba k_rose = rgba{ 1.0f, 0.0f, 0.5f, 1.0f };
-	static const rgba k_chartreuse = rgba{ 0.5f, 1.0f, 0.0f, 1.0f };
-	static const rgba k_spring = rgba{ 0.0f, 1.0f, 0.5f, 1.0f };
-	static const rgba k_violet = rgba{ 0.5f, 0.0f, 1.0f, 1.0f };
-	static const rgba k_azure = rgba{ 0.0f, 0.5f, 1.0f, 1.0f };
+	static const Rgba k_white = Rgba{ 1.0f, 1.0f, 1.0f, 1.0f };
+	static const Rgba k_gray = Rgba{ 0.5f, 0.5f, 0.5f, 1.0f };
+	static const Rgba k_black = Rgba{ 0.0f, 0.0f, 0.0f, 1.0f };
+	static const Rgba k_red = Rgba{ 1.0f, 0.0f, 0.0f, 1.0f };
+	static const Rgba k_maroon = Rgba{ 0.5f, 0.0f, 0.0f, 1.0f };
+	static const Rgba k_green = Rgba{ 0.0f, 1.0f, 0.0f, 1.0f };
+	static const Rgba k_forest = Rgba{ 0.0f, 0.5f, 0.0f, 1.0f };
+	static const Rgba k_blue = Rgba{ 0.0f, 0.0f, 1.0f, 1.0f };
+	static const Rgba k_navy = Rgba{ 0.0f, 0.0f, 0.5f, 1.0f };
+	static const Rgba k_blueprint = toRgba(0x14252e);
+	static const Rgba k_yellow = Rgba{ 1.0f, 1.0f, 0.0f, 1.0f };
+	static const Rgba k_olive = Rgba{ 0.5f, 0.5f, 0.0f, 1.0f };
+	static const Rgba k_magenta = Rgba{ 1.0f, 0.0f, 1.0f, 1.0f };
+	static const Rgba k_eggplant = Rgba{ 0.5f, 0.0f, 0.5f, 1.0f };
+	static const Rgba k_cyan = Rgba{ 0.0f, 1.0f, 1.0f, 1.0f };
+	static const Rgba k_teal = Rgba{ 0.0f, 0.5f, 0.5f, 1.0f };
+	static const Rgba k_orange = Rgba{ 1.0f, 0.5f, 0.0f, 1.0f };
+	static const Rgba k_rose = Rgba{ 1.0f, 0.0f, 0.5f, 1.0f };
+	static const Rgba k_chartreuse = Rgba{ 0.5f, 1.0f, 0.0f, 1.0f };
+	static const Rgba k_spring = Rgba{ 0.0f, 1.0f, 0.5f, 1.0f };
+	static const Rgba k_violet = Rgba{ 0.5f, 0.0f, 1.0f, 1.0f };
+	static const Rgba k_azure = Rgba{ 0.0f, 0.5f, 1.0f, 1.0f };
 
-	inline auto to_rgb(glm::vec3 const& a_vector)
+	inline auto toRgb(glm::vec3 const& a_vector)
 	{
-		return rgb{
-			color_channel{a_vector.x},
-			color_channel{a_vector.y},
-			color_channel{a_vector.z} };
+		return Rgb{
+			ColorChannel{a_vector.x},
+			ColorChannel{a_vector.y},
+			ColorChannel{a_vector.z} };
 	}
 
-	inline auto to_rgba(glm::vec3 const& a_vector)
+	inline auto toRgba(glm::vec3 const& a_vector)
 	{
-		return rgba{
-			color_channel{a_vector.x},
-			color_channel{a_vector.y},
-			color_channel{a_vector.z},
+		return Rgba{
+			ColorChannel{a_vector.x},
+			ColorChannel{a_vector.y},
+			ColorChannel{a_vector.z},
 			1.0f };
 	}
 
-	inline auto to_rgb(glm::vec4 const& a_vector)
+	inline auto toRgb(glm::vec4 const& a_vector)
 	{
-		return rgb{
-			color_channel{a_vector.x},
-			color_channel{a_vector.y},
-			color_channel{a_vector.z} };
+		return Rgb{
+			ColorChannel{a_vector.x},
+			ColorChannel{a_vector.y},
+			ColorChannel{a_vector.z} };
 	}
 
-	inline auto to_rgba(glm::vec4 const& a_vector)
+	inline auto toRgba(glm::vec4 const& a_vector)
 	{
-		return rgba{
-			color_channel{a_vector.x},
-			color_channel{a_vector.y},
-			color_channel{a_vector.z},
-			color_channel{ a_vector.w } };
+		return Rgba{
+			ColorChannel{a_vector.x},
+			ColorChannel{a_vector.y},
+			ColorChannel{a_vector.z},
+			ColorChannel{ a_vector.w } };
 	}
 }

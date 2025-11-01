@@ -28,9 +28,9 @@ namespace vob::aoeph
 
 	private:
 		aoeng::world_component_ref<physics_debug_context> m_physicsDebugContext;
+		aoeng::world_component_ref<physics_context> m_physicsContext;
 		aoeng::world_component_ref<aoegl::debug_mesh_world_component> m_debugMeshContext;
 
-		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, dynamic_body> m_dynamicBodyEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, static_collider> m_staticColliderEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, car_collider> m_carColliderEntities;
 	};
@@ -47,10 +47,8 @@ namespace vob::aoeph
 		aoeng::world_component_ref<physics_context> m_physicsContext;
 		aoeng::world_component_ref<aoein::inputs const> m_inputs;
 
-		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, dynamic_body> m_dynamicBodyEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, static_collider> m_staticColliderEntities;
 		aoeng::registry_view_ref<aoest::position, aoest::rotation, linear_velocity, angular_velocity_local, car_collider> m_carColliderEntities;
 
 	};
-
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vob/aoe/api.h>
-#include <vob/aoe/input/inputs.h>
+#include <vob/aoe/input/_inputs.h>
 
 #include <utility>
 #include <variant>

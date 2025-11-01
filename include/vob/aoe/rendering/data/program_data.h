@@ -43,8 +43,8 @@ namespace vob::misvi
 {
 	VOB_MISVI_ACCEPT(aoegl::program_data)
 	{
-		VOB_MISVI_NVP("Vertex Shader", vertexShaderSource);
-		VOB_MISVI_NVP("Fragment Shader", fragmentShaderSource);
+		VOB_MISVI_NVP("Vertex Shader", m_vertexShaderSource);
+		VOB_MISVI_NVP("Fragment Shader", m_fragmentShaderSource);
 		return true;
 	}
 }
