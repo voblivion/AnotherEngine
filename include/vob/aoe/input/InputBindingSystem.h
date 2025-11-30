@@ -2,6 +2,7 @@
 
 #include <vob/aoe/input/InputBindings.h>
 #include <vob/aoe/input/Inputs.h>
+#include <vob/aoe/window/WindowContext.h>
 
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/spacetime/TimeContext.h>

@@ -7,6 +7,7 @@
 
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/input/InputBindings.h>
+#include <vob/aoe/input/GameInputContext.h>
 #include <vob/aoe/spacetime/Transform.h>
 
 
@@ -20,6 +21,7 @@ namespace vob::aoeph
 
 	private:
 		aoeng::EcsWorldContextRef<aoein::InputBindings const> m_inputBindings;
+		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, CarCollider, CarControllerComponent> m_carEntities;
 	};
 }

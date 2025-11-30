@@ -13,7 +13,7 @@
 #include <vob/aoe/engine/world.h>
 
 #include <vob/aoe/engine/game.h>
-#include <vob/aoe/engine/multi_world.h>
+#include <vob/aoe/engine/MultiWorld.h>
 #include <vob/aoe/engine/EcsWorld.h>
 
 
@@ -127,6 +127,7 @@ int main()
 
 	// ver 1.0
 	{
+		OPTICK_START_CAPTURE();
 		aoewi::glfw_window window{ glm::ivec2{ g_width, g_height }, "An Other Engine" };
 
 		glfwMakeContextCurrent(window.get_native_handle());
@@ -145,6 +146,7 @@ int main()
 
 		// Run game
 		world.start(schedule);
+		OPTICK_STOP_CAPTURE();
 	}
 
 	// Destroy game window

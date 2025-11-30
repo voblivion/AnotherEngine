@@ -5,6 +5,7 @@
 
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/input/InputBindings.h>
+#include <vob/aoe/input/GameInputContext.h>
 #include <vob/aoe/spacetime/Transform.h>
 #include <vob/aoe/spacetime/TimeContext.h>
 
@@ -19,7 +20,7 @@ namespace vob::aoedb
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 
 	private:
-		aoeng::EcsWorldContextRef<aoein::InputBindings const> m_inputBindings;
+		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 		aoeng::EcsWorldContextRef<aoest::TimeContext const> m_timeContext;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, GhostControllerComponent, IsControlledTag> m_ghostControllerEntities;
 	};

@@ -1,5 +1,7 @@
 #include <vob/aoe/engine/SynchronizedFrameJobsRepeater.h>
 
+#include "optick.h"
+
 #include <ranges>
 
 

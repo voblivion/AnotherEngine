@@ -18,9 +18,6 @@ namespace vob::aoeph
 
 	void CarControllerSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		ImGui::Begin("Car Controller");
-		ImGui::BeginDisabled();
-
 		auto const& inputBindings = m_inputBindings.get(a_wdap);
 
 		for (auto [carEntity, position, rotation, carCollider, carControllerComponent] : m_carEntities.get(a_wdap).each())
@@ -31,16 +28,14 @@ namespace vob::aoeph
 			auto const down = rotation * glm::vec3{ 0.0f, -1.0f, 0.0f };
 			auto /*const*/ speed = glm::dot(forward, carCollider.linearVelocity);
 
-			ImGui::InputFloat("Speed", &speed);
-
 			auto isAccelerating = false;
 			auto isDecelerating = false;
 			auto steering = 0.0f;
 
-			auto const forwardSwitch = inputBindings.switches.find(carControllerComponent.forwardInputId);
-			auto const backwardSwitch = inputBindings.switches.find(carControllerComponent.backwardInputId);
+			auto const forwardInput = m_gameInputCtx.get(a_wdap).getValue(carControllerComponent.forwardInputValueId);
+			auto const backwardInput = m_gameInputCtx.get(a_wdap).getValue(carControllerComponent.backwardInputValueId);
 
-			if (forwardSwitch != nullptr && forwardSwitch->isPressed())
+			if (forwardInput > 0.0f)
 			{
 				if (speed >= 0.0f)
 				{
@@ -52,7 +47,7 @@ namespace vob::aoeph
 				}
 			}
 
-			if (backwardSwitch != nullptr && backwardSwitch->isPressed())
+			if (backwardInput > 0.0f)
 			{
 				if (speed < 0.0f)
 				{
@@ -64,17 +59,9 @@ namespace vob::aoeph
 				}
 			}
 
-			auto const steeringAxis = inputBindings.axes.find(carControllerComponent.steeringInputId);
-			if (steeringAxis != nullptr)
-			{
-				steering = -steeringAxis->getValue();
-			}
-
-			ImGui::InputFloat("Steering Input", &steering);
+			steering = -m_gameInputCtx.get(a_wdap).getValue(carControllerComponent.steeringInputValueId);
 
 			auto /*const*/ maxWheelSteeringAngle = static_cast<float>(steering * 0.52 * std::exp(0.000163386 * speed * speed - 0.04697899 * std::abs(speed)));
-
-			ImGui::InputFloat("Steering Output", &maxWheelSteeringAngle);
 
 			carCollider.force = carControllerComponent.gravity * carCollider.mass;
 			carCollider.torque = glm::vec3{ 0.0f };
@@ -145,8 +132,5 @@ namespace vob::aoeph
 				}
 			}
 		}
-
-		ImGui::EndDisabled();
-		ImGui::End();
 	}
 }

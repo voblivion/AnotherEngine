@@ -638,9 +638,8 @@ namespace vob::aoeph
 
 	void CollisionSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		static bool k_reset = false;
+		/*static bool k_reset = false;
 		static glm::vec3 k_position = glm::vec3{ 0.0f, 2.0f, 0.0f };
-		static std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>> k_debugForces;
 
 		ImGui::Begin("Physics");
 		ImGui::InputFloat3("Position", &k_position.x);
@@ -648,7 +647,9 @@ namespace vob::aoeph
 		{
 			k_reset = true;
 		}
-		ImGui::End();
+		ImGui::End();*/
+
+		static std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>> k_debugForces;
 
 		auto const& fixedRateTimeContext = m_fixedRateTimeContext.get(a_wdap);
 		auto& collisionContext = m_collisionContext.get(a_wdap);
@@ -668,7 +669,7 @@ namespace vob::aoeph
 		std::vector<BroadPhaseCandidate> broadPhaseCandidates;
 		for (auto [carEntity, carPosition, carRotation, carCollider] : m_carColliderEntities.get(a_wdap).each())
 		{
-			if (k_reset)
+			/*if (k_reset)
 			{
 				carPosition = k_position;
 				carRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
@@ -681,7 +682,7 @@ namespace vob::aoeph
 				}
 				carCollider.force = glm::vec3{ 0.0f };
 				carCollider.torque = glm::vec3{ 0.0f };
-			}
+			}*/
 
 			collectBroadPhaseCandidates(
 				carPosition, carRotation, carCollider, m_staticColliderEntities.get(a_wdap), broadPhaseCandidates);
@@ -694,6 +695,6 @@ namespace vob::aoeph
 		{
 			m_debugMeshContext.get(a_wdap).addLine(source, source + force, color);
 		}
-		k_reset = false;
+		// k_reset = false;
 	}
 }

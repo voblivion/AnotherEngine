@@ -40,6 +40,7 @@ namespace vob::aoeng
 
 		void execute(EcsWorldDataAccessProvider const& a_wdap) const override
 		{
+			OPTICK_EVENT(typeid(TSystem).name());
 			m_system.execute(a_wdap);
 		}
 
@@ -150,6 +151,8 @@ namespace vob::aoeng
 
 			void execute() override
 			{
+				OPTICK_FRAME(m_threadSchedule.name.c_str());
+
 				std::unique_lock lock(m_mutex);
 				m_cv.wait(lock, [this] { return m_requestedState == State::Reset; });
 
@@ -215,6 +218,8 @@ namespace vob::aoeng
 
 			void execute() override
 			{
+				OPTICK_FRAME(m_threadSchedule.name.c_str());
+
 				for (auto& frameJob : m_ecsWorld->m_frameJobs | std::views::drop(1))
 				{
 					frameJob->requestState(EcsFrameJob::State::Reset);

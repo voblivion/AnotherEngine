@@ -93,6 +93,7 @@ namespace vob::aoein
 			M6,
 			M7,
 			M8,
+			// TODO: this probably doesn't belong here
 			ScrollUp,
 			ScrollDown,
 			count,

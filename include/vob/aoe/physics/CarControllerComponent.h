@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vob/aoe/input/InputBindings.h>
+#include <vob/aoe/input/GameInput.h>
 
 #include <glm/glm.hpp>
 
@@ -38,5 +39,9 @@ namespace vob::aoeph
 		aoein::InputBindings::SwitchId forwardInputId = aoein::InputBindings::kInvalidAxisId;
 		aoein::InputBindings::SwitchId backwardInputId = aoein::InputBindings::kInvalidAxisId;
 		aoein::InputBindings::AxisId steeringInputId = aoein::InputBindings::kInvalidSwitchId;
+
+		aoein::GameInputValueId forwardInputValueId = -1;
+		aoein::GameInputValueId backwardInputValueId = -1;
+		aoein::GameInputValueId steeringInputValueId = -1;
 	};
 }

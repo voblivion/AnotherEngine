@@ -32,6 +32,8 @@ namespace vob::aoein
 		}
 	};
 
+
+
 	template <typename TBindingBase>
 	class BasicInputBindings
 	{
