@@ -8,8 +8,6 @@
 
 #include <vob/aoe/actor/simple_actor_system.h>
 
-
-
 #include <vob/aoe/engine/world.h>
 
 #include <vob/aoe/engine/game.h>
@@ -17,21 +15,9 @@
 #include <vob/aoe/engine/EcsWorld.h>
 
 
-#include <vob/aoe/input/bindings.h>
-#include <vob/aoe/input/binding_util.h>
-#include <vob/aoe/input/_inputs.h>
-
-#include <vob/aoe/terrain/procedural_terrain.h>
-
-#include <vob/aoe/window/glfw_window.h>
-
 #include <vob/misc/hash/string_id_literals.h>
 #include <vob/misc/physics/measure_literals.h>
 #include <vob/misc/visitor/is_visitable.h>
-
-#include "init_default_map.h"
-#include "init_world_components.h"
-#include "init_world_systems.h"
 
 #include <regex>
 #include <memory_resource>
@@ -123,30 +109,6 @@ int main()
 
 		// Finalize ImGui
 		aoegl::terminateImGui();
-	}
-
-	// ver 1.0
-	{
-		OPTICK_START_CAPTURE();
-		aoewi::glfw_window window{ glm::ivec2{ g_width, g_height }, "An Other Engine" };
-
-		glfwMakeContextCurrent(window.get_native_handle());
-		glfwSwapInterval(0);
-		glEnable(GL_MULTISAMPLE);
-
-		std::cout << glGetString(GL_VERSION) << std::endl;
-
-		aoeng::world world;
-		mismt::pmr::schedule schedule;
-		init_world_components(world, data, window);
-		init_world_systems(world, schedule);
-		init_default_map(world, data);
-
-		std::cout << schedule.size() << std::endl;
-
-		// Run game
-		world.start(schedule);
-		OPTICK_STOP_CAPTURE();
 	}
 
 	// Destroy game window
@@ -246,10 +208,6 @@ int main()
 * 
 * Interactor Pawn:
 *	
-* 
-*/
-
-/* DATA / GRAPHIC OBJECTS
 * 
 */
 

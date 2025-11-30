@@ -18,14 +18,12 @@
 #include <vob/aoe/data/single_file_loader.h>
 #include <vob/aoe/data/string_loader.h>
 #include <vob/aoe/data/filesystem_util.h>
-#include <vob/aoe/debug/debug_controller.h>
-#include <vob/aoe/physics/components/rigidbody.h>
-#include <vob/aoe/rendering/components/camera_component.h>
-#include <vob/aoe/rendering/components/model_component.h>
-#include <vob/aoe/rendering/components/model_data_component.h>
-#include <vob/aoe/rendering/data/model_loader.h>
+#include <vob/aoe/data/filesystem_database.h>
+#include <vob/aoe/data/filesystem_indexer.h>
+#include <vob/aoe/data/json_file_loader.h>
 #include <vob/aoe/rendering/data/texture_file_loader.h>
-#include <vob/aoe/rendering/data/program_data.h>
+#include <vob/aoe/rendering/data/model_loader.h>
+#include <vob/aoe/ecs/component_set.h>
 #include <vob/aoe/spacetime/transform.h>
 
 #include <vob/misc/visitor/accept.h>
@@ -113,14 +111,10 @@ namespace vob::aoe
 				register_component<aoeac::actor_component>("vob::newaoeac::actor_component"_id);
 
 				// v2
-				register_component<aoegl::camera_component>("vob::aoegl::camera_component"_id);
-				register_component<aoegl::model_component>("vob::aoegl::model_component"_id);
-				register_component<aoegl::model_data_component>("vob::aoegl::model_data_component"_id);
 				// TODO: make it some comp_data -> comp pattern
 				// register_component<aoeph::rigidbody>("vob::aoeph::rigidbody"_id);
 				register_component<aoest::position>("vob::aoest::position"_id);
 				register_component<aoest::rotation>("vob::aoest::rotation"_id);
-				register_component<aoedb::debug_controller_component>("vob::aoedb::debug_controller_component"_id);
 			}
 
 			m_dynamicsWorld.setGravity(btVector3(0.0f, -25.0f, 0.0f));
@@ -149,8 +143,6 @@ namespace vob::aoe
 			filesystemIndexer, textureDatabase, filesystemIndexer };
 		
 		misvi::pmr::applicator<false, misvi::pmr::json_reader<context>> jsonLoadApplicator;
-		aoedt::filesystem_database<aoedt::json_file_loader<aoegl::program_data, context_factory>>
-			shaderProgramDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
 		aoedt::filesystem_database<aoedt::json_file_loader<aoecs::component_set, context_factory>>
 			componentSetDatabase{ filesystemIndexer, jsonLoadApplicator, contextFactory };
 
@@ -160,11 +152,8 @@ namespace vob::aoe
 			multiDatabase.register_database(textureDatabase);
 			multiDatabase.register_database(modelDatabase);
 
-			multiDatabase.register_database(shaderProgramDatabase);
 			multiDatabase.register_database(componentSetDatabase);
 
-			auto foo = shaderProgramDatabase.find(
-				filesystemIndexer.get_runtime_id("data/shaders/shader_new_db_test.json"));
 			auto joh = componentSetDatabase.find(
 				filesystemIndexer.get_runtime_id("data/player_v2.json"));
 		}

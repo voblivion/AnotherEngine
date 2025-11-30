@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vob/aoe/rendering/data/vertex_data.h>
-#include <vob/aoe/rendering/primitives.h>
+#include <vob/aoe/rendering/data/primitives.h>
 
 #include <string>
 #include <vector>

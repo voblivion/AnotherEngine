@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vob/aoe/api.h>
+
 #include <vob/aoe/rendering/data/material_data.h>
 #include <vob/aoe/rendering/data/mesh_data.h>
 
@@ -14,7 +16,7 @@ namespace vob::aoegl
 		material_data m_material;
 	};
 
-	struct model_data
+	struct VOB_AOE_API model_data
 	{
 		std::pmr::vector<textured_mesh_data> m_texturedMeshes;
 	};

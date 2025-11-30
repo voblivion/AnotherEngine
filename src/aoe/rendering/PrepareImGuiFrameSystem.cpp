@@ -1,7 +1,5 @@
 #include <vob/aoe/rendering/PrepareImGuiFrameSystem.h>
 
-#include <vob/aoe/window/glfw_window.h>
-
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
