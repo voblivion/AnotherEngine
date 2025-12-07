@@ -3,11 +3,17 @@
 #include <vob/aoe/engine/EcsWorld.h>
 #include <vob/aoe/engine/MultiWorld.h>
 
+#include <vob/aoe/exchange/EcsExchangeData.h>
+
 #include <vob/aoe/spacetime/TimeSystem.h>
+#include <vob/aoe/spacetime/InterpolationTimeComponent.h>
+#include <vob/aoe/spacetime/TransformInterpolationSystem.h>
 #include <vob/aoe/spacetime/FixedRateTimeSystem.h>
+#include <vob/aoe/spacetime/InterpolatedTransform.h>
+#include <vob/aoe/spacetime/InterpolationContext.h>
+#include <vob/aoe/spacetime/InterpolationExchangeContext.h>
 #include <vob/aoe/window/PollEventsSystem.h>
 #include <vob/aoe/rendering/PrepareImGuiFrameSystem.h>
-#include <vob/aoe/window/WindowInputSystem.h>
 #include <vob/aoe/input/InputBindingSystem.h>
 #include <vob/aoe/input/WindowInputBindingSystem.h>
 #include <vob/aoe/debug/GhostControllerSystem.h>
@@ -38,9 +44,12 @@
 #include <vob/aoe/rendering/ProgramData.h>
 #include <vob/aoe/data/filesystem_util.h>
 #include <vob/aoe/rendering/ProgramUtils.h>
+#include <vob/aoe/input/GameInputUtils.h>
 #include <vob/aoe/input/InputBindingUtils.h>
 
 #include <entt/entt.hpp>
+
+#include <imgui.h>
 
 #include <vector>
 #include <unordered_map>
@@ -63,12 +72,7 @@ namespace vob::misvi
 	}
 }
 
-
 /*  */
-#pragma optimize("", off)
-
-#include <vob/aoe/input/GameInputUtils.h>
-#include <imgui.h>
 
 namespace vob::aoein {
 
@@ -86,152 +90,14 @@ namespace vob::aoein {
 
 namespace vob
 {
-	struct InterpolationContext
-	{
-		std::chrono::nanoseconds offset = std::chrono::milliseconds(10);
-	};
-
-	struct InterpolationExchangeContext
-	{
-		std::chrono::time_point<std::chrono::high_resolution_clock> targetTime = std::chrono::high_resolution_clock::now();
-	};
-
-	struct InterpolationComponent
-	{
-		std::chrono::time_point<std::chrono::high_resolution_clock> sourceTime = std::chrono::high_resolution_clock::now();
-		std::chrono::time_point<std::chrono::high_resolution_clock> targetTime = std::chrono::high_resolution_clock::now();
-	};
-
-	struct InterpolatedPosition
-	{
-		glm::vec3 source;
-		glm::vec3 target;
-	};
-
-	struct InterpolatedRotation
-	{
-		glm::quat source;
-		glm::quat target;
-	};
-
-	class EventPool
-	{
-	public:
-		template <typename TEvent>
-		void addEvents(std::vector<TEvent> a_events)
-		{
-			auto eventListEntry = m_eventLists.find(typeid(TEvent));
-			if (eventListEntry != m_eventLists.end())
-			{
-				eventListEntry->second->addEvents(&a_events);
-				return;
-			}
-
-			m_eventLists.emplace(typeid(TEvent), std::make_shared<EventList<TEvent>>(std::move(a_events)));
-		}
-
-		template <typename TEvent>
-		void pollEvents(std::vector<TEvent>& a_events)
-		{
-			auto eventListEntry = m_eventLists.find(typeid(TEvent));
-			if (eventListEntry != m_eventLists.end())
-			{
-				eventListEntry->second->pollEvents(&a_events);
-			}
-		}
-
-		void merge(EventPool a_eventPool)
-		{
-			for (auto& newEventListEntry : a_eventPool.m_eventLists)
-			{
-				auto eventListEntry = m_eventLists.find(newEventListEntry.first);
-				if (eventListEntry != m_eventLists.end())
-				{
-					eventListEntry->second->merge(*newEventListEntry.second);
-					continue;
-				}
-
-				m_eventLists.emplace(newEventListEntry.first, std::move(newEventListEntry.second));
-			}
-		}
-
-	private:
-		struct AEventList
-		{
-			virtual ~AEventList() = default;
-
-			virtual void addEvents(void* a_events) = 0;
-			virtual void pollEvents(void* a_events) = 0;
-			virtual void merge(AEventList& a_eventList) = 0;
-		};
-
-		template <typename TEvent>
-		struct EventList : AEventList
-		{
-			explicit EventList(std::vector<TEvent> a_events)
-				: m_events{ std::move(a_events) }
-			{}
-
-			void addEvents(void* a_events) override
-			{
-				auto& newEvents = *static_cast<std::vector<TEvent>*>(a_events);
-				m_events.insert_range(m_events.end(), newEvents);
-			}
-
-			void merge(AEventList& a_eventList) override
-			{
-				auto& newEvents = static_cast<EventList<TEvent>&>(a_eventList).m_events;
-				m_events.insert_range(m_events.end(), newEvents);
-			}
-
-			void pollEvents(void* a_events) override
-			{
-				auto& newEvents = *static_cast<std::vector<TEvent>*>(a_events);
-				std::swap(newEvents, m_events);
-			}
-
-			std::vector<TEvent> m_events;
-		};
-
-		std::unordered_map<std::type_index, std::shared_ptr<AEventList>> m_eventLists;
-	};
-
-	class EcsExchangeData
-	{
-	public:
-		void store(entt::registry a_registry, EventPool a_eventPool)
-		{
-			std::lock_guard lock(m_mutex);
-			std::swap(m_registry, a_registry);
-			m_eventPool.merge(std::move(a_eventPool));
-		}
-
-		std::pair<entt::registry, EventPool> load()
-		{
-			entt::registry registry;
-			EventPool eventPool;
-
-			std::lock_guard lock(m_mutex);
-			std::swap(registry, m_registry);
-			std::swap(eventPool, m_eventPool);
-			return std::make_pair(std::move(registry), std::move(eventPool));
-		}
-
-	private:
-		std::mutex m_mutex;
-		entt::registry m_registry;
-		// TODO: if multiple readers, there should be multiple pools, but will there ever be multiple readers?
-		EventPool m_eventPool;
-	};
-
 	struct SimulationExchangeContext
 	{
-		std::shared_ptr<EcsExchangeData> data;
+		std::shared_ptr<aoexc::EcsExchangeData> data;
 	};
 
 	struct PresentationExchangeContext
 	{
-		std::shared_ptr<EcsExchangeData> data;
+		std::shared_ptr<aoexc::EcsExchangeData> data;
 	};
 
 	struct SimulationDebugMeshContext : public aoegl::DebugMeshContext
@@ -250,7 +116,7 @@ namespace vob
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
 			entt::registry excRegistry;
-			EventPool excEventPool;
+			aoexc::EventPool excEventPool;
 
 			auto& presentationInputCtx = excRegistry.ctx().emplace<aoein::PresentationInputContext>();
 			auto& gameInputCtx = m_gameInputContext.get(a_wdap);
@@ -327,7 +193,7 @@ namespace vob
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
 			entt::registry excRegistry;
-			EventPool excEventPool;
+			aoexc::EventPool excEventPool;
 
 			// Car Colliders
 			for (auto [entity, position, rotation, carCollider] : m_carEntities.get(a_wdap).each())
@@ -340,7 +206,7 @@ namespace vob
 
 			// Interpolation
 			excRegistry.ctx().emplace<aoest::TimeContext>(m_timeContext.get(a_wdap));
-			excRegistry.ctx().emplace<InterpolationExchangeContext>(std::chrono::high_resolution_clock::now());
+			excRegistry.ctx().emplace<aoest::InterpolationExchangeContext>(std::chrono::high_resolution_clock::now());
 
 			// Debug Mesh
 			auto& excDebugMeshContext = excRegistry.ctx().emplace<aoegl::DebugMeshContext>();
@@ -368,14 +234,14 @@ namespace vob
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
 			auto [excRegistry, excEventPool] = m_simulationExchangeContext.get(a_wdap).data->load();
-			if (!excRegistry.ctx().contains<InterpolationExchangeContext>())
+			if (!excRegistry.ctx().contains<aoest::InterpolationExchangeContext>())
 			{
 				return;
 			}
 
 			// Interpolation
 			auto sourceTime = m_timeContext.get(a_wdap).tickStartTime;
-			auto targetTime = excRegistry.ctx().get<InterpolationExchangeContext>().targetTime + m_interpolationContext.get(a_wdap).offset;
+			auto targetTime = excRegistry.ctx().get<aoest::InterpolationExchangeContext>().targetTime + m_interpolationContext.get(a_wdap).offset;
 
 			// Car Colliders
 			for (auto [entity, excPosition, excRotation, excCarCollider] : excRegistry.view<aoest::Position, aoest::Rotation, aoeph::CarCollider>().each())
@@ -400,43 +266,9 @@ namespace vob
 	private:
 		aoeng::EcsWorldContextRef<SimulationExchangeContext> m_simulationExchangeContext;
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
-		aoeng::EcsWorldContextRef<InterpolationContext> m_interpolationContext;
+		aoeng::EcsWorldContextRef<aoest::InterpolationContext> m_interpolationContext;
 		aoeng::EcsWorldContextRef<SimulationDebugMeshContext> m_simDebugMeshContext;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, InterpolatedPosition, InterpolatedRotation, InterpolationComponent, aoeph::CarCollider> m_carEntities;
-	};
-
-	class TransformInterpolationSystem
-	{
-	public:
-		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
-		{
-
-		}
-
-		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
-		{
-			auto const& timeContext = m_timeContext.get(a_wdap);
-
-			for (auto [entity, position, rotation, interpolatedPosition, interpolatedRotation, interpolationComponent] : m_transformEntities.get(a_wdap).each())
-			{
-				auto const sourceToTarget = std::chrono::duration<float>(interpolationComponent.targetTime - interpolationComponent.sourceTime).count();
-				if (std::abs(sourceToTarget) < std::numeric_limits<float>::epsilon())
-				{
-
-					continue;
-				}
-
-				auto const sourceToNow = std::chrono::duration<float>(timeContext.tickStartTime - interpolationComponent.sourceTime).count();
-				auto const alpha = std::clamp(sourceToNow / sourceToTarget, 0.0f, 1.0f);
-
-				position = interpolatedPosition.source + alpha * (interpolatedPosition.target - interpolatedPosition.source);
-				rotation = glm::slerp(interpolatedRotation.source, interpolatedRotation.target, alpha);
-			}
-		}
-
-	private:
-		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, InterpolatedPosition, InterpolatedRotation, InterpolationComponent> m_transformEntities;
+		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoest::InterpolatedPosition, aoest::InterpolatedRotation, aoest::InterpolationTimeComponent, aoeph::CarCollider> m_carEntities;
 	};
 
 	class SimulationDebugRenderSystem
@@ -481,23 +313,17 @@ namespace vob
 		auto timeId = addSystem<aoest::TimeSystem>(ecsSystems);
 		auto pollEventsId = addSystem<aoewi::PollEventsSystem>(ecsSystems);
 		auto prepareImGuiFrameId = addSystem<aoegl::PrepareImGuiFrameSystem>(ecsSystems);
-		auto windowInputId = addSystem<aoewi::WindowInputSystem>(ecsSystems);
-		auto inputBindingId = addSystem<aoein::InputBindingSystem>(ecsSystems);
 		auto windowInputBindingId = addSystem<aoein::WindowInputBindingSystem>(ecsSystems);
 		auto ghostControllerId = addSystem<aoedb::GhostControllerSystem>(ecsSystems);
-		// auto carControllerId = addSystem<aoeph::CarControllerSystem>(ecsSystems);
-		// auto collisionId = addSystem<aoeph::CollisionSystem>(ecsSystems);
-		// auto softFollowId = addSystem<aoest::SoftFollowSystem>(ecsSystems);
 		auto bindSceneFramebufferId = addSystem<aoegl::BindSceneFramebufferSystem>(ecsSystems);
 		auto renderDebugMeshId = addSystem<aoegl::RenderDebugMeshSystem>(ecsSystems);
 		auto bindWindowFramebufferId = addSystem<aoegl::BindWindowFramebufferSystem>(ecsSystems);
 		auto renderSceneId = addSystem<aoegl::RenderSceneSystem>(ecsSystems);
 		auto renderImGuiFrameId = addSystem<aoegl::RenderImGuiFrameSystem>(ecsSystems);
 		auto swapBuffersId = addSystem<aoewi::SwapBuffersSystem>(ecsSystems);
-		// auto fixedRateLimitingId = addSystem<aoest::FixedRateLimitingSystem>(ecsSystems);
 
 		auto simulationImportId = addSystem<SimulationImportSystem>(ecsSystems);
-		auto transformInterpolationId = addSystem<TransformInterpolationSystem>(ecsSystems);
+		auto transformInterpolationId = addSystem<aoest::TransformInterpolationSystem>(ecsSystems);
 		auto simDebugRenderId = addSystem<SimulationDebugRenderSystem>(ecsSystems);
 		auto presExportId = addSystem<PresentationExportSystem>(ecsSystems);
 
@@ -508,11 +334,8 @@ namespace vob
 			{ simDebugRenderId },
 			{ pollEventsId },
 			{ prepareImGuiFrameId },
-			{ windowInputId },
-			{ inputBindingId },
 			{ windowInputBindingId },
 			{ ghostControllerId },
-			// { debugRenderCollidersId },
 			{ bindSceneFramebufferId },
 			{ renderDebugMeshId },
 			{ bindWindowFramebufferId },
@@ -531,7 +354,6 @@ namespace vob
 		auto timeId = addSystem<aoest::TimeSystem>(ecsSystems);
 		auto presImportId = addSystem<PresentationImportSystem>(ecsSystems);
 		auto fixedRateTimeId = addSystem<aoest::FixedRateTimeSystem>(ecsSystems);
-		auto inputBindingId = addSystem<aoein::InputBindingSystem>(ecsSystems); // <- should this be in sim?
 		auto carControllerId = addSystem<aoeph::CarControllerSystem>(ecsSystems);
 		auto collisionId = addSystem<aoeph::CollisionSystem>(ecsSystems);
 		auto debugRenderCollidersId = addSystem<aoeph::DebugRenderCollidersSystem>(ecsSystems);
@@ -543,7 +365,6 @@ namespace vob
 			{ timeId },
 			{ presImportId },
 			{ fixedRateTimeId },
-			{ inputBindingId },
 			{ carControllerId },
 			{ collisionId },
 			{ debugRenderCollidersId },
@@ -578,14 +399,14 @@ namespace vob
 		multiDatabase.register_database(stringDatabase);
 		multiDatabase.register_database(shaderProgramDatabase);
 
-		auto simExchangeData = std::make_shared<EcsExchangeData>();
-		auto presExchangeData = std::make_shared<EcsExchangeData>();
+		auto simExchangeData = std::make_shared<aoexc::EcsExchangeData>();
+		auto presExchangeData = std::make_shared<aoexc::EcsExchangeData>();
 
 		// Prepare contexts
 		entt::registry preRegistry;
 		preRegistry.ctx().emplace<aoest::TimeContext>();
 		preRegistry.ctx().emplace<SimulationExchangeContext>(simExchangeData);
-		preRegistry.ctx().emplace<InterpolationContext>();
+		preRegistry.ctx().emplace<aoest::InterpolationContext>();
 		preRegistry.ctx().emplace<aoewi::WindowInputContext>();
 		preRegistry.ctx().emplace<aoewi::WindowContext>(a_window);
 		preRegistry.ctx().emplace<aoegl::DebugMeshContext>();
@@ -600,7 +421,6 @@ namespace vob
 		auto presSteeringInputValueId = aoein::GameInputUtils::addInputValueBinding(presGameInputCtx, presGameInputBindingCtx,
 			std::make_shared<aoein::GamepadAxisInputValueBinding>(0, aoein::Gamepad::Axis::LeftX));
 
-		preRegistry.ctx().emplace<aoein::Inputs>();
 		auto& preInputBindings = preRegistry.ctx().emplace<aoein::InputBindings>();
 		auto& cameraDirectorContext = preRegistry.ctx().emplace<aoegl::CameraDirectorContext>();
 		auto& sceneTextureContext = preRegistry.ctx().emplace<aoegl::SceneTextureContext>();
@@ -711,8 +531,6 @@ namespace vob
 		simRegistry.ctx().emplace<SimulationExchangeContext>(simExchangeData);
 		simRegistry.ctx().emplace<aoest::FixedRateTimeContext>();
 		simRegistry.ctx().emplace<aoegl::DebugMeshContext>();
-		simRegistry.ctx().emplace<aoein::Inputs>();
-		auto& inputBindings = simRegistry.ctx().emplace<aoein::InputBindings>();
 		simRegistry.ctx().emplace<aoeph::CollisionContext>();
 
 		// Prepare entities
@@ -831,9 +649,9 @@ namespace vob
 			auto& carController = simRegistry.emplace<aoeph::CarControllerComponent>(e);
 			carController.wheels[0].steeringFactor = 1.0f;
 			carController.wheels[1].steeringFactor = 1.0f;
-			carController.forwardInputId = inputBindings.switches.add(aoein::InputBindingUtils::makeSwitch(aoein::SwitchReference{ 0, aoein::Gamepad::Button::A }));
-			carController.backwardInputId = inputBindings.switches.add(aoein::InputBindingUtils::makeSwitch(aoein::SwitchReference{ 0, aoein::Gamepad::Button::B }));
-			carController.steeringInputId = inputBindings.axes.add(aoein::InputBindingUtils::makeAxis(aoein::AxisReference{ 0, aoein::Gamepad::Axis::LeftX }));
+			// carController.forwardInputId = inputBindings.switches.add(aoein::InputBindingUtils::makeSwitch(aoein::SwitchReference{ 0, aoein::Gamepad::Button::A }));
+			// carController.backwardInputId = inputBindings.switches.add(aoein::InputBindingUtils::makeSwitch(aoein::SwitchReference{ 0, aoein::Gamepad::Button::B }));
+			// carController.steeringInputId = inputBindings.axes.add(aoein::InputBindingUtils::makeAxis(aoein::AxisReference{ 0, aoein::Gamepad::Axis::LeftX }));
 			carController.forwardInputValueId = simForwardInputValueId;
 			carController.backwardInputValueId = simBackwardInputValueId;
 			carController.steeringInputValueId = simSteeringInputValueId;
@@ -841,9 +659,9 @@ namespace vob
 			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
 			preRegistry.emplace<aoeph::CarCollider>(e, simRegistry.get<aoeph::CarCollider>(e));
-			preRegistry.emplace<InterpolatedPosition>(e);
-			preRegistry.emplace<InterpolatedRotation>(e);
-			preRegistry.emplace<InterpolationComponent>(e);
+			preRegistry.emplace<aoest::InterpolatedPosition>(e);
+			preRegistry.emplace<aoest::InterpolatedRotation>(e);
+			preRegistry.emplace<aoest::InterpolationTimeComponent>(e);
 		}
 
 		return { std::move(preRegistry), std::move(simRegistry) };
