@@ -20,8 +20,7 @@ namespace vob::aoeph
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 
 	private:
-		aoeng::EcsWorldContextRef<aoein::InputBindings const> m_inputBindings;
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, CarCollider, CarControllerComponent> m_carEntities;
+		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, CarCollider, CarControllerComponent> m_carEntities;
 	};
 }

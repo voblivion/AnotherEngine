@@ -8,7 +8,6 @@
 #include "imgui.h"
 
 
-#pragma optimize("", off)
 namespace vob::aoeph
 {
 	void CollisionSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

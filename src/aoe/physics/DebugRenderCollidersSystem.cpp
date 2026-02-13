@@ -1,6 +1,6 @@
 #include <vob/aoe/physics/DebugRenderCollidersSystem.h>
 
-#pragma optimize("", off)
+
 namespace vob::aoeph
 {
 	void DebugRenderCollidersSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

@@ -7,19 +7,15 @@
 #include "imgui.h"
 
 
-#pragma optimize("", off)
 namespace vob::aoeph
 {
 	void CarControllerSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-		m_inputBindings.init(a_wdar);
 		m_carEntities.init(a_wdar);
 	}
 
 	void CarControllerSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		auto const& inputBindings = m_inputBindings.get(a_wdap);
-
 		for (auto [carEntity, position, rotation, carCollider, carControllerComponent] : m_carEntities.get(a_wdap).each())
 		{
 			auto const barycenter = position + rotation * carCollider.barycenterLocal;
@@ -103,13 +99,14 @@ namespace vob::aoeph
 			for (int32_t i = 0; i < 4; ++i)
 			{
 				auto const& wheelCollider = carCollider.wheels[i];
-				auto const& wheelController = carControllerComponent.wheels[i];
+				auto& wheelController = carControllerComponent.wheels[i];
 
 				auto const suspensionAttachPosition = position + rotation * wheelCollider.suspensionAttachPosition;
 				auto const wheelRotation = rotation * wheelCollider.rotation;
 
 				auto const wheelUp = wheelRotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
 				auto const wheelSteeringAngle = maxWheelSteeringAngle * wheelController.steeringFactor;
+				wheelController.steeringAngle = wheelSteeringAngle;
 				auto const wheelForward = wheelRotation * glm::angleAxis(wheelSteeringAngle, glm::vec3{ 0.0f, 1.0f, 0.0f }) * glm::vec3{ 0.0f, 0.0f, -1.0f };
 				auto const wheelRight = glm::cross(wheelForward, wheelUp);
 
