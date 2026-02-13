@@ -18,7 +18,6 @@ namespace vob::aoegl
 			GL_FRAMEBUFFER, m_windowContext.get(a_wdap).window.get().getDefaultFramebufferId());
 
 		glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
-		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 }

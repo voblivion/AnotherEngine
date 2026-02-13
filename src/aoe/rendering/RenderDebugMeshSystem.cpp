@@ -3,7 +3,9 @@
 #include <vob/aoe/rendering/CameraUtils.h>
 #include <vob/aoe/rendering/UniformUtils.h>
 
-#pragma optimize("", off)
+#include <imgui.h>
+
+
 namespace vob::aoegl
 {
 	void RenderDebugMeshSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
@@ -17,22 +19,39 @@ namespace vob::aoegl
 
 	void RenderDebugMeshSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
+		static bool kDisplay = false;
+		if (ImGui::Begin("Debug Mesh"))
+		{
+			ImGui::Checkbox("Display", &kDisplay);
+			ImGui::End();
+		}
+
 		auto& debugMeshContext = m_debugMeshContext.get(a_wdap);
 		if (debugMeshContext.lines.empty())
 		{
 			return;
 		}
 
+		if (!kDisplay)
+		{
+			debugMeshContext.clear();
+			return;
+		}
+
 		auto const& debugRenderContext = m_debugRenderContext.get(a_wdap);
 		auto const& program = debugRenderContext.debugProgram;
 
+		glClearDepth(1.0);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
 		glUseProgram(program.id);
 		glLineWidth(2);
 
 		// Set scene uniforms
 		auto const windowSize = m_windowContext.get(a_wdap).window.get().getSize();
 		auto const aspectRatio = static_cast<float>(windowSize.x) / windowSize.y;
-		auto const [viewPosition, viewProjectionTransform] = getActiveCameraSettings(
+		auto const [viewPosition, viewProjectionTransform] = getActiveCameraUniforms(
 			m_cameraDirectorContext.get(a_wdap), m_cameraEntities.get(a_wdap), aspectRatio);
 		setUniform(program.viewPositionLocation, viewPosition);
 		setUniform(program.viewProjectionTransformLocation, viewProjectionTransform);

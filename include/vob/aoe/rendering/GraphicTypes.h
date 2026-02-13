@@ -14,5 +14,5 @@ namespace vob::aoegl
 	using GraphicInt = GLint;
 
 	static constexpr GraphicId k_invalidId = 0;
-	static constexpr GraphicUniformLocation k_invalidUniformLocation = GL_INVALID_VALUE;
+	static constexpr GraphicUniformLocation k_invalidUniformLocation = -1;
 }

@@ -13,9 +13,10 @@ namespace vob::aoegl
 
 	void BindSceneFramebufferSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, m_sceneTextureContext.get(a_wdap).texture.framebuffer);
+		auto& sceneTextureCtx = m_sceneTextureContext.get(a_wdap);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, sceneTextureCtx.texture.framebuffer);
 		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
-		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
+#include <optick.h>
 
 
 namespace vob::aoegl
@@ -15,6 +16,9 @@ namespace vob::aoegl
 	void RenderImGuiFrameSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		if (ImGui::GetDrawData()->CmdListsCount > 0)
+		{
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
 	}
 }

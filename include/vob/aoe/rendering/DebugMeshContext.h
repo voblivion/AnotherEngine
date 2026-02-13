@@ -86,21 +86,24 @@ namespace vob::aoegl
 			addLine(r2, p0, a_color);
 		}
 
-		void addEllipsoid(glm::vec3 const& a_position, glm::quat const& a_rotation, glm::vec3 const& a_radiuses, aoegl::Rgba const& a_color)
+		void addEllipsoid(
+			glm::vec3 const& a_position,
+			glm::quat const& a_rotation,
+			glm::vec3 const& a_radiuses,
+			aoegl::Rgba const& a_color,
+			int32_t a_horizontalSliceCount = 3,
+			int32_t a_horizontalSliceSubdivisionCount = 4,
+			int32_t a_verticalSliceCount = 4,
+			int32_t a_verticalSliceSubdivisionCount = 4)
 		{
-			static constexpr int k_horizontalSliceCount = 3;
-			static constexpr int k_horizontalSliceSubdivisionCount = 4;
-			static constexpr int k_verticalSliceCount = 4;
-			static constexpr int k_verticalSliceSubdivisionCount = 4;
-
-			for (int h = 0; h < k_horizontalSliceCount; ++h)
+			for (int h = 0; h < a_horizontalSliceCount; ++h)
 			{
-				auto const hSliceAngle0 = (static_cast<float>(h) / (k_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
-				auto const hSliceAngle1 = (static_cast<float>(h + 1) / (k_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
-				for (int hs = 0; hs < k_horizontalSliceSubdivisionCount; ++hs)
+				auto const hSliceAngle0 = (static_cast<float>(h) / (a_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
+				auto const hSliceAngle1 = (static_cast<float>(h + 1) / (a_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
+				for (int hs = 0; hs < a_horizontalSliceSubdivisionCount; ++hs)
 				{
-					auto const hSubR0 = static_cast<float>(hs) / k_horizontalSliceSubdivisionCount;
-					auto const hSubR1 = static_cast<float>(hs + 1) / k_horizontalSliceSubdivisionCount;
+					auto const hSubR0 = static_cast<float>(hs) / a_horizontalSliceSubdivisionCount;
+					auto const hSubR1 = static_cast<float>(hs + 1) / a_horizontalSliceSubdivisionCount;
 					auto const hSubAngle0 = hSliceAngle0 + hSubR0 * (hSliceAngle1 - hSliceAngle0);
 					auto const hSubAngle1 = hSliceAngle0 + hSubR1 * (hSliceAngle1 - hSliceAngle0);
 
@@ -109,9 +112,9 @@ namespace vob::aoegl
 					auto const y1 = a_radiuses.y * std::sin(hSubAngle1);
 					auto const r1 = std::cos(hSubAngle1);
 
-					for (int v = 0; v < 2 * k_verticalSliceCount; ++v)
+					for (int v = 0; v < 2 * a_verticalSliceCount; ++v)
 					{
-						auto const vSliceAngle = (static_cast<float>(v) / k_verticalSliceCount) * std::numbers::pi_v<float>;
+						auto const vSliceAngle = (static_cast<float>(v) / a_verticalSliceCount) * std::numbers::pi_v<float>;
 						auto const vSliceCos = std::cos(vSliceAngle);
 						auto const vSliceSin = std::sin(vSliceAngle);
 						auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
@@ -120,18 +123,18 @@ namespace vob::aoegl
 					}
 				}
 
-				for (int v = 0; v < 2 * k_verticalSliceCount; ++v)
+				for (int v = 0; v < 2 * a_verticalSliceCount; ++v)
 				{
-					auto const vSliceAngle0 = (static_cast<float>(v) / k_verticalSliceCount) * std::numbers::pi_v<float>;
-					auto const vSliceAngle1 = (static_cast<float>(v + 1) / k_verticalSliceCount) * std::numbers::pi_v<float>;
+					auto const vSliceAngle0 = (static_cast<float>(v) / a_verticalSliceCount) * std::numbers::pi_v<float>;
+					auto const vSliceAngle1 = (static_cast<float>(v + 1) / a_verticalSliceCount) * std::numbers::pi_v<float>;
 
-					for (int vs = 0; vs < k_verticalSliceSubdivisionCount; ++vs)
+					for (int vs = 0; vs < a_verticalSliceSubdivisionCount; ++vs)
 					{
 						auto const r = std::cos(hSliceAngle1);
 						auto const y = a_radiuses.y * std::sin(hSliceAngle1);
 
-						auto const vSubR0 = static_cast<float>(vs) / k_verticalSliceSubdivisionCount;
-						auto const vSubR1 = static_cast<float>(vs + 1) / k_verticalSliceSubdivisionCount;
+						auto const vSubR0 = static_cast<float>(vs) / a_verticalSliceSubdivisionCount;
+						auto const vSubR1 = static_cast<float>(vs + 1) / a_verticalSliceSubdivisionCount;
 						auto const vSubAngle0 = vSliceAngle0 + vSubR0 * (vSliceAngle1 - vSliceAngle0);
 						auto const vSubAngle1 = vSliceAngle0 + vSubR1 * (vSliceAngle1 - vSliceAngle0);
 
@@ -146,12 +149,12 @@ namespace vob::aoegl
 				}
 			}
 
-			auto const hSliceAngle0 = (static_cast<float>(k_horizontalSliceCount) / (k_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
-			auto const hSliceAngle1 = (static_cast<float>(k_horizontalSliceCount + 1) / (k_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
-			for (int hs = 0; hs < k_horizontalSliceSubdivisionCount; ++hs)
+			auto const hSliceAngle0 = (static_cast<float>(a_horizontalSliceCount) / (a_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
+			auto const hSliceAngle1 = (static_cast<float>(a_horizontalSliceCount + 1) / (a_horizontalSliceCount + 1) - 0.5f) * std::numbers::pi_v<float>;
+			for (int hs = 0; hs < a_horizontalSliceSubdivisionCount; ++hs)
 			{
-				auto const hSubR0 = static_cast<float>(hs) / k_horizontalSliceSubdivisionCount;
-				auto const hSubR1 = static_cast<float>(hs + 1) / k_horizontalSliceSubdivisionCount;
+				auto const hSubR0 = static_cast<float>(hs) / a_horizontalSliceSubdivisionCount;
+				auto const hSubR1 = static_cast<float>(hs + 1) / a_horizontalSliceSubdivisionCount;
 				auto const hSubAngle0 = hSliceAngle0 + hSubR0 * (hSliceAngle1 - hSliceAngle0);
 				auto const hSubAngle1 = hSliceAngle0 + hSubR1 * (hSliceAngle1 - hSliceAngle0);
 
@@ -160,9 +163,9 @@ namespace vob::aoegl
 				auto const y1 = a_radiuses.y * std::sin(hSubAngle1);
 				auto const r1 = std::cos(hSubAngle1);
 
-				for (int v = 0; v < 2 * k_verticalSliceCount; ++v)
+				for (int v = 0; v < 2 * a_verticalSliceCount; ++v)
 				{
-					auto const vSliceAngle = (static_cast<float>(v) / k_verticalSliceCount) * std::numbers::pi_v<float>;
+					auto const vSliceAngle = (static_cast<float>(v) / a_verticalSliceCount) * std::numbers::pi_v<float>;
 					auto const vSliceCos = std::cos(vSliceAngle);
 					auto const vSliceSin = std::sin(vSliceAngle);
 					auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
@@ -172,9 +175,24 @@ namespace vob::aoegl
 			}
 		}
 
-		void addSphere(glm::vec3 const& a_position, float a_radius, aoegl::Rgba const& a_color)
+		void addSphere(
+			glm::vec3 const& a_position,
+			float a_radius,
+			aoegl::Rgba const& a_color,
+			int32_t a_horizontalSliceCount = 3,
+			int32_t a_horizontalSliceSubdivisionCount = 4,
+			int32_t a_verticalSliceCount = 4,
+			int32_t a_verticalSliceSubdivisionCount = 4)
 		{
-			addEllipsoid(a_position, glm::quat{}, glm::vec3{ a_radius }, a_color);
+			addEllipsoid(
+				a_position,
+				glm::quat{},
+				glm::vec3{ a_radius },
+				a_color,
+				a_horizontalSliceCount,
+				a_horizontalSliceSubdivisionCount,
+				a_verticalSliceCount,
+				a_verticalSliceSubdivisionCount);
 		}
 	};
 }
