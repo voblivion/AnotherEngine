@@ -51,7 +51,7 @@ namespace vob::aoewi
 #ifndef NDEBUG
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(debug_messageCallback, this);
+		glDebugMessageCallback(debugMessageCallback, this);
 		GLuint ids = 0;
 		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &ids, true);
 
@@ -563,7 +563,7 @@ namespace vob::aoewi
 	}
 
 #ifndef NDEBUG
-	void GlfwWindow::debug_messageCallback(
+	void GlfwWindow::debugMessageCallback(
 		GLenum a_source
 		, GLenum a_type
 		, GLuint a_id

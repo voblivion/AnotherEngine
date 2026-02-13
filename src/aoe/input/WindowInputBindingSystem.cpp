@@ -44,12 +44,5 @@ namespace vob::aoein
 				gameInputCtx.addEvent(inputEventBinding.first);
 			}
 		}
-
-		ImGui::Begin("Inputs");
-		{
-			float v0 = gameInputCtx.getValue(4);
-			ImGui::InputFloat("Input 4", &v0);
-		}
-		ImGui::End();
 	}
 }
