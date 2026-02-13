@@ -7,6 +7,6 @@ namespace vob::aoest
 {
 	struct InterpolationContext
 	{
-		std::chrono::nanoseconds offset = std::chrono::milliseconds(10);
+		std::chrono::nanoseconds offset = std::chrono::milliseconds(20);
 	};
 }

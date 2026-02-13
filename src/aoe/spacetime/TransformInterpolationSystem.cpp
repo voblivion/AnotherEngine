@@ -11,21 +11,39 @@ namespace vob::aoest
 	void TransformInterpolationSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto const& timeContext = m_timeContext.get(a_wdap);
+		auto const& interpolationContext = m_interpolationContext.get(a_wdap);
 
-		for (auto [entity, position, rotation, interpolatedPosition, interpolatedRotation, interpolationComponent] : m_transformEntities.get(a_wdap).each())
+		for (auto [entity, position, rotation, interpolatedPosition, interpolatedRotation, interpolatedTime] : m_transformEntities.get(a_wdap).each())
 		{
-			auto const sourceToTarget = std::chrono::duration<float>(interpolationComponent.targetTime - interpolationComponent.sourceTime).count();
-			if (std::abs(sourceToTarget) < std::numeric_limits<float>::epsilon())
+			auto const currentTime = timeContext.tickStartTime - interpolationContext.offset;
+			auto sourceOffset = 0;
+			while (sourceOffset + 1 < interpolatedTime.times.size()
+				&& interpolatedTime.times[(interpolatedTime.endIndex + sourceOffset + 1) % interpolatedTime.times.size()] < currentTime)
 			{
+				++sourceOffset;
+			}
 
+			if (sourceOffset + 1 == static_cast<int32_t>(interpolatedTime.times.size()))
+			{
+				position = interpolatedPosition.positions[(interpolatedPosition.endIndex + sourceOffset) % interpolatedTime.times.size()];
 				continue;
 			}
 
-			auto const sourceToNow = std::chrono::duration<float>(timeContext.tickStartTime - interpolationComponent.sourceTime).count();
-			auto const alpha = std::clamp(sourceToNow / sourceToTarget, 0.0f, 1.0f);
+			auto const targetOffset = sourceOffset + 1;
+			auto const sourceTime = interpolatedTime.times[(interpolatedTime.endIndex + sourceOffset) % interpolatedTime.times.size()];
+			auto const targetTime = interpolatedTime.times[(interpolatedTime.endIndex + targetOffset) % interpolatedTime.times.size()];
+			auto const sourcePosition = interpolatedPosition.positions[(interpolatedPosition.endIndex + sourceOffset) % interpolatedTime.times.size()];
+			auto const targetPosition = interpolatedPosition.positions[(interpolatedPosition.endIndex + targetOffset) % interpolatedTime.times.size()];
 
-			position = interpolatedPosition.source + alpha * (interpolatedPosition.target - interpolatedPosition.source);
-			rotation = glm::slerp(interpolatedRotation.source, interpolatedRotation.target, alpha);
+			auto const sourceRotation = interpolatedRotation.rotations[(interpolatedRotation.endIndex + sourceOffset) % interpolatedTime.times.size()];
+			auto const targetRotation = interpolatedRotation.rotations[(interpolatedRotation.endIndex + targetOffset) % interpolatedTime.times.size()];
+
+
+			auto const progressRatio = std::chrono::duration<float>(currentTime - sourceTime).count()
+				/ std::chrono::duration<float>(targetTime - sourceTime).count();
+
+			position = sourcePosition + progressRatio * (targetPosition - sourcePosition);
+			rotation = glm::slerp(sourceRotation, targetRotation, progressRatio);
 		}
 	}
 }

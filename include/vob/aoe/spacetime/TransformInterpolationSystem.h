@@ -8,6 +8,7 @@
 #include <vob/aoe/spacetime/InterpolatedTransform.h>
 #include <vob/aoe/spacetime/TimeContext.h>
 #include <vob/aoe/spacetime/InterpolationTimeComponent.h>
+#include <vob/aoe/spacetime/InterpolationContext.h>
 
 #include <chrono>
 
@@ -23,6 +24,7 @@ namespace vob::aoest
 
 	private:
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
+		aoeng::EcsWorldContextRef<aoest::InterpolationContext> m_interpolationContext;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoest::InterpolatedPosition, aoest::InterpolatedRotation, aoest::InterpolationTimeComponent> m_transformEntities;
 	};
 }

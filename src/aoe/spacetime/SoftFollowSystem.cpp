@@ -40,6 +40,9 @@ namespace vob::aoest
 				position += softFollowComponent.velocity * (elapsedTime / 2);
 			}
 
+			// TODO: meh figure why math wrong
+			position = targetPosition;
+
 			auto const targetAim = followedPosition + followedRotation * softFollowComponent.aimOffset;
 			auto const toTargetAim = targetAim - position;
 			auto const aimDir = glm::normalize(
