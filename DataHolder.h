@@ -29,12 +29,6 @@
 #include <vob/misc/visitor/accept.h>
 #include <vob/misc/visitor/json_reader.h>
 
-#include <BulletCollision/CollisionDispatch/btDefaultCollisionConfiguration.h>
-#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
-#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
-#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#include <BulletCollision/CollisionShapes/btCollisionShape.h>
-
 using namespace vob;
 using namespace vob::mishs::literals;
 
@@ -111,13 +105,11 @@ namespace vob::aoe
 				register_component<aoeac::actor_component>("vob::newaoeac::actor_component"_id);
 
 				// v2
-				// TODO: make it some comp_data -> comp pattern
+				// TODO: make it some `comp_data -> comp` pattern
 				// register_component<aoeph::rigidbody>("vob::aoeph::rigidbody"_id);
 				register_component<aoest::position>("vob::aoest::position"_id);
 				register_component<aoest::rotation>("vob::aoest::rotation"_id);
 			}
-
-			m_dynamicsWorld.setGravity(btVector3(0.0f, -25.0f, 0.0f));
 
 			setup_multi_database();
 		}
@@ -126,7 +118,6 @@ namespace vob::aoe
 		misty::pmr::factory factory{ typeRegistry };
 
 		misty::pmr::clone_copier<type::ADynamicType> dynamicTypeCloner{};
-		misty::pmr::clone_copier<btCollisionShape> btCollisionShapeCloner{};
 
 		// v2
 		aoedt::filesystem_indexer filesystemIndexer;
@@ -157,14 +148,6 @@ namespace vob::aoe
 			auto joh = componentSetDatabase.find(
 				filesystemIndexer.get_runtime_id("data/player_v2.json"));
 		}
-
-		// New physics
-		btDefaultCollisionConfiguration m_collisionConfiguration;
-		btCollisionDispatcher m_dispatcher{ &m_collisionConfiguration };
-		btDbvtBroadphase m_pairCache{};
-		btSequentialImpulseConstraintSolver m_constraintSolver{};
-		btDiscreteDynamicsWorld m_dynamicsWorld{ &m_dispatcher, &m_pairCache
-			, &m_constraintSolver, &m_collisionConfiguration };
 
 	private:
 		template <typename TDynamicType, typename TBaseType, typename... TArgs>

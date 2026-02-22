@@ -40,24 +40,20 @@ void glfwErrorCallback(int code, const char* description)
 	__debugbreak();
 }
 
-char const* xinputMapping = "78696e70757401000000000000000000,Xbox Controller,platform:Windows,a:b0,b:b1,x:b2,y:b3,leftshoulder:b4,rightshoulder:b5,back:b6,start:b7,guide:b8,leftstick:b9,rightstick:b10,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:a4,righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,";
-
-struct DummyWorld : public aoeng::IWorld
-{
-	void start(aoeng::IGameController& a_gameController) override {}
-	void update() override {}
-	void stop() override {}
-};
-
-
 #include "DefaultWorld.h"
 #include <vob/aoe/window/GlfwWindow.h>
 #include <vob/aoe/rendering/ImGuiUtils.h>
 
+#if defined(_WIN32)
+#include <windows.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
+#include <tracy/Tracy.hpp>
+
 int main()
 {
-
-	OPTICK_APP("AOE")
+	tracy::SetThreadName("Presentation");
 
 	// Create data
 	aoe::DataHolder data;
@@ -81,9 +77,6 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-	auto q = glfwGetJoystickGUID(0);
-	auto r = glfwGetJoystickName(0);
-
 	std::cout << glfwGetVersionString() << std::endl;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -103,9 +96,17 @@ int main()
 		// Init ImGui
 		aoegl::initializeImGui(window);
 
+#if defined(_WIN32)
+		timeBeginPeriod(1);
+#endif
+
 		aoeng::Game myGame;
 		std::shared_ptr<aoeng::IWorld> world = createDefaultWorld(window);
 		myGame.run(world);
+
+#if defined(_WIN32)
+		timeEndPeriod(1);
+#endif
 
 		// Finalize ImGui
 		aoegl::terminateImGui();
@@ -119,12 +120,12 @@ int main()
 *		Use cases		|	move	|	time	|	cancel	|	partial	|	resume	|	count	|
 * ----------------------+-----------+-----------+-----------+-----------+-----------+-----------+
 *	plant carrots		|	no		|	yes		|	no		|	no		|	no		|	1		|
-*	recolt carrots		|	no		|	yes		|	no		|	no		|	no		|	1		|
-*	recolt apples		|	yes		|	yes		|	no		|	no		|	no		|	1		|
+*	collect carrots		|	no		|	yes		|	no		|	no		|	no		|	1		|
+*	collect apples		|	yes		|	yes		|	no		|	no		|	no		|	1		|
 *	simple switch		|	yes		|	no		|	no		|	no		|	no		|	inf		|
 *	complex switch		|	no		|	yes		|	yes		|	maybe?	|	maybe?	|	1|inf	|
 *	pump water			|	a bit	|	yes		|	yes		|	yes		|	yes		|	inf?	|
-*	eat plate			|	a bit	|	no		|	no		|	yes		|	kinda	|	n		|
+*	eat plate			|	a bit	|	no		|	no		|	yes		|	sort of	|	n		|
 *	grab in hands		|	maybe?	|	maybe?	|	yes		|	no		|	no		|	1		|
 *	mine ore			|	no		|	yes		|	yes		|	yes		|	yes		|	n		|
 * 

@@ -10,14 +10,11 @@ namespace vob::aoeng
 		, m_registry{ std::move(a_registry) }
 	{
 		EcsWorldDataAccessRegistrar wdac;
-		m_systemStates.reserve(a_systems.size());
+		m_systemStates.reserve(m_systems.size());
 		for (auto& system : m_systems)
 		{
 			system->init(wdac);
 			m_systemStates.emplace_back(std::make_unique<EcsSystemState>());
 		}
-
-		// TODO: move systems to new game architecture
-		// TODO: firgure out inter-world communication
 	}
 }

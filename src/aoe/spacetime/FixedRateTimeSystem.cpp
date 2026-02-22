@@ -1,6 +1,6 @@
 #include <vob/aoe/spacetime/FixedRateTimeSystem.h>
 
-
+#include <iostream>
 namespace vob::aoest
 {
 	void FixedRateTimeSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

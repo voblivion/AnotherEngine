@@ -6,7 +6,7 @@
 #include <vob/aoe/engine/game.h>
 #include <vob/aoe/engine/SynchronizedFrameJobsRepeater.h>
 
-#include "optick.h"
+#include <tracy/Tracy.hpp>
 
 #include <memory>
 #include <vector>
@@ -40,7 +40,14 @@ namespace vob::aoeng
 
 		void execute(EcsWorldDataAccessProvider const& a_wdap) const override
 		{
-			OPTICK_EVENT(typeid(TSystem).name());
+			static const tracy::SourceLocationData loc{
+				std::string_view{ typeid(TSystem).name() }.substr(std::string_view{typeid(TSystem).name()}.rfind(':') + 1).data(),
+				TracyFunction,
+				TracyFile,
+				TracyLine,
+				0 /* color */
+			};
+			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true /* active */);
 			m_system.execute(a_wdap);
 		}
 
@@ -65,7 +72,7 @@ namespace vob::aoeng
 	class VOB_AOE_API EcsWorld : public IWorld
 	{
 	public:
-		inline EcsWorld(std::vector<std::shared_ptr<IEcsSystem>> a_systems, EcsSchedule a_scheduleInfo, entt::registry a_registry = {});
+		EcsWorld(std::vector<std::shared_ptr<IEcsSystem>> a_systems, EcsSchedule a_scheduleInfo, entt::registry a_registry = {});
 
 		EcsWorld(EcsWorld const&) = delete;
 		EcsWorld& operator=(EcsWorld const&) = delete;
@@ -146,13 +153,11 @@ namespace vob::aoeng
 
 			void prepare() override
 			{
-				OPTICK_START_THREAD(m_threadSchedule.name.c_str());
+				tracy::SetThreadName(m_threadSchedule.name.c_str());
 			}
 
 			void execute() override
 			{
-				OPTICK_FRAME(m_threadSchedule.name.c_str());
-
 				std::unique_lock lock(m_mutex);
 				m_cv.wait(lock, [this] { return m_requestedState == State::Reset; });
 
@@ -174,7 +179,7 @@ namespace vob::aoeng
 
 			void cleanup() override
 			{
-				OPTICK_STOP_THREAD();
+
 			}
 
 		protected:
@@ -218,7 +223,8 @@ namespace vob::aoeng
 
 			void execute() override
 			{
-				OPTICK_FRAME(m_threadSchedule.name.c_str());
+				FrameMark;
+				// OPTICK_FRAME(m_threadSchedule.name.c_str());
 
 				for (auto& frameJob : m_ecsWorld->m_frameJobs | std::views::drop(1))
 				{

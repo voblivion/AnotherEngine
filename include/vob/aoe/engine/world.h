@@ -6,9 +6,11 @@
 #include <vob/aoe/engine/world_data_provider.h>
 
 #include <vob/misc/multithread/basic_task.h>
-#include "optick.h"
-#define VOB_MISMT_PROFILE_THREAD(ThreadName) OPTICK_THREAD(ThreadName)
-#define VOB_MISMT_PROFILE_FRAME(FrameName) OPTICK_FRAME(FrameName)
+#include <tracy/Tracy.hpp>
+#define VOB_MISMT_PROFILE_THREAD(ThreadName)
+// ZoneScopedN(ThreadName)
+#define VOB_MISMT_PROFILE_FRAME(FrameName)
+//ZoneScopedN(FrameName)
 #include <vob/misc/multithread/worker.h>
 #include <vob/misc/std/message_macros.h>
 
@@ -29,7 +31,7 @@ namespace vob::aoeng
 
 			void execute() const override
 			{
-				OPTICK_EVENT();
+				ZoneScoped;
 				m_system.update();
 			}
 
