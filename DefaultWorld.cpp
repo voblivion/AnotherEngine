@@ -26,15 +26,18 @@
 #include <vob/aoe/physics/CarMaterialsSystem.h>
 #include <vob/aoe/window/SwapBuffersSystem.h>
 #include <vob/aoe/rendering/BindSceneFramebufferSystem.h>
+#include <vob/aoe/rendering/CarRigComponent.h>
+#include <vob/aoe/rendering/CarRigSystem.h>
+#include <vob/aoe/rendering/GpuObjects.h>
+#include <vob/aoe/rendering/ModelLoader.h>
+#include <vob/aoe/rendering/ModelUtils.h>
 #include <vob/aoe/rendering/RenderDebugMeshSystem.h>
-#include <vob/aoe/rendering/RenderMeshSystem.h>
 #include <vob/aoe/rendering/BindWindowFramebufferSystem.h>
 #include <vob/aoe/rendering/DebugRenderLightsSystem.h>
 #include <vob/aoe/rendering/RenderSceneSystem.h>
 #include <vob/aoe/rendering/StaticMesh.h>
-#include <vob/aoe/rendering/StaticMeshComponent.h>
+#include <vob/aoe/rendering/ModelComponent.h>
 #include <vob/aoe/rendering/PrepareImGuiFrameSystem.h>
-#include <vob/aoe/rendering/MeshRenderingContext.h>
 #include <vob/aoe/rendering/LightComponent.h>
 #include <vob/aoe/rendering/RenderImGuiFrameSystem.h>
 #include <vob/aoe/rendering/StaticMeshLoader.h>
@@ -337,6 +340,7 @@ namespace vob
 		auto windowInputBindingId = addSystem<aoein::WindowInputBindingSystem>(ecsSystems);
 		auto ghostControllerId = addSystem<aoedb::GhostControllerSystem>(ecsSystems);
 		auto carMaterialsId = addSystem<aoeph::CarMaterialsSystem>(ecsSystems);
+		auto carRigId = addSystem<aoegl::CarRigSystem>(ecsSystems);
 
 		auto renderSceneId = addSystem<aoegl::RenderSceneSystem>(ecsSystems);
 
@@ -356,6 +360,7 @@ namespace vob
 			{ simulationImportId },
 			{ transformInterpolationId },
 			{ carMaterialsId },
+			{ carRigId },
 			{ simDebugRenderId },
 			{ softFollowId },
 			{ pollEventsId },
@@ -421,6 +426,8 @@ namespace vob
 		aoedt::filesystem_database<aoedt::json_file_loader<aoegl::ProgramData, aoedt::filesystem_visitor_context_factory>> shaderProgramDatabase{
 			filesystemIndexer, jsonLoadApplicator, contextFactory };
 		aoedt::filesystem_database<aoegl::StaticMeshLoader> staticMeshDatabase{ filesystemIndexer };
+		aoedt::filesystem_database<aoegl::StaticModelLoader> staticModelDatabase{ filesystemIndexer };
+		aoedt::filesystem_database<aoegl::RiggedModelLoader> riggedModelDatabase{ filesystemIndexer };
 		multiDatabase.register_database(stringDatabase);
 		multiDatabase.register_database(shaderProgramDatabase);
 		multiDatabase.register_database(staticMeshDatabase);
@@ -438,49 +445,6 @@ namespace vob
 		preRegistry.ctx().emplace<aoewi::WindowInputContext>();
 		preRegistry.ctx().emplace<aoewi::WindowContext>(a_window);
 		preRegistry.ctx().emplace<aoegl::DebugMeshContext>();
-		auto& meshRenderingCtx = preRegistry.ctx().emplace<aoegl::MeshRenderingContext>();
-		{
-			auto const clusterShaderSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/cluster.comp"));
-			meshRenderingCtx.lightClusteringProgram = aoegl::createComputeProgram(*clusterShaderSource);
-			glGenBuffers(1, &meshRenderingCtx.globalClusteringDataUbo);
-			glBindBuffer(GL_UNIFORM_BUFFER, meshRenderingCtx.globalClusteringDataUbo);
-			glNamedBufferStorage(
-				meshRenderingCtx.globalClusteringDataUbo,
-				sizeof(aoegl::GlobalLightClusteringData),
-				nullptr,
-				GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-
-			glGenBuffers(1, &meshRenderingCtx.lightsSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, meshRenderingCtx.lightsSsbo);
-			glNamedBufferStorage(
-				meshRenderingCtx.lightsSsbo,
-				meshRenderingCtx.maxLightCount * sizeof(aoegl::CulledLight),
-				nullptr,
-				GL_DYNAMIC_STORAGE_BIT);
-			
-			auto const windowSize = a_window.getSize();
-			auto const clusterCountX = static_cast<int32_t>(std::ceil(static_cast<float>(windowSize.x) / 16));
-			auto const clusterCountY = static_cast<int32_t>(std::ceil(static_cast<float>(windowSize.y) / 16));
-			auto const clusterCountZ = 24;
-			meshRenderingCtx.clusterCount = clusterCountX * clusterCountY * clusterCountZ;
-			auto const maxClusterLightCount = 64;
-			
-			glGenBuffers(1, &meshRenderingCtx.clustersLightCountSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, meshRenderingCtx.clustersLightCountSsbo);
-			glNamedBufferStorage(
-				meshRenderingCtx.clustersLightCountSsbo,
-				meshRenderingCtx.clusterCount * sizeof(int32_t),
-				nullptr,
-				GL_DYNAMIC_STORAGE_BIT);
-
-			glGenBuffers(1, &meshRenderingCtx.clustersLightIndicesSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, meshRenderingCtx.clustersLightIndicesSsbo);
-			glNamedBufferStorage(
-				meshRenderingCtx.clustersLightIndicesSsbo,
-				meshRenderingCtx.clusterCount * maxClusterLightCount * sizeof(int32_t),
-				nullptr,
-				GL_DYNAMIC_STORAGE_BIT);
-		}
 		preRegistry.ctx().emplace<SimulationDebugMeshContext>();
 		preRegistry.ctx().emplace<PresentationExchangeContext>(presExchangeData);
 		auto& presGameInputCtx = preRegistry.ctx().emplace<aoein::GameInputContext>();
@@ -605,26 +569,6 @@ namespace vob
 			renderSceneContext.lightClusterCount = lightClusterCount;
 
 			// TODO: this context doesn't own shit
-			glCreateBuffers(1, &renderSceneContext.globalUbo);
-			// TODO remove? glBindBuffer(GL_UNIFORM_BUFFER, renderSceneContext.globalUbo);
-			glNamedBufferStorage(renderSceneContext.globalUbo, sizeof(aoegl::GlobalRenderSceneConfig), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-			
-			glCreateBuffers(1, &renderSceneContext.meshUbo);
-			// TODO remove? glBindBuffer(GL_UNIFORM_BUFFER, renderSceneContext.meshUbo);
-			glNamedBufferStorage(renderSceneContext.meshUbo, sizeof(aoegl::MeshRenderSceneConfig), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-
-			glCreateBuffers(1, &renderSceneContext.lightsSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightsSsbo);
-			glNamedBufferStorage(renderSceneContext.lightsSsbo, k_maxLightCount * sizeof(aoegl::CulledLight2), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-
-			glCreateBuffers(1, &renderSceneContext.lightCountPerClusterSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightCountPerClusterSsbo);
-			glNamedBufferStorage(renderSceneContext.lightCountPerClusterSsbo, lightClusterCount * sizeof(int32_t), nullptr, GL_DYNAMIC_STORAGE_BIT);
-
-			glCreateBuffers(1, &renderSceneContext.lightIndicesPerClusterSsbo);
-			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightIndicesPerClusterSsbo);
-			glNamedBufferStorage(renderSceneContext.lightIndicesPerClusterSsbo, lightClusterCount* k_maxLightCountPerCluster * sizeof(int32_t), nullptr, GL_DYNAMIC_STORAGE_BIT);
-
 			glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.sceneColorTexture);
 			glTextureStorage2D(renderSceneContext.sceneColorTexture, 1, GL_RGB8, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
 			glTextureParameteri(renderSceneContext.sceneColorTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -643,13 +587,6 @@ namespace vob
 			glCreateVertexArrays(1, &renderSceneContext.postProcessVao);
 		}
 		{
-			auto const depthShaderProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/depth.json"));
-			assert(depthShaderProgramData != nullptr);
-			assert(depthShaderProgramData->vertexShaderSource != nullptr && depthShaderProgramData->fragmentShaderSource != nullptr);
-			renderSceneContext.depthPrePassProgram = aoegl::createProgram(
-				*depthShaderProgramData->vertexShaderSource, *depthShaderProgramData->fragmentShaderSource);
-		}
-		{
 			auto const defaultPostProcessProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/default_post_process.json"));
 			assert(defaultPostProcessProgramData != nullptr);
 			assert(defaultPostProcessProgramData->vertexShaderSource != nullptr && defaultPostProcessProgramData->fragmentShaderSource != nullptr);
@@ -665,26 +602,114 @@ namespace vob
 				*debugPostProcessProgramData->vertexShaderSource, *debugPostProcessProgramData->fragmentShaderSource);
 		}
 		{
-			// TODO: doesn't belong here
-			auto const debugPostProcessConfig = aoegl::DebugPostProcessConfig{
+			glGenQueries(static_cast<aoegl::GraphicSize>(renderSceneContext.timerQueries.size()), renderSceneContext.timerQueries.data());
+		}
+
+
+
+		auto basicShadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/basic_shading.glsl"));
+		auto basicStaticForwardProgram = aoegl::createForwardProgram(*basicShadingSource, false /* use rig */);
+		auto basicRiggedForwardProgram = aoegl::createForwardProgram(*basicShadingSource, true /* use rig */);
+
+		struct alignas(16) BasicShadingParams
+		{
+			glm::vec4 albedo;
+			float metallic;
+			float roughness;
+		};
+
+		aoegl::GraphicId rubberParamsUbo;
+		auto const rubberParams = BasicShadingParams{
+			.albedo = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
+			.metallic = 0.0f,
+			.roughness = 0.99f
+		};
+		glCreateBuffers(1, &rubberParamsUbo);
+		glNamedBufferStorage(rubberParamsUbo, sizeof(rubberParams), &rubberParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+		aoegl::GraphicId bluePaintedMetalParamsUbo;
+		auto const bluePaintedMetalParams = BasicShadingParams{
+			.albedo = glm::vec4{0.05f, 0.0f, 0.4f, 0.0f},
+			.metallic = 0.7f,
+			.roughness = 0.3f
+		};
+		glCreateBuffers(1, &bluePaintedMetalParamsUbo);
+		glNamedBufferStorage(bluePaintedMetalParamsUbo, sizeof(bluePaintedMetalParams), &bluePaintedMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		
+		aoegl::GraphicId blackPaintedMetalParamsUbo;
+		auto const blackPaintedMetalParams = BasicShadingParams{
+			.albedo = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
+			.metallic = 0.7f,
+			.roughness = 0.3f
+		};
+		glCreateBuffers(1, &blackPaintedMetalParamsUbo);
+		glNamedBufferStorage(blackPaintedMetalParamsUbo, sizeof(blackPaintedMetalParams), &blackPaintedMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+		aoegl::GraphicId shinnyMetalParamsUbo;
+		auto const shinnyMetalParams = BasicShadingParams{
+			.albedo = glm::vec4{1.0f, 1.0f, 1.0f, 0.0f},
+			.metallic = 0.75f,
+			.roughness = 0.1f
+		};
+		glCreateBuffers(1, &shinnyMetalParamsUbo);
+		glNamedBufferStorage(shinnyMetalParamsUbo, sizeof(shinnyMetalParams), &shinnyMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+		aoegl::GraphicId asphaltParamsUbo;
+		auto const asphaltParams = BasicShadingParams{
+			.albedo = glm::vec4{0.1f, 0.1f, 0.1f, 0.0f},
+			.metallic = 0.0f,
+			.roughness = 0.95f
+		};
+		glCreateBuffers(1, &asphaltParamsUbo);
+		glNamedBufferStorage(asphaltParamsUbo, sizeof(asphaltParams), &asphaltParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+
+		auto speedCarModelData = riggedModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/SpeedCar.glb"));
+		auto speedCarModel = aoegl::createRiggedModel(*speedCarModelData);
+		{
+			renderSceneContext.staticDepthProgram = aoegl::createDepthProgram(false /* use rig */);
+			renderSceneContext.riggedDepthProgram = aoegl::createDepthProgram(true /* use rig */);
+			renderSceneContext.lightClusteringWorkGroupSize = 128;
+			renderSceneContext.lightClusteringProgram = aoegl::createLightClusteringProgram(renderSceneContext.lightClusteringWorkGroupSize);
+
+			constexpr int32_t k_maxLightCount = 2048;
+			static const glm::ivec2 k_lightClusterSize = glm::ivec2{ 16, 16 };
+			constexpr int32_t k_lightClusterCountZ = 24;
+			static const glm::ivec2 k_sceneFramebufferSize = a_window.getSize();
+			constexpr int32_t k_maxLightCountPerCluster = 128;
+
+			auto const lightClusterCountXY = glm::ivec2{ glm::ceil(glm::vec2{ k_sceneFramebufferSize } / glm::vec2{ k_lightClusterSize }) };
+			auto const lightClusterCount = lightClusterCountXY.x * lightClusterCountXY.y * k_lightClusterCountZ;
+
+			// Debug
+			renderSceneContext.staticDebugForwardProgram = aoegl::createDebugForwardProgram(false /* use rig */);
+			renderSceneContext.riggedDebugForwardProgram = aoegl::createDebugForwardProgram(true /* use rig */);
+			auto const debugParams = aoegl::DebugParams{
 				.mode = aoegl::DebugMode::None
 			};
-			glCreateBuffers(1, &renderSceneContext.debugUbo);
-			glNamedBufferStorage(renderSceneContext.debugUbo, sizeof(debugPostProcessConfig), &debugPostProcessConfig, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-		}
-		{
-			auto const debugMeshProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/debug_mesh.json"));
-			assert(debugMeshProgramData != nullptr);
-			assert(debugMeshProgramData->vertexShaderSource != nullptr && debugMeshProgramData->fragmentShaderSource != nullptr);
-			renderSceneContext.debugMeshProgram = aoegl::createProgram(
-				*debugMeshProgramData->vertexShaderSource, *debugMeshProgramData->fragmentShaderSource);
-		}
-		{
-			auto const clusterShaderSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/cluster.comp"));
-			renderSceneContext.computeLightClustersProgram = aoegl::createComputeProgram(*clusterShaderSource);
-		}
-		{
-			glGenQueries(renderSceneContext.timerQueries.size(), renderSceneContext.timerQueries.data());
+			glCreateBuffers(1, &renderSceneContext.debugParamsUbo);
+			glNamedBufferStorage(renderSceneContext.debugParamsUbo, sizeof(debugParams), &debugParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+
+			// Shared buffer objects
+			glCreateBuffers(1, &renderSceneContext.viewParamsUbo);
+			glNamedBufferStorage(renderSceneContext.viewParamsUbo, sizeof(aoegl::ViewParams), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+			glCreateBuffers(1, &renderSceneContext.lightParamsUbo);
+			glNamedBufferStorage(renderSceneContext.lightParamsUbo, sizeof(aoegl::LightParams), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+			glCreateBuffers(1, &renderSceneContext.lightsSsbo);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightsSsbo);
+			glNamedBufferStorage(renderSceneContext.lightsSsbo, k_maxLightCount * sizeof(aoegl::Light), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+			glCreateBuffers(1, &renderSceneContext.lightClusterSizesSsbo);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightClusterSizesSsbo);
+			glNamedBufferStorage(renderSceneContext.lightClusterSizesSsbo, lightClusterCount * sizeof(int32_t), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+			glCreateBuffers(1, &renderSceneContext.lightClusterIndicesSsbo);
+			glBindBuffer(GL_SHADER_STORAGE_BUFFER, renderSceneContext.lightClusterIndicesSsbo);
+			glNamedBufferStorage(renderSceneContext.lightClusterIndicesSsbo, lightClusterCount * k_maxLightCountPerCluster * sizeof(int32_t), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
 		}
 
 		entt::registry simRegistry;
@@ -756,71 +781,31 @@ namespace vob
 			assert(e == preRegistry.create(e));
 			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
-			auto& sm = preRegistry.emplace<aoegl::StaticMeshComponent>(e);
-			
-			std::vector<aoegl::StaticVertex> vertices;
-			std::vector<uint32_t> indices;
-			for (auto const& triangle : par.triangles)
+
+			auto groundModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/Ground.glb"));
+			auto groundModel = aoegl::createStaticModel(*groundModelData);
+
+			auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(e);
+			for (auto const& groundMesh : groundModel.meshes)
 			{
-				auto const n = glm::normalize(glm::cross(triangle.p1 - triangle.p0, triangle.p2 - triangle.p0));
-				vertices.emplace_back(triangle.p0, n, glm::vec3{ 0.0f });
-				vertices.emplace_back(triangle.p1, n, glm::vec3{ 0.0f });
-				vertices.emplace_back(triangle.p2, n, glm::vec3{ 0.0f });
-				indices.emplace_back(static_cast<uint32_t>(indices.size()));
-				indices.emplace_back(static_cast<uint32_t>(indices.size()));
-				indices.emplace_back(static_cast<uint32_t>(indices.size()));
+				staticModelCmp.meshes.emplace_back(
+					basicStaticForwardProgram,
+					asphaltParamsUbo,
+					groundMesh.vao,
+					groundMesh.indexCount);
 			}
+			glCreateBuffers(1, &staticModelCmp.modelParamsUbo);
+			auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(simRegistry.get<aoest::Position>(e), simRegistry.get<aoest::Rotation>(e)) };
+			glNamedBufferStorage(staticModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+			staticModelCmp.boundingRadius = groundModel.boundingRadius;
 
-			// PROGRAM
-
-			// MESH
-			aoegl::GraphicId vao, vbo, ebo;
-			glCreateVertexArrays(1, &vao);
-			glCreateBuffers(1, &vbo);
-			glCreateBuffers(1, &ebo);
-
-			glNamedBufferStorage(vbo, vertices.size() * sizeof(aoegl::StaticVertex), vertices.data(), 0);
-			glNamedBufferStorage(ebo, indices.size() * sizeof(uint32_t), indices.data(), 0);
-
-			glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(aoegl::StaticVertex));
-			glVertexArrayElementBuffer(vao, ebo);
-
-			glEnableVertexArrayAttrib(vao, 0);
-			glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, position));
-			glVertexArrayAttribBinding(vao, 0, 0);
-
-			glEnableVertexArrayAttrib(vao, 1);
-			glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, normal));
-			glVertexArrayAttribBinding(vao, 1, 0);
-
-			glEnableVertexArrayAttrib(vao, 2);
-			glVertexArrayAttribFormat(vao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, uv));
-			glVertexArrayAttribBinding(vao, 2, 0);
-
-			// MATERIAL
-			aoegl::GraphicId materialUbo = aoegl::k_invalidId;
-			auto const materialData = CustomRenderSceneConfig{
-				.albedo = glm::vec3{0.05f},
-				.metallic = 0.05f,
-				.roughness = 0.95f
-			};
-			glCreateBuffers(1, &materialUbo);
-			glNamedBufferStorage(materialUbo, sizeof(CustomRenderSceneConfig), &materialData, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
-			sm.parts.emplace_back(forwardMaterialProgram, materialUbo, vao, static_cast<int32_t>(indices.size()));
-			for (auto const& vertex : vertices)
-			{
-				if (sm.boundingRadius * sm.boundingRadius < glm::dot(vertex.position, vertex.position))
-				{
-					sm.boundingRadius = glm::length(vertex.position);
-				}
-			}
 		}
 
 		{
 			// ==== GHOST CAMERA
 
 			auto e = preRegistry.create();
-			preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 0.0f, 10.0f });
+			preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 1.0f, -15.0f });
 			preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
 			auto& gcc = preRegistry.emplace<aoedb::GhostControllerComponent>(e);
 
@@ -894,12 +879,21 @@ namespace vob
 			preRegistry.emplace<aoegl::CameraComponent>(e);
 			preRegistry.emplace<aoest::SoftFollowComponent>(e,
 				carEntity, glm::vec3{ 0.0f, 3.0f, 5.0f }, glm::vec3{ 0.0f, 0.0f, -4.0f }, 3000.0f, 1.0f, 500.0f);
-			cameraDirectorContext.activeCameraEntity = e;
+			//cameraDirectorContext.activeCameraEntity = e;
+		}
+		{
+			// ==== FOLLOW CAMERA 2
+
+			auto e = preRegistry.create();
+			preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 0.0f, -15.0f });
+			preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
+			preRegistry.emplace<aoegl::CameraComponent>(e);
+			preRegistry.emplace<aoest::SoftFollowComponent>(e,
+				carEntity, glm::vec3{ 3.0f, 1.0f, 2.0f }, glm::vec3{ 0.0f, 0.0f, -2.0f }, 3000.0f, 1.0f, 500.0f);
+			//cameraDirectorContext.activeCameraEntity = e;
 		}
 		{
 			// ==== CAR
-
-			auto niceMesh = staticMeshDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/ToyCar.glb"));
 
 			auto e = carEntity;
 			simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 3.0f, -20.0f });
@@ -924,7 +918,7 @@ namespace vob
 			carCollider.wheels[2] = { glm::vec3{ -0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f } };
 			// rear right wheel
 			carCollider.wheels[3] = { glm::vec3{ 0.885f, 0.3525f, 1.2055f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.182f, 0.364f, 0.364f } };
-			carCollider.mass = 1'500.0f;
+			carCollider.mass = 1'000.0f;
 			carCollider.barycenterLocal = glm::vec3{ 0.0f, 0.175f, -0.288295f };
 			carCollider.inertiaLocal = glm::mat3{ carCollider.mass / 5.0f };
 			carCollider.inertiaLocal[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
@@ -951,129 +945,106 @@ namespace vob
 			preRegistry.emplace<aoest::InterpolatedRotation>(e).rotations.fill(preRegistry.get<aoest::Rotation>(e));
 			preRegistry.emplace<aoest::InterpolationTimeComponent>(e).times.fill(currentTime);
 
-			auto& sm = preRegistry.emplace<aoegl::StaticMeshComponent>(e);
-			auto& cm = preRegistry.emplace<aoeph::CarMaterialsComponent>(e);
 
-			// MESH
-			aoegl::GraphicId chassisMaterialUbo = aoegl::k_invalidId;
-			auto const chassisMaterialData = CustomRenderSceneConfig{
-				.albedo = glm::vec3{ 0.9f },
-				.metallic = 0.7f,
-				.roughness = 0.2f
-			};
-			glCreateBuffers(1, &chassisMaterialUbo);
-			glNamedBufferStorage(chassisMaterialUbo, sizeof(CustomRenderSceneConfig), &chassisMaterialData, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
 
-			auto i = 0;
-			for (auto& niceMeshPart : niceMesh->parts)
+			auto& riggedModelCmp = preRegistry.emplace<aoegl::RiggedModelComponent>(e);
+			auto meshIndex = 0;
+			for (auto const& speedCarMesh : speedCarModel.meshes)
 			{
-				aoegl::GraphicId vao, vbo, ebo;
-				glCreateVertexArrays(1, &vao);
-				glCreateBuffers(1, &vbo);
-				glCreateBuffers(1, &ebo);
+				riggedModelCmp.meshes.emplace_back(
+					basicRiggedForwardProgram,
+					meshIndex == 0 ? bluePaintedMetalParamsUbo : ((meshIndex - 1) % 2 == 0 ? rubberParamsUbo : shinnyMetalParamsUbo),
+					speedCarMesh.vao,
+					speedCarMesh.indexCount);
+				++meshIndex;
+			}
+			glCreateBuffers(1, &riggedModelCmp.modelParamsUbo);
+			auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(simRegistry.get<aoest::Position>(e), simRegistry.get<aoest::Rotation>(e)) };
+			glNamedBufferStorage(riggedModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
 
-				glNamedBufferStorage(vbo, niceMeshPart.vertices.size() * sizeof(aoegl::StaticVertex), niceMeshPart.vertices.data(), 0);
-				glNamedBufferStorage(ebo, niceMeshPart.indices.size() * sizeof(uint32_t), niceMeshPart.indices.data(), 0);
+			riggedModelCmp.boundingRadius = speedCarModel.boundingRadius;
 
-				glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(aoegl::StaticVertex));
-				glVertexArrayElementBuffer(vao, ebo);
+			auto& carRigCmp = preRegistry.emplace<aoegl::CarRigComponent>(e);
+			carRigCmp.boneTransforms.reserve(speedCarModelData->bones.size());
+			carRigCmp.bones.reserve(speedCarModelData->bones.size());
+			for (auto const& boneData : speedCarModelData->bones)
+			{
+				carRigCmp.boneTransforms.emplace_back(boneData.basePose);
+				carRigCmp.bones.emplace_back(glm::mat4{ 1.0f });
+			}
 
-				glEnableVertexArrayAttrib(vao, 0);
-				glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, position));
-				glVertexArrayAttribBinding(vao, 0, 0);
+			glCreateBuffers(1, &riggedModelCmp.rigParamsUbo);
+			glNamedBufferStorage(
+				riggedModelCmp.rigParamsUbo,
+				static_cast<int32_t>(carRigCmp.bones.size() * sizeof(glm::mat4)),
+				carRigCmp.bones.data(),
+				GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
 
-				glEnableVertexArrayAttrib(vao, 1);
-				glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, normal));
-				glVertexArrayAttribBinding(vao, 1, 0);
-
-				glEnableVertexArrayAttrib(vao, 2);
-				glVertexArrayAttribFormat(vao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, uv));
-				glVertexArrayAttribBinding(vao, 2, 0);
-
-				if (i == 0)
+			auto const findWheelByName = [&speedCarModelData](std::string_view const name)
 				{
-					sm.parts.emplace_back(forwardMaterialProgram, chassisMaterialUbo, vao, niceMeshPart.indices.size());
-				}
-				else
+					return std::find_if(
+						speedCarModelData->bones.begin(),
+						speedCarModelData->bones.end(),
+						[name](auto const& boneData) { return std::string_view{ boneData.name } == name; });
+				};
+
+			auto suspensionIndex = 0;
+			for (auto const wheelName : { "Wheel.FL.Suspension", "Wheel.FR.Suspension", "Wheel.RL.Suspension", "Wheel.RR.Suspension" })
+			{
+				auto wheelIt = findWheelByName(wheelName);
+				if (wheelIt != speedCarModelData->bones.end())
 				{
-					auto const wheelIndex = (i - 1) / 2;
-					auto const isTire = (i - 1) % 2 == 0;
-					aoegl::GraphicId materialUbo;
-					glCreateBuffers(1, &materialUbo);
-					glNamedBufferStorage(materialUbo, sizeof(aoeph::WheelRenderSceneConfig), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
-					
-					cm.parts.emplace_back(
-						wheelIndex,
-						isTire ? glm::vec3{ 0.0f } : glm::vec3{ 1.0f, 0.0f, 0.0f } /* albedo */,
-						0.0f /* metallic */,
-						isTire ? 0.8f : 0.2f /* roughness */,
-						materialUbo);
+					auto const parentBoneBasePose = speedCarModelData->bones[wheelIt->parentBoneIndex].basePose;
+					auto const basePoseRelative = glm::inverse(parentBoneBasePose) * wheelIt->basePose;
 
-					sm.parts.emplace_back(wheelShaderProgram, materialUbo, vao, niceMeshPart.indices.size());
+					carRigCmp.suspensionWheels.emplace_back(
+						suspensionIndex,
+						static_cast<int32_t>(std::distance(speedCarModelData->bones.begin(), wheelIt)),
+						wheelIt->parentBoneIndex,
+						glm::inverse(wheelIt->basePose),
+						basePoseRelative);
 				}
-
-				for (auto const& vertex : niceMeshPart.vertices)
+				++suspensionIndex;
+			}
+			auto steeringIndex = 0;
+			for (auto const wheelName : { "Wheel.FL.Steer", "Wheel.FR.Steer" })
+			{
+				auto wheelIt = findWheelByName(wheelName);
+				if (wheelIt != speedCarModelData->bones.end())
 				{
-					if (sm.boundingRadius * sm.boundingRadius < glm::dot(vertex.position, vertex.position))
-					{
-						sm.boundingRadius = glm::length(vertex.position);
-					}
-				}
+					auto const parentBoneBasePose = speedCarModelData->bones[wheelIt->parentBoneIndex].basePose;
+					auto const basePoseRelative = glm::inverse(parentBoneBasePose) * wheelIt->basePose;
 
-				++i;
+					carRigCmp.steeringWheels.emplace_back(
+						steeringIndex,
+						static_cast<int32_t>(std::distance(speedCarModelData->bones.begin(), wheelIt)),
+						wheelIt->parentBoneIndex,
+						glm::inverse(wheelIt->basePose),
+						basePoseRelative);
+				}
+				++steeringIndex;
+			}
+			for (auto const wheelName : { "Wheel.FL", "Wheel.FR", "Wheel.RL", "Wheel.RR" })
+			{
+				auto wheelIt = findWheelByName(wheelName);
+				if (wheelIt != speedCarModelData->bones.end())
+				{
+					auto const parentBoneBasePose = speedCarModelData->bones[wheelIt->parentBoneIndex].basePose;
+					auto const basePoseRelative = glm::inverse(parentBoneBasePose) * wheelIt->basePose;
+
+					carRigCmp.spinningWheels.emplace_back(
+						0.364f /* wheel radius */,
+						static_cast<int32_t>(std::distance(speedCarModelData->bones.begin(), wheelIt)),
+						wheelIt->parentBoneIndex,
+						glm::inverse(wheelIt->basePose),
+						basePoseRelative);
+				}
 			}
 		}
 
 		{
-			auto streetLampMesh = staticMeshDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/StreetLamp.glb"));
-			std::vector<aoegl::StaticMeshComponent::Part> streetLampParts;
-			float streetLampBoundingRadius = 0.0f;
-
-			auto i = 0;
-			for (auto& streetLampMeshPart : streetLampMesh->parts)
-			{
-				aoegl::GraphicId materialUbo;
-				glCreateBuffers(1, &materialUbo);
-				CustomRenderSceneConfig materialData{
-					.albedo = (i == 0 ? glm::vec3{0.0f} : glm::vec3{10.f}),
-					.metallic = (i == 0 ? 0.3f : 0.9f),
-					.roughness = (i == 0 ? 0.7f : 0.1f)
-				};
-				++i;
-				glNamedBufferStorage(materialUbo, sizeof(CustomRenderSceneConfig), &materialData, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
-				aoegl::GraphicId vao, vbo, ebo;
-				glCreateVertexArrays(1, &vao);
-				glCreateBuffers(1, &vbo);
-				glCreateBuffers(1, &ebo);
-
-				glNamedBufferStorage(vbo, streetLampMeshPart.vertices.size() * sizeof(aoegl::StaticVertex), streetLampMeshPart.vertices.data(), 0);
-				glNamedBufferStorage(ebo, streetLampMeshPart.indices.size() * sizeof(uint32_t), streetLampMeshPart.indices.data(), 0);
-
-				glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(aoegl::StaticVertex));
-				glVertexArrayElementBuffer(vao, ebo);
-
-				glEnableVertexArrayAttrib(vao, 0);
-				glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, position));
-				glVertexArrayAttribBinding(vao, 0, 0);
-
-				glEnableVertexArrayAttrib(vao, 1);
-				glVertexArrayAttribFormat(vao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, normal));
-				glVertexArrayAttribBinding(vao, 1, 0);
-
-				glEnableVertexArrayAttrib(vao, 2);
-				glVertexArrayAttribFormat(vao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, uv));
-				glVertexArrayAttribBinding(vao, 2, 0);
-
-				// MATERIAL
-				streetLampParts.emplace_back(forwardMaterialProgram, materialUbo, vao, streetLampMeshPart.indices.size());
-				for (auto const& vertex : streetLampMeshPart.vertices)
-				{
-					if (streetLampBoundingRadius * streetLampBoundingRadius < glm::dot(vertex.position, vertex.position))
-					{
-						streetLampBoundingRadius = glm::length(vertex.position);
-					}
-				}
-			}
+			auto streetLampModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/StreetLamp.glb"));
+			auto streetLampModel = aoegl::createStaticModel(*streetLampModelData);
 
 			std::random_device rd;
 			std::mt19937 gen(rd());
@@ -1101,9 +1072,24 @@ namespace vob
 					assert(lamp == simRegistry.create(lamp));
 					simRegistry.emplace<aoest::Position>(lamp, preRegistry.get<aoest::Position>(lamp));
 					simRegistry.emplace<aoest::Rotation>(lamp, preRegistry.get<aoest::Rotation>(lamp));
-					auto& staticMeshCmp = preRegistry.emplace<aoegl::StaticMeshComponent>(lamp);
-					staticMeshCmp.parts = streetLampParts;
-					staticMeshCmp.boundingRadius = streetLampBoundingRadius;
+
+
+					auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(lamp);
+					int meshIndex = 0;
+					for (auto const& streetLampMesh : streetLampModel.meshes)
+					{
+						staticModelCmp.meshes.emplace_back(
+							basicStaticForwardProgram,
+							meshIndex == 0 ? blackPaintedMetalParamsUbo : shinnyMetalParamsUbo,
+							streetLampMesh.vao,
+							streetLampMesh.indexCount);
+						++meshIndex;
+					}
+					glCreateBuffers(1, &staticModelCmp.modelParamsUbo);
+					auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(simRegistry.get<aoest::Position>(lamp), simRegistry.get<aoest::Rotation>(lamp)) };
+					glNamedBufferStorage(staticModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+					staticModelCmp.boundingRadius = streetLampModel.boundingRadius;
+
 					auto& col = simRegistry.emplace<aoeph::StaticCollider>(lamp);
 					auto& par = col.parts.emplace_back();
 					static auto const rr = 0.1f;
@@ -1134,82 +1120,73 @@ namespace vob
 					preRegistry.emplace<aoegl::LightComponent>(light,
 						aoegl::LightComponent::Type::Point,
 						12.0f /* radius */,
-						2.0f /* intensity */,
-						glm::vec3{ 1.0f, 0.84f, 0.7f } /* color */);
+						10.0f /* intensity */,
+						glm::vec3{0.9f + 0.1f * rng(),0.6f + 0.2f * rng(),0.5f + 0.1f * rng()} /* color */);
 				}
 			}
 		}
 
 		{
-			auto sphereMesh = staticMeshDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/Sphere.glb"));
-			aoegl::GraphicId sphereVao;
-			if (sphereMesh->parts.size() > 0)
+			auto sphereModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/Sphere.glb"));
+			auto sphereModel = aoegl::createStaticModel(*sphereModelData);
+
+			constexpr auto k_cols = 10;
+			constexpr auto k_rows = 10;
+			constexpr auto k_sets = 10;
+			constexpr float k_dist = 0.02f;
+
+			constexpr float k_minMetallic = 0.01f;
+			constexpr float k_maxMetallic = 1.0f;
+			constexpr float k_minRoughness = 0.01f;
+			constexpr float k_maxRoughness = 1.0f;
+
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+			auto rng = [&]() { return distribution(gen); };
+			auto hsv2rgb = [](glm::vec3 hsv)
+				{
+					float kx = 1.0f;
+					float ky = 2.0f / 3.0f;
+					float kz = 1.0f / 3.0f;
+					float kw = 3.0f;
+					auto p = glm::vec3(hsv.x + kx - std::floor(hsv.x + kx), hsv.x + ky - std::floor(hsv.x + ky), hsv.x + kz - std::floor(hsv.x + kz)) * 6.0f - glm::vec3{ kw };
+					auto r = hsv.y * std::clamp(p.x - kx, 0.0f, 1.0f) + (1.0f - hsv.y) * kx;
+					auto g = hsv.y * std::clamp(p.y - kx, 0.0f, 1.0f) + (1.0f - hsv.y) * kx;
+					auto b = hsv.y * std::clamp(p.z - kx, 0.0f, 1.0f) + (1.0f - hsv.y) * kx;
+					return hsv.z * glm::vec3(r, g, b);
+				};
+
+			for (int i = 0; i < k_cols; ++i)
 			{
-				auto& sphereMeshPart = sphereMesh->parts[0];
-				float sphereRadius = 0.0f;
-				for (auto const& vertex : sphereMeshPart.vertices)
+				for (int j = 0; j < k_rows; ++j)
 				{
-					if (sphereRadius * sphereRadius < glm::dot(vertex.position, vertex.position))
+					auto e = preRegistry.create();
+					preRegistry.emplace<aoest::Position>(e, glm::vec3{ i * (k_dist + 2.0f * sphereModel.boundingRadius), sphereModel.boundingRadius + j * (k_dist + 2.0f * sphereModel.boundingRadius), 5.0f });
+					preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
+
+					aoegl::GraphicId shadingParamsUbo;
+					auto const shadingParams = BasicShadingParams{
+						.albedo = glm::vec4{1.0f, 0.0f, 0.0f, 0.0f},
+						.metallic = k_minMetallic + static_cast<float>(i) / k_cols * (k_maxMetallic - k_minMetallic),
+						.roughness = k_minRoughness + static_cast<float>(j) / k_rows * (k_maxRoughness - k_minRoughness)
+					};
+					glCreateBuffers(1, &shadingParamsUbo);
+					glNamedBufferStorage(shadingParamsUbo, sizeof(shadingParams), &shadingParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
+
+					auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(e);
+					for (auto const& sphereMesh : sphereModel.meshes)
 					{
-						sphereRadius = glm::length(vertex.position);
+						staticModelCmp.meshes.emplace_back(
+							basicStaticForwardProgram,
+							shadingParamsUbo,
+							sphereMesh.vao,
+							sphereMesh.indexCount);
 					}
-				}
-				aoegl::GraphicId vbo, ebo;
-				glCreateVertexArrays(1, &sphereVao);
-				glCreateBuffers(1, &vbo);
-				glCreateBuffers(1, &ebo);
-
-				glNamedBufferStorage(vbo, sphereMeshPart.vertices.size() * sizeof(aoegl::StaticVertex), sphereMeshPart.vertices.data(), 0);
-				glNamedBufferStorage(ebo, sphereMeshPart.indices.size() * sizeof(uint32_t), sphereMeshPart.indices.data(), 0);
-
-				glVertexArrayVertexBuffer(sphereVao, 0, vbo, 0, sizeof(aoegl::StaticVertex));
-				glVertexArrayElementBuffer(sphereVao, ebo);
-
-				glEnableVertexArrayAttrib(sphereVao, 0);
-				glVertexArrayAttribFormat(sphereVao, 0, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, position));
-				glVertexArrayAttribBinding(sphereVao, 0, 0);
-
-				glEnableVertexArrayAttrib(sphereVao, 1);
-				glVertexArrayAttribFormat(sphereVao, 1, 3, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, normal));
-				glVertexArrayAttribBinding(sphereVao, 1, 0);
-
-				glEnableVertexArrayAttrib(sphereVao, 2);
-				glVertexArrayAttribFormat(sphereVao, 2, 2, GL_FLOAT, GL_FALSE, offsetof(aoegl::StaticVertex, uv));
-				glVertexArrayAttribBinding(sphereVao, 2, 0);
-
-				constexpr auto k_cols = 10;
-				constexpr auto k_rows = 10;
-				constexpr float k_dist = 0.02f;
-
-				constexpr float k_minMetallic = 0.01f;
-				constexpr float k_maxMetallic = 1.0f;
-				constexpr float k_minRoughness = 0.01f;
-				constexpr float k_maxRoughness = 1.0f;
-
-				for (int i = 0; i < k_cols; ++i)
-				{
-					for (int j = 0; j < k_rows; ++j)
-					{
-
-						auto e = preRegistry.create();
-						preRegistry.emplace<aoest::Position>(e, glm::vec3{ i * (k_dist + 2.0f * sphereRadius), sphereRadius + j * (k_dist + 2.0f * sphereRadius), 0.0f });
-						preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
-						auto& sm = preRegistry.emplace<aoegl::StaticMeshComponent>(e);
-
-						aoegl::GraphicId materialUbo = aoegl::k_invalidId;
-						auto const materialData = CustomRenderSceneConfig{
-							.albedo = glm::vec3{1.0f, 0.0f, 0.2f},
-							.metallic = k_minMetallic + static_cast<float>(i) / k_cols * (k_maxMetallic - k_minMetallic),
-							.roughness = k_minRoughness + static_cast<float>(j) / k_rows * (k_maxRoughness - k_minRoughness)
-						};
-						glCreateBuffers(1, &materialUbo);
-						glNamedBufferStorage(materialUbo, sizeof(CustomRenderSceneConfig), &materialData, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
-
-
-						// MATERIAL
-						sm.parts.emplace_back(forwardMaterialProgram, materialUbo, sphereVao, sphereMeshPart.indices.size());
-						sm.boundingRadius = sphereRadius;
-					}
+					glCreateBuffers(1, &staticModelCmp.modelParamsUbo);
+					auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(preRegistry.get<aoest::Position>(e), preRegistry.get<aoest::Rotation>(e)) };
+					glNamedBufferStorage(staticModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+					staticModelCmp.boundingRadius = sphereModel.boundingRadius;
 				}
 			}
 		}

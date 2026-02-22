@@ -11,6 +11,7 @@ namespace vob::aoeph
 
 	void DebugRenderCollidersSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
+		return;
 		auto& debugMeshContext = m_debugMeshContext.get(a_wdap);
 
 		for (auto [entity, position, rotation, staticCollider] : m_staticColliderEntities.get(a_wdap).each())

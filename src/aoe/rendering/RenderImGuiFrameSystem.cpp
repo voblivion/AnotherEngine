@@ -2,7 +2,6 @@
 
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
-#include <optick.h>
 
 
 namespace vob::aoegl

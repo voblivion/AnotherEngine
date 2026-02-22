@@ -1,13 +1,14 @@
 #include <vob/aoe/rendering/RenderSceneSystem.h>
 
-#include <vob/aoe/rendering/UniformUtils.h>
+#include <vob/aoe/rendering/GpuObjects.h>
+#include <vob/aoe/rendering/ModelComponent.h>
 #include <vob/aoe/rendering/ProgramUtils.h>
+#include <vob/aoe/rendering/UniformUtils.h>
 
 #include <vob/misc/std/enum_traits.h>
 
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
-#include <optick.h>
 
 #include <array>
 
@@ -154,6 +155,25 @@ namespace vob::aoegl
 		glm::mat4 transform;
 	};
 
+	struct CulledStaticMesh2
+	{
+		GraphicId forwardProgram;
+		GraphicId materialParamsUbo;
+		GraphicId meshVao;
+		GraphicId modelParamsUbo;
+		int32_t indexCount;
+	};
+
+	struct CulledRiggedMesh
+	{
+		GraphicId forwardProgram;
+		GraphicId materialParamsUbo;
+		GraphicId meshVao;
+		GraphicId modelParamsUbo;
+		GraphicId rigParamsUbo;
+		int32_t indexCount;
+	};
+
 	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 
@@ -163,14 +183,9 @@ namespace vob::aoegl
 	{
 		// TODO: where do these go?
 		constexpr int32_t kLightClusterWorkGroupSize = 128;
-		// TODO: actually need location per pass
-		constexpr GraphicId k_globalRenderSceneConfigUboLocation = 0;
-		constexpr GraphicId k_meshRenderSceneConfigUboLocation = 1;
-		constexpr GraphicId k_customRenderSceneConfigUboLocation = 2;
-		constexpr GraphicId k_customPostProcessConfigUboLocation = 1;
-		constexpr GraphicId k_lightsSsboLocation = 0;
-		constexpr GraphicId k_lightCountPerClusterSsboLocation = 1;
-		constexpr GraphicId k_lightIndicesPerClusterSsboLocation = 2;
+		constexpr GraphicInt k_viewPostProcessConfigUboLocation = 0;
+		constexpr GraphicInt k_lightPostProcessConfigUboLocation = 1;
+		constexpr GraphicInt k_customPostProcessConfigUboLocation = 2;
 
 		auto const& renderSceneContext = m_renderSceneContext.get(a_wdap);
 		auto const& window = m_windowContext.get(a_wdap).window.get();
@@ -178,7 +193,7 @@ namespace vob::aoegl
 		auto const cameraEntities = m_cameraEntities.get(a_wdap);
 
 #ifdef VOB_AOEGL_DEBUG
-		OPTICK_PUSH("0 - Debug");
+		// O PTICK_PUSH("0 - Debug");
 		static DebugMode::Type k_debugMode = DebugMode::None;
 		if (ImGui::Begin("Render"))
 		{
@@ -228,13 +243,13 @@ namespace vob::aoegl
 		}
 		if (k_debugMode != DebugMode::None)
 		{
-			auto const debugPostProcess = DebugPostProcessConfig{
+			auto const debugParams = DebugParams{
 				.mode = k_debugMode
 			};
-			glNamedBufferSubData(renderSceneContext.debugUbo, 0, sizeof(debugPostProcess), &debugPostProcess);
+			glNamedBufferSubData(renderSceneContext.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
 
 		}
-		OPTICK_POP();
+		// O PTICK_POP();
 #endif
 
 		// TODO: separate window size from rendering size
@@ -255,9 +270,9 @@ namespace vob::aoegl
 		auto const invProjection = glm::inverse(projection);
 
 		// 1. Cull lights
-		OPTICK_PUSH("1 - Light Culling");
+		// O PTICK_PUSH("1 - Light Culling");
 		// TODO: why magic?
-		static std::pmr::vector<CulledLight2> culledLights;
+		static std::pmr::vector<Light> culledLights;
 		culledLights.clear();
 		auto const lightEntities = m_lightEntities.get(a_wdap);
 		for (auto const [entity, position, rotation, lightCmp] : lightEntities.each())
@@ -272,79 +287,115 @@ namespace vob::aoegl
 					glm::vec4{ std::cos(lightCmp.outerAngle), std::cos(lightCmp.innerAngle), 0.0f, 0.0f });
 			}
 		}
-		glNamedBufferSubData(renderSceneContext.lightsSsbo, 0, culledLights.size() * sizeof(decltype(culledLights)::value_type), culledLights.data());
-		OPTICK_POP();
+		glNamedBufferSubData(renderSceneContext.lightsSsbo, 0, culledLights.size() * sizeof(Light), culledLights.data());
+		// O PTICK_POP();
 
 		// 2. Set global scene rendering config
-		OPTICK_PUSH("2 - Global UBO");
-		auto const globalRenderSceneConfig = GlobalRenderSceneConfig{
-			.view = view,
-			.projection = projection,
-			.viewProjection = viewProjection,
-			.invProjection = invProjection,
-			.cameraPosition = cameraProperties.position,
+		// O PTICK_PUSH("2 - Global UBO");
+		auto const viewParams = ViewParams{
+			.worldToView = view,
+			.viewToProjected = projection,
+			.worldToProjected = viewProjection,
+			.projectedToView = invProjection,
+			.viewPosition = cameraProperties.position
+		};
+		glNamedBufferSubData(renderSceneContext.viewParamsUbo, 0, sizeof(ViewParams), &viewParams);
+		auto const lightParams = LightParams{
+			.lightClusterSizes = glm::ivec2{16},
 			.resolution = renderSceneContext.sceneFramebufferSize,
-			.nearClip = cameraProperties.nearClip,
-			.farClip = cameraProperties.farClip,
-			.lightClusterSizes = glm::ivec2{ 16 },
+			.near = cameraProperties.nearClip,
+			.far = cameraProperties.farClip,
 			.lightClusterCountZ = 24,
 			.maxLightCountPerCluster = 64,
 			.totalLightCount = static_cast<int32_t>(culledLights.size())
 		};
-		glNamedBufferSubData(renderSceneContext.globalUbo, 0, sizeof(globalRenderSceneConfig), &globalRenderSceneConfig);
-		OPTICK_POP();
+		glNamedBufferSubData(renderSceneContext.lightParamsUbo, 0, sizeof(LightParams), &lightParams);
+		// O PTICK_POP();
 
 		// 3. Compute light clusters
-		OPTICK_PUSH("3 - Light Clustering");
+		// O PTICK_PUSH("3 - Light Clustering");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[0]);
-		glUseProgram(renderSceneContext.computeLightClustersProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightsSsbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderSceneContext.lightCountPerClusterSsbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, renderSceneContext.lightIndicesPerClusterSsbo);
-		uint32_t workGroupCount = static_cast<uint32_t>(
-			(renderSceneContext.lightClusterCount + kLightClusterWorkGroupSize - 1) / kLightClusterWorkGroupSize);
+		glUseProgram(renderSceneContext.lightClusteringProgram);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+		auto const workGroupCount = static_cast<uint32_t>(
+			(renderSceneContext.lightClusterCount + renderSceneContext.lightClusteringWorkGroupSize - 1) / renderSceneContext.lightClusteringWorkGroupSize);
 		glDispatchCompute(workGroupCount, 1, 1);
-		OPTICK_POP();
+		// O PTICK_POP();
 
 		// 4. Cull meshes
-		OPTICK_PUSH("4 - Mesh Culling");
-		// TODO: why magic?
-		std::pmr::vector<CulledStaticMesh> culledStaticMeshes;
+		// O PTICK_PUSH("4 - Mesh Culling");
+		static std::pmr::vector<CulledStaticMesh2> culledStaticMeshes;
 		culledStaticMeshes.clear();
-		auto const staticMeshEntities = m_staticMeshEntities.get(a_wdap);
-		for (auto const [entity, position, rotation, staticMeshCmp] : staticMeshEntities.each())
+		auto const staticModelEntities = m_staticModelEntities.get(a_wdap);
+		for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
 		{
-			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, staticMeshCmp.boundingRadius))
+			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, staticModelCmp.boundingRadius))
 			{
-				for (auto const& part : staticMeshCmp.parts)
+				// TODO: don't need for static, do elsewhere
+				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+				glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+
+				for (auto const& mesh : staticModelCmp.meshes)
 				{
 					culledStaticMeshes.emplace_back(
-						// TODO: rename to shader + material
-						part.materialProgram,
-						part.instanceUbo,
-						part.meshVao,
-						part.indexCount,
-						aoest::combine(position, rotation));
+						mesh.program,
+						mesh.materialParamsUbo,
+						mesh.meshVao,
+						staticModelCmp.modelParamsUbo,
+						mesh.indexCount);
 				}
 			}
 		}
-
 		std::sort(
 			culledStaticMeshes.begin(),
 			culledStaticMeshes.end(),
 			[](auto const& a_lhs, auto const& a_rhs)
 			{
-				return a_lhs.materialProgram < a_rhs.materialProgram
-					|| (a_lhs.materialProgram == a_rhs.materialProgram && a_lhs.instanceUbo < a_rhs.instanceUbo);
+				return a_lhs.forwardProgram < a_rhs.forwardProgram
+					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialParamsUbo < a_rhs.materialParamsUbo);
 			});
-		OPTICK_POP();
+		static std::pmr::vector<CulledRiggedMesh> culledRiggedMeshes;
+		culledRiggedMeshes.clear();
+		auto const riggedModelEntities = m_riggedModelEntities.get(a_wdap);
+		for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
+		{
+			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, riggedModelCmp.boundingRadius))
+			{
+				// TODO: don't need for static, do elsewhere
+				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+				glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+
+				for (auto const& mesh : riggedModelCmp.meshes)
+				{
+					culledRiggedMeshes.emplace_back(
+						mesh.program,
+						mesh.materialParamsUbo,
+						mesh.meshVao,
+						riggedModelCmp.modelParamsUbo,
+						riggedModelCmp.rigParamsUbo,
+						mesh.indexCount);
+				}
+			}
+		}
+		std::sort(
+			culledRiggedMeshes.begin(),
+			culledRiggedMeshes.end(),
+			[](auto const& a_lhs, auto const& a_rhs)
+			{
+				return a_lhs.forwardProgram < a_rhs.forwardProgram
+					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialParamsUbo < a_rhs.materialParamsUbo);
+			});
+		// O PTICK_POP();
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		glEndQuery(GL_TIME_ELAPSED);
 
 		// 5. Depth pre-pass
-		OPTICK_PUSH("5 - Depth Pre Pass");
+		// O PTICK_PUSH("5 - Depth Pre Pass");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[1]);
 		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sceneFramebuffer);
 		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
@@ -355,10 +406,26 @@ namespace vob::aoegl
 		glDepthMask(GL_TRUE);
 		glDepthFunc(GL_LESS);
 		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glUseProgram(renderSceneContext.depthPrePassProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
+		glUseProgram(renderSceneContext.staticDepthProgram);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+		for (auto const& staticMesh : culledStaticMeshes)
+		{
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
+			glBindVertexArray(staticMesh.meshVao);
+			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+		}
+		glUseProgram(renderSceneContext.riggedDepthProgram);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+		for (auto const& riggedMesh : culledRiggedMeshes)
+		{
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
+			glBindVertexArray(riggedMesh.meshVao);
+			glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+		}
+		/*glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
 		glBindBufferBase(GL_UNIFORM_BUFFER, k_meshRenderSceneConfigUboLocation, renderSceneContext.meshUbo);
-		/*for (auto const& staticMesh : culledStaticMeshes)
+		for (auto const& staticMesh : culledStaticMeshes)
 		{
 			auto const meshRenderSceneConfig = MeshRenderSceneConfig{
 				.model = staticMesh.transform
@@ -368,26 +435,28 @@ namespace vob::aoegl
 			glBindVertexArray(staticMesh.meshVao);
 			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 		}*/
+		// NEW
+		// TODO
 		glEndQuery(GL_TIME_ELAPSED);
-		OPTICK_POP();
+		// O PTICK_POP();
 
 		// 6. Opaque pass
-		OPTICK_PUSH("6 - Opaque Pass");
+		// O PTICK_PUSH("6 - Opaque Pass");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[2]);
 		glDepthFunc(GL_LEQUAL);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		GraphicId currentShaderProgram = k_invalidId;
-		GraphicId currentMaterialUbo = k_invalidId;
+		GraphicId currentForwardProgram = k_invalidId;
+		GraphicId currentMaterialParamsUbo = k_invalidId;
 #ifdef VOB_AOEGL_DEBUG
 		if (k_debugMode != DebugMode::None)
 		{
-			glUseProgram(renderSceneContext.debugMeshProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_meshRenderSceneConfigUboLocation, renderSceneContext.meshUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, 2, renderSceneContext.debugUbo);
+			glUseProgram(renderSceneContext.staticDebugForwardProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
 			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightCountPerClusterSsboLocation, renderSceneContext.lightCountPerClusterSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightIndicesPerClusterSsboLocation, renderSceneContext.lightIndicesPerClusterSsbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
 		}
 #endif
 		for (auto const& staticMesh : culledStaticMeshes)
@@ -396,36 +465,73 @@ namespace vob::aoegl
 			if (k_debugMode == DebugMode::None)
 #endif
 			{
-				if (currentShaderProgram != staticMesh.materialProgram)
+				if (currentForwardProgram != staticMesh.forwardProgram)
 				{
-					currentShaderProgram = staticMesh.materialProgram;
-					glUseProgram(currentShaderProgram);
-					// TODO: some duplicate code, create function
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_meshRenderSceneConfigUboLocation, renderSceneContext.meshUbo);
+					glUseProgram(staticMesh.forwardProgram);
+					currentForwardProgram = staticMesh.forwardProgram;
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightCountPerClusterSsboLocation, renderSceneContext.lightCountPerClusterSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightIndicesPerClusterSsboLocation, renderSceneContext.lightIndicesPerClusterSsbo);
-					currentMaterialUbo = k_invalidId;
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+					currentMaterialParamsUbo = k_invalidId;
 				}
 
-				if (currentMaterialUbo != staticMesh.instanceUbo)
+				if (currentMaterialParamsUbo != staticMesh.materialParamsUbo)
 				{
-					currentMaterialUbo = staticMesh.instanceUbo;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_customRenderSceneConfigUboLocation, currentMaterialUbo);
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, staticMesh.materialParamsUbo);
+					currentMaterialParamsUbo = staticMesh.materialParamsUbo;
 				}
 			}
 
-			// TODO: some duplicate code, create function
-			auto const meshRenderSceneConfig = MeshRenderSceneConfig{
-				.model = staticMesh.transform
-			};
-			glNamedBufferSubData(renderSceneContext.meshUbo, 0, sizeof(meshRenderSceneConfig), &meshRenderSceneConfig);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
 			glBindVertexArray(staticMesh.meshVao);
 			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 		}
+#ifdef VOB_AOEGL_DEBUG
+		if (k_debugMode != DebugMode::None)
+		{
+			glUseProgram(renderSceneContext.riggedDebugForwardProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+		}
+#endif
+		for (auto const& riggedMesh : culledRiggedMeshes)
+		{
+#ifdef VOB_AOEGL_DEBUG
+			if (k_debugMode == DebugMode::None)
+#endif
+			{
+				if (currentForwardProgram != riggedMesh.forwardProgram)
+				{
+					glUseProgram(riggedMesh.forwardProgram);
+					currentForwardProgram = riggedMesh.forwardProgram;
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+					currentMaterialParamsUbo = k_invalidId;
+				}
+
+				if (currentMaterialParamsUbo != riggedMesh.materialParamsUbo)
+				{
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, riggedMesh.materialParamsUbo);
+					currentMaterialParamsUbo = riggedMesh.materialParamsUbo;
+				}
+			}
+
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
+			glBindVertexArray(riggedMesh.meshVao);
+			glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+		}
 		glEndQuery(GL_TIME_ELAPSED);
-		OPTICK_POP();
+		// O PTICK_POP();
 
 		// 7. Transparent pass
 		// TODO
@@ -437,7 +543,7 @@ namespace vob::aoegl
 		// TODO
 
 		// 10. Post process(es)
-		OPTICK_PUSH("10 - Post Process");
+		// O PTICK_PUSH("10 - Post Process");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[3]);
 		// TODO: implement various post process + ping-pong pattern
 		glBindFramebuffer(GL_FRAMEBUFFER, window.getDefaultFramebufferId());
@@ -451,7 +557,7 @@ namespace vob::aoegl
 			glUseProgram(renderSceneContext.debugPostProcessProgram);
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, renderSceneContext.sceneDepthTexture);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.debugUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.debugParamsUbo);
 		}
 		else
 #endif
@@ -461,12 +567,13 @@ namespace vob::aoegl
 		}
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, renderSceneContext.sceneColorTexture);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightCountPerClusterSsbo);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightParamsUbo);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
 		glBindVertexArray(renderSceneContext.postProcessVao);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glEndQuery(GL_TIME_ELAPSED);
-		OPTICK_POP();
+		// O PTICK_POP();
 
 #ifdef VOB_AOEGL_DEBUG
 		if (ImGui::Begin("Render Performance"))

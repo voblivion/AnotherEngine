@@ -98,7 +98,7 @@ namespace vob::aoeph
 
 			for (int32_t i = 0; i < 4; ++i)
 			{
-				auto const& wheelCollider = carCollider.wheels[i];
+				auto& wheelCollider = carCollider.wheels[i];
 				auto& wheelController = carControllerComponent.wheels[i];
 
 				auto const suspensionAttachPosition = position + rotation * wheelCollider.suspensionAttachPosition;
@@ -106,7 +106,9 @@ namespace vob::aoeph
 
 				auto const wheelUp = wheelRotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
 				auto const wheelSteeringAngle = maxWheelSteeringAngle * wheelController.steeringFactor;
+				// TODO: not part of controller!
 				wheelController.steeringAngle = wheelSteeringAngle;
+				wheelCollider.steeringAngle = wheelSteeringAngle;
 				auto const wheelForward = wheelRotation * glm::angleAxis(wheelSteeringAngle, glm::vec3{ 0.0f, 1.0f, 0.0f }) * glm::vec3{ 0.0f, 0.0f, -1.0f };
 				auto const wheelRight = glm::cross(wheelForward, wheelUp);
 

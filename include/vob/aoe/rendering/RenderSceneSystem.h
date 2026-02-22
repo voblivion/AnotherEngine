@@ -5,10 +5,9 @@
 #include <vob/aoe/rendering/CameraComponent.h>
 #include <vob/aoe/rendering/CameraDirectorContext.h>
 #include <vob/aoe/rendering/LightComponent.h>
-#include <vob/aoe/rendering/MeshRenderingContext.h>
+#include <vob/aoe/rendering/ModelComponent.h>
 #include <vob/aoe/rendering/PostProcessRenderContext.h>
 #include <vob/aoe/rendering/SceneTextureContext.h>
-#include <vob/aoe/rendering/StaticMeshComponent.h>
 #include <vob/aoe/rendering/DebugMeshContext.h>
 #include <vob/aoe/rendering/RenderSceneContext.h>
 
@@ -37,7 +36,8 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
 		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, LightComponent const> m_lightEntities;
-		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, StaticMeshComponent const> m_staticMeshEntities;
+		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, StaticModelComponent const> m_staticModelEntities;
+		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, RiggedModelComponent const> m_riggedModelEntities;
 
 		// TODO: move out of system
 		GraphicId m_debugProgram = k_invalidId;

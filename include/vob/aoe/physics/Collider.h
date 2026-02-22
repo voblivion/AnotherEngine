@@ -56,6 +56,7 @@ namespace vob::aoeph
 			float mass = 10.0f;
 
 			// Runtime state
+			float steeringAngle = 0.0f;
 			float suspensionLength = 0.0f;
 			float suspensionVelocity = 0.0f;
 			bool isGrounded = false;

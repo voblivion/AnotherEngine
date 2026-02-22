@@ -2,16 +2,40 @@
 
 #include <vob/misc/std/ignorable_assert.h>
 
+#include <fstream>
 #include <optional>
+#include <regex>
+#include <span>
+#include <sstream>
+
 #define AOEGL_DEBUG 1
 #if !defined(NDEBUG) || defined(AOEGL_DEBUG)
 #include <vector>
+#include <iomanip>
 #include <iostream>
+#endif
+
+#ifndef VOB_AOEGL_CORE_SHADER_DIR
+#define VOB_AOEGL_CORE_SHADER_DIR "data/shaders/"
 #endif
 
 
 namespace vob::aoegl
 {
+#if !defined(NDEBUG) || defined(AOEGL_DEBUG)
+	void debugPrintSource(std::string_view a_source)
+	{
+		auto i = 0;
+		while (!a_source.empty())
+		{
+			auto const pos = a_source.find('\n');
+			std::cout << std::setw(3) << (i++) << ' ' << a_source.substr(0, pos) << '\n';
+			a_source = a_source.substr(pos + 1);
+		}
+		std::cout.flush();
+	}
+#endif
+
 	GraphicId createShader(GraphicEnum a_shaderType, std::string_view a_shaderSource)
 	{
 		auto const shaderId = glCreateShader(a_shaderType);
@@ -32,6 +56,7 @@ namespace vob::aoegl
 			glGetShaderInfoLog(shaderId, errorLogLength, &errorLogLength, rawErrorLog.data());
 			std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
 			std::cerr << errorLog << std::endl;
+			debugPrintSource(a_shaderSource);
 #endif
 			ignorable_assert(false && "Shader compilation failed.");
 			glDeleteShader(shaderId);
@@ -109,7 +134,9 @@ namespace vob::aoegl
 			glGetProgramInfoLog(programId, errorLogLength, &errorLogLength, rawErrorLog.data());
 			std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
 			std::cerr << errorLog << std::endl;
+			debugPrintSource(a_computeShaderSource);
 #endif
+			ignorable_assert(false && "Program linking failed.");
 			glDeleteProgram(programId);
 			return k_invalidId;
 		}
@@ -193,5 +220,131 @@ namespace vob::aoegl
 		}
 
 		a_program.windowSize = glGetUniformLocation(a_program.id, "u_windowSize");
+	}
+
+	namespace
+	{
+		std::string readFile(std::string const& a_fileName)
+		{
+			std::ifstream file(a_fileName);
+			if (!file.is_open())
+			{
+				return {};
+			}
+
+			std::stringstream buffer;
+			buffer << file.rdbuf();
+			return buffer.str();
+		}
+
+		void setDefines(std::string& a_source, std::span<std::pair<std::string_view, std::string_view>> a_defines)
+		{
+			if (a_defines.empty())
+			{
+				return;
+			}
+
+			auto definesSourceSize = size_t{ 0 };
+			for (auto const& define : a_defines)
+			{
+				definesSourceSize += std::char_traits<char>::length("#define ") + define.first.size() + 1 + define.second.size() + 1;
+			}
+			a_source.reserve(a_source.size() + definesSourceSize);
+
+			std::string definesSource;
+			definesSource.reserve(definesSourceSize);
+			for (auto const& define : a_defines)
+			{
+				definesSource += "#define ";
+				definesSource += define.first;
+				definesSource += " ";
+				definesSource += define.second;
+				definesSource += "\n";
+			}
+
+			auto const versionBegin = a_source.find("#version");
+			auto const versionEnd = a_source.find("\n", versionBegin);
+			a_source.insert(versionEnd + 1, definesSource);
+		}
+
+		void processIncludes(std::string& a_source)
+		{
+			auto const includeRegex = std::regex(R"(#include\s*["<](.*?)[">])");
+			auto match = std::smatch{};
+			auto searchStart(a_source.cbegin());
+
+			while (std::regex_search(searchStart, a_source.cend(), match, includeRegex))
+			{
+				auto const includedFileName = std::string{ VOB_AOEGL_CORE_SHADER_DIR } + match[1].str();
+				auto const includedFileContent = readFile(includedFileName);
+
+				auto const matchPos = match.position(0) + (searchStart - a_source.cbegin());
+				a_source.replace(matchPos, match.length(0), includedFileContent);
+
+				searchStart = a_source.cbegin() + matchPos;
+			}
+
+			return;
+		}
+
+		std::string createVertexShaderSource(bool a_useRig, bool a_useShading)
+		{
+			std::vector<std::pair<std::string_view, std::string_view>> defines;
+			if (a_useRig)
+			{
+				defines.emplace_back("USE_RIG", "1");
+			}
+			if (a_useShading)
+			{
+				defines.emplace_back("USE_SHADING", "1");
+			}
+
+			auto source = readFile(VOB_AOEGL_CORE_SHADER_DIR "basic_vertex_shader.glsl");
+			setDefines(source, defines);
+			processIncludes(source);
+			return source;
+		}
+
+		std::string createFragmentForwardShaderSource(std::string_view const& a_shadingSource)
+		{
+			auto source = readFile(VOB_AOEGL_CORE_SHADER_DIR "header_forward_fragment_shader.glsl");
+			source.append(a_shadingSource);
+			processIncludes(source);
+			return source;
+		}
+	}
+
+	GraphicId createLightClusteringProgram(int32_t a_workGroupSize)
+	{
+		std::vector<std::pair<std::string_view, std::string_view>> defines;
+		auto const workGroupSizeStr = std::to_string(a_workGroupSize);
+		defines.emplace_back("WORK_GROUP_SIZE", workGroupSizeStr);
+
+		auto computeShaderSource = readFile(VOB_AOEGL_CORE_SHADER_DIR "light_clustering_compute_shader.glsl");
+		setDefines(computeShaderSource, defines);
+		processIncludes(computeShaderSource);
+		return createComputeProgram(computeShaderSource);
+	}
+
+	GraphicId createDepthProgram(bool a_useRig)
+	{
+		auto const vertexShaderSource = createVertexShaderSource(a_useRig, false /* use shading */);
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_CORE_SHADER_DIR "depth_fragment_shader.glsl");
+
+		return createProgram(vertexShaderSource, fragmentShaderSource);
+	}
+
+	GraphicId createForwardProgram(std::string_view a_shadingSource, bool a_useRig)
+	{
+		auto const vertexShaderSource = createVertexShaderSource(a_useRig, true /* use shading */);
+		auto const fragmentShaderSource = createFragmentForwardShaderSource(a_shadingSource);
+
+		return createProgram(vertexShaderSource, fragmentShaderSource);
+	}
+
+	GraphicId createDebugForwardProgram(bool a_useRig)
+	{
+		auto const debugForwardShadingSource = readFile(VOB_AOEGL_CORE_SHADER_DIR "debug_forward_shading.glsl");
+		return createForwardProgram(debugForwardShadingSource, a_useRig);
 	}
 }

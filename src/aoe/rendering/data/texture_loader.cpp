@@ -1,6 +1,6 @@
 #include <vob/aoe/rendering/data/texture_file_loader.h>
 
-#include <SFML/Graphics/Image.hpp>
+// #include <SFML/Graphics/Image.hpp>
 
 #include <span>
 
@@ -9,7 +9,7 @@ namespace vob::aoegl
 {
 	texture_data texture_file_loader::load(std::filesystem::path const& a_path) const
 	{
-		sf::Image image;
+		/*sf::Image image;
 		image.loadFromFile(a_path.generic_string());
 
 		auto size = image.getSize();
@@ -20,6 +20,7 @@ namespace vob::aoegl
 			4ul
 			, glm::uvec2{ size.x, size.y }
 			, std::pmr::vector<std::uint8_t>{ data.begin(), data.end() }
-		};
+		};*/
+		return {};
 	}
 }
