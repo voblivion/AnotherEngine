@@ -8,6 +8,7 @@
 
 #include <array>
 #include <numbers>
+#include <optional>
 #include <vector>
 
 
@@ -26,6 +27,14 @@ namespace vob::aoeph
 		Aabb bounds;
 	};
 
+	struct DebugContact
+	{
+		glm::vec3 carPoint;
+		glm::vec3 staticPoint;
+		glm::vec3 force;
+		glm::vec3 torque;
+	};
+
 	struct CarCollider
 	{
 		struct ChassisPart
@@ -35,6 +44,9 @@ namespace vob::aoeph
 			glm::quat rotation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 			glm::vec3 radiuses = glm::vec3{ 1.0f };
 			Material material = Material{ 800'000.0f, 0.01f, 0.5f };
+
+			// Debug
+			std::vector<std::array<std::vector<DebugContact>, 4>> contacts;
 		};
 
 		struct Wheel
@@ -44,7 +56,7 @@ namespace vob::aoeph
 			glm::quat rotation = glm::quat();
 			glm::vec3 radiuses = glm::vec3{ 1.0f };
 			Material rimMaterial = Material{ 800'000.0f, 0.01f, 0.5f };
-			Material tireMaterial = Material{ 200'000.0f, 0.01f, 0.5f };
+			Material tireMaterial = Material{ 20'000.0f, 0.01f, 0.5f };
 
 			float suspensionRestLength = 0.3f;
 			float suspensionMaxLength = 0.2f;
@@ -56,7 +68,6 @@ namespace vob::aoeph
 			float mass = 10.0f;
 
 			// Runtime state
-			float steeringAngle = 0.0f;
 			float suspensionLength = 0.0f;
 			float suspensionVelocity = 0.0f;
 			bool isGrounded = false;
@@ -64,6 +75,10 @@ namespace vob::aoeph
 			glm::vec3 groundPoint = glm::vec3{ 0.0f };
 			glm::vec3 tireGroundedPoint = glm::vec3{ 0.0f };
 			Material groundMaterial;
+			
+			// Debug
+			std::vector<std::array<std::vector<DebugContact>, 4>> chassisContacts;
+			std::vector<std::array<std::vector<DebugContact>, 4>> contacts;
 		};
 
 		// Properties
@@ -81,5 +96,8 @@ namespace vob::aoeph
 		glm::vec3 torque = glm::vec3{ 0.0f };
 		glm::vec3 linearVelocity = glm::vec3{ 0.0f };
 		glm::vec3 angularVelocityLocal = glm::vec3{ 0.0f };
+
+		std::vector<Triangle> broadPhaseCandidates;
+		std::vector<int32_t> narrowPhaseContacts;
 	};
 }

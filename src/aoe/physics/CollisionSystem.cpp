@@ -1,15 +1,21 @@
 #include <vob/aoe/physics/CollisionSystem.h>
 
 #include <vob/aoe/physics/Material.h>
-#include <vob/aoe/physics/Maths.h>
+#include <vob/aoe/physics/MathUtils.h>
 
 #include <glm/fwd.hpp>
+
+#include <vob/misc/physics/measure_literals.h>
+#include <vob/misc/std/ignorable_assert.h>
 
 #include "imgui.h"
 
 
 namespace vob::aoeph
 {
+	static bool k_disableIgnorableAsserts = true;
+	static bool k_immediateStop = false;
+
 	void CollisionSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_fixedRateTimeContext.init(a_wdar);
@@ -108,20 +114,21 @@ namespace vob::aoeph
 		return true;
 	}
 
+#pragma optimize("", off)
 	static void collectBroadPhaseCandidates(
 		glm::vec3 const& a_carPosition,
 		glm::quat const& a_carRotation,
-		CarCollider const& a_carCollider,
+		CarCollider& a_carCollider,
 		entt::view<entt::get_t<aoest::Position const, aoest::Rotation const, StaticCollider const>> const& a_staticColliderEntities,
 		std::vector<BroadPhaseCandidate>& a_broadPhaseCandidates)
 	{
 		a_broadPhaseCandidates.clear();
+		a_carCollider.broadPhaseCandidates.clear();
 
-		auto const carRotationInv = glm::inverse(a_carRotation);
 		auto const carBoundsCenter = a_carPosition + a_carRotation * a_carCollider.boundsCenterLocal;
-		auto const carBoundsHalfExtents = glm::abs(glm::mat3_cast(a_carRotation) * a_carCollider.boundsHalfExtentsLocal);
-		auto const carBounds = Aabb{ carBoundsCenter - carBoundsHalfExtents, carBoundsCenter + carBoundsHalfExtents };
-
+		auto const carBounds = computeBounds(carBoundsCenter, a_carRotation, a_carCollider.boundsHalfExtentsLocal);
+		
+		auto const carRotationInv = glm::inverse(a_carRotation);
 		for (auto [staticEntity, staticPosition, staticRotation, staticCollider] : a_staticColliderEntities.each())
 		{
 			if (!testIntersection(carBounds, staticCollider.bounds))
@@ -149,6 +156,7 @@ namespace vob::aoeph
 					auto const x1 = glm::length(e0);
 					auto const t0 = e0 / x1;
 					auto const e2 = staticRotation * (staticTriangleLocal.p2 - staticTriangleLocal.p0);
+					ignorable_assert(k_disableIgnorableAsserts || glm::length(glm::cross(t0, e2)) > 0.000001f);
 					auto const n = glm::normalize(glm::cross(t0, e2));
 					auto const t1 = glm::cross(n, t0);
 					auto const rotationMatrix = glm::mat3{ t0, t1, n };
@@ -156,6 +164,10 @@ namespace vob::aoeph
 					auto const p2 = rotationMatrixInv * e2;
 					auto const p0 = staticPosition + staticRotation * staticTriangleLocal.p0;
 					a_broadPhaseCandidates.emplace_back(staticPart.material, p0, x1, p2.x, p2.y, rotationMatrixInv);
+					a_carCollider.broadPhaseCandidates.emplace_back(
+						staticPosition + staticRotation * staticTriangleLocal.p0,
+						staticPosition + staticRotation * staticTriangleLocal.p1,
+						staticPosition + staticRotation * staticTriangleLocal.p2);
 				}
 			}
 		}
@@ -178,11 +190,12 @@ namespace vob::aoeph
 
 	struct Contact
 	{
-		Material carMaterial;
-		Material staticMaterial;
 		float distance = 0.0f;
 		glm::vec3 carPoint = glm::vec3{ 0.0f };
 		glm::vec3 staticPoint = glm::vec3{ 0.0f };
+		int32_t index = 0; // index of part
+		Material carMaterial;
+		Material staticMaterial;
 	};
 
 	inline bool testApproximateSphereTriangleIntersection(
@@ -210,17 +223,20 @@ namespace vob::aoeph
 		glm::vec3 const& a_position,
 		glm::quat const& a_rotation,
 		glm::vec3 const& a_radiuses,
-		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates)
+		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
+		std::vector<int32_t>& a_narrowPhaseContacts)
 	{
 		auto const rotationInv = glm::inverse(a_rotation);
 
 		auto const maxRadius = std::max({ a_radiuses.x, a_radiuses.y, a_radiuses.z });
 
 		Contact closestContact;
+		auto candidateIndex = 0;
 		for (auto const& [staticMaterial, p0, x1, x2, y2, triangleRotationInv] : a_broadPhaseCandidates)
 		{
 			if (!testApproximateSphereTriangleIntersection(a_position, maxRadius, p0, x1, x2, y2, triangleRotationInv))
 			{
+				++candidateIndex;
 				continue;
 			}
 
@@ -236,14 +252,22 @@ namespace vob::aoeph
 
 			if (intersectionResult.signedDistance < closestContact.distance)
 			{
+				if (std::find(a_narrowPhaseContacts.begin(), a_narrowPhaseContacts.end(), candidateIndex) == a_narrowPhaseContacts.end())
+				{
+					a_narrowPhaseContacts.emplace_back(candidateIndex);
+				}
+
 				closestContact = Contact{
-					Material{},
-					staticMaterial,
 					intersectionResult.signedDistance,
 					intersectionResult.firstPoint,
-					intersectionResult.secondPoint
+					intersectionResult.secondPoint,
+					-1 /* index */,
+					Material{},
+					staticMaterial
 				};
 			}
+
+			++candidateIndex;
 		}
 
 		return closestContact;
@@ -252,21 +276,26 @@ namespace vob::aoeph
 	static std::vector<Contact> computeChassisPartsContacts(
 		Rk4CarState const& a_carState,
 		std::vector<CarCollider::ChassisPart> const& a_chassisParts,
-		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates)
+		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
+		std::vector<int32_t>& a_narrowPhaseContacts)
 	{
 		std::vector<Contact> chassisContacts;
+		int32_t index = 0;
 		for (auto& chassisPart : a_chassisParts)
 		{
 			auto const partPosition = a_carState.position + a_carState.rotation * chassisPart.position;
 			auto const partRotation = a_carState.rotation * chassisPart.rotation;
 
-			Contact chassisContact = computeClosestContact(partPosition, partRotation, chassisPart.radiuses, a_broadPhaseCandidates);
+			Contact chassisContact = computeClosestContact(
+				partPosition, partRotation, chassisPart.radiuses, a_broadPhaseCandidates, a_narrowPhaseContacts);
 			if (chassisContact.distance < 0.0f)
 			{
 				chassisContact.carMaterial = chassisPart.material;
-
+				chassisContact.index = index;
 				chassisContacts.push_back(chassisContact);
 			}
+
+			++index;
 		}
 
 		return chassisContacts;
@@ -275,7 +304,8 @@ namespace vob::aoeph
 	static std::array<Contact, 4> computeWheelsContacts(
 		Rk4CarState const& a_carState,
 		std::array<CarCollider::Wheel, 4> const& a_wheels,
-		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates)
+		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
+		std::vector<int32_t>& a_narrowPhaseContacts)
 	{
 		std::array<Contact, 4> wheelContacts;
 		for (int32_t i = 0; i < 4; ++i)
@@ -287,30 +317,38 @@ namespace vob::aoeph
 				+ a_carState.rotation * (wheel.suspensionAttachPosition + wheel.rotation * glm::vec3{ 0.0f, -suspensionState.length, 0.0f });
 			auto const wheelRotation = a_carState.rotation * wheel.rotation;
 
-			wheelContacts[i] = computeClosestContact(wheelPosition, wheelRotation, wheel.radiuses, a_broadPhaseCandidates);
+			wheelContacts[i] = computeClosestContact(
+				wheelPosition, wheelRotation, wheel.radiuses, a_broadPhaseCandidates, a_narrowPhaseContacts);
+			wheelContacts[i].index = i;
 		}
 
 		return wheelContacts;
 	}
 
-	glm::vec3 computeContactSpringForceOver100(glm::vec3 const& a_carPoint, glm::vec3 const& a_staticPoint, float a_ellasticityOver100)
+	glm::vec3 computeContactSpringForceOver100(glm::vec3 const& a_carPoint, glm::vec3 const& a_staticPoint, float a_elasticityOver100)
 	{
-		return (a_staticPoint - a_carPoint) * a_ellasticityOver100;
+		// TODO: do I want to clamp it really?
+		static float k_maxPenetrationDist = 0.25f;
+		auto const penetration = (a_staticPoint - a_carPoint);
+		auto const penetrationDist2 = glm::length2(penetration);
+		auto const clampedPenetration = penetrationDist2 > k_maxPenetrationDist * k_maxPenetrationDist ? penetration * (k_maxPenetrationDist / penetrationDist2) : penetration;
+		return clampedPenetration * a_elasticityOver100;
 	}
 
-	float computeDampingCoefficient(float a_restitution, float a_ellasticityOver100, float a_referenceMass)
+	float computeDampingCoefficient(float a_restitution, float a_elasticityOver100, float a_referenceMass)
 	{
 		auto const logRestitutionSquared = square(std::log(a_restitution));
 		auto const piSquared = square(std::numbers::pi_v<float>);
 		auto const zeta = std::sqrt(logRestitutionSquared / (logRestitutionSquared + piSquared));
 		// zeta = glm::mix(zetaHigh, zetaLow, glm::smoothstep(0.0, 0.2, smoothstep(0.01, 0.2, 100.0 * hitSpeedNormalOver100))));
-		auto const dampingCoefficient = 2.0f * 10.0f * std::sqrt(a_ellasticityOver100 * a_referenceMass) * zeta;
+		auto const dampingCoefficient = 2.0f * 10.0f * std::sqrt(a_elasticityOver100 * a_referenceMass) * zeta;
 		return dampingCoefficient;
 	}
 
 	glm::vec3 computeContactDamperForceOver100(
 		glm::vec3 const& a_carPoint, glm::vec3 const& a_staticPoint, glm::vec3 const& a_velocityOver100, float a_dampingCoefficient)
 	{
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(a_staticPoint - a_carPoint) > 0.000001f);
 		auto const hitNormal = glm::normalize(a_staticPoint - a_carPoint);
 		auto const hitVelocityNormalOver100 = glm::dot(a_velocityOver100, hitNormal) * hitNormal;
 		return -a_dampingCoefficient * hitVelocityNormalOver100;
@@ -324,6 +362,7 @@ namespace vob::aoeph
 		float a_frictionFactor,
 		float a_referenceMass)
 	{
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(a_staticPoint - a_carPoint) > 0.000001f);
 		auto const hitNormal = glm::normalize(a_staticPoint - a_carPoint);
 		auto const hitVelocityNormalOver100 = glm::dot(a_velocityOver100, hitNormal) * hitNormal;
 
@@ -394,10 +433,10 @@ namespace vob::aoeph
 
 	static Rk4CarState computeDerivativeCarStateOver100(
 		Rk4CarState const& a_carState,
-		CarCollider const& a_carCollider,
+		CarCollider /*const*/& a_carCollider,
 		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
 		std::array<WheelGroundState, 4>& a_wheelGroundedStates,
-		std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>>& a_debugForces)
+		int32_t a_rk4Step)
 	{
 		auto const rotationMatrix = glm::mat3_cast(a_carState.rotation);
 		auto const rotationMatrixInv = glm::transpose(rotationMatrix);
@@ -408,8 +447,10 @@ namespace vob::aoeph
 
 		auto forceOver100 = a_carCollider.force / 100.0f;
 		auto torqueOver100 = a_carCollider.torque / 100.0f;
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(torqueOver100) < 1'000'000.0f);
 
-		auto const chassisPartsContacts = computeChassisPartsContacts(a_carState, a_carCollider.chassisParts, a_broadPhaseCandidates);
+		auto const chassisPartsContacts = computeChassisPartsContacts(
+			a_carState, a_carCollider.chassisParts, a_broadPhaseCandidates, a_carCollider.narrowPhaseContacts);
 		for (auto const& chassisPartContact : chassisPartsContacts)
 		{
 			auto const material = combineMaterials(chassisPartContact.carMaterial, chassisPartContact.staticMaterial);
@@ -421,10 +462,19 @@ namespace vob::aoeph
 
 			forceOver100 += contactForceOver100;
 			torqueOver100 += glm::cross(lever, contactForceOver100);
-			addDebugForce(chassisPartContact.carPoint, contactForceOver100, aoegl::k_orange, a_debugForces);
+			ignorable_assert(k_disableIgnorableAsserts || glm::length(torqueOver100) < 1'000'000.0f);
+
+			// DEBUG
+			a_carCollider.chassisParts[chassisPartContact.index].contacts.back()[a_rk4Step].push_back(DebugContact{
+				.carPoint = chassisPartContact.carPoint,
+				.staticPoint = chassisPartContact.staticPoint,
+				.force = contactForceOver100,
+				.torque = glm::cross(lever, contactForceOver100)
+			});
 		}
 
-		auto const wheelsContacts = computeWheelsContacts(a_carState, a_carCollider.wheels, a_broadPhaseCandidates);
+		auto const wheelsContacts = computeWheelsContacts(
+			a_carState, a_carCollider.wheels, a_broadPhaseCandidates, a_carCollider.narrowPhaseContacts);
 		std::array<float, 4> wheelForcesOver100;
 		for (int32_t i = 0; i < 4; ++i)
 		{
@@ -443,7 +493,7 @@ namespace vob::aoeph
 			auto wheelForceOver100 = suspensionForceOver100;
 			forceOver100 += -suspensionForceOver100 * wheelDown;
 			torqueOver100 += glm::cross(suspensionCarLever, -suspensionForceOver100 * wheelDown);
-			addDebugForce(suspensionAttachPosition, -suspensionForceOver100 * wheelDown, aoegl::k_red, a_debugForces);
+			ignorable_assert(k_disableIgnorableAsserts || glm::length(torqueOver100) < 1'000'000.0f);
 
 			auto const wheelPosition = suspensionAttachPosition + wheelDown * suspensionState.length;
 			if (wheelContact.distance < -std::numeric_limits<float>::epsilon())
@@ -453,6 +503,7 @@ namespace vob::aoeph
 					// + wheelDown * suspensionState.velocity / 100.0f
 					+ glm::cross(rotationMatrix * a_carState.angularVelocityLocal / 100.0f, contactCarLever);
 
+				ignorable_assert(k_disableIgnorableAsserts || glm::length(wheelContact.staticPoint - wheelContact.carPoint) > 0.000001f);
 				auto const hitNormal = glm::normalize(wheelContact.staticPoint - wheelContact.carPoint);
 
 				auto const wheelRight = a_carState.rotation * wheel.rotation * glm::vec3{ 1.0f, 0.0f, 0.0f };
@@ -474,7 +525,15 @@ namespace vob::aoeph
 					auto const chassisContactForceOver100 = contactForceOver100 - wheelContactForceOver100 * wheelDown;
 					forceOver100 += chassisContactForceOver100;
 					torqueOver100 += glm::cross(contactCarLever, chassisContactForceOver100);
-					addDebugForce(wheelContact.carPoint, chassisContactForceOver100, aoegl::k_eggplant, a_debugForces);
+					ignorable_assert(k_disableIgnorableAsserts || glm::length(torqueOver100) < 1'000'000.0f);
+
+					// DEBUG
+					a_carCollider.wheels[wheelContact.index].chassisContacts.back()[a_rk4Step].push_back(DebugContact{
+						.carPoint = wheelContact.carPoint,
+						.staticPoint = wheelContact.staticPoint,
+						.force = chassisContactForceOver100,
+						.torque = glm::cross(contactCarLever, chassisContactForceOver100)
+						});
 				}
 				else
 				{
@@ -486,6 +545,15 @@ namespace vob::aoeph
 				}
 
 				wheelForceOver100 += wheelContactForceOver100;
+
+				// DEBUG
+				a_carCollider.wheels[wheelContact.index].contacts.back()[a_rk4Step].push_back(DebugContact{
+					.carPoint = wheelContact.carPoint,
+					.staticPoint = wheelContact.staticPoint,
+					.force = contactForceOver100,
+					.torque = glm::vec3{ 0.0f }
+					});
+
 			}
 
 			if (suspensionState.length < 0.0f)
@@ -497,10 +565,18 @@ namespace vob::aoeph
 
 				forceOver100 += springForceOver100 + damperForceOver100;
 				torqueOver100 += glm::cross(suspensionCarLever, springForceOver100 + damperForceOver100);
+				ignorable_assert(k_disableIgnorableAsserts || glm::length(torqueOver100) < 1'000'000.0f);
 
 				wheelForceOver100 -= glm::dot(springForceOver100 + damperForceOver100, wheelDown);
 
-				addDebugForce(suspensionAttachPosition, springForceOver100 + damperForceOver100, aoegl::k_red, a_debugForces);
+				// DEBUG
+				a_carCollider.wheels[wheelContact.index].chassisContacts.back()[a_rk4Step].push_back(DebugContact{
+					.carPoint = suspensionAttachPosition,
+					.staticPoint = wheelPosition,
+					.force = springForceOver100 + damperForceOver100,
+					.torque = glm::cross(suspensionCarLever, springForceOver100 + damperForceOver100)
+				});
+
 			}
 			if (suspensionState.length > wheel.suspensionMaxLength)
 			{
@@ -511,13 +587,17 @@ namespace vob::aoeph
 			wheelForcesOver100[i] = wheelForceOver100;
 		}
 
+
+
 		Rk4CarState derivativeCarStateOver100;
 		derivativeCarStateOver100.position = a_carState.linearVelocity / 100.0f;
 		derivativeCarStateOver100.linearVelocity = forceOver100 / a_carCollider.mass;
 		derivativeCarStateOver100.rotation = differentiateQuaternion(a_carState.rotation, a_carState.angularVelocityLocal) / 100.0f;
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(derivativeCarStateOver100.rotation) < 1'000'000.0f);
 		auto const angularVelocity = rotationMatrix * a_carState.angularVelocityLocal;
 		derivativeCarStateOver100.angularVelocityLocal =
 			rotationMatrixInv * (inertiaInv * (torqueOver100 - glm::cross(angularVelocity, inertia * angularVelocity) / 100.0f));
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(derivativeCarStateOver100.angularVelocityLocal) < 1'000'000.0f);
 
 		for (int32_t w = 0; w < 4; ++w)
 		{
@@ -540,9 +620,55 @@ namespace vob::aoeph
 			return a_rotation;
 		}
 
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(angularVelocityWorld) > 0.000001f);
+
 		glm::vec3 axis = angularVelocityWorld / glm::length(angularVelocityWorld);
 		glm::quat delta = glm::angleAxis(angle, axis);
+		ignorable_assert(k_disableIgnorableAsserts || glm::length(delta * a_rotation) > 0.000001f);
 		return glm::normalize(delta * a_rotation);
+	}
+
+	glm::vec3 clampLinearVelocity(glm::vec3 const& a_linearVelocity)
+	{
+		using namespace misph::literals;
+		static auto const k_maxLinearSpeed = (10'000_kmph).get_value();
+		auto const absLinearVelocity = glm::length(a_linearVelocity);
+		if (absLinearVelocity > k_maxLinearSpeed)
+		{
+			return a_linearVelocity * k_maxLinearSpeed / absLinearVelocity;
+		}
+		else
+		{
+			return a_linearVelocity;
+		}
+	}
+
+	glm::vec3 clampAngularVelocityLocal(glm::vec3 const& a_angularVelocityLocal)
+	{
+		static auto const k_maxAngularVelocity = 2.0f * std::numbers::pi_v<float> *100.0f;
+		auto const absAngularVelocityLocal = glm::length(a_angularVelocityLocal);
+		if (absAngularVelocityLocal > k_maxAngularVelocity)
+		{
+			return a_angularVelocityLocal * k_maxAngularVelocity / absAngularVelocityLocal;
+		}
+		else
+		{
+			return a_angularVelocityLocal;
+		}
+	}
+
+	float clampSuspensionVelocity(float a_suspensionVelocity)
+	{
+		static auto const k_maxSuspensionVelocity = 1000.0f;
+		auto const absSuspensionVelocity = std::abs(a_suspensionVelocity);
+		if (absSuspensionVelocity > k_maxSuspensionVelocity)
+		{
+			return a_suspensionVelocity * k_maxSuspensionVelocity / absSuspensionVelocity;
+		}
+		else
+		{
+			return a_suspensionVelocity;
+		}
 	}
 
 	static Rk4CarState integrateCarState(Rk4CarState const& a_initialCarState, Rk4CarState const& a_derivativeCarStateOver100, float a_deltaTime)
@@ -552,13 +678,16 @@ namespace vob::aoeph
 		newCarState.rotation = integrateQuaterion(newCarState.rotation, a_derivativeCarStateOver100.rotation, 100.0f * a_deltaTime);
 
 		newCarState.linearVelocity += a_derivativeCarStateOver100.linearVelocity * (100.0f * a_deltaTime);
+		newCarState.linearVelocity = clampLinearVelocity(newCarState.linearVelocity);
 		// TODO: is angular velocity integration accurate?
 		newCarState.angularVelocityLocal += a_derivativeCarStateOver100.angularVelocityLocal * (100.0f * a_deltaTime);
+		newCarState.angularVelocityLocal = clampAngularVelocityLocal(newCarState.angularVelocityLocal);
 
 		for (int32_t i = 0; i < 4; ++i)
 		{
 			newCarState.suspensions[i].length += a_derivativeCarStateOver100.suspensions[i].length * (100.0f * a_deltaTime);
 			newCarState.suspensions[i].velocity += a_derivativeCarStateOver100.suspensions[i].velocity * (100.0f * a_deltaTime);
+			newCarState.suspensions[i].velocity = clampSuspensionVelocity(newCarState.suspensions[i].velocity);
 		}
 
 		return newCarState;
@@ -570,8 +699,7 @@ namespace vob::aoeph
 		CarCollider& a_carCollider,
 		float a_duration,
 		std::array<WheelGroundState, 4>& a_wheelGroundedStates,
-		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
-		std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>>& a_debugForces)
+		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates)
 	{
 		auto initialCarState = Rk4CarState{ a_carPosition, a_carRotation, a_carCollider.linearVelocity, a_carCollider.angularVelocityLocal };
 		for (int32_t i = 0; i < 4; ++i)
@@ -580,22 +708,27 @@ namespace vob::aoeph
 		}
 
 		auto const k1Over100 = computeDerivativeCarStateOver100(
-			initialCarState, a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, a_debugForces);
+			initialCarState, a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, 0);
 		auto const k2Over100 = computeDerivativeCarStateOver100(
-			integrateCarState(initialCarState, k1Over100, a_duration / 2), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, a_debugForces);
+			integrateCarState(initialCarState, k1Over100, a_duration / 2), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, 1);
 		auto const k3Over100 = computeDerivativeCarStateOver100(
-			integrateCarState(initialCarState, k2Over100, a_duration / 2), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, a_debugForces);
+			integrateCarState(initialCarState, k2Over100, a_duration / 2), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, 2);
 		auto const k4Over100 = computeDerivativeCarStateOver100(
-			integrateCarState(initialCarState, k3Over100, a_duration), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, a_debugForces);
+			integrateCarState(initialCarState, k3Over100, a_duration), a_carCollider, a_broadPhaseCandidates, a_wheelGroundedStates, 3);
+
+		if (k_immediateStop)
+			return;
 
 		a_carPosition += (100.0f * a_duration / 6.0f) * (k1Over100.position + 2.0f * k2Over100.position + 2.0f * k3Over100.position + k4Over100.position);
 		a_carRotation += (100.0f * a_duration / 6.0f) * (k1Over100.rotation + 2.0f * k2Over100.rotation + 2.0f * k3Over100.rotation + k4Over100.rotation);
 		a_carRotation = glm::normalize(a_carRotation);
 		a_carCollider.linearVelocity += (100.0f * a_duration / 6.0f)
 			* (k1Over100.linearVelocity + 2.0f * k2Over100.linearVelocity + 2.0f * k3Over100.linearVelocity + k4Over100.linearVelocity);
+		a_carCollider.linearVelocity = clampLinearVelocity(a_carCollider.linearVelocity);
 		// TODO: is angular velocity integration accurate?
 		a_carCollider.angularVelocityLocal += (100.0f * a_duration / 6.0f)
 			* (k1Over100.angularVelocityLocal + 2.0f * k2Over100.angularVelocityLocal + 2.0f * k3Over100.angularVelocityLocal + k4Over100.angularVelocityLocal);
+		a_carCollider.angularVelocityLocal = clampAngularVelocityLocal(a_carCollider.angularVelocityLocal);
 
 		for (int32_t i = 0; i < 4; ++i)
 		{
@@ -606,6 +739,7 @@ namespace vob::aoeph
 
 			a_carCollider.wheels[i].suspensionLength += (100.0f * a_duration / 6.0f) * (susK1Over100.length + 2.0f * susK2Over100.length + 2.0f * susK3Over100.length + susK4Over100.length);
 			a_carCollider.wheels[i].suspensionVelocity += (100.0f * a_duration / 6.0f) * (susK1Over100.velocity + 2.0f * susK2Over100.velocity + 2.0f * susK3Over100.velocity + susK4Over100.velocity);
+			a_carCollider.wheels[i].suspensionVelocity = clampSuspensionVelocity(a_carCollider.wheels[i].suspensionVelocity);
 		}
 	}
 
@@ -615,15 +749,29 @@ namespace vob::aoeph
 		CarCollider& a_carCollider,
 		float a_duration,
 		int32_t a_stepCount,
-		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates,
-		std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>>& a_debugForces)
+		std::vector<BroadPhaseCandidate> const& a_broadPhaseCandidates)
 	{
+		a_carCollider.narrowPhaseContacts.clear();
+
 		std::array<WheelGroundState, 4> wheelGroundedStates;
 
 		auto const stepDuration = a_duration / a_stepCount;
 		for (int32_t stepIndex = 0; stepIndex < a_stepCount; ++stepIndex)
 		{
-			processNarrowPhaseStep(a_carPosition, a_carRotation, a_carCollider, stepDuration, wheelGroundedStates, a_broadPhaseCandidates, a_debugForces);
+			// DEBUG
+			for (auto& chassisPart : a_carCollider.chassisParts)
+			{
+				chassisPart.contacts.emplace_back();
+			}
+			for (auto& wheel : a_carCollider.wheels)
+			{
+				wheel.contacts.emplace_back();
+				wheel.chassisContacts.emplace_back();
+			}
+
+			processNarrowPhaseStep(a_carPosition, a_carRotation, a_carCollider, stepDuration, wheelGroundedStates, a_broadPhaseCandidates);
+			if (k_immediateStop)
+				break;
 		}
 
 		for (int32_t i = 0; i < 4; ++i)
@@ -637,63 +785,40 @@ namespace vob::aoeph
 
 	void CollisionSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		/*static bool k_reset = false;
-		static glm::vec3 k_position = glm::vec3{ 0.0f, 2.0f, 0.0f };
-
-		ImGui::Begin("Physics");
-		ImGui::InputFloat3("Position", &k_position.x);
-		if (ImGui::Button("Reset"))
-		{
-			k_reset = true;
-		}
-		ImGui::End();*/
-
-		static std::vector<std::tuple<glm::vec3, glm::vec3, aoegl::Rgba>> k_debugForces;
-
-		auto const& fixedRateTimeContext = m_fixedRateTimeContext.get(a_wdap);
+		auto /*const*/& fixedRateTimeContext = m_fixedRateTimeContext.get(a_wdap);
 		auto& collisionContext = m_collisionContext.get(a_wdap);
 		if (collisionContext.lastFixedTickIndexProcessed == fixedRateTimeContext.tickIndex)
 		{
-			for (auto [source, force, color] : k_debugForces)
-			{
-				m_debugMeshContext.get(a_wdap).addLine(source, source + force, color);
-			}
 			return;
 		}
 		collisionContext.lastFixedTickIndexProcessed = fixedRateTimeContext.tickIndex;
 		auto const tickDuration = std::chrono::duration<float>(fixedRateTimeContext.tickDuration).count();
 
-		k_debugForces.clear();
-
 		std::vector<BroadPhaseCandidate> broadPhaseCandidates;
 		for (auto [carEntity, carPosition, carRotation, carCollider] : m_carColliderEntities.get(a_wdap).each())
 		{
-			/*if (k_reset)
+			// DEBUG
+			for (auto& chassisPart : carCollider.chassisParts)
 			{
-				carPosition = k_position;
-				carRotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-				carCollider.linearVelocity = glm::vec3{ 0.0f };
-				carCollider.angularVelocityLocal = glm::vec3{ 0.0f };
-				for (int32_t i = 0; i < 4; ++i)
-				{
-					carCollider.wheels[i].suspensionLength = 0.0f;
-					carCollider.wheels[i].suspensionVelocity = 0.0f;
-				}
-				carCollider.force = glm::vec3{ 0.0f };
-				carCollider.torque = glm::vec3{ 0.0f };
-			}*/
+				chassisPart.contacts.clear();
+			}
+			for (auto& wheel : carCollider.wheels)
+			{
+				wheel.contacts.clear();
+				wheel.chassisContacts.clear();
+			}
 
 			collectBroadPhaseCandidates(
 				carPosition, carRotation, carCollider, m_staticColliderEntities.get(a_wdap), broadPhaseCandidates);
 
 			processNarrowUpdate(
-				carPosition, carRotation, carCollider, tickDuration, collisionContext.updateStepCount, broadPhaseCandidates, k_debugForces);
+				carPosition, carRotation, carCollider, tickDuration, collisionContext.updateStepCount, broadPhaseCandidates);
 		}
 
-		for (auto [source, force, color] : k_debugForces)
+		if (k_immediateStop)
 		{
-			m_debugMeshContext.get(a_wdap).addLine(source, source + force, color);
+			k_immediateStop = false;
+			fixedRateTimeContext.debugRemainingTickCount = 0;
 		}
-		// k_reset = false;
 	}
 }

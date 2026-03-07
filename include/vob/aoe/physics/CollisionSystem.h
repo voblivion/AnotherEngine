@@ -21,12 +21,10 @@ namespace vob::aoeph
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 
 	private:
-		aoeng::EcsWorldContextRef<aoest::FixedRateTimeContext const> m_fixedRateTimeContext;
+		aoeng::EcsWorldContextRef<aoest::FixedRateTimeContext /*const*/> m_fixedRateTimeContext;
 		aoeng::EcsWorldContextRef<CollisionContext> m_collisionContext;
 
 		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, StaticCollider const> m_staticColliderEntities;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, CarCollider> m_carColliderEntities;
-
-		aoeng::EcsWorldContextRef<aoegl::DebugMeshContext> m_debugMeshContext;
 	};
 }

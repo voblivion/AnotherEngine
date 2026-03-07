@@ -2,12 +2,12 @@
 
 #include <vob/aoe/api.h>
 
-#include <vob/aoe/physics/Collider.h>
 #include <vob/aoe/physics/CarControllerComponent.h>
+#include <vob/aoe/physics/Collider.h>
 
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/input/InputBindings.h>
 #include <vob/aoe/input/GameInputContext.h>
+#include <vob/aoe/spacetime/FixedRateTimeContext.h>
 #include <vob/aoe/spacetime/Transform.h>
 
 
@@ -21,6 +21,7 @@ namespace vob::aoeph
 
 	private:
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
-		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, CarCollider, CarControllerComponent> m_carEntities;
+		aoeng::EcsWorldContextRef<aoest::FixedRateTimeContext> m_fixedRateTimeContext;
+		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, CarCollider, CarControllerComponent> m_carEntities;
 	};
 }

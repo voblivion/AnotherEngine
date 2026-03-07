@@ -18,14 +18,14 @@ namespace vob::aoegl
 		auto const elapsedTime = std::chrono::duration<float>(m_timeContext.get(a_wdap).elapsedTime).count();
 
 		auto const carEntities = m_carEntities.get(a_wdap);
-		for (auto [entity, rotation, carColliderCmp, carRigCmp, riggedModelCmp] : carEntities.each())
+		for (auto [entity, rotation, carColliderCmp, carControllerCmp, carRigCmp, riggedModelCmp] : carEntities.each())
 		{
 			auto const forward = rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
 
 			for (const auto& suspensionWheel : carRigCmp.suspensionWheels)
 			{
 				auto const& wheelState = carColliderCmp.wheels[suspensionWheel.wheelIndex];
-    				auto const suspensionTransform = glm::translate(glm::mat4(1.0f), glm::vec3{ 0.0f, -wheelState.suspensionLength, 0.0f });
+    			auto const suspensionTransform = glm::translate(glm::mat4(1.0f), glm::vec3{ 0.0f, -wheelState.suspensionLength, 0.0f });
 				auto const& parentBoneTransform = carRigCmp.boneTransforms[suspensionWheel.parentBoneIndex];
 				carRigCmp.boneTransforms[suspensionWheel.boneIndex] = parentBoneTransform * suspensionWheel.baseTransformRelativeParent * suspensionTransform;
 				carRigCmp.bones[suspensionWheel.boneIndex] = carRigCmp.boneTransforms[suspensionWheel.boneIndex] * suspensionWheel.invBasePose;
@@ -33,7 +33,7 @@ namespace vob::aoegl
 
 			for (const auto& steeringWheel : carRigCmp.steeringWheels)
 			{
-				auto const& wheelState = carColliderCmp.wheels[steeringWheel.wheelIndex];
+				auto const& wheelState = carControllerCmp.wheels[steeringWheel.wheelIndex];
 				auto const steerTransform = glm::rotate(glm::mat4(1.0f), wheelState.steeringAngle, glm::vec3{ 0.0f, 0.0f, 1.0f });
 				auto const& parentBoneTransform = carRigCmp.boneTransforms[steeringWheel.parentBoneIndex];
 				carRigCmp.boneTransforms[steeringWheel.boneIndex] = parentBoneTransform * steeringWheel.baseTransformRelativeParent * steerTransform;

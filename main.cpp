@@ -239,3 +239,10 @@ int main()
 *	+ not necessary to copy
 *	- need to allocate allways?
 */
+
+
+/* DRIVING MECHANICS
+*
+* - instant grip loss button
+* - down force change button
+*/

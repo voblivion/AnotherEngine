@@ -4,10 +4,14 @@
 
 #include <vob/aoe/spacetime/transform.h>
 
+#include <vob/misc/std/bounded_vector.h>
+
 #include <glm/glm.hpp>
 #include <glm/ext/quaternion_float.hpp>
+#include <glm/gtx/norm.hpp>
 
 
+#pragma optimize("", off)
 namespace vob::aoeph
 {
 	template <typename T>
@@ -19,6 +23,22 @@ namespace vob::aoeph
 	inline float lengthSquared(glm::vec3 const& a_vector)
 	{
 		return glm::dot(a_vector, a_vector);
+	}
+
+	inline glm::mat3 abs(glm::mat3 const& a_matrix)
+	{
+		return glm::mat3{
+			glm::abs(a_matrix[0]),
+			glm::abs(a_matrix[1]),
+			glm::abs(a_matrix[2])
+		};
+	}
+
+	inline Aabb computeBounds(glm::vec3 const& a_position, glm::quat const& a_rotation, glm::vec3 const& a_localHalfExtents)
+	{
+		auto const rotationMatrix = glm::mat3_cast(a_rotation);
+		auto const halfExtents = abs(rotationMatrix) * a_localHalfExtents;
+		return Aabb{ a_position - halfExtents, a_position + halfExtents };
 	}
 
 	inline bool is_inside(glm::vec3 const& a_point, triangle const& a_triangle)
@@ -147,7 +167,7 @@ namespace vob::aoeph
 		};
 	}
 
-	inline glm::vec3 findClosestTrianglePoint(triangle const& a_triangle, glm::vec3 const& a_point)
+	inline glm::vec3 findClosestTrianglePoint(triangle const& a_triangle, glm::vec3 const& a_point, glm::bvec3& o_boundingSides)
 	{
 		auto const v01 = a_triangle.p1 - a_triangle.p0;
 		auto const v02 = a_triangle.p2 - a_triangle.p0;
@@ -157,6 +177,7 @@ namespace vob::aoeph
 		auto const d2 = glm::dot(v02, v0p);
 		if (d1 <= 0.0f && d2 <= 0.0f)
 		{
+			o_boundingSides = { true, false, true };
 			return a_triangle.p0;
 		}
 
@@ -165,12 +186,14 @@ namespace vob::aoeph
 		auto const d4 = glm::dot(v02, v13);
 		if (d3 >= 0.0f && d4 <= d3)
 		{
+			o_boundingSides = { true, true, false };
 			return a_triangle.p1;
 		}
 
 		auto const v2 = d1 * d4 - d2 * d3;
 		if (v2 <= 0.0f && d1 >= 0.0f && d3 <= 0.0f)
 		{
+			o_boundingSides = { true, false, false };
 			return a_triangle.p0 + v01 * d1 / (d1 - d3);
 		}
 
@@ -179,59 +202,130 @@ namespace vob::aoeph
 		auto const d6 = glm::dot(v02, v2p);
 		if (d6 >= 0.0f && d5 <= d6)
 		{
+			o_boundingSides = { false, true, true };
 			return a_triangle.p2;
 		}
 
 		auto const v1 = d2 * d5 - d1 * d6;
 		if (v1 <= 0.0f && d2 >= 0.0f && d6 <= 0.0f)
 		{
+			o_boundingSides = { false, false, true };
 			return a_triangle.p0 + v02 * d2 / (d2 - d6);
 		}
 
 		auto const v0 = d3 * d6 - d4 * d5;
 		if (v0 <= 0.0f && (d4 - d3) >= 0.0f && (d5 - d6) >= 0.0f)
 		{
+			o_boundingSides = { false, true, false };
 			return a_triangle.p1 + (a_triangle.p2 - a_triangle.p1) * (d4 - d3) / ((d4 - d3) + (d5 - d6));
 		}
 
-		auto const d01Sq = glm::dot(v01, v01);
-		auto const d02Sq = glm::dot(v02, v02);
-		auto const d0102 = glm::dot(v01, v02);
+		//auto const d01Sq = glm::dot(v01, v01);
+		//auto const d02Sq = glm::dot(v02, v02);
+		//auto const d0102 = glm::dot(v01, v02);
 
-		auto const d = d01Sq * d02Sq - d0102 * d0102;
-		auto const v = (d02Sq * glm::dot(v0p, v01) - d0102 * glm::dot(v0p, v02)) / d;
-		auto const w = (d01Sq * glm::dot(v0p, v02) - d0102 * glm::dot(v0p, v01)) / d;
-		return a_triangle.p0 + v01 * v + v02 * w;
+		//auto const d = d01Sq * d02Sq - d0102 * d0102;
+		//auto const v = (d02Sq * glm::dot(v0p, v01) - d0102 * glm::dot(v0p, v02)) / d;
+		//auto const w = (d01Sq * glm::dot(v0p, v02) - d0102 * glm::dot(v0p, v01)) / d;
+
+		o_boundingSides = { false, false, false };
+		//return a_triangle.p0 + v01 * v + v02 * w;
+		return a_point;
 	}
 
-	inline glm::vec3 findClosestUnitEllipsoidPoint(glm::vec3 const& a_radiuses, glm::vec3 const& a_point)
+	template <typename TFunc>
+	float findZero(TFunc a_func, float a_t0, float a_t1, float a_epsilon = 0.00001f)
 	{
-		auto const r2 = a_radiuses * a_radiuses;
-		auto const computeError = [&a_point, &a_radiuses, &r2](const float lambda) {
-			auto const p2 = a_point * a_point;
-			auto const dSqrt = r2 + lambda;
-			auto const t = p2 * r2 / (dSqrt * dSqrt);
-			return t.x + t.y + t.z - 1.0f;
-			};
-
-		auto lambdaMin = -std::min({ r2.x, r2.y, r2.z });
-		auto lambdaMax = 0.0f;
-		while (lambdaMax - lambdaMin > 1e-4f)
+		while (std::abs(a_t1 - a_t0) > a_epsilon)
 		{
-			auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
-			auto const error = computeError(lambda);
-			if (error < 0.0f)
+			const auto t = (a_t0 + a_t1) * 0.5f;
+			if (a_func(t) < 0.0f)
 			{
-				lambdaMax = lambda;
+				a_t0 = t;
 			}
 			else
 			{
-				lambdaMin = lambda;
+				a_t1 = t;
 			}
 		}
+		return (a_t0 + a_t1) * 0.5f;
+	}
 
-		auto const lambda = (lambdaMin + lambdaMax) * 0.5f;
-		return a_point * r2 / (r2 + lambda);
+	inline mistd::bounded_vector<glm::vec3, 6> findClosestUnitEllipsoidPointCandidates(glm::vec3 const& a_radiuses, glm::vec3 const& a_point)
+	{
+		auto const r2 = a_radiuses * a_radiuses;
+		auto const f = [&a_radiuses, &a_point, &r2](float lambda)
+			{
+				auto const d = a_point / (a_radiuses * (1.0f + lambda / r2));
+				return glm::dot(d, d) - 1.0f;
+			};
+		auto const fNeg = [f](float source, float initialOffset)
+			{
+				auto t = source + initialOffset;
+				while (f(t) > 0.0f)
+				{
+					t += (t - source);
+				}
+				return t;
+			};
+
+		auto const df = [&a_radiuses, &a_point, &r2](float lambda)
+			{
+				auto const e = (1.0f + lambda / r2);
+				auto const d = a_point * a_point / (r2 * r2 * e * e * e);
+				return -2.0f * (d.x + d.y + d.z);
+			};
+		auto const dfZero = [&df](float t0, float t1)
+			{
+				auto s0 = (t0 + t1) * 0.5f;
+				while (df(s0) > 0.0f && std::abs(s0 - t0) > 0.00001f)
+				{
+					s0 = (t0 + s0) * 0.5f;
+				}
+				auto s1 = (t0 + t1) * 0.5f;
+				while (df(s1) < 0.0f && std::abs(s1 - t1) > 0.00001f)
+				{
+					s1 = (s1 + t1) * 0.5f;
+				}
+				return findZero(df, s0, s1);
+			};
+		auto const toPoint = [&a_point, &r2](float k)
+			{
+				return a_point / (1.0f + k / r2);
+			};
+
+
+		std::array<float, 3> bkrs = { -r2.x, -r2.y, -r2.z };
+		std::sort(bkrs.begin(), bkrs.end());
+		auto const bk1 = bkrs[0];
+		auto const bk3 = bkrs[1];
+		auto const bk5 = bkrs[2];
+		auto const bk0 = fNeg(bk1, -1.0f);
+		auto const bk6 = fNeg(bk5, 1.0f);
+
+		mistd::bounded_vector<glm::vec3, 6> candidates;
+		candidates.push_back(toPoint(findZero(f, bk0, bk1)));
+		if (glm::epsilonNotEqual(bk1, bk3, 0.00001f))
+		{
+			auto const bk2 = dfZero(bk1, bk3);
+			if (f(bk2) < 0.0f)
+			{
+				candidates.push_back(toPoint(findZero(f, bk2, bk1)));
+				candidates.push_back(toPoint(findZero(f, bk2, bk3)));
+			}
+		}
+		if (glm::epsilonNotEqual(bk3, bk5, 0.00001f))
+		{
+			auto const bk4 = dfZero(bk3, bk5);
+			if (f(bk4) < 0.0f)
+			{
+				candidates.push_back(toPoint(findZero(f, bk4, bk3)));
+				candidates.push_back(toPoint(findZero(f, bk4, bk5)));
+			}
+		}
+		candidates.push_back(toPoint(findZero(f, bk6, bk5)));
+
+		return candidates;
 	}
 
 	struct intersection_result
@@ -258,21 +352,65 @@ namespace vob::aoeph
 		auto const normalDistance = glm::dot(normalEllipsoidPoint - a_triangle.p0, normal);
 		auto const normalTrianglePoint = normalEllipsoidPoint - normalDistance * normal;
 
-		auto const d0 = glm::dot(glm::cross(a_triangle.p1 - a_triangle.p0, normalTrianglePoint - a_triangle.p0), normal);
+		/*auto const d0 = glm::dot(glm::cross(a_triangle.p1 - a_triangle.p0, normalTrianglePoint - a_triangle.p0), normal);
 		auto const d1 = glm::dot(glm::cross(a_triangle.p2 - a_triangle.p1, normalTrianglePoint - a_triangle.p1), normal);
 		auto const d2 = glm::dot(glm::cross(a_triangle.p0 - a_triangle.p2, normalTrianglePoint - a_triangle.p2), normal);
 		if (d0 * d1 <= 0.0f || d1 * d2 <= 0.0f)
 		{
 			return {};
+		}*/
+
+		glm::bvec3 boundingSegments = {};
+		auto const trianglePoint = findClosestTrianglePoint(a_triangle, normalTrianglePoint, boundingSegments);
+		auto const t = trianglePoint / a_radiuses;
+		if (glm::dot(t, t) >= 1.0f)
+		{
+			return intersection_result{ normalEllipsoidPoint, trianglePoint, 1.0f };
+		}
+
+		if (!glm::any(boundingSegments))
+		{
+			auto const distance = glm::length(trianglePoint - normalEllipsoidPoint);
+			return intersection_result{ normalEllipsoidPoint, trianglePoint, -distance };
 		}
 
 		++a_expensiveTestCount;
 
-		auto const trianglePoint = findClosestTrianglePoint(a_triangle, normalTrianglePoint);
-		auto const ellipsoidPoint = findClosestUnitEllipsoidPoint(a_radiuses, trianglePoint);
-		auto const distance = glm::length(trianglePoint - ellipsoidPoint);
-		auto const t = trianglePoint / a_radiuses;
-		return intersection_result{ ellipsoidPoint, trianglePoint, glm::dot(t, t) < 1.0f ? -distance : distance };
+		auto const ellipsoidPointCandidates = findClosestUnitEllipsoidPointCandidates(a_radiuses, trianglePoint);
+		auto ellipsoidPoint = normalEllipsoidPoint;
+		auto smallestDistance2 = std::numeric_limits<float>::max();
+		auto const outsideSegment0 = glm::cross(a_triangle.p1 - a_triangle.p0, normal);
+		auto const outsideSegment1 = glm::cross(a_triangle.p2 - a_triangle.p1, normal);
+		auto const outsideSegment2 = glm::cross(a_triangle.p0 - a_triangle.p2, normal);
+		for (auto const& ellipsoidPointCandidate : ellipsoidPointCandidates)
+		{
+			if (glm::dot(normal, ellipsoidPointCandidate - trianglePoint) > 0.0f)
+			{
+				continue;
+			}
+			if (boundingSegments.x && glm::dot(outsideSegment0, ellipsoidPointCandidate - trianglePoint) > 0.0f)
+			{
+				continue;
+			}
+			if (boundingSegments.y && glm::dot(outsideSegment1, ellipsoidPointCandidate - trianglePoint) > 0.0f)
+			{
+				continue;
+			}
+			if (boundingSegments.z && glm::dot(outsideSegment2, ellipsoidPointCandidate - trianglePoint) > 0.0f)
+			{
+				continue;
+			}
+
+			auto const distance2 = glm::length2(ellipsoidPointCandidate - trianglePoint);
+			if (distance2 < smallestDistance2)
+			{
+				smallestDistance2 = distance2;
+				ellipsoidPoint = ellipsoidPointCandidate;
+			}
+		}
+
+		auto const distance = std::sqrt(smallestDistance2);
+		return intersection_result{ ellipsoidPoint, trianglePoint, -distance };
 	}
 
 
@@ -302,7 +440,8 @@ namespace vob::aoeph
 
 		auto const ellipsoidPoint = a_position + a_rotation * intersection.firstPoint;
 		auto const trianglePoint = a_position + a_rotation * intersection.secondPoint;
-		return intersection_result{ ellipsoidPoint, trianglePoint, intersection.signedDistance };
+		auto const distance = glm::length(ellipsoidPoint - trianglePoint);
+		return intersection_result{ ellipsoidPoint, trianglePoint, intersection.signedDistance < 0.0f ? -distance : distance };
 	}
 
 	struct cast_result
