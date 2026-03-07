@@ -49,7 +49,13 @@ namespace vob::aoegl
 			addLine(DebugVertex{ a_source, a_color }, DebugVertex{ a_target, a_color });
 		}
 
-		void addTriangle(glm::vec3 const& a_p0, glm::vec3 const& a_p1, glm::vec3 const& a_p2, Rgba const& a_color)
+		void addTriangle(
+			glm::vec3 const& a_p0,
+			glm::vec3 const& a_p1,
+			glm::vec3 const& a_p2,
+			Rgba const& a_color,
+			int32_t a_subdivisions = -1,
+			float a_subdivisionLength = 1.0f)
 		{
 			// TODO: add subdivisions
 			static constexpr float k_subdivisionLength = 1.0f;
@@ -62,7 +68,7 @@ namespace vob::aoegl
 			auto const p2 = d0 < d1 ? (d0 < d2 ? a_p1 : a_p0) : (d1 < d2 ? a_p2 : a_p0);
 			auto const d = d0 > d1 ? (d0 > d2 ? d0 : d2) : (d1 > d2 ? d1 : d2);
 
-			auto const subdivisions = static_cast<int32_t>(d);
+			auto const subdivisions = a_subdivisions >= 0 ? a_subdivisions :  static_cast<int32_t>(d / a_subdivisionLength);
 
 			addLine(p1, p2, a_color);
 
@@ -193,6 +199,34 @@ namespace vob::aoegl
 				a_horizontalSliceSubdivisionCount,
 				a_verticalSliceCount,
 				a_verticalSliceSubdivisionCount);
+		}
+
+		void addAabb(
+			glm::vec3 const& a_min,
+			glm::vec3 const& a_max,
+			aoegl::Rgba const& a_color)
+		{
+			auto const v0 = static_cast<GraphicIndex>(vertices.size());
+			vertices.emplace_back(a_min, a_color);
+			vertices.emplace_back(glm::vec3{ a_max.x, a_min.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::vec3{ a_min.x, a_max.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::vec3{ a_max.x, a_max.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::vec3{ a_min.x, a_min.y, a_max.z }, a_color);
+			vertices.emplace_back(glm::vec3{ a_max.x, a_min.y, a_max.z }, a_color);
+			vertices.emplace_back(glm::vec3{ a_min.x, a_max.y, a_max.z }, a_color);
+			vertices.emplace_back(a_max, a_color);
+			lines.emplace_back(v0 + 0, v0 + 1);
+			lines.emplace_back(v0 + 1, v0 + 3);
+			lines.emplace_back(v0 + 3, v0 + 2);
+			lines.emplace_back(v0 + 2, v0 + 0);
+			lines.emplace_back(v0 + 4, v0 + 5);
+			lines.emplace_back(v0 + 5, v0 + 7);
+			lines.emplace_back(v0 + 7, v0 + 6);
+			lines.emplace_back(v0 + 6, v0 + 4);
+			lines.emplace_back(v0 + 0, v0 + 4);
+			lines.emplace_back(v0 + 1, v0 + 5);
+			lines.emplace_back(v0 + 2, v0 + 6);
+			lines.emplace_back(v0 + 3, v0 + 7);
 		}
 	};
 }
