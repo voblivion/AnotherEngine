@@ -18,5 +18,6 @@ namespace vob::aoest
 		
 		// State
 		glm::vec3 velocity = glm::vec3{ 0.0f };
+		glm::vec3 prevTargetPosition = glm::vec3{ 0.0f };
 	};
 }
