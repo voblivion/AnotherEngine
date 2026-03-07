@@ -513,14 +513,14 @@ namespace vob::aoeph
 				auto const isRimContact = std::abs(contactAngleSin) > tireMaxAngleSin;
 				auto const material = isRimContact
 					? combineMaterials(wheelContact.carMaterial, wheelContact.staticMaterial)
-					: wheel.tireMaterial;
+					: wheel.tireMaterial; // only tire material which has no friction as driving is handled by car controller system
 
 				auto const contactForceOver100 = computeContactForceOver100(
 					wheelContact.carPoint, wheelContact.staticPoint, hitVelocityOver100, wheel.mass, material);
 
 				auto const wheelContactForceOver100 = glm::dot(contactForceOver100, wheelDown);
 
-				if (isRimContact)
+				if (isRimContact || true)
 				{
 					auto const chassisContactForceOver100 = contactForceOver100 - wheelContactForceOver100 * wheelDown;
 					forceOver100 += chassisContactForceOver100;
@@ -534,6 +534,15 @@ namespace vob::aoeph
 						.force = chassisContactForceOver100,
 						.torque = glm::cross(contactCarLever, chassisContactForceOver100)
 						});
+
+					if (!isRimContact)
+					{
+						a_wheelGroundedStates[i].isGrounded = true;
+						a_wheelGroundedStates[i].groundNormal = hitNormal;
+						a_wheelGroundedStates[i].groundPoint = wheelContact.staticPoint;
+						a_wheelGroundedStates[i].tireGroundedPoint = wheelContact.carPoint;
+						a_wheelGroundedStates[i].groundMaterial = wheelContact.staticMaterial;
+					}
 				}
 				else
 				{

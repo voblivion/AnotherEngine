@@ -56,7 +56,7 @@ namespace vob::aoeph
 			glm::quat rotation = glm::quat();
 			glm::vec3 radiuses = glm::vec3{ 1.0f };
 			Material rimMaterial = Material{ 800'000.0f, 0.01f, 0.5f };
-			Material tireMaterial = Material{ 20'000.0f, 0.01f, 0.5f };
+			Material tireMaterial = Material{ 20'000.0f, 0.001f, 0.0f };
 
 			float suspensionRestLength = 0.3f;
 			float suspensionMaxLength = 0.2f;
