@@ -14,22 +14,22 @@ namespace vob::aoein
 		GameInputValueId registerValue(float a_defaultValue = 0.0f)
 		{
 			m_values.emplace_back(a_defaultValue);
-			return static_cast<int32_t>(m_values.size()) - 1;
+			return { static_cast<int32_t>(m_values.size()) - 1 };
 		}
 
 		GameInputEventId registerEvent()
 		{
-			return nextGameInputEventId++;
+			return { nextGameInputEventId++ };
 		}
 
 		void setValue(GameInputValueId a_id, float a_value)
 		{
-			m_values[a_id] = a_value;
+			m_values[a_id.id] = a_value;
 		}
 
 		float getValue(GameInputValueId a_id) const
 		{
-			return m_values.at(a_id);
+			return m_values.at(a_id.id);
 		}
 
 		std::vector<float> const& getValues() const
@@ -55,7 +55,7 @@ namespace vob::aoein
 	private:
 		std::vector<float> m_values;
 
-		GameInputEventId nextGameInputEventId = 0;
+		int32_t nextGameInputEventId = 0;
 		std::vector<GameInputEventId> m_events;
 	};
 
