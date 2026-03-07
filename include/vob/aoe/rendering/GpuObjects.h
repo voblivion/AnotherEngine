@@ -21,6 +21,7 @@ namespace vob::aoegl
 			Normals,
 			LocalNormals,
 			UVs,
+			DebugOnly,
 			Count
 		};
 	};

@@ -19,22 +19,9 @@ namespace vob::aoegl
 
 	void RenderDebugMeshSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
-		static bool kDisplay = false;
-		if (ImGui::Begin("Debug Mesh"))
-		{
-			ImGui::Checkbox("Display", &kDisplay);
-			ImGui::End();
-		}
-
 		auto& debugMeshContext = m_debugMeshContext.get(a_wdap);
 		if (debugMeshContext.lines.empty())
 		{
-			return;
-		}
-
-		if (!kDisplay)
-		{
-			debugMeshContext.clear();
 			return;
 		}
 
@@ -44,7 +31,7 @@ namespace vob::aoegl
 		glClearDepth(1.0);
 		glClear(GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
+		glDepthFunc(GL_LEQUAL);
 		glUseProgram(program.id);
 		glLineWidth(2);
 

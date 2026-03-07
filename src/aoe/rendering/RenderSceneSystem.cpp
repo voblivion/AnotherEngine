@@ -5,6 +5,8 @@
 #include <vob/aoe/rendering/ProgramUtils.h>
 #include <vob/aoe/rendering/UniformUtils.h>
 
+#include "vob/aoe/debug/DebugNameUtils.h"
+
 #include <vob/misc/std/enum_traits.h>
 
 #include <glm/gtx/quaternion.hpp>
@@ -12,8 +14,6 @@
 
 #include <array>
 
-
-#include <vob/aoe/physics/Collider.h>
 
 const char* debugVertexShaderSource = R"(
 #version 450
@@ -197,27 +197,6 @@ namespace vob::aoegl
 		static DebugMode::Type k_debugMode = DebugMode::None;
 		if (ImGui::Begin("Render"))
 		{
-			auto const activeCameraLabel = std::to_string(static_cast<uint32_t>(cameraDirectorContext.activeCameraEntity));
-			if (ImGui::BeginCombo("Camera", activeCameraLabel.c_str()))
-			{
-				for (auto const [entity, position, rotation, cameraCmp] : cameraEntities.each())
-				{
-					auto const isActive = entity == cameraDirectorContext.activeCameraEntity;
-					std::string optionLabel = std::to_string(static_cast<uint32_t>(entity));
-					if (ImGui::Selectable(optionLabel.c_str(), isActive))
-					{
-						cameraDirectorContext.activeCameraEntity = entity;
-					}
-
-					if (isActive)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
-				}
-
-				ImGui::EndCombo();
-			}
-
 			auto const activeDebugModeName = mistd::enum_traits<DebugMode::Type>::cast(k_debugMode).value_or("None");
 			auto const activeDebugModeStr = std::string{ activeDebugModeName.substr(activeDebugModeName.rfind(":") + 1) };
 			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr.c_str()))
@@ -241,6 +220,7 @@ namespace vob::aoegl
 
 			ImGui::End();
 		}
+
 		if (k_debugMode != DebugMode::None)
 		{
 			auto const debugParams = DebugParams{
@@ -406,22 +386,27 @@ namespace vob::aoegl
 		glDepthMask(GL_TRUE);
 		glDepthFunc(GL_LESS);
 		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glUseProgram(renderSceneContext.staticDepthProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-		for (auto const& staticMesh : culledStaticMeshes)
+#ifdef VOB_AOEGL_DEBUG
+		if (k_debugMode != DebugMode::DebugOnly)
+#endif
 		{
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
-			glBindVertexArray(staticMesh.meshVao);
-			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-		}
-		glUseProgram(renderSceneContext.riggedDepthProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-		for (auto const& riggedMesh : culledRiggedMeshes)
-		{
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
-			glBindVertexArray(riggedMesh.meshVao);
-			glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			glUseProgram(renderSceneContext.staticDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+			for (auto const& staticMesh : culledStaticMeshes)
+			{
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
+				glBindVertexArray(staticMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			}
+			glUseProgram(renderSceneContext.riggedDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+			for (auto const& riggedMesh : culledRiggedMeshes)
+			{
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
+				glBindVertexArray(riggedMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			}
 		}
 		/*glBindBufferBase(GL_UNIFORM_BUFFER, k_globalRenderSceneConfigUboLocation, renderSceneContext.globalUbo);
 		glBindBufferBase(GL_UNIFORM_BUFFER, k_meshRenderSceneConfigUboLocation, renderSceneContext.meshUbo);
@@ -448,87 +433,92 @@ namespace vob::aoegl
 		GraphicId currentForwardProgram = k_invalidId;
 		GraphicId currentMaterialParamsUbo = k_invalidId;
 #ifdef VOB_AOEGL_DEBUG
-		if (k_debugMode != DebugMode::None)
-		{
-			glUseProgram(renderSceneContext.staticDebugForwardProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-		}
+		if (k_debugMode != DebugMode::DebugOnly)
 #endif
-		for (auto const& staticMesh : culledStaticMeshes)
 		{
 #ifdef VOB_AOEGL_DEBUG
-			if (k_debugMode == DebugMode::None)
-#endif
+			if (k_debugMode != DebugMode::None)
 			{
-				if (currentForwardProgram != staticMesh.forwardProgram)
-				{
-					glUseProgram(staticMesh.forwardProgram);
-					currentForwardProgram = staticMesh.forwardProgram;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-					currentMaterialParamsUbo = k_invalidId;
-				}
-
-				if (currentMaterialParamsUbo != staticMesh.materialParamsUbo)
-				{
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, staticMesh.materialParamsUbo);
-					currentMaterialParamsUbo = staticMesh.materialParamsUbo;
-				}
+				glUseProgram(renderSceneContext.staticDebugForwardProgram);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
 			}
-
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
-			glBindVertexArray(staticMesh.meshVao);
-			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-		}
-#ifdef VOB_AOEGL_DEBUG
-		if (k_debugMode != DebugMode::None)
-		{
-			glUseProgram(renderSceneContext.riggedDebugForwardProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-		}
 #endif
-		for (auto const& riggedMesh : culledRiggedMeshes)
-		{
-#ifdef VOB_AOEGL_DEBUG
-			if (k_debugMode == DebugMode::None)
-#endif
+			for (auto const& staticMesh : culledStaticMeshes)
 			{
-				if (currentForwardProgram != riggedMesh.forwardProgram)
+#ifdef VOB_AOEGL_DEBUG
+				if (k_debugMode == DebugMode::None)
+#endif
 				{
-					glUseProgram(riggedMesh.forwardProgram);
-					currentForwardProgram = riggedMesh.forwardProgram;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-					currentMaterialParamsUbo = k_invalidId;
+					if (currentForwardProgram != staticMesh.forwardProgram)
+					{
+						glUseProgram(staticMesh.forwardProgram);
+						currentForwardProgram = staticMesh.forwardProgram;
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+						currentMaterialParamsUbo = k_invalidId;
+					}
+
+					if (currentMaterialParamsUbo != staticMesh.materialParamsUbo)
+					{
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, staticMesh.materialParamsUbo);
+						currentMaterialParamsUbo = staticMesh.materialParamsUbo;
+					}
 				}
 
-				if (currentMaterialParamsUbo != riggedMesh.materialParamsUbo)
-				{
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, riggedMesh.materialParamsUbo);
-					currentMaterialParamsUbo = riggedMesh.materialParamsUbo;
-				}
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
+				glBindVertexArray(staticMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 			}
+#ifdef VOB_AOEGL_DEBUG
+			if (k_debugMode != DebugMode::None)
+			{
+				glUseProgram(renderSceneContext.riggedDebugForwardProgram);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, renderSceneContext.debugParamsUbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+			}
+#endif
+			for (auto const& riggedMesh : culledRiggedMeshes)
+			{
+#ifdef VOB_AOEGL_DEBUG
+				if (k_debugMode == DebugMode::None)
+#endif
+				{
+					if (currentForwardProgram != riggedMesh.forwardProgram)
+					{
+						glUseProgram(riggedMesh.forwardProgram);
+						currentForwardProgram = riggedMesh.forwardProgram;
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightParamsUbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
+						currentMaterialParamsUbo = k_invalidId;
+					}
 
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
-			glBindVertexArray(riggedMesh.meshVao);
-			glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+					if (currentMaterialParamsUbo != riggedMesh.materialParamsUbo)
+					{
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, riggedMesh.materialParamsUbo);
+						currentMaterialParamsUbo = riggedMesh.materialParamsUbo;
+					}
+				}
+
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
+				glBindVertexArray(riggedMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			}
 		}
 		glEndQuery(GL_TIME_ELAPSED);
 		// O PTICK_POP();
