@@ -45,7 +45,7 @@ namespace vob::aoeng
 				TracyFunction,
 				TracyFile,
 				TracyLine,
-				0 /* color */
+				static_cast<uint32_t>(reinterpret_cast<intptr_t>(typeid(TSystem).name())) /* color */
 			};
 			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true /* active */);
 			m_system.execute(a_wdap);
@@ -223,9 +223,6 @@ namespace vob::aoeng
 
 			void execute() override
 			{
-				FrameMark;
-				// OPTICK_FRAME(m_threadSchedule.name.c_str());
-
 				for (auto& frameJob : m_ecsWorld->m_frameJobs | std::views::drop(1))
 				{
 					frameJob->requestState(EcsFrameJob::State::Reset);
