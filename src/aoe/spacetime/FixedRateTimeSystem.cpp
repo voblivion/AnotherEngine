@@ -21,6 +21,15 @@ namespace vob::aoest
 		}
 
 		fixedRateTimeContext.tickStartTime += fixedRateTimeContext.tickDuration;
+		if (fixedRateTimeContext.debugRemainingTickCount == 0)
+		{
+			return;
+		}
+
 		++fixedRateTimeContext.tickIndex;
+		if (fixedRateTimeContext.debugRemainingTickCount > 0)
+		{
+			--fixedRateTimeContext.debugRemainingTickCount;
+		}
 	}
 }
