@@ -437,6 +437,8 @@ namespace vob
 			std::make_shared<aoein::GamepadButtonInputValueBinding>(0, aoein::Gamepad::Button::B));
 		auto presSteeringInputValueId = aoein::GameInputUtils::addInputValueBinding(presGameInputCtx, presGameInputBindingCtx,
 			std::make_shared<aoein::GamepadAxisInputValueBinding>(0, aoein::Gamepad::Axis::LeftX, 0.05f /* dead zone */));
+		auto presSetRespawnStateInputEventId = aoein::GameInputUtils::addInputEventBinding(presGameInputCtx, presGameInputBindingCtx,
+			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::Up));
 		auto presRespawnInputEventId = aoein::GameInputUtils::addInputEventBinding(presGameInputCtx, presGameInputBindingCtx,
 			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::Y));
 		auto presInstantBrakeInputEventId = aoein::GameInputUtils::addInputEventBinding(presGameInputCtx, presGameInputBindingCtx,
@@ -458,6 +460,7 @@ namespace vob
 		presDebugGameInputCtx.values.emplace_back("Forward", presForwardInputValueId);
 		presDebugGameInputCtx.values.emplace_back("Backward", presBackwardInputValueId);
 		presDebugGameInputCtx.values.emplace_back("Steering", presSteeringInputValueId);
+		presDebugGameInputCtx.events.emplace_back("Set Respawn State", presSetRespawnStateInputEventId);
 		presDebugGameInputCtx.events.emplace_back("Respawn", presRespawnInputEventId);
 		presDebugGameInputCtx.events.emplace_back("Instant Brake", presInstantBrakeInputEventId);
 		presDebugGameInputCtx.events.emplace_back("Step Simulation", presStepInputEventId);
@@ -747,6 +750,7 @@ namespace vob
 		auto simForwardInputValueId = simGameInputCtx.registerValue();
 		auto simBackwardInputValueId = simGameInputCtx.registerValue();
 		auto simSteeringInputValueId = simGameInputCtx.registerValue();
+		auto simSetRespawnStateInputEventId = simGameInputCtx.registerEvent();
 		auto simRespawnInputEventId = simGameInputCtx.registerEvent();
 		auto simInstantBrakeInputEventId = simGameInputCtx.registerEvent();
 		auto simStepInputEventId = simGameInputCtx.registerEvent();
@@ -758,6 +762,7 @@ namespace vob
 		simPresentationInputBindingCtx.inputValueIds.emplace_back(presForwardInputValueId, simForwardInputValueId);
 		simPresentationInputBindingCtx.inputValueIds.emplace_back(presBackwardInputValueId, simBackwardInputValueId);
 		simPresentationInputBindingCtx.inputValueIds.emplace_back(presSteeringInputValueId, simSteeringInputValueId);
+		simPresentationInputBindingCtx.inputEventIds.emplace(presSetRespawnStateInputEventId, simSetRespawnStateInputEventId);
 		simPresentationInputBindingCtx.inputEventIds.emplace(presRespawnInputEventId, simRespawnInputEventId);
 		simPresentationInputBindingCtx.inputEventIds.emplace(presInstantBrakeInputEventId, simInstantBrakeInputEventId);
 		simPresentationInputBindingCtx.inputEventIds.emplace(presStepInputEventId, simStepInputEventId);
@@ -965,6 +970,7 @@ namespace vob
 			carController.forwardInputValueId = simForwardInputValueId;
 			carController.backwardInputValueId = simBackwardInputValueId;
 			carController.steeringInputValueId = simSteeringInputValueId;
+			carController.setRespawnStateInputEventId = simSetRespawnStateInputEventId;
 			carController.respawnInputEventId = simRespawnInputEventId;
 			carController.instantBrakeInputEventId = simInstantBrakeInputEventId;
 			carController.stepInputEventId = simStepInputEventId;
