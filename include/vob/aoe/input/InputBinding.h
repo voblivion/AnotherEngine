@@ -173,9 +173,10 @@ namespace vob::aoein
 	struct GamepadAxisInputValueBinding : public AInputValueBinding
 	{
 	public:
-		explicit GamepadAxisInputValueBinding(int32_t a_gamepadIndex, Gamepad::Axis a_axis)
+		explicit GamepadAxisInputValueBinding(int32_t a_gamepadIndex, Gamepad::Axis a_axis, float a_deadZone = 0.0f)
 			: m_gamepadIndex{ a_gamepadIndex }
 			, m_axis{ a_axis }
+			, m_deadZone{ a_deadZone }
 		{
 		}
 
@@ -189,12 +190,19 @@ namespace vob::aoein
 			if (a_window.isGamepadPresent(m_gamepadIndex))
 			{
 				m_value = a_window.getGamepadAxisValue(m_gamepadIndex, m_axis);
+				auto const sign = (0.0f < m_value) - (m_value < 0.0f);
+				m_value = sign * (std::max(m_deadZone, std::abs(m_value)) - m_deadZone) / (1.0f - m_deadZone);
+			}
+			else
+			{
+				m_value = 0.0f;
 			}
 		}
 
 	private:
 		int32_t m_gamepadIndex = 0;
 		Gamepad::Axis m_axis;
+		float m_deadZone = 0.0f;
 		float m_value = 0.0f;
 	};
 
@@ -315,5 +323,22 @@ namespace vob::aoein
 		bool m_up;
 	};
 
+
+	struct GamepadButtonEventBinding : public AInputEventBinding
+	{
+	public:
+		explicit GamepadButtonEventBinding(int32_t a_gamepadIndex, Gamepad::Button a_button)
+			: m_gamepadIndex{ a_gamepadIndex }
+			, m_button{ a_button }
+		{
+		}
+
+		bool update(aoewi::IWindow const& a_window, float a_dt) override;
+
+	private:
+		int32_t m_gamepadIndex = 0;
+		Gamepad::Button m_button;
+		bool m_isPressed = false;
+	};
 	// TODO
 }
