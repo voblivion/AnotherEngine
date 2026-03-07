@@ -113,15 +113,13 @@ namespace vob::aoewi
 
 	bool GlfwWindow::isGamepadButtonPressed(int a_gamepadIndex, aoein::Gamepad::Button a_button) const
 	{
-		int joystickButtonCount;
-		auto const joystickButtons = glfwGetJoystickButtons(GLFW_JOYSTICK_1 + a_gamepadIndex, &joystickButtonCount);
-
-		if (static_cast<int>(a_button) >= joystickButtonCount)
+		auto result = false;
+		GLFWgamepadstate gamepadState;
+		if (glfwGetGamepadState(GLFW_JOYSTICK_1 + a_gamepadIndex, &gamepadState))
 		{
-			return false;
+			result = gamepadState.buttons[static_cast<int32_t>(a_button)] == GLFW_PRESS;
 		}
 
-		auto const result = joystickButtons[static_cast<int>(a_button)] == GLFW_PRESS;
 #ifndef NDEBUG
 		if (result)
 		{
