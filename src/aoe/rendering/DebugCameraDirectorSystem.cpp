@@ -45,6 +45,10 @@ namespace vob::aoegl
 					cameraDirectorCtx.activeCameraEntity = *cameraEntities.begin();
 				}
 			}
+			else if (eventId == debugCameraDirectorCtx.quitInputEventId)
+			{
+				m_gameController.get(a_wdap).requestStop();
+			}
 		}
 
 		if (ImGui::Begin("Camera Director"))
@@ -68,8 +72,7 @@ namespace vob::aoegl
 
 				ImGui::EndCombo();
 			}
-
-			ImGui::End();
 		}
+		ImGui::End();
 	}
 }

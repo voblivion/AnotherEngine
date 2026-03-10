@@ -20,6 +20,7 @@ namespace vob::aoegl
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 
 	private:
+		aoeng::EcsWorldGameControllerRef m_gameController;
 		aoeng::EcsWorldContextRef<CameraDirectorContext> m_cameraDirectorCtx;
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 		aoeng::EcsWorldContextRef<DebugCameraDirectorContext const> m_debugCameraDirectorCtx;

@@ -27,8 +27,8 @@ namespace vob::aoest
 		if (ImGui::Begin("Soft Follow"))
 		{
 			ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
-			ImGui::End();
 		}
+		ImGui::End();
 
 		for (auto [entity, position, rotation, softFollowComponent] : m_softFollowingEntities.get(a_wdap).each())
 		{

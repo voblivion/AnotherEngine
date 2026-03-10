@@ -127,29 +127,32 @@ namespace vob
 
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
-			entt::registry excRegistry;
-			aoexc::EventPool excEventPool;
+			auto& excRegistry = m_presentationExchangeContext.get(a_wdap).data->beginStore();
+			excRegistry.clear();
 
-			auto& presentationInputCtx = excRegistry.ctx().emplace<aoein::PresentationInputContext>();
+			if (!excRegistry.ctx().contains<aoein::PresentationInputContext>())
+			{
+				excRegistry.ctx().emplace<aoein::PresentationInputContext>();
+			}
+			auto& presentationInputCtx = excRegistry.ctx().get<aoein::PresentationInputContext>();
+			presentationInputCtx.values.clear();
 			auto& gameInputCtx = m_gameInputContext.get(a_wdap);
 			for (auto& inputValue : gameInputCtx.getValues())
 			{
 				presentationInputCtx.values.push_back(inputValue);
 			}
 
-			std::vector<aoein::GameInputEventId> inputEvents;
-			for (auto inputEvent : gameInputCtx.getEvents())
-			{
-				inputEvents.push_back(inputEvent);
-			}
-			excEventPool.addEvents(std::move(inputEvents));
+			m_excEventPool.addEvents(gameInputCtx.getEvents());
 
-			m_presentationExchangeContext.get(a_wdap).data->store(std::move(excRegistry), std::move(excEventPool));
+			m_presentationExchangeContext.get(a_wdap).data->endStore(m_excEventPool);
 		}
 
 	private:
 		aoeng::EcsWorldContextRef<PresentationExchangeContext> m_presentationExchangeContext;
 		aoeng::EcsWorldContextRef<aoein::GameInputContext> m_gameInputContext;
+
+		// TODO: this could break thread-safety?
+		mutable aoexc::EventPool m_excEventPool;
 	};
 
 	class PresentationImportSystem
@@ -162,11 +165,14 @@ namespace vob
 
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
-			auto [excRegistry, excEventPool] = m_presentationExchangeContext.get(a_wdap).data->load();
-			if (!excRegistry.ctx().contains<aoein::PresentationInputContext>())
+			auto excData = m_presentationExchangeContext.get(a_wdap).data->tryBeginLoad();
+			if (excData == std::nullopt)
 			{
 				return;
 			}
+
+			auto const& excRegistry = *excData->first;
+			auto const& excEventPool = *excData->second;
 
 			auto const& presentationInputBindingCtx = m_presentationInputBindingContext.get(a_wdap);
 			auto const& presentationInputValues = excRegistry.ctx().get<aoein::PresentationInputContext>().values;
@@ -177,21 +183,27 @@ namespace vob
 			}
 
 			gameInputCtx.flushEvents();
-			std::vector<aoein::GameInputEventId> presInputEvents;
-			excEventPool.pollEvents(presInputEvents);
-			for (auto presInputEventId : presInputEvents)
+			m_presInputEvents.clear();
+			excEventPool.pollEvents(m_presInputEvents);
+			for (auto presInputEventId : m_presInputEvents)
 			{
 				if (presentationInputBindingCtx.inputEventIds.contains(presInputEventId))
 				{
 					gameInputCtx.addEvent(presentationInputBindingCtx.inputEventIds.at(presInputEventId));
 				}
 			}
+
+			m_presentationExchangeContext.get(a_wdap).data->endLoad();
 		}
 
 	private:
 		aoeng::EcsWorldContextRef<PresentationExchangeContext> m_presentationExchangeContext;
 		aoeng::EcsWorldContextRef<aoein::PresentationInputBindingContext> m_presentationInputBindingContext;
 		aoeng::EcsWorldContextRef<aoein::GameInputContext> m_gameInputContext;
+
+		// TODO: this could break thread-safety?
+		mutable aoexc::EventPool m_excEventPool;
+		mutable std::vector<aoein::GameInputEventId> m_presInputEvents;
 	};
 
 	class SimulationExportSystem
@@ -204,8 +216,8 @@ namespace vob
 
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
-			entt::registry excRegistry;
-			aoexc::EventPool excEventPool;
+			auto& excRegistry = m_simulationExchangeContext.get(a_wdap).data->beginStore();
+			excRegistry.clear();
 
 			// Car Colliders
 			for (auto [entity, position, rotation, carCollider, carController] : m_carEntities.get(a_wdap).each())
@@ -218,16 +230,28 @@ namespace vob
 			}
 
 			// Interpolation
-			excRegistry.ctx().emplace<aoest::TimeContext>(m_timeContext.get(a_wdap));
-			excRegistry.ctx().emplace<aoest::InterpolationExchangeContext>(std::chrono::high_resolution_clock::now());
+			if (!excRegistry.ctx().contains<aoest::TimeContext>())
+			{
+				excRegistry.ctx().emplace<aoest::TimeContext>();
+			}
+			excRegistry.ctx().get<aoest::TimeContext>() = m_timeContext.get(a_wdap);
+			if (!excRegistry.ctx().contains<aoest::InterpolationExchangeContext>())
+			{
+				excRegistry.ctx().emplace<aoest::InterpolationExchangeContext>();
+			}
+			excRegistry.ctx().get<aoest::InterpolationExchangeContext>().targetTime = std::chrono::high_resolution_clock::now();
 
-			m_simulationExchangeContext.get(a_wdap).data->store(std::move(excRegistry), std::move(excEventPool));
+			m_simulationExchangeContext.get(a_wdap).data->endStore(m_excEventPool);
 		}
 
 	private:
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<SimulationExchangeContext> m_simulationExchangeContext;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
+
+		// TODO: this could break thread-safety?
+		mutable entt::registry m_excRegistry;
+		mutable aoexc::EventPool m_excEventPool;
 	};
 
 	class SimulationImportSystem
@@ -240,11 +264,12 @@ namespace vob
 
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
-			auto [excRegistry, excEventPool] = m_simulationExchangeContext.get(a_wdap).data->load();
-			if (!excRegistry.ctx().contains<aoest::InterpolationExchangeContext>())
+			auto excData = m_simulationExchangeContext.get(a_wdap).data->tryBeginLoad();
+			if (excData == std::nullopt)
 			{
 				return;
 			}
+			auto const& excRegistry = *excData->first;
 
 			// Interpolation
 			auto sourceTime = m_timeContext.get(a_wdap).tickStartTime;
@@ -270,6 +295,8 @@ namespace vob
 				interpolatedRotation.rotations[interpolatedRotation.endIndex] = excRotation;
 				interpolatedRotation.endIndex = interpolationComponent.endIndex;
 			}
+
+			m_simulationExchangeContext.get(a_wdap).data->endLoad();
 		}
 
 	private:
@@ -455,6 +482,8 @@ namespace vob
 			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::LB));
 		auto presNextCameraInputEventId = aoein::GameInputUtils::addInputEventBinding(presGameInputCtx, presGameInputBindingCtx,
 			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::RB));
+		auto quitInputEventId = aoein::GameInputUtils::addInputEventBinding(presGameInputCtx, presGameInputBindingCtx,
+			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::Start));
 
 		auto& presDebugGameInputCtx = preRegistry.ctx().emplace<aoein::DebugGameInputContext>();
 		presDebugGameInputCtx.values.emplace_back("Forward", presForwardInputValueId);
@@ -470,6 +499,7 @@ namespace vob
 		auto& debugCameraDirectorContext = preRegistry.ctx().emplace<aoegl::DebugCameraDirectorContext>();
 		debugCameraDirectorContext.prevCameraInputEventId = presPrevCameraInputEventId;
 		debugCameraDirectorContext.nextCameraInputEventId = presNextCameraInputEventId;
+		debugCameraDirectorContext.quitInputEventId = quitInputEventId;
 
 		auto& preInputBindings = preRegistry.ctx().emplace<aoein::InputBindings>();
 		auto& cameraDirectorContext = preRegistry.ctx().emplace<aoegl::CameraDirectorContext>();

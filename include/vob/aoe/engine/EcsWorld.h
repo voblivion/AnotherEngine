@@ -40,6 +40,7 @@ namespace vob::aoeng
 
 		void execute(EcsWorldDataAccessProvider const& a_wdap) const override
 		{
+#ifdef TRACY_ENABLE
 			static const tracy::SourceLocationData loc{
 				std::string_view{ typeid(TSystem).name() }.substr(std::string_view{typeid(TSystem).name()}.rfind(':') + 1).data(),
 				TracyFunction,
@@ -48,6 +49,7 @@ namespace vob::aoeng
 				static_cast<uint32_t>(reinterpret_cast<intptr_t>(typeid(TSystem).name())) /* color */
 			};
 			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true /* active */);
+#endif
 			m_system.execute(a_wdap);
 		}
 

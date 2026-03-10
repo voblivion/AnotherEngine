@@ -3,21 +3,34 @@
 
 namespace vob::aoexc
 {
-	void EcsExchangeData::store(entt::registry a_registry, EventPool a_eventPool)
+	entt::registry& EcsExchangeData::beginStore()
 	{
-		std::lock_guard lock(m_mutex);
-		std::swap(m_registry, a_registry);
-		m_eventPool.merge(std::move(a_eventPool));
+		return m_registries[m_writeRegistryIndex].first;
 	}
 
-	std::pair<entt::registry, EventPool> EcsExchangeData::load()
+	void EcsExchangeData::endStore(EventPool& a_eventPool)
 	{
-		entt::registry registry;
-		EventPool eventPool;
-
 		std::lock_guard lock(m_mutex);
-		std::swap(registry, m_registry);
-		std::swap(eventPool, m_eventPool);
-		return std::make_pair(std::move(registry), std::move(eventPool));
+		m_registries[m_writeRegistryIndex].second = true;
+		std::swap(m_writeRegistryIndex, m_freeRegistryIndex);
+		m_eventPools[1 - m_readEventPoolIndex].merge(a_eventPool);
+	}
+
+	std::optional<std::pair<entt::registry const*, EventPool const*>> EcsExchangeData::tryBeginLoad()
+	{
+		std::lock_guard lock(m_mutex);
+		if (!m_registries[m_freeRegistryIndex].second)
+		{
+			return std::nullopt;
+		}
+		std::swap(m_readRegistryIndex, m_freeRegistryIndex);
+		m_readEventPoolIndex = 1 - m_readEventPoolIndex;
+		return std::make_pair(&m_registries[m_readRegistryIndex].first, &m_eventPools[m_readEventPoolIndex]);
+	}
+
+	void EcsExchangeData::endLoad()
+	{
+		std::lock_guard lock(m_mutex);
+		m_registries[m_readRegistryIndex].second = false;
 	}
 }

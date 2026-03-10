@@ -12,7 +12,7 @@ namespace vob::aoexc
 	{
 	public:
 		template <typename TEvent>
-		void addEvents(std::vector<TEvent> a_events)
+		void addEvents(std::vector<TEvent> const& a_events)
 		{
 			auto eventListEntry = m_eventLists.find(typeid(TEvent));
 			if (eventListEntry != m_eventLists.end())
@@ -25,7 +25,7 @@ namespace vob::aoexc
 		}
 
 		template <typename TEvent>
-		void pollEvents(std::vector<TEvent>& a_events)
+		void pollEvents(std::vector<TEvent>& a_events) const
 		{
 			auto eventListEntry = m_eventLists.find(typeid(TEvent));
 			if (eventListEntry != m_eventLists.end())
@@ -34,18 +34,19 @@ namespace vob::aoexc
 			}
 		}
 
-		void merge(EventPool a_eventPool)
+		void merge(EventPool& a_eventPool)
 		{
 			for (auto& newEventListEntry : a_eventPool.m_eventLists)
 			{
-				auto eventListEntry = m_eventLists.find(newEventListEntry.first);
-				if (eventListEntry != m_eventLists.end())
+				auto eventListIt = m_eventLists.find(newEventListEntry.first);
+				if (eventListIt != m_eventLists.end())
 				{
-					eventListEntry->second->merge(*newEventListEntry.second);
-					continue;
+					eventListIt->second->merge(*newEventListEntry.second);
 				}
-
-				m_eventLists.emplace(newEventListEntry.first, std::move(newEventListEntry.second));
+				else
+				{
+					m_eventLists.emplace(newEventListEntry.first, newEventListEntry.second->stealClone());
+				}
 			}
 		}
 
@@ -54,9 +55,10 @@ namespace vob::aoexc
 		{
 			virtual ~AEventList() = default;
 
-			virtual void addEvents(void* a_events) = 0;
+			virtual void addEvents(void const* a_events) = 0;
 			virtual void pollEvents(void* a_events) = 0;
 			virtual void merge(AEventList& a_eventList) = 0;
+			virtual std::shared_ptr<AEventList> stealClone() = 0;
 		};
 
 		template <typename TEvent>
@@ -67,15 +69,9 @@ namespace vob::aoexc
 			{
 			}
 
-			void addEvents(void* a_events) override
+			void addEvents(void const* a_events) override
 			{
-				auto& newEvents = *static_cast<std::vector<TEvent>*>(a_events);
-				m_events.insert_range(m_events.end(), newEvents);
-			}
-
-			void merge(AEventList& a_eventList) override
-			{
-				auto& newEvents = static_cast<EventList<TEvent>&>(a_eventList).m_events;
+				auto const& newEvents = *static_cast<std::vector<TEvent> const*>(a_events);
 				m_events.insert_range(m_events.end(), newEvents);
 			}
 
@@ -83,6 +79,20 @@ namespace vob::aoexc
 			{
 				auto& newEvents = *static_cast<std::vector<TEvent>*>(a_events);
 				std::swap(newEvents, m_events);
+			}
+
+			void merge(AEventList& a_eventList) override
+			{
+				auto& newEvents = static_cast<EventList<TEvent>&>(a_eventList).m_events;
+				m_events.insert_range(m_events.end(), newEvents);
+				newEvents.clear();
+			}
+
+			std::shared_ptr<AEventList> stealClone() override
+			{
+				std::vector<TEvent> events;
+				std::swap(events, m_events);
+				return std::make_shared<EventList<TEvent>>(std::move(events));
 			}
 
 			std::vector<TEvent> m_events;

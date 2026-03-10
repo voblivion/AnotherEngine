@@ -62,7 +62,7 @@ namespace vob::aoein
 		if (ImGui::Begin("Inputs"))
 		{
 			ImGui::InputInt("History Length", &nextHistoryLength, 1, 64);
-			if (ImGui::BeginTable("ValueTable", 3))
+			if (ImGui::BeginTable("ValueTable", 3, ImGuiTableFlags_SizingStretchProp))
 			{
 				ImGui::TableSetupColumn("Name", 0 /* flags */, 50.0f /* weight */);
 				ImGui::TableSetupColumn("Value", 0 /* flags */, 20.0f /* weight */);
@@ -108,9 +108,8 @@ namespace vob::aoein
 
 				ImGui::EndTable();
 			}
-
-			ImGui::End();
 		}
+		ImGui::End();
 
 		debugGameInputCtx.historyLength = nextHistoryLength;
 		debugGameInputCtx.nextIndex = (debugGameInputCtx.nextIndex + 1) % debugGameInputCtx.historyLength;

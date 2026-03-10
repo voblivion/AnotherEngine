@@ -16,9 +16,8 @@ namespace vob::aoegl
 		if (ImGui::Begin("Debug Mesh"))
 		{
 			ImGui::Checkbox("Lights", &k_lights);
-
-			ImGui::End();
 		}
+		ImGui::End();
 		if (!k_lights)
 		{
 			return;

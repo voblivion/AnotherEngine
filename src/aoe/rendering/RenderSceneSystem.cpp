@@ -197,14 +197,24 @@ namespace vob::aoegl
 		static DebugMode::Type k_debugMode = DebugMode::None;
 		if (ImGui::Begin("Render"))
 		{
+			auto const toSmallStr = [](std::string_view a_stringView)
+				{
+					constexpr size_t k_maxSize = 16;
+					auto size = std::min(a_stringView.size(), k_maxSize);
+					char smallStr[k_maxSize + 1];
+					std::memcpy(smallStr, a_stringView.data(), size);
+					smallStr[size] = 0;
+					return smallStr;
+				};
+
 			auto const activeDebugModeName = mistd::enum_traits<DebugMode::Type>::cast(k_debugMode).value_or("None");
-			auto const activeDebugModeStr = std::string{ activeDebugModeName.substr(activeDebugModeName.rfind(":") + 1) };
-			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr.c_str()))
+			auto const activeDebugModeStr = toSmallStr(activeDebugModeName.substr(activeDebugModeName.rfind(":") + 1));
+			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr))
 			{
 				for (auto const [debugMode, debugModeName] : mistd::enum_traits<DebugMode::Type>::valid_value_name_pairs)
 				{
-					auto const optionLabel = std::string{ debugModeName.substr(debugModeName.rfind(":") + 1) };
-					if (ImGui::Selectable(optionLabel.c_str(), debugMode == k_debugMode))
+					auto const optionLabel = toSmallStr(debugModeName.substr(debugModeName.rfind(":") + 1));
+					if (ImGui::Selectable(optionLabel, debugMode == k_debugMode))
 					{
 						k_debugMode = debugMode;
 					}
@@ -217,9 +227,8 @@ namespace vob::aoegl
 
 				ImGui::EndCombo();
 			}
-
-			ImGui::End();
 		}
+		ImGui::End();
 
 		if (k_debugMode != DebugMode::None)
 		{
@@ -599,9 +608,8 @@ namespace vob::aoegl
 			ImGui::InputFloat("Opaque Pass (ms)", &durations[2]);
 			ImGui::InputFloat("Post Process (ms)", &durations[3]);
 			ImGui::EndDisabled();
-
-			ImGui::End();
 		}
+		ImGui::End();
 #endif
 	}
 }
