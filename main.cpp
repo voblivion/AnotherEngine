@@ -53,8 +53,6 @@ void glfwErrorCallback(int code, const char* description)
 
 int main()
 {
-	tracy::SetThreadName("Presentation");
-
 	// Create data
 	aoe::DataHolder data;
 
