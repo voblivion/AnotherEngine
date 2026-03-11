@@ -46,7 +46,7 @@ namespace vob::aoegl
 			};
 		}
 
-		StaticMeshData extractStaticMesh(aiMesh const& a_meshData)
+		StaticMeshData extractStaticMesh(aiScene const& a_sceneData, aiMesh const& a_meshData)
 		{
 			StaticMeshData staticMesh;
 			staticMesh.vertices.reserve(a_meshData.mNumVertices);
@@ -65,6 +65,12 @@ namespace vob::aoegl
 				staticMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[2]);
 			}
 
+			if (0 <= a_meshData.mMaterialIndex && a_meshData.mMaterialIndex < a_sceneData.mNumMaterials)
+			{
+				aiString materialName = a_sceneData.mMaterials[a_meshData.mMaterialIndex]->GetName();
+				staticMesh.materialName = std::pmr::string{ std::string_view{ materialName.data, materialName.length } };
+			}
+
 			return staticMesh;
 		}
 
@@ -78,7 +84,7 @@ namespace vob::aoegl
 			for (auto const meshIndex : std::span<uint32_t>{ a_nodeData.mMeshes, a_nodeData.mNumMeshes })
 			{
 				auto const& meshData = *a_sceneData.mMeshes[meshIndex];
-				auto part = extractStaticMesh(meshData);
+				auto part = extractStaticMesh(a_sceneData, meshData);
 				for (auto& vertex : part.vertices)
 				{
 					vertex.position = glm::vec3{ transform * glm::vec4{ vertex.position, 1.0f } };
@@ -101,7 +107,10 @@ namespace vob::aoegl
 			return staticModel;
 		}
 
-		RiggedMeshData extractRiggedMesh(aiMesh const& a_meshData, std::vector<aiNode*>& o_boneNodes)
+		RiggedMeshData extractRiggedMesh(
+			aiScene const& a_sceneData,
+			aiMesh const& a_meshData,
+			std::vector<aiNode*>& o_boneNodes)
 		{
 			RiggedMeshData riggedMesh;
 			riggedMesh.vertices.reserve(a_meshData.mNumVertices);
@@ -112,8 +121,8 @@ namespace vob::aoegl
 				riggedMesh.vertices.emplace_back(
 					toVec3(a_meshData.mVertices[i]),
 					toVec3(a_meshData.mNormals[i]),
-					toVec2(a_meshData.mTextureCoords[0][i]),
-					toVec3(a_meshData.mTangents[i]),
+					a_meshData.mTextureCoords[0] != nullptr ? toVec2(a_meshData.mTextureCoords[0][i]) : glm::vec2{0.0f},
+					a_meshData.mTangents != nullptr ? toVec3(a_meshData.mTangents[i]) : glm::vec3{0.0f},
 					boneIndices,
 					boneWeights);
 			}
@@ -182,6 +191,12 @@ namespace vob::aoegl
 				riggedMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[2]);
 			}
 
+			if (0 <= a_meshData.mMaterialIndex && a_meshData.mMaterialIndex < a_sceneData.mNumMaterials)
+			{
+				aiString materialName = a_sceneData.mMaterials[a_meshData.mMaterialIndex]->GetName();
+				riggedMesh.materialName = std::pmr::string{ std::string_view{ materialName.data, materialName.length } };
+			}
+
 			return riggedMesh;
 		}
 
@@ -196,14 +211,14 @@ namespace vob::aoegl
 			for (auto const meshIndex : std::span<uint32_t>{ a_nodeData.mMeshes, a_nodeData.mNumMeshes })
 			{
 				auto const& meshData = *a_sceneData.mMeshes[meshIndex];
-				auto part = extractRiggedMesh(meshData, o_boneNodes);
-				for (auto& vertex : part.vertices)
+				auto mesh = extractRiggedMesh(a_sceneData, meshData, o_boneNodes);
+				for (auto& vertex : mesh.vertices)
 				{
 					vertex.position = glm::vec3{ transform * glm::vec4{ vertex.position, 1.0f } };
 					vertex.normal = glm::vec3{ transform * glm::vec4{vertex.normal, 0.0f} };
 				}
 
-				o_riggedModel.meshes.emplace_back(std::move(part));
+				o_riggedModel.meshes.emplace_back(std::move(mesh));
 			}
 
 			for (auto const childNodeData : std::span<aiNode*>{ a_nodeData.mChildren, a_nodeData.mNumChildren })

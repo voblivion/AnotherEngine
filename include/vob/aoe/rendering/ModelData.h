@@ -19,6 +19,7 @@ namespace vob::aoegl
 
 	struct StaticMeshData
 	{
+		std::pmr::string materialName;
 		std::pmr::vector<StaticVertexData> vertices;
 		std::pmr::vector<uint32_t> indices;
 	};
@@ -40,6 +41,7 @@ namespace vob::aoegl
 
 	struct RiggedMeshData
 	{
+		std::pmr::string materialName;
 		std::pmr::vector<RiggedVertexData> vertices;
 		std::pmr::vector<uint32_t> indices;
 	};
