@@ -4,8 +4,9 @@
 #include "vob/aoe/input/GameInputContext.h"
 
 #include "imgui.h"
+#include "implot.h"
 
-#pragma optimize("", off)
+
 namespace vob::aoein
 {
 	namespace
@@ -81,7 +82,26 @@ namespace vob::aoein
 
 					ImGui::TableNextColumn();
 					ImGui::PushItemWidth(-1);
-					ImGui::PlotLines("##HistoryPlot", debugValue.values.data(), debugGameInputCtx.historyLength, debugGameInputCtx.nextIndex);
+					ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
+					if (ImPlot::BeginPlot("##HistoryPlot", ImVec2(-1, 30)))
+					{
+						ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
+						if (debugValue.range.first < debugValue.range.second)
+						{
+							ImPlot::SetupAxesLimits(
+								0, debugGameInputCtx.historyLength, debugValue.range.first, debugValue.range.second, ImPlotCond_Always);
+							ImPlot::PlotLine(
+								"##Values",
+								debugValue.values.data(),
+								debugGameInputCtx.historyLength,
+								1.0,  // xscale
+								0.0,  // xstart
+								ImPlotLineFlags_None,
+								debugGameInputCtx.nextIndex);
+						}
+						ImPlot::EndPlot();
+					}
+					ImPlot::PopStyleVar();
 					ImGui::PopItemWidth();
 				}
 

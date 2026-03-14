@@ -15,6 +15,7 @@ namespace vob::aoein
 		{
 			char const* name = nullptr;
 			GameInputValueId id = {};
+			std::pair<float, float> range = std::pair{ 0.0f, 0.0f };
 			std::vector<float> values;
 		};
 
