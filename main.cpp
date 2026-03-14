@@ -1,6 +1,13 @@
 
 #include <vob/misc/std/vector_map.h>
-#include <vob/_todo_/random/perlin.h>
+
+// This include must come before GL/glew.h and GLFW/glfw3.h to avoid some warning.
+#if defined(_WIN32)
+#define NOMINMAX
+#include <windows.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
 #include <GL/glew.h>
 #define GLFW_DLL
 #include <GLFW/glfw3.h>
@@ -44,12 +51,18 @@ void glfwErrorCallback(int code, const char* description)
 #include <vob/aoe/window/GlfwWindow.h>
 #include <vob/aoe/rendering/ImGuiUtils.h>
 
-#if defined(_WIN32)
-#include <windows.h>
-#pragma comment(lib, "winmm.lib")
-#endif
-
 #include <tracy/Tracy.hpp>
+
+void* operator new(size_t size)
+{
+	static bool k_minSizeBreak = 1;
+	static bool k_maxSizeBreak = 1;
+	if (k_minSizeBreak <= size && size <= k_maxSizeBreak)
+	{
+		__debugbreak();
+	}
+	return malloc(size);
+}
 
 int main()
 {

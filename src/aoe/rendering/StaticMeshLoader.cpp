@@ -54,7 +54,7 @@ namespace vob::aoegl
 					toVec2(*(a_meshData.mTextureCoords[0] + i)),
 					toVec3(*(a_meshData.mTangents + i)));
 			}
-			for (int32_t i = 0; i < a_meshData.mNumFaces; ++i)
+			for (int32_t i = 0; i < static_cast<int32_t>(a_meshData.mNumFaces); ++i)
 			{
 				staticMeshPart.indices.emplace_back(a_meshData.mFaces[i].mIndices[0]);
 				staticMeshPart.indices.emplace_back(a_meshData.mFaces[i].mIndices[1]);

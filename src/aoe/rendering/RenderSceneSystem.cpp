@@ -201,20 +201,20 @@ namespace vob::aoegl
 				{
 					constexpr size_t k_maxSize = 16;
 					auto size = std::min(a_stringView.size(), k_maxSize);
-					char smallStr[k_maxSize + 1];
-					std::memcpy(smallStr, a_stringView.data(), size);
+					std::array<char, k_maxSize + 1> smallStr;
+					std::memcpy(smallStr.data(), a_stringView.data(), size);
 					smallStr[size] = 0;
 					return smallStr;
 				};
 
 			auto const activeDebugModeName = mistd::enum_traits<DebugMode::Type>::cast(k_debugMode).value_or("None");
 			auto const activeDebugModeStr = toSmallStr(activeDebugModeName.substr(activeDebugModeName.rfind(":") + 1));
-			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr))
+			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr.data()))
 			{
 				for (auto const [debugMode, debugModeName] : mistd::enum_traits<DebugMode::Type>::valid_value_name_pairs)
 				{
 					auto const optionLabel = toSmallStr(debugModeName.substr(debugModeName.rfind(":") + 1));
-					if (ImGui::Selectable(optionLabel, debugMode == k_debugMode))
+					if (ImGui::Selectable(optionLabel.data(), debugMode == k_debugMode))
 					{
 						k_debugMode = debugMode;
 					}

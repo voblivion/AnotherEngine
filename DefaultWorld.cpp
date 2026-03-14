@@ -12,6 +12,7 @@
 #include <vob/aoe/input/InputBindingSystem.h>
 #include <vob/aoe/input/InputBindingUtils.h>
 #include <vob/aoe/input/WindowInputBindingSystem.h>
+#include <vob/aoe/physics/StaticColliderComponent.h>
 #include <vob/aoe/physics/CarControllerSystem.h>
 #include <vob/aoe/physics/CarMaterialsComponent.h>
 #include <vob/aoe/physics/CarMaterialsSystem.h>
@@ -38,6 +39,12 @@
 #include <vob/aoe/rendering/RenderSceneSystem.h>
 #include <vob/aoe/rendering/StaticMesh.h>
 #include <vob/aoe/rendering/StaticMeshLoader.h>
+#include <vob/aoe/spacetime/AttachmentComponent.h>
+#include <vob/aoe/spacetime/AttachmentSystem.h>
+#include <vob/aoe/spacetime/DebugDisplaySimulationFrameTimeSystem.h>
+#include <vob/aoe/spacetime/DebugFrameTimeContext.h>
+#include <vob/aoe/spacetime/DebugSimulationFrameTimeHistoryContext.h>
+#include <vob/aoe/spacetime/DebugTrackFrameTimeSystem.h>
 #include <vob/aoe/spacetime/FixedRateLimitingSystem.h>
 #include <vob/aoe/spacetime/FixedRateTimeSystem.h>
 #include <vob/aoe/spacetime/InterpolatedTransform.h>
@@ -217,17 +224,38 @@ namespace vob
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 		{
 			auto& excRegistry = m_simulationExchangeContext.get(a_wdap).data->beginStore();
-			excRegistry.clear();
 
+			// TODO: For now destroying all entities that are gone, but if component can be dynamic this would need to extend to gone components.
+			std::vector<entt::entity> toDestroy;
+			for (auto const entity : excRegistry.view<entt::entity>())
+			{
+				if (!m_carEntities.get(a_wdap).contains(entity))
+				{
+					toDestroy.push_back(entity);
+				}
+			}
+			excRegistry.destroy(toDestroy.begin(), toDestroy.end());
+			
 			// Car Colliders
 			for (auto [entity, position, rotation, carCollider, carController] : m_carEntities.get(a_wdap).each())
 			{
-				assert(entity == excRegistry.create(entity));
-				excRegistry.emplace<aoest::Position>(entity, position);
-				excRegistry.emplace<aoest::Rotation>(entity, rotation);
-				excRegistry.emplace<aoeph::CarCollider>(entity, carCollider);
-				excRegistry.emplace<aoeph::CarControllerComponent>(entity, carController);
+				if (!excRegistry.valid(entity))
+				{
+					assert(entity == excRegistry.create(entity));
+					excRegistry.emplace<aoest::Position>(entity, position);
+					excRegistry.emplace<aoest::Rotation>(entity, rotation);
+					excRegistry.emplace<aoeph::CarCollider>(entity, carCollider);
+					excRegistry.emplace<aoeph::CarControllerComponent>(entity, carController);
+				}
+				else
+				{
+					excRegistry.get<aoest::Position>(entity) = position;
+					excRegistry.get<aoest::Rotation>(entity) = rotation;
+					excRegistry.get<aoeph::CarCollider>(entity) = carCollider;
+					excRegistry.get<aoeph::CarControllerComponent>(entity) = carController;
+				}
 			}
+
 
 			// Interpolation
 			if (!excRegistry.ctx().contains<aoest::TimeContext>())
@@ -241,15 +269,22 @@ namespace vob
 			}
 			excRegistry.ctx().get<aoest::InterpolationExchangeContext>().targetTime = std::chrono::high_resolution_clock::now();
 
+			auto const& debugFrameTimeContext = m_debugFrameTimeContext.get(a_wdap);
+			m_debugSimulationFrameTimeEvents.clear();
+			m_debugSimulationFrameTimeEvents.emplace_back(static_cast<float>(debugFrameTimeContext.frameTime.count()) / 1'000'000);
+			m_excEventPool.addEvents(m_debugSimulationFrameTimeEvents);
+
 			m_simulationExchangeContext.get(a_wdap).data->endStore(m_excEventPool);
 		}
 
 	private:
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
+		aoeng::EcsWorldContextRef<aoest::DebugFrameTimeContext const> m_debugFrameTimeContext;
 		aoeng::EcsWorldContextRef<SimulationExchangeContext> m_simulationExchangeContext;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
 
 		// TODO: this could break thread-safety?
+		mutable std::vector<aoest::DebugSimulationFrameTimeEvent> m_debugSimulationFrameTimeEvents;
 		mutable entt::registry m_excRegistry;
 		mutable aoexc::EventPool m_excEventPool;
 	};
@@ -270,6 +305,7 @@ namespace vob
 				return;
 			}
 			auto const& excRegistry = *excData->first;
+			auto const& excEvents = *excData->second;
 
 			// Interpolation
 			auto sourceTime = m_timeContext.get(a_wdap).tickStartTime;
@@ -296,14 +332,26 @@ namespace vob
 				interpolatedRotation.endIndex = interpolationComponent.endIndex;
 			}
 
+			excEvents.pollEvents(m_debugSimulationFrameTimeEvents);
+			auto& debugSimulationFrameTimeHistoryCtx = m_debugSimulationFrameTimeHistoryContext.get(a_wdap);
+			for (auto const debugSimulationFrameTimeEvent : m_debugSimulationFrameTimeEvents)
+			{
+				debugSimulationFrameTimeHistoryCtx.durationsInMs[debugSimulationFrameTimeHistoryCtx.nextIndex] = debugSimulationFrameTimeEvent.durationInMs;
+				debugSimulationFrameTimeHistoryCtx.nextIndex = (debugSimulationFrameTimeHistoryCtx.nextIndex + 1) % debugSimulationFrameTimeHistoryCtx.historyLength;
+			}
+
 			m_simulationExchangeContext.get(a_wdap).data->endLoad();
 		}
 
 	private:
 		aoeng::EcsWorldContextRef<SimulationExchangeContext> m_simulationExchangeContext;
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
+		aoeng::EcsWorldContextRef<aoest::DebugSimulationFrameTimeHistoryContext> m_debugSimulationFrameTimeHistoryContext;
 		aoeng::EcsWorldContextRef<aoest::InterpolationContext> m_interpolationContext;
 		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoest::InterpolatedPosition, aoest::InterpolatedRotation, aoest::InterpolationTimeComponent, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
+
+		// TODO: is this ok/thread-safe? where does this belong to prevent allocating every time?
+		mutable std::vector<aoest::DebugSimulationFrameTimeEvent> m_debugSimulationFrameTimeEvents;
 	};
 
 	template <typename TSystem>
@@ -319,12 +367,14 @@ namespace vob
 		std::vector<std::shared_ptr<aoeng::IEcsSystem>> ecsSystems;
 		auto tracyFrameId = addSystem<aoeng::TracyFrameSystem>(ecsSystems);
 		auto timeId = addSystem<aoest::TimeSystem>(ecsSystems);
+		auto attachmentId = addSystem<aoest::AttachmentSystem>(ecsSystems);
 		auto softFollowId = addSystem<aoest::SoftFollowSystem>(ecsSystems);
 		auto pollEventsId = addSystem<aoewi::PollEventsSystem>(ecsSystems);
 		auto prepareImGuiFrameId = addSystem<aoegl::PrepareImGuiFrameSystem>(ecsSystems);
 		auto windowInputBindingId = addSystem<aoein::WindowInputBindingSystem>(ecsSystems);
 		auto debugGameInputId = addSystem<aoein::DebugGameInputSystem>(ecsSystems);
 		auto debugCameraDirectorId = addSystem<aoegl::DebugCameraDirectorSystem>(ecsSystems);
+		auto debugDisplaySimulationFrameTimeId = addSystem<aoest::DebugDisplaySimulationFrameTimeSystem>(ecsSystems);
 		auto ghostControllerId = addSystem<aoedb::GhostControllerSystem>(ecsSystems);
 		auto carMaterialsId = addSystem<aoeph::CarMaterialsSystem>(ecsSystems);
 		auto carRigId = addSystem<aoegl::CarRigSystem>(ecsSystems);
@@ -352,11 +402,13 @@ namespace vob
 			{ carMaterialsId },
 			{ carRigId },
 			{ debugCollisionSystemId },
+			{ attachmentId },
 			{ softFollowId },
 			{ pollEventsId },
 			{ windowInputBindingId },
 			{ debugGameInputId },
 			{ debugCameraDirectorId },
+			{ debugDisplaySimulationFrameTimeId },
 			{ ghostControllerId },
 			{ renderSceneId },
 			{ debugRenderLightsId },
@@ -378,15 +430,27 @@ namespace vob
 		auto carControllerId = addSystem<aoeph::CarControllerSystem>(ecsSystems);
 		auto collisionId = addSystem<aoeph::CollisionSystem>(ecsSystems);
 		auto simExportId = addSystem<SimulationExportSystem>(ecsSystems);
+
+		auto debugTrackFrameTimeId = addSystem<aoest::DebugTrackFrameTimeSystem>(ecsSystems);
 		auto fixedRateLimitingId = addSystem<aoest::FixedRateLimitingSystem>(ecsSystems);
 
 		aoeng::EcsSchedule ecsSchedule({ { "Simulation", {
+			// TIME
 			{ timeId },
-			{ presImportId },
 			{ fixedRateTimeId },
+
+			// IMPORT
+			{ presImportId },
+
+			// SIM
 			{ carControllerId },
 			{ collisionId },
+
+			// EXPORT
 			{ simExportId },
+
+			// TIME
+			{ debugTrackFrameTimeId },
 			{ fixedRateLimitingId },
 		} } });
 
@@ -419,6 +483,35 @@ namespace vob
 			}
 		}
 		return modelData;
+	}
+
+	void colliderToComponent(
+		glm::vec3 const& a_position,
+		glm::quat const& a_rotation,
+		aoeph::StaticCollider const& a_collider,
+		aoeph::StaticColliderComponent& a_colliderCmp)
+	{
+		std::vector<glm::vec3> vertices;
+		std::vector<aoeph::TriangleIndices> triangles;
+		for (auto const& part : a_collider.parts)
+		{
+			vertices.clear();
+			triangles.clear();
+
+			for (auto const& triangle : part.triangles)
+			{
+				auto const i = static_cast<int32_t>(vertices.size());
+				vertices.emplace_back(a_position + a_rotation * triangle.p0);
+				vertices.emplace_back(a_position + a_rotation * triangle.p1);
+				vertices.emplace_back(a_position + a_rotation * triangle.p2);
+				triangles.emplace_back(i, i + 1, i + 2);
+			}
+
+			a_colliderCmp.parts.emplace_back(
+				part.material,
+				aoeph::BvhTriangles{ vertices, triangles, 4 }
+			);
+		}
 	}
 
 #pragma optimize("", off)
@@ -455,6 +548,7 @@ namespace vob
 		preRegistry.ctx().emplace<aoewi::WindowInputContext>();
 		preRegistry.ctx().emplace<aoewi::WindowContext>(a_window);
 		preRegistry.ctx().emplace<aoegl::DebugMeshContext>();
+		preRegistry.ctx().emplace<aoest::DebugSimulationFrameTimeHistoryContext>();
 		preRegistry.ctx().emplace<PresentationExchangeContext>(presExchangeData);
 		auto& presGameInputCtx = preRegistry.ctx().emplace<aoein::GameInputContext>();
 		auto& presGameInputBindingCtx = preRegistry.ctx().emplace<aoein::GameInputBindingContext>();
@@ -486,9 +580,9 @@ namespace vob
 			std::make_shared<aoein::GamepadButtonEventBinding>(0, aoein::Gamepad::Button::Start));
 
 		auto& presDebugGameInputCtx = preRegistry.ctx().emplace<aoein::DebugGameInputContext>();
-		presDebugGameInputCtx.values.emplace_back("Forward", presForwardInputValueId);
-		presDebugGameInputCtx.values.emplace_back("Backward", presBackwardInputValueId);
-		presDebugGameInputCtx.values.emplace_back("Steering", presSteeringInputValueId);
+		presDebugGameInputCtx.values.emplace_back("Forward", presForwardInputValueId, std::pair{ 0.0f, 1.1f });
+		presDebugGameInputCtx.values.emplace_back("Backward", presBackwardInputValueId, std::pair{ 0.0f, 1.1f });
+		presDebugGameInputCtx.values.emplace_back("Steering", presSteeringInputValueId, std::pair{ -1.1f, 1.1f });
 		presDebugGameInputCtx.events.emplace_back("Set Respawn State", presSetRespawnStateInputEventId);
 		presDebugGameInputCtx.events.emplace_back("Respawn", presRespawnInputEventId);
 		presDebugGameInputCtx.events.emplace_back("Instant Brake", presInstantBrakeInputEventId);
@@ -674,13 +768,22 @@ namespace vob
 
 		aoegl::GraphicId bluePaintedMetalParamsUbo;
 		auto const bluePaintedMetalParams = BasicShadingParams{
-			.albedo = glm::vec4{0.05f, 0.0f, 0.4f, 0.0f},
+			.albedo = glm::vec4{0.0f, 0.0f, 0.1f, 0.0f},
 			.metallic = 0.7f,
 			.roughness = 0.3f
 		};
 		glCreateBuffers(1, &bluePaintedMetalParamsUbo);
 		glNamedBufferStorage(bluePaintedMetalParamsUbo, sizeof(bluePaintedMetalParams), &bluePaintedMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-		
+
+		aoegl::GraphicId purpleMetalParamsUbo;
+		auto const purpleMetalParams = BasicShadingParams{
+			.albedo = glm::vec4{0.5f, 0.0f, 0.5f, 0.0f},
+			.metallic = 0.9f,
+			.roughness = 0.2f
+		};
+		glCreateBuffers(1, &purpleMetalParamsUbo);
+		glNamedBufferStorage(purpleMetalParamsUbo, sizeof(purpleMetalParams), &purpleMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
 		aoegl::GraphicId blackPaintedMetalParamsUbo;
 		auto const blackPaintedMetalParams = BasicShadingParams{
 			.albedo = glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
@@ -726,7 +829,7 @@ namespace vob
 		glCreateBuffers(1, &rampPlatformParamsUbo);
 		glNamedBufferStorage(rampPlatformParamsUbo, sizeof(rampPlatformParams), &rampPlatformParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
 
-		auto speedCarModelData = riggedModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/SpeedCar.glb"));
+		auto speedCarModelData = riggedModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/BuggyF1.glb"));
 		auto speedCarModel = aoegl::createRiggedModel(*speedCarModelData);
 		{
 			renderSceneContext.staticDepthProgram = aoegl::createDepthProgram(false /* use rig */);
@@ -800,6 +903,7 @@ namespace vob
 		simPresentationInputBindingCtx.inputEventIds.emplace(presRevertInputEventId, simRevertInputEventId);
 
 		simRegistry.ctx().emplace<aoest::TimeContext>();
+		simRegistry.ctx().emplace<aoest::DebugFrameTimeContext>();
 		simRegistry.ctx().emplace<SimulationExchangeContext>(simExchangeData);
 		simRegistry.ctx().emplace<aoest::FixedRateTimeContext>();
 		simRegistry.ctx().emplace<aoeph::CollisionContext>();
@@ -837,8 +941,10 @@ namespace vob
 
 			auto e = preRegistry.create();
 			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Ghost Controller");
-			preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 1.0f, -15.0f });
-			preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
+			auto& pos = preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 1.0f, -15.0f });
+			pos = glm::vec3{ 380.0f, 0.0f, 600.0f };
+			auto& rot = preRegistry.emplace<aoest::Rotation>(e, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+			rot = glm::angleAxis(-std::numbers::pi_v<float> / 2.0f, glm::vec3{ 0.0f, 1.0f, 0.0f });
 			auto& gcc = preRegistry.emplace<aoedb::GhostControllerComponent>(e);
 
 			gcc.lateralMoveValueId = aoein::GameInputUtils::addInputValueBinding(
@@ -961,11 +1067,12 @@ namespace vob
 
 			auto e = carEntity;
 			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Local Player Car");
-			simRegistry.emplace<aoest::Position>(e, glm::vec3{ -42.0f, 3.0f, -150.0f });
-			simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(0.0f, glm::vec3{ 0.0f, 1.0f, 0.0f }));
+			simRegistry.emplace<aoest::Position>(e, glm::vec3{ 400.0f, 3.0f, 580.0f });
+			//simRegistry.emplace<aoest::Position>(e, glm::vec3{ 00.0f, 3.0f, 0.0f });
+			simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(-std::numbers::pi_v<float>, glm::vec3{ 0.0f, 1.0f, 0.0f }));
 			auto& carCollider = simRegistry.emplace<aoeph::CarCollider>(e);
 			// front axel
-			carCollider.chassisParts.emplace_back(glm::vec3{ -0.01553f, 0.36325f, -1.75357f }, glm::quat{ glm::vec3{0.0f} }, glm::vec3{ 0.905f, 0.283f, 0.385f });
+			carCollider.chassisParts.emplace_back(glm::vec3{ -0.01553f, 0.36325f, -1.75357f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.905f, 0.283f, 0.385f });
 			// mid axel
 			carCollider.chassisParts.emplace_back(glm::vec3{ 0.0f, 0.471f, -0.219f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.439f, 0.362f, 1.902f });
 			// cockpit
@@ -990,7 +1097,9 @@ namespace vob
 			carCollider.inertiaLocal[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
 			carCollider.inertiaLocal[1][1] *= (1.6f * 1.6f + 0.9f * 0.9f);
 			carCollider.inertiaLocal[2][2] *= (0.9f * 0.9f + 0.7f * 0.7f);
-			carCollider.boundsHalfExtentsLocal = glm::vec3{ 3.5f };
+
+			carCollider.boundsCenterLocal = glm::vec3{ -0.00001f, 0.578155f, -0.10523f };
+			carCollider.boundsHalfExtentsLocal = glm::vec3{ 1.045f, 0.589655f, 2.04086f };
 
 
 			auto& carController = simRegistry.emplace<aoeph::CarControllerComponent>(e);
@@ -1019,11 +1128,23 @@ namespace vob
 
 			auto& riggedModelCmp = preRegistry.emplace<aoegl::RiggedModelComponent>(e);
 			auto meshIndex = 0;
-			for (auto const& speedCarMesh : speedCarModel.meshes)
+			for (int32_t i = 0; i < static_cast<int32_t>(speedCarModel.meshes.size()); ++i)
 			{
+				auto const& speedCarMeshData = speedCarModelData->meshes[i];
+				auto const& speedCarMesh = speedCarModel.meshes[i];
+
+				auto const materialUbo = [&]() {
+					if (speedCarMeshData.materialName == std::string_view{ "RoughMetal" }) return blackPaintedMetalParamsUbo;
+					if (speedCarMeshData.materialName == std::string_view{ "PaintedMetal" }) return bluePaintedMetalParamsUbo;
+					if (speedCarMeshData.materialName == std::string_view{ "Metal" }) return shinnyMetalParamsUbo;
+					if (speedCarMeshData.materialName == std::string_view{ "Sticker" }) return purpleMetalParamsUbo;
+					if (speedCarMeshData.materialName == std::string_view{ "Rubber" }) return rubberParamsUbo;
+					return 0u;
+					}();
+
 				riggedModelCmp.meshes.emplace_back(
 					basicRiggedForwardProgram,
-					meshIndex == 0 ? bluePaintedMetalParamsUbo : ((meshIndex - 1) % 2 == 0 ? rubberParamsUbo : shinnyMetalParamsUbo),
+					materialUbo,
 					speedCarMesh.vao,
 					speedCarMesh.indexCount);
 				++meshIndex;
@@ -1111,6 +1232,32 @@ namespace vob
 				}
 			}
 		}
+		{
+			// ==== HEAD LIGHTS
+			auto leftHeadLight = preRegistry.create();
+			preRegistry.emplace<aoest::Position>(leftHeadLight);
+			preRegistry.emplace<aoest::Rotation>(leftHeadLight);
+			preRegistry.emplace<aoest::AttachmentComponent>(leftHeadLight, carEntity, glm::vec3{ -0.6f, 0.6f, -2.0f }, glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoegl::LightComponent>(leftHeadLight,
+				aoegl::LightComponent::Type::Spot,
+				50.0f /* radius */,
+				10.0f /* intensity */,
+				glm::vec3{1.0f} /* color */,
+				30.0f / 180.0f * std::numbers::pi_v<float> /* inner angle */,
+				50.0f / 180.0f * std::numbers::pi_v<float> /* outer angle */);
+
+			auto rightHeadLight = preRegistry.create();
+			preRegistry.emplace<aoest::Position>(rightHeadLight);
+			preRegistry.emplace<aoest::Rotation>(rightHeadLight);
+			preRegistry.emplace<aoest::AttachmentComponent>(rightHeadLight, carEntity, glm::vec3{ 0.6f, 0.6f, -2.0f }, glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoegl::LightComponent>(rightHeadLight,
+				aoegl::LightComponent::Type::Spot,
+				50.0f /* radius */,
+				10.0f /* intensity */,
+				glm::vec3{ 1.0f } /* color */,
+				30.0f / 180.0f * std::numbers::pi_v<float> /* inner angle */,
+				50.0f / 180.0f * std::numbers::pi_v<float> /* outer angle */);
+		}
 
 		constexpr float k_mapMinX = -120.0f;
 		constexpr float k_mapMaxX = 120.0f;
@@ -1122,7 +1269,7 @@ namespace vob
 			auto e = preRegistry.create();
 			assert(e == simRegistry.create(e));
 			auto& pos = simRegistry.emplace<aoest::Position>(e);
-			auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat());
+			auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 			auto& col = simRegistry.emplace<aoeph::StaticCollider>(e);
 			auto& par = col.parts.emplace_back();
 			for (auto i = -1; i < 51; ++i)
@@ -1137,6 +1284,24 @@ namespace vob
 					glm::vec3{ 120.0f, 0.0f, -(i + 1) * 20.0f });
 			}
 			col.bounds = { glm::vec3{-120.0f, 0.0f, -1020.0f}, glm::vec3{120.0f, 1.0f, 20.0f} };
+
+			std::vector<glm::vec3> vertices;
+			std::vector<aoeph::TriangleIndices> triangles;
+			vertices.emplace_back(-120.0f, 0.0f, 20.0f);
+			vertices.emplace_back(120.0f, 0.0f, 20.0f);
+
+			for (auto i = 0; i < 51; ++i)
+			{
+				vertices.emplace_back(-120.0f, 0.0f, -i * 20.0f);
+				vertices.emplace_back(120.0f, 0.0f, -i * 20.0f);
+				auto const s = static_cast<int32_t>(vertices.size()) - 4;
+				triangles.emplace_back(s + 0, s + 1, s + 2);
+				triangles.emplace_back(s + 2, s + 1, s + 3);
+			}
+
+			auto& staticColliderCmp = simRegistry.emplace<aoeph::StaticColliderComponent>(e);
+			auto& staticColliderPart = staticColliderCmp.parts.emplace_back(aoeph::Material{}, aoeph::BvhTriangles{ vertices, triangles, 4 });
+			preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
 
 			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
@@ -1161,6 +1326,7 @@ namespace vob
 
 		}
 
+		if (false)
 		{
 			// ==== FLOATING STEP PLATFORMS
 
@@ -1187,9 +1353,11 @@ namespace vob
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.5f * (minX + maxX), y, k_z });
-				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat());
+				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
 				col.bounds = aoeph::computeBounds(pos, rot, staticHalfExtents);
+				colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(e));
+				preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
 
 				preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 				preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
@@ -1250,9 +1418,11 @@ namespace vob
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.5f * (minX + maxX), y, k_z });
-				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat());
+				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
 				col.bounds = aoeph::computeBounds(pos, rot, staticHalfExtents);
+				colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(e));
+				preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
 
 				preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 				preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
@@ -1303,6 +1473,8 @@ namespace vob
 				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(rx, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
 				col.bounds = aoeph::computeBounds(pos, rot, staticHalfExtents);
+				colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(e));
+				preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
 
 				preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 				preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
@@ -1324,6 +1496,199 @@ namespace vob
 			}
 		}
 
+		{
+			// ==== CIRCUIT
+			struct Point
+			{
+				glm::vec3 position;
+				glm::vec3 weightedDirection;
+				float destinationRatio = 1.0f;
+				float tilt = 0.0f;
+				float desiredStepLength = 2.0f;
+				glm::vec3 up = glm::vec3{ 0.0f, 1.0f, 0.0f };
+			};
+
+			std::vector<Point> generators;
+			generators.emplace_back(glm::vec3{ 300.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
+			generators.emplace_back(glm::vec3{ 400.0f, 0.0f, 200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f }, 1.0f /* destination ratio */, 0.6f /* tilt */, 0.25f /* desired step length */);
+			generators.emplace_back(glm::vec3{ 100.0f, 0.0f, 300.0f }, glm::vec3{ -71.0f, 0.0f, 71.0f });
+			generators.emplace_back(glm::vec3{ -300.0f, 0.0f, 100.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f });
+			generators.emplace_back(glm::vec3{ -400.0f, 0.0f, -100.0f }, glm::vec3{ -100.0f, 0.0f, 0.0f }, 1.0f, -0.2f, 0.25f);
+			generators.emplace_back(glm::vec3{ -600.0f, 0.0f, -200.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f }, 1.0f, 0.4f);
+			generators.emplace_back(glm::vec3{ -100.0f, 0.0f, -300.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
+			generators.emplace_back(glm::vec3{ 100.0f, 0.0f, -400.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
+			generators.emplace_back(glm::vec3{ 300.0f, 0.0f, -200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
+
+			constexpr float k_roadHalfWidth = 10.0f;
+			constexpr float k_roadFenceHeight = 0.75f;
+			constexpr float k_roadFenceWidth = 0.75f;
+			for (int32_t i = 0; i < static_cast<int32_t>(generators.size()); ++i)
+			{
+				std::vector<glm::vec3> newVertices;
+				std::vector<aoeph::TriangleIndices> newTriangleIndices;
+
+				aoegl::StaticModelData staticModelData;
+				auto& staticMeshData = staticModelData.meshes.emplace_back();
+
+				// Compute bezier points
+				auto const generator0 = generators[i];
+				auto const generator1 = generators[(i + 1) % generators.size()];
+				auto const center = (generator0.position + generator1.position) / 2.0f;
+				auto const p0 = generator0.position - center;
+				auto const p1 = p0 + generator0.weightedDirection;
+				auto const p3 = generator1.position - center;
+				auto const p2 = p3 - generator0.destinationRatio * generator1.weightedDirection;
+
+				// Compute bezier curve length
+				float bezierLength = 0.0f;
+				auto pLast = p0;
+				for (int32_t j = 1; j <= 100; ++j)
+				{
+					auto const t = static_cast<float>(j) / 100;
+					auto const t3 = t * t * t;
+					auto const u = (1.0f - t);
+					auto const u3 = u * u * u;
+					auto const p = u3 * p0 + 3.0f * u * t * (u * p1 + t * p2) + t3 * p3;
+					bezierLength += glm::length(pLast - p);
+					pLast = p;
+				}
+
+				// Generate bezier curve sub-points
+				auto const desiredBezierStepLength = (generator0.desiredStepLength + generator1.desiredStepLength) / 2.0f;
+				auto const bezierStepCount = static_cast<int32_t>(std::ceil(bezierLength / desiredBezierStepLength));
+				auto const initialForward = glm::normalize(generator0.weightedDirection);
+				auto const initialRight = glm::vec3{ glm::rotate(glm::mat4(1.0f), generator0.tilt, initialForward) * glm::vec4(glm::cross(initialForward, generator0.up), 0.0f) };
+
+				auto smoothstep = [](float t, float min, float max)
+					{
+						return min + (max - min) * t * t * (3.0f - 2.0f * t);
+					};
+
+				auto addMeshVertex = [&staticMeshData, &newVertices, &center](glm::vec3 const& p, glm::vec3 const& n)
+					{
+						staticMeshData.vertices.emplace_back(p, n);
+						newVertices.push_back(p + center + glm::vec3{ 0.0f, 0.0f, 400.0f });
+					};
+
+				auto addMeshVertices = [&staticMeshData, &newVertices, &addMeshVertex](glm::vec3 p, glm::vec3 right, glm::vec3 up)
+					{
+						addMeshVertex(p - (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up);
+						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, up);
+						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, right);
+						addMeshVertex(p - k_roadHalfWidth * right, right);
+						addMeshVertex(p - k_roadHalfWidth * right, up);
+						addMeshVertex(p + k_roadHalfWidth * right, up);
+						addMeshVertex(p + k_roadHalfWidth * right, right);
+						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, right);
+						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, up);
+						addMeshVertex(p + (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up);
+					};
+
+				addMeshVertices(p0, initialRight, glm::cross(initialRight, initialForward));
+
+				for (int32_t j = 1; j <= bezierStepCount; ++j)
+				{
+					auto const w0 = std::min(generator0.desiredStepLength, (generator0.desiredStepLength + generator1.desiredStepLength) / 2);
+					auto const w1 = std::min(generator1.desiredStepLength, (generator0.desiredStepLength + generator1.desiredStepLength) / 2);
+					auto const t = std::pow(static_cast<float>(j) / bezierStepCount, (2.0f * w1 + w0) / (2.0f * w0 + w1));
+					auto const t3 = t * t * t;
+					auto const u = (1.0f - t);
+					auto const u3 = u * u * u;
+					auto const p = u3 * p0 + 3.0f * u * t * (u * p1 + t * p2) + t3 * p3;
+					auto const roughUp = u * generator0.up + t * generator1.up;
+					auto const tilt = smoothstep(t, generator0.tilt, generator1.tilt);
+					auto const forward = glm::normalize(3.0f * u * u * (p1 - p0) + 6.0f * u * t * (p2 - p1) + 3.0f * t * t * (p3 - p2));
+					auto const right = glm::vec3{ glm::rotate(glm::mat4(1.0f), tilt, forward) * glm::vec4(glm::normalize(glm::cross(forward, roughUp)), 0.0f) };
+					auto const up = glm::cross(right, forward);
+
+					addMeshVertices(p, right, up);
+					auto const idx = static_cast<int32_t>(staticMeshData.vertices.size()) - 20;
+					for (int32_t k = 0; k < 5; ++k)
+					{
+						staticMeshData.indices.emplace_back(idx + 2 * k + 0);
+						staticMeshData.indices.emplace_back(idx + 2 * k + 1);
+						staticMeshData.indices.emplace_back(idx + 2 * k + 10);
+						staticMeshData.indices.emplace_back(idx + 2 * k + 10);
+						staticMeshData.indices.emplace_back(idx + 2 * k + 1);
+						staticMeshData.indices.emplace_back(idx + 2 * k + 11);
+
+						newTriangleIndices.emplace_back(idx + 2 * k + 0, idx + 2 * k + 1, idx + 2 * k + 10);
+						newTriangleIndices.emplace_back(idx + 2 * k + 10, idx + 2 * k + 1, idx + 2 * k + 11);
+					}
+				}
+
+				auto const staticModel = aoegl::createStaticModel(staticModelData);
+
+				auto e = preRegistry.create();
+				assert(e == simRegistry.create(e));
+				auto& pos = simRegistry.emplace<aoest::Position>(e, center + glm::vec3{ 0.0f, 0.0f, 400.0f });
+				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
+				auto& staticColliderCmp = simRegistry.emplace<aoeph::StaticColliderComponent>(e);
+				staticColliderCmp.parts.emplace_back(aoeph::Material{}, aoeph::BvhTriangles{ newVertices, newTriangleIndices, 4 });
+				preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
+
+				auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(e);
+				for (auto const& staticMesh : staticModel.meshes)
+				{
+					staticModelCmp.meshes.emplace_back(
+						basicStaticForwardProgram,
+						asphaltParamsUbo,
+						staticMesh.vao,
+						staticMesh.indexCount);
+				}
+				glCreateBuffers(1, &staticModelCmp.modelParamsUbo);
+				auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(pos, rot) };
+				glNamedBufferStorage(staticModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+				staticModelCmp.boundingRadius = staticModel.boundingRadius;
+
+				preRegistry.emplace<aoest::Position>(e, pos);
+				preRegistry.emplace<aoest::Rotation>(e, rot);
+			}
+		}
+
+		{
+			// ==== CIRCUIT ACCESS RAMP
+
+			aoeph::StaticCollider staticCollider;
+			auto const p0 = glm::vec3{ -2.0f, 0.0f, -8.0f };
+			auto const p1 = glm::vec3{ -2.0f, 0.0f, 8.0f };
+			auto const p2 = glm::vec3{ 2.0f, 0.0f, -8.0f };
+			auto const p3 = glm::vec3{ 2.0f, 0.0f, 8.0f };
+			auto& staticColliderPart = staticCollider.parts.emplace_back();
+			staticColliderPart.triangles.emplace_back(p0, p1, p2);
+			staticColliderPart.triangles.emplace_back(p3, p2, p1);
+			glm::vec3 staticHalfExtents = glm::vec3{ 2.0f, 0.0f, 8.0f };
+			aoegl::StaticModelData staticModelData = colliderToModel(staticCollider);
+			auto const staticModel = aoegl::createStaticModel(staticModelData);
+
+			auto e = preRegistry.create();
+			assert(e == simRegistry.create(e));
+			auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 45.0f, 0.0f, -2.5f });
+			auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(1.0f, glm::vec3{ 0.0f, 1.0f, 0.0f }) * glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
+			col.bounds = aoeph::computeBounds(pos, rot, staticHalfExtents);
+			colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(e));
+
+			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
+			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
+			preRegistry.emplace<aoeph::StaticCollider>(e, col);
+
+			auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(e);
+			for (auto const& staticMesh : staticModel.meshes)
+			{
+				staticModelCmp.meshes.emplace_back(
+					basicStaticForwardProgram,
+					rampPlatformParamsUbo,
+					staticMesh.vao,
+					staticMesh.indexCount);
+			}
+			glCreateBuffers(1, &staticModelCmp.modelParamsUbo);
+			auto const defaultModelParams = aoegl::ModelParams{ aoest::combine(pos, rot) };
+			glNamedBufferStorage(staticModelCmp.modelParamsUbo, sizeof(aoegl::ModelParams), &defaultModelParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+			staticModelCmp.boundingRadius = staticModel.boundingRadius;
+		}
+
+		if (false)
 		{
 			auto streetLampModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/StreetLamp.glb"));
 			auto streetLampModel = aoegl::createStaticModel(*streetLampModelData);
@@ -1349,8 +1714,8 @@ namespace vob
 					auto const r = glm::angleAxis(2.0f * std::numbers::pi_v<float> * (j % 2 == 0 ? 0.5f : 0.0f), glm::vec3{ 0.0f, 1.0f, 0.0f });
 
 					auto const lamp = preRegistry.create();
-					preRegistry.emplace<aoest::Position>(lamp, glm::vec3{ x, y, z });
-					preRegistry.emplace<aoest::Rotation>(lamp, r);
+					auto& pos = preRegistry.emplace<aoest::Position>(lamp, glm::vec3{ x, y, z });
+					auto& rot = preRegistry.emplace<aoest::Rotation>(lamp, r);
 					assert(lamp == simRegistry.create(lamp));
 					simRegistry.emplace<aoest::Position>(lamp, preRegistry.get<aoest::Position>(lamp));
 					simRegistry.emplace<aoest::Rotation>(lamp, preRegistry.get<aoest::Rotation>(lamp));
@@ -1396,6 +1761,9 @@ namespace vob
 							glm::vec3{ c1, 2.0f, s1 });
 					}
 					col.bounds = { glm::vec3{x-.1f, 0.0f, z-.1f}, glm::vec3{x+.1f, 2.0f, z+.1f} };
+					colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(lamp));
+					preRegistry.emplace<aoeph::StaticColliderComponent>(lamp, simRegistry.get<aoeph::StaticColliderComponent>(lamp));
+
 					preRegistry.emplace<aoeph::StaticCollider>(lamp, col);
 
 					auto const light = preRegistry.create();
@@ -1410,6 +1778,7 @@ namespace vob
 			}
 		}
 
+		if (false)
 		{
 			auto sphereModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/Sphere.glb"));
 			auto sphereModel = aoegl::createStaticModel(*sphereModelData);

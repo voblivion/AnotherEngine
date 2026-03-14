@@ -79,6 +79,7 @@ namespace vob::aoexc
 			{
 				auto& newEvents = *static_cast<std::vector<TEvent>*>(a_events);
 				std::swap(newEvents, m_events);
+				m_events.clear();
 			}
 
 			void merge(AEventList& a_eventList) override

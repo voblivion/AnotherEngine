@@ -27,7 +27,7 @@ namespace vob::aoegl
 
 		for (auto [entity, position, rotation, lightCmp] : m_lightEntities.get(a_wdap).each())
 		{
-			debugMeshContext.addSphere(position, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0 });
+			debugMeshContext.addSphere(position, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0f });
 		}
 	}
 }

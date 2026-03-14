@@ -201,12 +201,50 @@ namespace vob::aoegl
 				a_verticalSliceSubdivisionCount);
 		}
 
+		void addObb(
+			glm::vec3 const& a_position,
+			glm::quat const& a_rotation,
+			glm::vec3 const& a_halfExtents,
+			aoegl::Rgba const& a_color)
+		{
+			auto const v0 = static_cast<GraphicIndex>(vertices.size());
+			auto const p0 = a_position + a_rotation * (-a_halfExtents);
+			auto const p1 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, -a_halfExtents.y, -a_halfExtents.z };
+			auto const p2 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
+			auto const p3 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
+			auto const p4 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
+			auto const p5 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
+			auto const p6 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, a_halfExtents.y, a_halfExtents.z };
+			auto const p7 = a_position + a_rotation * a_halfExtents;
+			vertices.emplace_back(p0, a_color);
+			vertices.emplace_back(p1, a_color);
+			vertices.emplace_back(p2, a_color);
+			vertices.emplace_back(p3, a_color);
+			vertices.emplace_back(p4, a_color);
+			vertices.emplace_back(p5, a_color);
+			vertices.emplace_back(p6, a_color);
+			vertices.emplace_back(p7, a_color);
+			lines.emplace_back(v0 + 0, v0 + 1);
+			lines.emplace_back(v0 + 1, v0 + 3);
+			lines.emplace_back(v0 + 3, v0 + 2);
+			lines.emplace_back(v0 + 2, v0 + 0);
+			lines.emplace_back(v0 + 4, v0 + 5);
+			lines.emplace_back(v0 + 5, v0 + 7);
+			lines.emplace_back(v0 + 7, v0 + 6);
+			lines.emplace_back(v0 + 6, v0 + 4);
+			lines.emplace_back(v0 + 0, v0 + 4);
+			lines.emplace_back(v0 + 1, v0 + 5);
+			lines.emplace_back(v0 + 2, v0 + 6);
+			lines.emplace_back(v0 + 3, v0 + 7);
+		}
+
 		void addAabb(
 			glm::vec3 const& a_min,
 			glm::vec3 const& a_max,
 			aoegl::Rgba const& a_color)
 		{
-			auto const v0 = static_cast<GraphicIndex>(vertices.size());
+			addObb((a_min + a_max) / 2.0f, glm::quat(1.0f, 0.0f, 0.0f, 0.0f), (a_max - a_min) / 2.0f, a_color);
+			/*auto const v0 = static_cast<GraphicIndex>(vertices.size());
 			vertices.emplace_back(a_min, a_color);
 			vertices.emplace_back(glm::vec3{ a_max.x, a_min.y, a_min.z }, a_color);
 			vertices.emplace_back(glm::vec3{ a_min.x, a_max.y, a_min.z }, a_color);
@@ -226,7 +264,7 @@ namespace vob::aoegl
 			lines.emplace_back(v0 + 0, v0 + 4);
 			lines.emplace_back(v0 + 1, v0 + 5);
 			lines.emplace_back(v0 + 2, v0 + 6);
-			lines.emplace_back(v0 + 3, v0 + 7);
+			lines.emplace_back(v0 + 3, v0 + 7);*/
 		}
 	};
 }

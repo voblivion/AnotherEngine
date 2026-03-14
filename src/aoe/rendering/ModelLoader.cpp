@@ -58,7 +58,7 @@ namespace vob::aoegl
 					toVec2(*(a_meshData.mTextureCoords[0] + i)),
 					toVec3(*(a_meshData.mTangents + i)));
 			}
-			for (int32_t i = 0; i < a_meshData.mNumFaces; ++i)
+			for (int32_t i = 0; i < static_cast<int32_t>(a_meshData.mNumFaces); ++i)
 			{
 				staticMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[0]);
 				staticMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[1]);
@@ -141,7 +141,7 @@ namespace vob::aoegl
 
 				auto const boneNodeIt = std::find_if(
 					o_boneNodes.begin(), o_boneNodes.end(), [bone](const aiNode* boneNode) { return boneNode == bone->mNode; });
-				auto const boneIndex = std::distance(o_boneNodes.begin(), boneNodeIt);
+				auto const boneIndex = static_cast<int32_t>(std::distance(o_boneNodes.begin(), boneNodeIt));
 				if (boneNodeIt == o_boneNodes.end())
 				{
 					if (bone->mNode->mNumChildren == 0)
@@ -184,7 +184,7 @@ namespace vob::aoegl
 				}
 			}
 
-			for (auto i = 0; i < a_meshData.mNumFaces; ++i)
+			for (auto i = 0; i < static_cast<int32_t>(a_meshData.mNumFaces); ++i)
 			{
 				riggedMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[0]);
 				riggedMesh.indices.emplace_back(a_meshData.mFaces[i].mIndices[1]);

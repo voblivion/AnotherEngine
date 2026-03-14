@@ -155,7 +155,9 @@ namespace vob::aoeng
 
 			void prepare() override
 			{
+#ifdef TRACY_ENABLE
 				tracy::SetThreadName(m_threadSchedule.name.c_str());
+#endif
 			}
 
 			void execute() override
