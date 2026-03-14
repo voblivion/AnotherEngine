@@ -46,7 +46,7 @@ namespace vob::aoeng
 				TracyFunction,
 				TracyFile,
 				TracyLine,
-				static_cast<uint32_t>(reinterpret_cast<intptr_t>(typeid(TSystem).name())) /* color */
+				0 /* color */
 			};
 			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true /* active */);
 #endif
