@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numbers>
 
-#pragma optimize("", off)
+
 namespace vob::aoegl
 {
 	void CarRigSystem::init(vob::aoeng::EcsWorldDataAccessRegistrar& a_wdar)

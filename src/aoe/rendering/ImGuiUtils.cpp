@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "implot.h"
 
 
 namespace vob::aoegl
@@ -11,6 +12,7 @@ namespace vob::aoegl
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImPlot::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ImGui_ImplGlfw_InitForOpenGL(a_glfwWindow.getNativeHandle(), false);
@@ -19,6 +21,7 @@ namespace vob::aoegl
 
 	void terminateImGui()
 	{
+		ImPlot::DestroyContext();
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
