@@ -11,7 +11,7 @@ namespace vob::aoegl
 	struct ModelComponentMesh
 	{
 		GraphicId program = k_invalidId;
-		GraphicId materialParamsUbo = k_invalidId;
+		GraphicId materialIndex = k_invalidId;
 		GraphicId meshVao = k_invalidId;
 		int32_t indexCount = 0;
 	};

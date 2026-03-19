@@ -7,6 +7,7 @@
 
 #include "vob/aoe/debug/DebugNameUtils.h"
 
+#include <vob/misc/std/container_util.h>
 #include <vob/misc/std/enum_traits.h>
 
 #include <glm/gtx/quaternion.hpp>
@@ -57,7 +58,7 @@ void main()
 	}
 }
 )";
-
+#pragma optimize("", off)
 namespace vob::aoegl
 {
 	struct CameraProperties
@@ -148,17 +149,8 @@ namespace vob::aoegl
 
 	struct CulledStaticMesh
 	{
-		GraphicId materialProgram;
-		GraphicId instanceUbo;
-		GraphicId meshVao;
-		int32_t indexCount;
-		glm::mat4 transform;
-	};
-
-	struct CulledStaticMesh2
-	{
 		GraphicId forwardProgram;
-		GraphicId materialParamsUbo;
+		int32_t materialIndex;
 		GraphicId meshVao;
 		GraphicId modelParamsUbo;
 		int32_t indexCount;
@@ -167,7 +159,7 @@ namespace vob::aoegl
 	struct CulledRiggedMesh
 	{
 		GraphicId forwardProgram;
-		GraphicId materialParamsUbo;
+		int32_t materialIndex;
 		GraphicId meshVao;
 		GraphicId modelParamsUbo;
 		GraphicId rigParamsUbo;
@@ -191,9 +183,9 @@ namespace vob::aoegl
 		auto const& window = m_windowContext.get(a_wdap).window.get();
 		auto& cameraDirectorContext = m_cameraDirectorContext.get(a_wdap);
 		auto const cameraEntities = m_cameraEntities.get(a_wdap);
+		auto const& materialManager = *m_materialManagerContext.get(a_wdap).materialManager;
 
 #ifdef VOB_AOEGL_DEBUG
-		// O PTICK_PUSH("0 - Debug");
 		static DebugMode::Type k_debugMode = DebugMode::None;
 		if (ImGui::Begin("Render"))
 		{
@@ -238,7 +230,6 @@ namespace vob::aoegl
 			glNamedBufferSubData(renderSceneContext.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
 
 		}
-		// O PTICK_POP();
 #endif
 
 		// TODO: separate window size from rendering size
@@ -259,7 +250,6 @@ namespace vob::aoegl
 		auto const invProjection = glm::inverse(projection);
 
 		// 1. Cull lights
-		// O PTICK_PUSH("1 - Light Culling");
 		// TODO: why magic?
 		static std::pmr::vector<Light> culledLights;
 		culledLights.clear();
@@ -277,10 +267,8 @@ namespace vob::aoegl
 			}
 		}
 		glNamedBufferSubData(renderSceneContext.lightsSsbo, 0, culledLights.size() * sizeof(Light), culledLights.data());
-		// O PTICK_POP();
 
 		// 2. Set global scene rendering config
-		// O PTICK_PUSH("2 - Global UBO");
 		auto const viewParams = ViewParams{
 			.worldToView = view,
 			.viewToProjected = projection,
@@ -296,13 +284,11 @@ namespace vob::aoegl
 			.far = cameraProperties.farClip,
 			.lightClusterCountZ = 24,
 			.maxLightCountPerCluster = 64,
-			.totalLightCount = static_cast<int32_t>(culledLights.size())
+			.totalLightCount = mistd::isize(culledLights)
 		};
 		glNamedBufferSubData(renderSceneContext.lightParamsUbo, 0, sizeof(LightParams), &lightParams);
-		// O PTICK_POP();
 
 		// 3. Compute light clusters
-		// O PTICK_PUSH("3 - Light Clustering");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[0]);
 		glUseProgram(renderSceneContext.lightClusteringProgram);
 		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
@@ -313,11 +299,9 @@ namespace vob::aoegl
 		auto const workGroupCount = static_cast<uint32_t>(
 			(renderSceneContext.lightClusterCount + renderSceneContext.lightClusteringWorkGroupSize - 1) / renderSceneContext.lightClusteringWorkGroupSize);
 		glDispatchCompute(workGroupCount, 1, 1);
-		// O PTICK_POP();
 
 		// 4. Cull meshes
-		// O PTICK_PUSH("4 - Mesh Culling");
-		static std::pmr::vector<CulledStaticMesh2> culledStaticMeshes;
+		static std::pmr::vector<CulledStaticMesh> culledStaticMeshes;
 		culledStaticMeshes.clear();
 		auto const staticModelEntities = m_staticModelEntities.get(a_wdap);
 		for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
@@ -332,7 +316,7 @@ namespace vob::aoegl
 				{
 					culledStaticMeshes.emplace_back(
 						mesh.program,
-						mesh.materialParamsUbo,
+						mesh.materialIndex,
 						mesh.meshVao,
 						staticModelCmp.modelParamsUbo,
 						mesh.indexCount);
@@ -345,7 +329,7 @@ namespace vob::aoegl
 			[](auto const& a_lhs, auto const& a_rhs)
 			{
 				return a_lhs.forwardProgram < a_rhs.forwardProgram
-					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialParamsUbo < a_rhs.materialParamsUbo);
+					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialIndex < a_rhs.materialIndex);
 			});
 		static std::pmr::vector<CulledRiggedMesh> culledRiggedMeshes;
 		culledRiggedMeshes.clear();
@@ -362,7 +346,7 @@ namespace vob::aoegl
 				{
 					culledRiggedMeshes.emplace_back(
 						mesh.program,
-						mesh.materialParamsUbo,
+						mesh.materialIndex,
 						mesh.meshVao,
 						riggedModelCmp.modelParamsUbo,
 						riggedModelCmp.rigParamsUbo,
@@ -376,15 +360,13 @@ namespace vob::aoegl
 			[](auto const& a_lhs, auto const& a_rhs)
 			{
 				return a_lhs.forwardProgram < a_rhs.forwardProgram
-					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialParamsUbo < a_rhs.materialParamsUbo);
+					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialIndex < a_rhs.materialIndex);
 			});
-		// O PTICK_POP();
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		glEndQuery(GL_TIME_ELAPSED);
 
 		// 5. Depth pre-pass
-		// O PTICK_PUSH("5 - Depth Pre Pass");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[1]);
 		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sceneFramebuffer);
 		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
@@ -432,15 +414,13 @@ namespace vob::aoegl
 		// NEW
 		// TODO
 		glEndQuery(GL_TIME_ELAPSED);
-		// O PTICK_POP();
 
 		// 6. Opaque pass
-		// O PTICK_PUSH("6 - Opaque Pass");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[2]);
 		glDepthFunc(GL_LEQUAL);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		GraphicId currentForwardProgram = k_invalidId;
-		GraphicId currentMaterialParamsUbo = k_invalidId;
+		int32_t currentMaterialIndex = -1;
 #ifdef VOB_AOEGL_DEBUG
 		if (k_debugMode != DebugMode::DebugOnly)
 #endif
@@ -472,13 +452,18 @@ namespace vob::aoegl
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-						currentMaterialParamsUbo = k_invalidId;
+						currentMaterialIndex = -1;
 					}
 
-					if (currentMaterialParamsUbo != staticMesh.materialParamsUbo)
+					if (currentMaterialIndex != staticMesh.materialIndex)
 					{
-						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, staticMesh.materialParamsUbo);
-						currentMaterialParamsUbo = staticMesh.materialParamsUbo;
+						auto const& material = materialManager.getMaterial(staticMesh.materialIndex);
+						currentMaterialIndex = staticMesh.materialIndex;
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
+						for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
+						{
+							glBindTextureUnit(static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
+						}
 					}
 				}
 
@@ -513,13 +498,18 @@ namespace vob::aoegl
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-						currentMaterialParamsUbo = k_invalidId;
+						currentMaterialIndex = -1;
 					}
 
-					if (currentMaterialParamsUbo != riggedMesh.materialParamsUbo)
+					if (currentMaterialIndex != riggedMesh.materialIndex)
 					{
-						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, riggedMesh.materialParamsUbo);
-						currentMaterialParamsUbo = riggedMesh.materialParamsUbo;
+						auto const& material = materialManager.getMaterial(riggedMesh.materialIndex);
+						currentMaterialIndex = riggedMesh.materialIndex;
+						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
+						for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
+						{
+							glBindTextureUnit(static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
+						}
 					}
 				}
 
@@ -530,7 +520,6 @@ namespace vob::aoegl
 			}
 		}
 		glEndQuery(GL_TIME_ELAPSED);
-		// O PTICK_POP();
 
 		// 7. Transparent pass
 		// TODO
@@ -542,7 +531,6 @@ namespace vob::aoegl
 		// TODO
 
 		// 10. Post process(es)
-		// O PTICK_PUSH("10 - Post Process");
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[3]);
 		// TODO: implement various post process + ping-pong pattern
 		glBindFramebuffer(GL_FRAMEBUFFER, window.getDefaultFramebufferId());
@@ -572,7 +560,6 @@ namespace vob::aoegl
 		glBindVertexArray(renderSceneContext.postProcessVao);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glEndQuery(GL_TIME_ELAPSED);
-		// O PTICK_POP();
 
 #ifdef VOB_AOEGL_DEBUG
 		if (ImGui::Begin("Render Performance"))
@@ -599,9 +586,9 @@ namespace vob::aoegl
 			}
 
 			ImGui::BeginDisabled();
-			int32_t lightCount = static_cast<int32_t>(culledLights.size());
+			int32_t lightCount = mistd::isize(culledLights);
 			ImGui::InputInt("Light Count", &lightCount);
-			int32_t staticMeshCount = static_cast<int32_t>(culledStaticMeshes.size());
+			int32_t staticMeshCount = mistd::isize(culledStaticMeshes);
 			ImGui::InputInt("Static Mesh Count", &staticMeshCount);
 			ImGui::InputFloat("Light Clustering (ms)", &durations[0]);
 			ImGui::InputFloat("Depth Pre Pass (ms)", &durations[1]);

@@ -1,24 +1,20 @@
 #pragma once
 
-#include <vob/aoe/api.h>
+#include "vob/aoe/api.h"
 
-#include <vob/aoe/rendering/CameraComponent.h>
-#include <vob/aoe/rendering/CameraDirectorContext.h>
-#include <vob/aoe/rendering/LightComponent.h>
-#include <vob/aoe/rendering/ModelComponent.h>
-#include <vob/aoe/rendering/PostProcessRenderContext.h>
-#include <vob/aoe/rendering/SceneTextureContext.h>
-#include <vob/aoe/rendering/DebugMeshContext.h>
-#include <vob/aoe/rendering/RenderSceneContext.h>
+#include "vob/aoe/rendering/CameraComponent.h"
+#include "vob/aoe/rendering/CameraDirectorContext.h"
+#include "vob/aoe/rendering/DebugMeshContext.h"
+#include "vob/aoe/rendering/LightComponent.h"
+#include "vob/aoe/rendering/MaterialManagerContext.h"
+#include "vob/aoe/rendering/ModelComponent.h"
+#include "vob/aoe/rendering/PostProcessRenderContext.h"
+#include "vob/aoe/rendering/RenderSceneContext.h"
+#include "vob/aoe/rendering/SceneTextureContext.h"
 
-#include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/spacetime/Transform.h>
-#include <vob/aoe/window/WindowContext.h>
-
-// TODO remove
-#include <vob/aoe/physics/Collider.h>
-#include <vob/aoe/spacetime/InterpolatedTransform.h>
-#include <vob/aoe/spacetime/InterpolationTimeComponent.h>
+#include "vob/aoe/engine/EcsWorldDataAccess.h"
+#include "vob/aoe/spacetime/Transform.h"
+#include "vob/aoe/window/WindowContext.h"
 
 
 namespace vob::aoegl
@@ -32,6 +28,7 @@ namespace vob::aoegl
 	private:
 		aoeng::EcsWorldContextRef<CameraDirectorContext> m_cameraDirectorContext;
 		aoeng::EcsWorldContextRef<RenderSceneContext> m_renderSceneContext;
+		aoeng::EcsWorldContextRef<MaterialManagerContext> m_materialManagerContext;
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
 		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, CameraComponent const> m_cameraEntities;

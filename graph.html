@@ -1,0 +1,99 @@
+<canvas id='canvas' width='1800' height='800' style='border: 1px solid grey'></canvas>
+
+
+
+<script>
+    const X0 = -1;
+    const X1 = 55;
+    const Y0 = -2.5;
+    const Y1 = 2.5;
+    const DX = 0.1;
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+    const X_TICK = 3.14;
+    const Y_TICK = 1;
+    const TICK_LENGTH = 5;
+    
+    var ctx = canvas.getContext('2d');
+    
+    function cx(x)
+    {
+        return WIDTH * (x - X0) / (X1 - X0);
+    }
+    
+    function cy(y)
+    {
+        return HEIGHT * (1 - (y - Y0) / (Y1 - Y0));
+    }
+    
+    function grid(strokeStyle = 'black')
+    {
+        ctx.strokeStyle = 'black';
+        ctx.beginPath();
+        ctx.moveTo(cx(X0), cy(0));
+        ctx.lineTo(cx(X1), cy(0));
+        ctx.moveTo(cx(0), cy(Y0));
+        ctx.lineTo(cx(0), cy(Y1));
+        for (var x = Math.ceil(X0/X_TICK); x <= Math.floor(X1/X_TICK); ++x)
+        {
+            if (x == 0) continue;
+            ctx.moveTo(cx(x*X_TICK), cy(0));
+            ctx.lineTo(cx(x*X_TICK), cy(0)-5);
+        }
+        for (var y = Math.ceil(Y0/Y_TICK); y <= Math.floor(Y1/Y_TICK); ++y)
+        {
+            if (y == 0) continue;
+            ctx.moveTo(cx(0), cy(y*Y_TICK));
+            ctx.lineTo(cx(0)+5, cy(y*Y_TICK));
+        }
+        ctx.stroke();
+    }
+    
+    function plotFunction(f, strokeStyle = 'blue')
+    {
+        ctx.strokeStyle = strokeStyle;
+        ctx.beginPath();
+        var y = f(X0);
+        ctx.moveTo(cx(X0), cy(y));
+        for (var x = X0 + DX; x <= X1; x += DX)
+        {
+            y = f(x);
+            ctx.lineTo(cx(x), cy(y));
+        }
+        ctx.stroke();
+    }
+    
+    function plotPoints(ps, strokeStyle = 'red', pointRadius = 4)
+    {
+        ctx.strokeStyle = strokeStyle;
+        ctx.beginPath();
+        var p = ps[0];
+        ctx.moveTo(cx(p.x)+pointRadius, cy(p.y));
+        ctx.arc(cx(p.x), cy(p.y), pointRadius, 0, Math.PI * 2);
+        ctx.moveTo(cx(p.x), cy(p.y));
+        for (var i = 1; i < ps.length; ++i)
+        {
+            p = ps[i]
+            ctx.lineTo(cx(p.x), cy(p.y));
+            ctx.moveTo(cx(p.x)+pointRadius, cy(p.y));
+            ctx.arc(cx(p.x), cy(p.y), pointRadius, 0, Math.PI * 2);
+            ctx.moveTo(cx(p.x), cy(p.y));
+        }
+        ctx.stroke();
+    }
+    
+    grid();
+    plotFunction(Math.sin);
+    
+    var points = [{x: 0, y: Math.sin(0), v: 1}];
+    const dx = 0.125;
+    for (var t = 0; t < 200; ++ t)
+    {
+        const last = points[points.length-1];
+        const x = last.x + dx;
+        const v = last.v - dx * last.y;
+        const y = last.y + dx * last.v;
+        points.push({x: x, y: y, v: v});
+    }
+    plotPoints(points);
+</script>

@@ -3,6 +3,8 @@
 #include <vob/aoe/input/GameInput.h>
 #include <vob/aoe/input/InputBinding.h>
 
+#include <vob/misc/std/container_util.h>
+
 #include <cinttypes>
 
 
@@ -14,7 +16,7 @@ namespace vob::aoein
 		GameInputValueId registerValue(float a_defaultValue = 0.0f)
 		{
 			m_values.emplace_back(a_defaultValue);
-			return { static_cast<int32_t>(m_values.size()) - 1 };
+			return { mistd::isize(m_values) - 1 };
 		}
 
 		GameInputEventId registerEvent()

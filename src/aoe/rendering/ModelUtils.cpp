@@ -1,5 +1,7 @@
 #include <vob/aoe/rendering/ModelUtils.h>
 
+#include <vob/misc/std/container_util.h>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -102,7 +104,7 @@ namespace vob::aoegl
 					glVertexArrayAttribBinding(mesh.vao, k_vertexBoneWeightsLocation, 0 /* binding index */);
 				}
 
-				mesh.indexCount = static_cast<int32_t>(indices.size());
+				mesh.indexCount = mistd::isize(indices);
 
 				for (auto const& vertex : vertices)
 				{

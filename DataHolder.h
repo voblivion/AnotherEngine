@@ -21,8 +21,6 @@
 #include <vob/aoe/data/filesystem_database.h>
 #include <vob/aoe/data/filesystem_indexer.h>
 #include <vob/aoe/data/json_file_loader.h>
-#include <vob/aoe/rendering/data/texture_file_loader.h>
-#include <vob/aoe/rendering/data/model_loader.h>
 #include <vob/aoe/ecs/component_set.h>
 #include <vob/aoe/spacetime/transform.h>
 
@@ -128,10 +126,6 @@ namespace vob::aoe
 
 		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{
 			filesystemIndexer };
-		aoedt::filesystem_database<aoegl::texture_file_loader> textureDatabase{
-			filesystemIndexer };
-		aoedt::filesystem_database<aoegl::model_loader> modelDatabase{
-			filesystemIndexer, textureDatabase, filesystemIndexer };
 		
 		misvi::pmr::applicator<false, misvi::pmr::json_reader<context>> jsonLoadApplicator;
 		aoedt::filesystem_database<aoedt::json_file_loader<aoecs::component_set, context_factory>>
@@ -140,8 +134,6 @@ namespace vob::aoe
 		void setup_multi_database()
 		{
 			multiDatabase.register_database(stringDatabase);
-			multiDatabase.register_database(textureDatabase);
-			multiDatabase.register_database(modelDatabase);
 
 			multiDatabase.register_database(componentSetDatabase);
 

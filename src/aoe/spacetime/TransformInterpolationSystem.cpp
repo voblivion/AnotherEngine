@@ -1,5 +1,7 @@
 #include <vob/aoe/spacetime/TransformInterpolationSystem.h>
 
+#include <vob/misc/std/container_util.h>
+
 
 namespace vob::aoest
 {
@@ -23,7 +25,7 @@ namespace vob::aoest
 				++sourceOffset;
 			}
 
-			if (sourceOffset + 1 == static_cast<int32_t>(interpolatedTime.times.size()))
+			if (sourceOffset + 1 == mistd::isize(interpolatedTime.times))
 			{
 				position = interpolatedPosition.positions[(interpolatedPosition.endIndex + sourceOffset) % interpolatedTime.times.size()];
 				continue;

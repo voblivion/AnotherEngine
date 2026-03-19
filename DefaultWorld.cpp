@@ -1,5 +1,6 @@
 #include "DefaultWorld.h"
 
+#include "vob/aoe/debug/DebugDevblogSystem.h"
 #include <vob/aoe/debug/DebugNameComponent.h>
 #include <vob/aoe/debug/GhostControllerSystem.h>
 #include <vob/aoe/engine/EcsWorld.h>
@@ -12,13 +13,13 @@
 #include <vob/aoe/input/InputBindingSystem.h>
 #include <vob/aoe/input/InputBindingUtils.h>
 #include <vob/aoe/input/WindowInputBindingSystem.h>
-#include <vob/aoe/physics/StaticColliderComponent.h>
 #include <vob/aoe/physics/CarControllerSystem.h>
 #include <vob/aoe/physics/CarMaterialsComponent.h>
 #include <vob/aoe/physics/CarMaterialsSystem.h>
 #include <vob/aoe/physics/CollisionSystem.h>
 #include <vob/aoe/physics/DebugCollisionSystem.h>
 #include <vob/aoe/physics/MathUtils.h>
+#include <vob/aoe/physics/StaticColliderComponent.h>
 #include <vob/aoe/rendering/BindSceneFramebufferSystem.h>
 #include <vob/aoe/rendering/BindWindowFramebufferSystem.h>
 #include <vob/aoe/rendering/CarRigComponent.h>
@@ -27,7 +28,9 @@
 #include <vob/aoe/rendering/DebugCameraDirectorSystem.h>
 #include <vob/aoe/rendering/DebugRenderLightsSystem.h>
 #include <vob/aoe/rendering/GpuObjects.h>
+#include <vob/aoe/rendering/ImageLoader.h>
 #include <vob/aoe/rendering/LightComponent.h>
+#include <vob/aoe/rendering/MaterialManagerContext.h>
 #include <vob/aoe/rendering/ModelComponent.h>
 #include <vob/aoe/rendering/ModelLoader.h>
 #include <vob/aoe/rendering/ModelUtils.h>
@@ -58,6 +61,8 @@
 #include <vob/aoe/window/PollEventsSystem.h>
 #include <vob/aoe/window/SwapBuffersSystem.h>
 
+#include <vob/misc/std/reflection_util.h>
+#include <vob/misc/std/container_util.h>
 #include <vob/misc/type/applicator.h>
 #include <vob/misc/type/factory.h>
 #include <vob/misc/type/registry.h>
@@ -112,6 +117,7 @@ namespace vob::aoein {
 	};
 }
 
+#pragma optimize("", off )
 namespace vob
 {
 	struct SimulationExchangeContext
@@ -357,7 +363,7 @@ namespace vob
 	template <typename TSystem>
 	int32_t addSystem(std::vector<std::shared_ptr<aoeng::IEcsSystem>>& a_ecsSystems)
 	{
-		auto const id = static_cast<int32_t>(a_ecsSystems.size());
+		auto const id = mistd::isize(a_ecsSystems);
 		a_ecsSystems.push_back(std::make_shared<aoeng::BasicEcsSystem<TSystem>>());
 		return id;
 	}
@@ -374,6 +380,7 @@ namespace vob
 		auto windowInputBindingId = addSystem<aoein::WindowInputBindingSystem>(ecsSystems);
 		auto debugGameInputId = addSystem<aoein::DebugGameInputSystem>(ecsSystems);
 		auto debugCameraDirectorId = addSystem<aoegl::DebugCameraDirectorSystem>(ecsSystems);
+		auto debugDevblogId = addSystem<aoedb::DebugDevblogSystem>(ecsSystems);
 		auto debugDisplaySimulationFrameTimeId = addSystem<aoest::DebugDisplaySimulationFrameTimeSystem>(ecsSystems);
 		auto ghostControllerId = addSystem<aoedb::GhostControllerSystem>(ecsSystems);
 		auto carMaterialsId = addSystem<aoeph::CarMaterialsSystem>(ecsSystems);
@@ -408,6 +415,7 @@ namespace vob
 			{ windowInputBindingId },
 			{ debugGameInputId },
 			{ debugCameraDirectorId },
+			{ debugDevblogId },
 			{ debugDisplaySimulationFrameTimeId },
 			{ ghostControllerId },
 			{ renderSceneId },
@@ -473,7 +481,7 @@ namespace vob
 			for (auto const& triangle : part.triangles)
 			{
 				auto const n = glm::normalize(glm::cross(triangle.p1 - triangle.p0, triangle.p2 - triangle.p0));
-				auto const i = static_cast<int32_t>(meshData.vertices.size());
+				auto const i = mistd::isize(meshData.vertices);
 				meshData.vertices.emplace_back(triangle.p0, n);
 				meshData.vertices.emplace_back(triangle.p1, n);
 				meshData.vertices.emplace_back(triangle.p2, n);
@@ -500,7 +508,7 @@ namespace vob
 
 			for (auto const& triangle : part.triangles)
 			{
-				auto const i = static_cast<int32_t>(vertices.size());
+				auto const i = mistd::isize(vertices);
 				vertices.emplace_back(a_position + a_rotation * triangle.p0);
 				vertices.emplace_back(a_position + a_rotation * triangle.p1);
 				vertices.emplace_back(a_position + a_rotation * triangle.p2);
@@ -528,12 +536,12 @@ namespace vob
 		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
 		aoedt::filesystem_database<aoedt::json_file_loader<aoegl::ProgramData, aoedt::filesystem_visitor_context_factory>> shaderProgramDatabase{
 			filesystemIndexer, jsonLoadApplicator, contextFactory };
-		aoedt::filesystem_database<aoegl::StaticMeshLoader> staticMeshDatabase{ filesystemIndexer };
 		aoedt::filesystem_database<aoegl::StaticModelLoader> staticModelDatabase{ filesystemIndexer };
 		aoedt::filesystem_database<aoegl::RiggedModelLoader> riggedModelDatabase{ filesystemIndexer };
+		aoedt::filesystem_database<aoedt::single_file_loader<aoegl::ImageLoader>> imageDatabase{ filesystemIndexer };
 		multiDatabase.register_database(stringDatabase);
 		multiDatabase.register_database(shaderProgramDatabase);
-		multiDatabase.register_database(staticMeshDatabase);
+		multiDatabase.register_database(imageDatabase);
 
 		auto simExchangeData = std::make_shared<aoexc::EcsExchangeData>();
 		auto presExchangeData = std::make_shared<aoexc::EcsExchangeData>();
@@ -598,6 +606,8 @@ namespace vob
 		auto& preInputBindings = preRegistry.ctx().emplace<aoein::InputBindings>();
 		auto& cameraDirectorContext = preRegistry.ctx().emplace<aoegl::CameraDirectorContext>();
 		auto& sceneTextureContext = preRegistry.ctx().emplace<aoegl::SceneTextureContext>();
+		auto& materialManagerCtx = preRegistry.ctx().emplace<aoegl::MaterialManagerContext>(std::make_shared<aoegl::MaterialManager>());
+
 		{
 			auto& sceneTexture = sceneTextureContext.texture;
 
@@ -743,12 +753,64 @@ namespace vob
 		{
 			glGenQueries(static_cast<aoegl::GraphicSize>(renderSceneContext.timerQueries.size()), renderSceneContext.timerQueries.data());
 		}
+		{
+			// SHADOWS
+			glGenFramebuffers(mistd::isize(renderSceneContext.shadowMapFramebuffers), renderSceneContext.shadowMapFramebuffers.data());
+		}
 
+		auto const createTexture = [](auto const& image)
+			{
+				assert(1 <= image.channelCount && image.channelCount <= 4);
 
+				static constexpr std::array<aoegl::GraphicEnum, 4> k_internalChannelFormats = { GL_R8, GL_RG8, GL_RGB8, GL_RGBA8 };
+				static constexpr std::array<aoegl::GraphicEnum, 4> k_channelFormats = { GL_RED, GL_RG, GL_RGB, GL_RGBA };
+
+				auto const width = image.size.x;
+				auto const height = image.size.y;
+				auto const internalChannelFormat = k_internalChannelFormats[image.channelCount - 1];
+				auto const channelFormat = k_channelFormats[image.channelCount - 1];
+
+				aoegl::GraphicId texture;
+				glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+				auto const mipLevels = static_cast<int32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+				glTextureStorage2D(texture, mipLevels, internalChannelFormat, width, height);
+				glTextureSubImage2D(texture, 0, 0, 0, width, height, channelFormat, GL_UNSIGNED_BYTE, image.data.data());
+				glGenerateTextureMipmap(texture);
+
+				glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+				glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+				return texture;
+			};
+
+		aoegl::GraphicId asphaltDiffuseTexture = aoegl::k_invalidId;
+		if (auto const image = imageDatabase.find(filesystemIndexer.get_runtime_id("data/new/images/Asphalt_D.png")))
+		{
+			asphaltDiffuseTexture = createTexture(*image);
+		}
+
+		aoegl::GraphicId asphaltNormalMapTexture = aoegl::k_invalidId;
+		if (auto const image = imageDatabase.find(filesystemIndexer.get_runtime_id("data/new/images/Asphalt_N.png")))
+		{
+			asphaltNormalMapTexture = createTexture(*image);
+		}
+
+		aoegl::GraphicId asphaltMetallicRoughnessTexture = aoegl::k_invalidId;
+		if (auto const image = imageDatabase.find(filesystemIndexer.get_runtime_id("data/new/images/Asphalt_MR.png")))
+		{
+			asphaltMetallicRoughnessTexture = createTexture(*image);
+		}
 
 		auto basicShadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/basic_shading.glsl"));
 		auto basicStaticForwardProgram = aoegl::createForwardProgram(*basicShadingSource, false /* use rig */);
 		auto basicRiggedForwardProgram = aoegl::createForwardProgram(*basicShadingSource, true /* use rig */);
+
+		auto texturedShadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/texture_shading.glsl"));
+		auto texturedStaticForwardProgram = aoegl::createForwardProgram(*texturedShadingSource, false /* use rig */);
+		auto texturedRiggedForwardProgram = aoegl::createForwardProgram(*texturedShadingSource, true /* use rig */);
+
+		std::vector<aoegl::GraphicId> asphaltTextureIds = { asphaltDiffuseTexture, asphaltNormalMapTexture, asphaltMetallicRoughnessTexture };
+		auto const asphaltMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(aoegl::k_invalidId, std::move(asphaltTextureIds));
 
 		struct alignas(16) BasicShadingParams
 		{
@@ -765,6 +827,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &rubberParamsUbo);
 		glNamedBufferStorage(rubberParamsUbo, sizeof(rubberParams), &rubberParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const rubberMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(rubberParamsUbo);
 
 		aoegl::GraphicId bluePaintedMetalParamsUbo;
 		auto const bluePaintedMetalParams = BasicShadingParams{
@@ -774,6 +837,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &bluePaintedMetalParamsUbo);
 		glNamedBufferStorage(bluePaintedMetalParamsUbo, sizeof(bluePaintedMetalParams), &bluePaintedMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const bluePaintedMetalMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(bluePaintedMetalParamsUbo);
 
 		aoegl::GraphicId purpleMetalParamsUbo;
 		auto const purpleMetalParams = BasicShadingParams{
@@ -783,6 +847,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &purpleMetalParamsUbo);
 		glNamedBufferStorage(purpleMetalParamsUbo, sizeof(purpleMetalParams), &purpleMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const purpleMetalMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(purpleMetalParamsUbo);
 
 		aoegl::GraphicId blackPaintedMetalParamsUbo;
 		auto const blackPaintedMetalParams = BasicShadingParams{
@@ -792,6 +857,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &blackPaintedMetalParamsUbo);
 		glNamedBufferStorage(blackPaintedMetalParamsUbo, sizeof(blackPaintedMetalParams), &blackPaintedMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const blackPaintedMetalMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(blackPaintedMetalParamsUbo);
 
 		aoegl::GraphicId shinnyMetalParamsUbo;
 		auto const shinnyMetalParams = BasicShadingParams{
@@ -801,8 +867,9 @@ namespace vob
 		};
 		glCreateBuffers(1, &shinnyMetalParamsUbo);
 		glNamedBufferStorage(shinnyMetalParamsUbo, sizeof(shinnyMetalParams), &shinnyMetalParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const shinnyMetalMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(shinnyMetalParamsUbo);
 
-		aoegl::GraphicId asphaltParamsUbo;
+		/*aoegl::GraphicId asphaltParamsUbo;
 		auto const asphaltParams = BasicShadingParams{
 			.albedo = glm::vec4{0.1f, 0.1f, 0.1f, 0.0f},
 			.metallic = 0.0f,
@@ -810,6 +877,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &asphaltParamsUbo);
 		glNamedBufferStorage(asphaltParamsUbo, sizeof(asphaltParams), &asphaltParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const asphaltMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(asphaltParamsUbo);*/
 
 		aoegl::GraphicId stepPlatformParamsUbo;
 		auto const stepPlatformParams = BasicShadingParams{
@@ -819,6 +887,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &stepPlatformParamsUbo);
 		glNamedBufferStorage(stepPlatformParamsUbo, sizeof(stepPlatformParams), &stepPlatformParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const stepPlatformMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(stepPlatformParamsUbo);
 
 		aoegl::GraphicId rampPlatformParamsUbo;
 		auto const rampPlatformParams = BasicShadingParams{
@@ -828,6 +897,7 @@ namespace vob
 		};
 		glCreateBuffers(1, &rampPlatformParamsUbo);
 		glNamedBufferStorage(rampPlatformParamsUbo, sizeof(rampPlatformParams), &rampPlatformParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+		auto const rampPlatformMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(rampPlatformParamsUbo);
 
 		auto speedCarModelData = riggedModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/BuggyF1.glb"));
 		auto speedCarModel = aoegl::createRiggedModel(*speedCarModelData);
@@ -933,6 +1003,8 @@ namespace vob
 			float roughness;
 		};
 
+		std::pmr::polymorphic_allocator<char> pmrCharAlloc{ std::pmr::get_default_resource() };
+
 		// Prepare entities
 		auto carEntity = preRegistry.create();
 		assert(carEntity == simRegistry.create(carEntity));
@@ -942,9 +1014,13 @@ namespace vob
 			auto e = preRegistry.create();
 			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Ghost Controller");
 			auto& pos = preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 1.0f, -15.0f });
-			pos = glm::vec3{ 380.0f, 0.0f, 600.0f };
+			// pos = glm::vec3{ 380.0f, 0.0f, 600.0f };
+			auto const dx = glm::normalize(glm::vec3{ 5.0f, 0.0f, 1.0f });
+			auto const dy = glm::cross(glm::vec3{ 0.0f, 1.0f, 0.0f }, dx);
+			// pos = glm::vec3{ 300.0f, 40.0f, 0.0f } + 8.0f * dx + 6.0f * dy;
 			auto& rot = preRegistry.emplace<aoest::Rotation>(e, glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-			rot = glm::angleAxis(-std::numbers::pi_v<float> / 2.0f, glm::vec3{ 0.0f, 1.0f, 0.0f });
+			// rot = glm::angleAxis(-std::numbers::pi_v<float> / 2.0f, glm::vec3{ 0.0f, 1.0f, 0.0f });
+			rot = glm::angleAxis(-std::numbers::pi_v<float> / 2.0f, glm::vec3{ 1.0f, 0.0f, 0.0f });
 			auto& gcc = preRegistry.emplace<aoedb::GhostControllerComponent>(e);
 
 			gcc.lateralMoveValueId = aoein::GameInputUtils::addInputValueBinding(
@@ -1003,8 +1079,9 @@ namespace vob
 				std::make_shared<aoein::MouseScrollEventBinding>(true));
 
 			preRegistry.emplace<aoedb::IsControlledTag>(e);
-			preRegistry.emplace<aoegl::CameraComponent>(e);
-			// cameraDirectorContext.activeCameraEntity = e;
+			auto& cam = preRegistry.emplace<aoegl::CameraComponent>(e);
+			cam.fov = glm::radians(40.0f);
+			cameraDirectorContext.activeCameraEntity = e;
 		}
 		{
 			// ==== FOLLOW CAMERA 1
@@ -1018,7 +1095,7 @@ namespace vob
 			preRegistry.emplace<aoegl::CameraComponent>(e);
 			preRegistry.emplace<aoest::SoftFollowComponent>(e,
 				carEntity, glm::vec3{ 0.0f, 3.0f, 5.0f }, glm::vec3{ 0.0f, 1.0f, 0.0f }, elasticity, mass, 2.0f * std::sqrt(elasticity * mass));
-			cameraDirectorContext.activeCameraEntity = e;
+			//cameraDirectorContext.activeCameraEntity = e;
 		}
 		{
 			// ==== FOLLOW CAMERA 1b
@@ -1063,12 +1140,26 @@ namespace vob
 			// cameraDirectorContext.activeCameraEntity = e;
 		}
 		{
+			// ==== FOLLOW CAMERA 3
+
+			auto e = preRegistry.create();
+			auto const mass = 1.0f;
+			auto const elasticity = 4000.0f;
+			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Micromachine Camera");
+			preRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.0f, 0.0f, -15.0f });
+			preRegistry.emplace<aoest::Rotation>(e, glm::quat{});
+			preRegistry.emplace<aoegl::CameraComponent>(e);
+			preRegistry.emplace<aoest::SoftFollowComponent>(e,
+				carEntity, glm::vec3{ 0.0f, 50.0f, 30.0f }, glm::vec3{ 0.0f, 0.0f, -0.5f }, elasticity, mass, 2.0f * std::sqrt(elasticity * mass));
+			// cameraDirectorContext.activeCameraEntity = e;
+		}
+		{
 			// ==== CAR
 
 			auto e = carEntity;
 			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Local Player Car");
-			simRegistry.emplace<aoest::Position>(e, glm::vec3{ 400.0f, 3.0f, 580.0f });
-			//simRegistry.emplace<aoest::Position>(e, glm::vec3{ 00.0f, 3.0f, 0.0f });
+			auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 400.0f, 3.0f, 580.0f });
+			pos = glm::vec3{ 00.0f, 3.0f, 0.0f };
 			simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(-std::numbers::pi_v<float>, glm::vec3{ 0.0f, 1.0f, 0.0f }));
 			auto& carCollider = simRegistry.emplace<aoeph::CarCollider>(e);
 			// front axel
@@ -1093,7 +1184,7 @@ namespace vob
 			carCollider.mass = 1'000.0f;
 			carCollider.mass = 1'000.0f;
 			carCollider.barycenterLocal = glm::vec3{ 0.0f, 0.0f, -0.288295f };
-			carCollider.inertiaLocal = glm::mat3{ carCollider.mass / 5.0f };
+			carCollider.inertiaLocal = glm::mat3{ carCollider.mass / 12.0f };
 			carCollider.inertiaLocal[0][0] *= (0.7f * 0.7f + 1.6f * 1.6f);
 			carCollider.inertiaLocal[1][1] *= (1.6f * 1.6f + 0.9f * 0.9f);
 			carCollider.inertiaLocal[2][2] *= (0.9f * 0.9f + 0.7f * 0.7f);
@@ -1106,6 +1197,7 @@ namespace vob
 			carController.wheels[0].steeringFactor = 1.0f;
 			carController.wheels[1].steeringFactor = 1.0f;
 			carController.respawnPosition = simRegistry.get<aoest::Position>(e);
+			carController.respawnRotation = simRegistry.get<aoest::Rotation>(e);
 			carController.forwardInputValueId = simForwardInputValueId;
 			carController.backwardInputValueId = simBackwardInputValueId;
 			carController.steeringInputValueId = simSteeringInputValueId;
@@ -1128,18 +1220,18 @@ namespace vob
 
 			auto& riggedModelCmp = preRegistry.emplace<aoegl::RiggedModelComponent>(e);
 			auto meshIndex = 0;
-			for (int32_t i = 0; i < static_cast<int32_t>(speedCarModel.meshes.size()); ++i)
+			for (int32_t i = 0; i < mistd::isize(speedCarModel.meshes); ++i)
 			{
 				auto const& speedCarMeshData = speedCarModelData->meshes[i];
 				auto const& speedCarMesh = speedCarModel.meshes[i];
 
 				auto const materialUbo = [&]() {
-					if (speedCarMeshData.materialName == std::string_view{ "RoughMetal" }) return blackPaintedMetalParamsUbo;
-					if (speedCarMeshData.materialName == std::string_view{ "PaintedMetal" }) return bluePaintedMetalParamsUbo;
-					if (speedCarMeshData.materialName == std::string_view{ "Metal" }) return shinnyMetalParamsUbo;
-					if (speedCarMeshData.materialName == std::string_view{ "Sticker" }) return purpleMetalParamsUbo;
-					if (speedCarMeshData.materialName == std::string_view{ "Rubber" }) return rubberParamsUbo;
-					return 0u;
+					if (speedCarMeshData.materialName == std::string_view{ "RoughMetal" }) return blackPaintedMetalMaterialIndex;
+					if (speedCarMeshData.materialName == std::string_view{ "PaintedMetal" }) return bluePaintedMetalMaterialIndex;
+					if (speedCarMeshData.materialName == std::string_view{ "Metal" }) return shinnyMetalMaterialIndex;
+					if (speedCarMeshData.materialName == std::string_view{ "Sticker" }) return purpleMetalMaterialIndex;
+					if (speedCarMeshData.materialName == std::string_view{ "Rubber" }) return rubberMaterialIndex;
+					return 0;
 					}();
 
 				riggedModelCmp.meshes.emplace_back(
@@ -1237,7 +1329,7 @@ namespace vob
 			auto leftHeadLight = preRegistry.create();
 			preRegistry.emplace<aoest::Position>(leftHeadLight);
 			preRegistry.emplace<aoest::Rotation>(leftHeadLight);
-			preRegistry.emplace<aoest::AttachmentComponent>(leftHeadLight, carEntity, glm::vec3{ -0.6f, 0.6f, -2.0f }, glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoest::AttachmentComponent>(leftHeadLight, carEntity, glm::vec3{ -0.6f, 1.2f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 			preRegistry.emplace<aoegl::LightComponent>(leftHeadLight,
 				aoegl::LightComponent::Type::Spot,
 				50.0f /* radius */,
@@ -1249,7 +1341,7 @@ namespace vob
 			auto rightHeadLight = preRegistry.create();
 			preRegistry.emplace<aoest::Position>(rightHeadLight);
 			preRegistry.emplace<aoest::Rotation>(rightHeadLight);
-			preRegistry.emplace<aoest::AttachmentComponent>(rightHeadLight, carEntity, glm::vec3{ 0.6f, 0.6f, -2.0f }, glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoest::AttachmentComponent>(rightHeadLight, carEntity, glm::vec3{ 0.6f, 1.2f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 			preRegistry.emplace<aoegl::LightComponent>(rightHeadLight,
 				aoegl::LightComponent::Type::Spot,
 				50.0f /* radius */,
@@ -1294,11 +1386,12 @@ namespace vob
 			{
 				vertices.emplace_back(-120.0f, 0.0f, -i * 20.0f);
 				vertices.emplace_back(120.0f, 0.0f, -i * 20.0f);
-				auto const s = static_cast<int32_t>(vertices.size()) - 4;
+				auto const s = mistd::isize(vertices) - 4;
 				triangles.emplace_back(s + 0, s + 1, s + 2);
 				triangles.emplace_back(s + 2, s + 1, s + 3);
 			}
 
+			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Main Ground");
 			auto& staticColliderCmp = simRegistry.emplace<aoeph::StaticColliderComponent>(e);
 			auto& staticColliderPart = staticColliderCmp.parts.emplace_back(aoeph::Material{}, aoeph::BvhTriangles{ vertices, triangles, 4 });
 			preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
@@ -1314,8 +1407,8 @@ namespace vob
 			for (auto const& groundMesh : groundModel.meshes)
 			{
 				staticModelCmp.meshes.emplace_back(
-					basicStaticForwardProgram,
-					asphaltParamsUbo,
+					texturedStaticForwardProgram,
+					asphaltMaterialIndex,
 					groundMesh.vao,
 					groundMesh.indexCount);
 			}
@@ -1352,6 +1445,7 @@ namespace vob
 
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
+				preRegistry.emplace<aoedb::DebugNameComponent>(e, std::pmr::string(std::format("Floating Step Platform {}", i)));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.5f * (minX + maxX), y, k_z });
 				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
@@ -1368,7 +1462,7 @@ namespace vob
 				{
 					staticModelCmp.meshes.emplace_back(
 						basicStaticForwardProgram,
-						stepPlatformParamsUbo,
+						stepPlatformMaterialIndex,
 						staticMesh.vao,
 						staticMesh.indexCount);
 				}
@@ -1417,6 +1511,7 @@ namespace vob
 
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
+				preRegistry.emplace<aoedb::DebugNameComponent>(e, std::pmr::string(std::format("Step Platform {}", i)));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.5f * (minX + maxX), y, k_z });
 				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
@@ -1433,7 +1528,7 @@ namespace vob
 				{
 					staticModelCmp.meshes.emplace_back(
 						basicStaticForwardProgram,
-						stepPlatformParamsUbo,
+						stepPlatformMaterialIndex,
 						staticMesh.vao,
 						staticMesh.indexCount);
 				}
@@ -1443,6 +1538,25 @@ namespace vob
 				staticModelCmp.boundingRadius = staticModel.boundingRadius;
 			}
 		}
+
+		struct TestStruct
+		{
+			enum class TestEnumA
+			{
+				Foo,
+				Bar,
+				Joh,
+				Hel
+			};
+		};
+
+		enum class TestEnumB : uint8_t
+		{
+			Foo,
+			Bar,
+			Joh,
+			Hel
+		};
 
 		{
 			// ==== RAMP PLATFORMS
@@ -1469,6 +1583,7 @@ namespace vob
 
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
+				preRegistry.emplace<aoedb::DebugNameComponent>(e, std::pmr::string(std::format("Ramp Platform {}", i)));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 0.5f * (minX + maxX), 0.0f, k_z });
 				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(rx, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 				auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
@@ -1485,7 +1600,7 @@ namespace vob
 				{
 					staticModelCmp.meshes.emplace_back(
 						basicStaticForwardProgram,
-						rampPlatformParamsUbo,
+						rampPlatformMaterialIndex,
 						staticMesh.vao,
 						staticMesh.indexCount);
 				}
@@ -1509,20 +1624,23 @@ namespace vob
 			};
 
 			std::vector<Point> generators;
-			generators.emplace_back(glm::vec3{ 300.0f, 0.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
-			generators.emplace_back(glm::vec3{ 400.0f, 0.0f, 200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f }, 1.0f /* destination ratio */, 0.6f /* tilt */, 0.25f /* desired step length */);
-			generators.emplace_back(glm::vec3{ 100.0f, 0.0f, 300.0f }, glm::vec3{ -71.0f, 0.0f, 71.0f });
-			generators.emplace_back(glm::vec3{ -300.0f, 0.0f, 100.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f });
-			generators.emplace_back(glm::vec3{ -400.0f, 0.0f, -100.0f }, glm::vec3{ -100.0f, 0.0f, 0.0f }, 1.0f, -0.2f, 0.25f);
-			generators.emplace_back(glm::vec3{ -600.0f, 0.0f, -200.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f }, 1.0f, 0.4f);
-			generators.emplace_back(glm::vec3{ -100.0f, 0.0f, -300.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
-			generators.emplace_back(glm::vec3{ 100.0f, 0.0f, -400.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
-			generators.emplace_back(glm::vec3{ 300.0f, 0.0f, -200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
+			generators.emplace_back(glm::vec3{ 300.0f, 1.0f, 0.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
+			generators.emplace_back(glm::vec3{ 400.0f, 11.0f, 200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f }, 1.0f /* destination ratio */, 0.6f /* tilt */, 0.25f /* desired step length */);
+			generators.emplace_back(glm::vec3{ 100.0f, 11.0f, 300.0f }, glm::vec3{ -71.0f, 0.0f, 71.0f });
+			generators.emplace_back(glm::vec3{ -300.0f, 11.0f, 100.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f });
+			generators.emplace_back(glm::vec3{ -400.0f, 11.0f, -100.0f }, glm::vec3{ -100.0f, 0.0f, 0.0f }, 1.0f, -0.2f, 0.25f);
+			generators.emplace_back(glm::vec3{ -600.0f, 11.0f, -200.0f }, glm::vec3{ 0.0f, 0.0f, -100.0f }, 1.0f, 0.4f);
+			generators.emplace_back(glm::vec3{ -100.0f, 1.0f, -300.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
+			generators.emplace_back(glm::vec3{ 100.0f, 0.1f, -400.0f }, glm::vec3{ 100.0f, 0.0f, 0.0f });
+			generators.emplace_back(glm::vec3{ 300.0f, 0.1f, -200.0f }, glm::vec3{ 0.0f, 0.0f, 100.0f });
 
 			constexpr float k_roadHalfWidth = 10.0f;
 			constexpr float k_roadFenceHeight = 0.75f;
 			constexpr float k_roadFenceWidth = 0.75f;
-			for (int32_t i = 0; i < static_cast<int32_t>(generators.size()); ++i)
+			constexpr float k_uvScale = 0.10f;
+
+			float distance = 0.0f;
+			for (int32_t i = 0; i < mistd::isize(generators); ++i)
 			{
 				std::vector<glm::vec3> newVertices;
 				std::vector<aoeph::TriangleIndices> newTriangleIndices;
@@ -1564,28 +1682,31 @@ namespace vob
 						return min + (max - min) * t * t * (3.0f - 2.0f * t);
 					};
 
-				auto addMeshVertex = [&staticMeshData, &newVertices, &center](glm::vec3 const& p, glm::vec3 const& n)
+				auto addMeshVertex = [&staticMeshData, &newVertices, &center](glm::vec3 const& p, glm::vec3 const& n, glm::vec2 const& uv, glm::vec3 const& t)
 					{
-						staticMeshData.vertices.emplace_back(p, n);
+						staticMeshData.vertices.emplace_back(p, n, uv, t);
 						newVertices.push_back(p + center + glm::vec3{ 0.0f, 0.0f, 400.0f });
 					};
 
-				auto addMeshVertices = [&staticMeshData, &newVertices, &addMeshVertex](glm::vec3 p, glm::vec3 right, glm::vec3 up)
+				auto addMeshVertices = [&staticMeshData, &newVertices, &addMeshVertex](glm::vec3 p, glm::vec3 right, glm::vec3 up, float dist)
 					{
-						addMeshVertex(p - (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up);
-						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, up);
-						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, right);
-						addMeshVertex(p - k_roadHalfWidth * right, right);
-						addMeshVertex(p - k_roadHalfWidth * right, up);
-						addMeshVertex(p + k_roadHalfWidth * right, up);
-						addMeshVertex(p + k_roadHalfWidth * right, right);
-						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, right);
-						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, up);
-						addMeshVertex(p + (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up);
+						auto const uvY = -dist * k_uvScale;
+
+						addMeshVertex(p - (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up, glm::vec2{ -(k_roadFenceHeight + k_roadFenceWidth) * k_uvScale, uvY }, right);
+						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, up, glm::vec2{ -k_roadFenceHeight * k_uvScale, uvY }, right);
+						addMeshVertex(p - k_roadHalfWidth * right + k_roadFenceHeight * up, right, glm::vec2{ -k_roadFenceHeight * k_uvScale, uvY }, -up);
+						addMeshVertex(p - k_roadHalfWidth * right, right, glm::vec2{ 0.0f, uvY }, -up);
+						addMeshVertex(p - k_roadHalfWidth * right, up, glm::vec2{ 0.0f, uvY }, right);
+						addMeshVertex(p + k_roadHalfWidth * right, up, glm::vec2{ 2.0f * k_roadHalfWidth * k_uvScale, uvY }, right);
+						addMeshVertex(p + k_roadHalfWidth * right, -right, glm::vec2{ 2.0f * k_roadHalfWidth * k_uvScale, uvY }, up);
+						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, -right, glm::vec2{ (2.0f * k_roadHalfWidth + k_roadFenceHeight) * k_uvScale, uvY }, up);
+						addMeshVertex(p + k_roadHalfWidth * right + k_roadFenceHeight * up, up, glm::vec2{ (2.0f * k_roadHalfWidth + k_roadFenceHeight) * k_uvScale, uvY }, right);
+						addMeshVertex(p + (k_roadHalfWidth + k_roadFenceWidth) * right + k_roadFenceHeight * up, up, glm::vec2{ (2.0f * k_roadHalfWidth + k_roadFenceHeight + k_roadFenceWidth) * k_uvScale, uvY }, right);
 					};
 
-				addMeshVertices(p0, initialRight, glm::cross(initialRight, initialForward));
+				addMeshVertices(p0, initialRight, glm::cross(initialRight, initialForward), distance);
 
+				auto lastP = p0;
 				for (int32_t j = 1; j <= bezierStepCount; ++j)
 				{
 					auto const w0 = std::min(generator0.desiredStepLength, (generator0.desiredStepLength + generator1.desiredStepLength) / 2);
@@ -1601,8 +1722,11 @@ namespace vob
 					auto const right = glm::vec3{ glm::rotate(glm::mat4(1.0f), tilt, forward) * glm::vec4(glm::normalize(glm::cross(forward, roughUp)), 0.0f) };
 					auto const up = glm::cross(right, forward);
 
-					addMeshVertices(p, right, up);
-					auto const idx = static_cast<int32_t>(staticMeshData.vertices.size()) - 20;
+					distance += glm::length(lastP - p);
+					lastP = p;
+
+					addMeshVertices(p, right, up, distance);
+					auto const idx = mistd::isize(staticMeshData.vertices) - 20;
 					for (int32_t k = 0; k < 5; ++k)
 					{
 						staticMeshData.indices.emplace_back(idx + 2 * k + 0);
@@ -1621,6 +1745,7 @@ namespace vob
 
 				auto e = preRegistry.create();
 				assert(e == simRegistry.create(e));
+				preRegistry.emplace<aoedb::DebugNameComponent>(e, std::pmr::string(std::format("Circuit Section {}", i)));
 				auto& pos = simRegistry.emplace<aoest::Position>(e, center + glm::vec3{ 0.0f, 0.0f, 400.0f });
 				auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::quat(glm::vec3{ 0.0f }));
 				auto& staticColliderCmp = simRegistry.emplace<aoeph::StaticColliderComponent>(e);
@@ -1631,8 +1756,8 @@ namespace vob
 				for (auto const& staticMesh : staticModel.meshes)
 				{
 					staticModelCmp.meshes.emplace_back(
-						basicStaticForwardProgram,
-						asphaltParamsUbo,
+						texturedStaticForwardProgram,
+						asphaltMaterialIndex,
 						staticMesh.vao,
 						staticMesh.indexCount);
 				}
@@ -1663,11 +1788,13 @@ namespace vob
 
 			auto e = preRegistry.create();
 			assert(e == simRegistry.create(e));
+			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Circuit Access Ramp");
 			auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 45.0f, 0.0f, -2.5f });
 			auto& rot = simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(1.0f, glm::vec3{ 0.0f, 1.0f, 0.0f }) * glm::angleAxis(-0.2f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 			auto& col = simRegistry.emplace<aoeph::StaticCollider>(e, staticCollider);
 			col.bounds = aoeph::computeBounds(pos, rot, staticHalfExtents);
 			colliderToComponent(pos, rot, col, simRegistry.emplace<aoeph::StaticColliderComponent>(e));
+			preRegistry.emplace<aoeph::StaticColliderComponent>(e, simRegistry.get<aoeph::StaticColliderComponent>(e));
 
 			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
@@ -1678,7 +1805,7 @@ namespace vob
 			{
 				staticModelCmp.meshes.emplace_back(
 					basicStaticForwardProgram,
-					rampPlatformParamsUbo,
+					rampPlatformMaterialIndex,
 					staticMesh.vao,
 					staticMesh.indexCount);
 			}
@@ -1688,7 +1815,6 @@ namespace vob
 			staticModelCmp.boundingRadius = staticModel.boundingRadius;
 		}
 
-		if (false)
 		{
 			auto streetLampModelData = staticModelDatabase.find(filesystemIndexer.get_runtime_id("data/new/models/StreetLamp.glb"));
 			auto streetLampModel = aoegl::createStaticModel(*streetLampModelData);
@@ -1714,6 +1840,7 @@ namespace vob
 					auto const r = glm::angleAxis(2.0f * std::numbers::pi_v<float> * (j % 2 == 0 ? 0.5f : 0.0f), glm::vec3{ 0.0f, 1.0f, 0.0f });
 
 					auto const lamp = preRegistry.create();
+					preRegistry.emplace<aoedb::DebugNameComponent>(lamp, std::pmr::string(std::format("Lamp {}", i)));
 					auto& pos = preRegistry.emplace<aoest::Position>(lamp, glm::vec3{ x, y, z });
 					auto& rot = preRegistry.emplace<aoest::Rotation>(lamp, r);
 					assert(lamp == simRegistry.create(lamp));
@@ -1727,7 +1854,7 @@ namespace vob
 					{
 						staticModelCmp.meshes.emplace_back(
 							basicStaticForwardProgram,
-							meshIndex == 0 ? blackPaintedMetalParamsUbo : shinnyMetalParamsUbo,
+							meshIndex == 0 ? blackPaintedMetalMaterialIndex : shinnyMetalMaterialIndex,
 							streetLampMesh.vao,
 							streetLampMesh.indexCount);
 						++meshIndex;
@@ -1742,10 +1869,10 @@ namespace vob
 
 					static auto const rr = 0.1f;
 					static auto const n = 8;
-					for (auto i = 0; i < n; ++i)
+					for (auto k = 0; k < n; ++k)
 					{
-						auto const a0 = (2.0f * std::numbers::pi_v<float> *i) / n;
-						auto const a1 = (2.0f * std::numbers::pi_v<float> *(i + 1)) / n;
+						auto const a0 = (2.0f * std::numbers::pi_v<float> * k) / n;
+						auto const a1 = (2.0f * std::numbers::pi_v<float> *(k + 1)) / n;
 						auto const c0 = rr * std::cos(a0);
 						auto const c1 = rr * std::cos(a1);
 						auto const s0 = rr * std::sin(a0);
@@ -1826,13 +1953,14 @@ namespace vob
 					};
 					glCreateBuffers(1, &shadingParamsUbo);
 					glNamedBufferStorage(shadingParamsUbo, sizeof(shadingParams), &shadingParams, GL_DYNAMIC_STORAGE_BIT | GL_MAP_READ_BIT);
+					auto const shadingMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(shadingParamsUbo);
 
 					auto& staticModelCmp = preRegistry.emplace<aoegl::StaticModelComponent>(e);
 					for (auto const& sphereMesh : sphereModel.meshes)
 					{
 						staticModelCmp.meshes.emplace_back(
 							basicStaticForwardProgram,
-							shadingParamsUbo,
+							shadingMaterialIndex,
 							sphereMesh.vao,
 							sphereMesh.indexCount);
 					}
