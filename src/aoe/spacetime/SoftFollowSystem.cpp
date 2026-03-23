@@ -37,7 +37,7 @@ namespace vob::aoest
 				continue;
 			}
 
-			auto const& [followedPosition, followedRotation] = m_softFollowableEntities.get(a_wdap).get(softFollowComponent.target);
+			auto const& [followedPosition, followedRotation, followedLinearVelocityCmp] = m_softFollowableEntities.get(a_wdap).get(softFollowComponent.target);
 
 			static float k_slowSpeed = 1.0f;
 			static float k_fastSpeed = 20.0f;
@@ -45,10 +45,10 @@ namespace vob::aoest
 			auto const slowPosition = followedPosition + followedRotation * softFollowComponent.positionOffset;
 
 			auto fastPosition = slowPosition;
-			auto const speed = glm::length(followedPosition - softFollowComponent.prevTargetPosition) / elapsedTime;
+			auto const speed = glm::length(followedLinearVelocityCmp.value);
 			if (speed > k_slowSpeed)
 			{
-				glm::vec3 velocityDir = glm::normalize(followedPosition - softFollowComponent.prevTargetPosition);
+				glm::vec3 velocityDir = glm::normalize(followedLinearVelocityCmp.value);
 				glm::vec3 rightDir = glm::normalize(glm::cross(glm::vec3{ 0.0f, 1.0f, 0.0f }, -velocityDir));
 				glm::vec3 upDir = glm::cross(-velocityDir, rightDir);
 				glm::mat3 local(rightDir, upDir, -velocityDir);
