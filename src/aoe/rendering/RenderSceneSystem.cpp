@@ -130,6 +130,15 @@ namespace vob::aoegl
 		};
 	}
 
+	std::array<std::pair<glm::vec3, float>, 6> computeSpotLightFrustumPlanes(
+		glm::vec3 const& a_position,
+		glm::quat const& a_rotation,
+		float a_nearClip,
+		float a_farClip,
+		float a_outerAngle)
+	{
+		return computeCameraFrustumPlanes(a_position, a_rotation, a_nearClip, a_farClip, 2.0f * a_outerAngle, 1.0f /* aspect ratio */);
+	}
 
 	bool testCameraFrustumIntersect(
 		std::array<std::pair<glm::vec3, float>, 6> const& a_cameraFrustumPlanes,
@@ -178,15 +187,19 @@ namespace vob::aoegl
 		constexpr GraphicInt k_viewPostProcessConfigUboLocation = 0;
 		constexpr GraphicInt k_lightPostProcessConfigUboLocation = 1;
 		constexpr GraphicInt k_customPostProcessConfigUboLocation = 2;
+		constexpr auto k_spotLightNear = 0.01f;
 
+		auto const& timeContext = m_timeContext.get(a_wdap);
 		auto const& renderSceneContext = m_renderSceneContext.get(a_wdap);
 		auto const& window = m_windowContext.get(a_wdap).window.get();
 		auto& cameraDirectorContext = m_cameraDirectorContext.get(a_wdap);
 		auto const cameraEntities = m_cameraEntities.get(a_wdap);
 		auto const& materialManager = *m_materialManagerContext.get(a_wdap).materialManager;
 
+#define VOB_AOEGL_DEBUG
 #ifdef VOB_AOEGL_DEBUG
 		static DebugMode::Type k_debugMode = DebugMode::None;
+		static int32_t k_debugActiveForwardProgramIndex = 0;
 		if (ImGui::Begin("Render"))
 		{
 			auto const toSmallStr = [](std::string_view a_stringView)
@@ -219,6 +232,41 @@ namespace vob::aoegl
 
 				ImGui::EndCombo();
 			}
+
+			auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
+			if (!debugProgramCtx.forwardPrograms.empty())
+			{
+				k_debugActiveForwardProgramIndex =
+					std::min(k_debugActiveForwardProgramIndex, mistd::isize(debugProgramCtx.forwardPrograms) - 1);
+
+				auto const activeForwardProgramNameStr = toSmallStr(debugProgramCtx.forwardPrograms[k_debugActiveForwardProgramIndex].name);
+				if (ImGui::BeginCombo("Forward Program", activeForwardProgramNameStr.data()))
+				{
+					for (int32_t i = 0; i < mistd::isize(debugProgramCtx.forwardPrograms); ++i)
+					{
+						auto const forwardProgramNameStr = toSmallStr(debugProgramCtx.forwardPrograms[i].name);
+						if (ImGui::Selectable(forwardProgramNameStr.data(), i == k_debugActiveForwardProgramIndex))
+						{
+							k_debugActiveForwardProgramIndex = i;
+						}
+
+						if (i == k_debugActiveForwardProgramIndex)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				if (ImGui::Button("Recompile Forward Program"))
+				{
+					auto const& forwardProgram = debugProgramCtx.forwardPrograms[k_debugActiveForwardProgramIndex];
+					auto const shadingSource = debugProgramCtx.stringDatabase.find(
+						debugProgramCtx.filesystemIndexer.get_runtime_id(forwardProgram.shadingSourcePath));
+					createForwardProgram(*shadingSource, false /* use rig */, forwardProgram.staticProgram);
+					createForwardProgram(*shadingSource, true /* use rig */, forwardProgram.riggedProgram);
+				}
+			}
 		}
 		ImGui::End();
 
@@ -248,27 +296,91 @@ namespace vob::aoegl
 		auto const projection = glm::perspective(cameraProperties.fov, aspectRatio, cameraProperties.nearClip, cameraProperties.farClip);
 		auto const viewProjection = projection * view;
 		auto const invProjection = glm::inverse(projection);
+		// BEGIN WIP
+		auto const sunPosition = cameraProperties.position * glm::vec3{ 1.0f, 0.0f, 1.0f } + glm::vec3{ 0.0f, 24.0f, 0.0f };
+		auto const sunNearPlane = 1.0f;
+		auto const sunFarPlane = 128.0f;
+		auto const sunProjection = glm::ortho(-32.0f, 32.0f, -16.0f, 48.0f, sunNearPlane, sunFarPlane);
+		auto const cameraFacing = cameraProperties.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
+		auto const sunView = glm::lookAt(sunPosition, cameraProperties.position * glm::vec3{ 1.0f, 0.0f, 1.0f }, cameraFacing);
+		auto const sunSpace = sunProjection * sunView;
+		// END WIP
+
+		auto const shadowFocusPoint = cameraProperties.position
+			+ cameraProperties.rotation * (16.0f * glm::vec3{ 0.0f, 0.0f, -1.0f });
+		struct ShadowSpotLight
+		{
+			int32_t culledLightIndex;
+			float importance;
+			glm::quat rotation;
+			float outerAngle;
+			float lightSize;
+		};
 
 		// 1. Cull lights
 		// TODO: why magic?
 		static std::pmr::vector<Light> culledLights;
+		static std::pmr::vector<ShadowSpotLight> shadowSpotLights;
 		culledLights.clear();
+		shadowSpotLights.clear();
 		auto const lightEntities = m_lightEntities.get(a_wdap);
 		for (auto const [entity, position, rotation, lightCmp] : lightEntities.each())
 		{
 			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, lightCmp.radius))
 			{
-				auto const type = lightCmp.type == LightComponent::Type::Point ? 0.0f : 1.0f;
+				auto const direction = glm::rotate(rotation, glm::vec3{ 0.0f, 0.0f, -1.0f });
+				auto const outerCosAngle = std::cos(lightCmp.outerAngle);
 				culledLights.emplace_back(
-					glm::vec4{ position, lightCmp.radius },
-					glm::vec4{ lightCmp.color, lightCmp.intensity },
-					glm::vec4{ glm::rotate(rotation, glm::vec3{0.0f, 0.0f, -1.0f}), type },
-					glm::vec4{ std::cos(lightCmp.outerAngle), std::cos(lightCmp.innerAngle), 0.0f, 0.0f });
+					position,
+					lightCmp.radius,
+					lightCmp.color,
+					lightCmp.intensity,
+					direction,
+					lightCmp.type == LightComponent::Type::Point ? 0.0f : 1.0f,
+					outerCosAngle,
+					std::cos(lightCmp.innerAngle),
+					-1 /* shadowMapIndex */);
+
+				if (lightCmp.type == LightComponent::Type::Spot)
+				{
+					// TODO: improve logic for selecting most important spot light
+					auto const distance = glm::length(shadowFocusPoint - position);
+					auto const distanceFactor = lightCmp.radius / std::max(0.1f, distance);
+					auto const colorFactor = glm::dot(lightCmp.color, glm::vec3{ 0.299f, 0.587f, 0.114f });
+					auto const intensityFactor = lightCmp.intensity;
+					shadowSpotLights.emplace_back(
+						mistd::isize(culledLights) - 1, distanceFactor * colorFactor * intensityFactor, rotation, lightCmp.outerAngle, lightCmp.shadowLightSize);
+				}
 			}
+		}
+		std::array<ShadowParams, k_maxSpotLightShadowMapCount> spotLightShadowParams;
+		std::sort(shadowSpotLights.begin(), shadowSpotLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
+		shadowSpotLights.resize(std::min(shadowSpotLights.size(), renderSceneContext.spotShadowMaps.size()));
+		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
+		{
+			auto& culledLight = culledLights[shadowSpotLights[i].culledLightIndex];
+			culledLight.spotShadowMapIndex = i;
+
+			auto const lightViewToProjected = glm::perspective(2.0f * shadowSpotLights[i].outerAngle, 1.0f, k_spotLightNear, culledLight.radius);
+			auto const lightUpHint = shadowSpotLights[i].rotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
+			auto const lightWorldToView = glm::lookAt(culledLight.position, culledLight.position + culledLight.direction, lightUpHint);
+			auto const lightWorldToProjected = lightViewToProjected * lightWorldToView;
+			spotLightShadowParams[i] = ShadowParams{
+				.worldToProjected = lightWorldToProjected,
+				.nearPlane = k_spotLightNear,
+				.farPlane = culledLight.radius,
+				.lightSize = shadowSpotLights[i].lightSize
+			};
 		}
 		glNamedBufferSubData(renderSceneContext.lightsSsbo, 0, culledLights.size() * sizeof(Light), culledLights.data());
 
 		// 2. Set global scene rendering config
+		auto const globalParams = GlobalParams{
+			.worldTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - timeContext.worldStartTime).count()
+		};
+		glNamedBufferSubData(renderSceneContext.globalParamsUbo, 0, sizeof(GlobalParams), &globalParams);
+		glBindBufferBase(GL_UNIFORM_BUFFER, k_globalParamsUboLocation, renderSceneContext.globalParamsUbo);
+
 		auto const viewParams = ViewParams{
 			.worldToView = view,
 			.viewToProjected = projection,
@@ -277,8 +389,11 @@ namespace vob::aoegl
 			.viewPosition = cameraProperties.position
 		};
 		glNamedBufferSubData(renderSceneContext.viewParamsUbo, 0, sizeof(ViewParams), &viewParams);
+
 		auto const lightParams = LightParams{
-			.lightClusterSizes = glm::ivec2{16},
+			.sunShadowParams = { sunSpace, 1.0, sunFarPlane },
+			.spotLightShadowParams = spotLightShadowParams,
+			.lightClusterSizes = glm::ivec2{ 16 },
 			.resolution = renderSceneContext.sceneFramebufferSize,
 			.near = cameraProperties.nearClip,
 			.far = cameraProperties.farClip,
@@ -308,9 +423,12 @@ namespace vob::aoegl
 		{
 			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, staticModelCmp.boundingRadius))
 			{
-				// TODO: don't need for static, do elsewhere
 				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-				glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+				if (modelParams != staticModelCmp.modelParams)
+				{
+					staticModelCmp.modelParams = modelParams;
+					glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+				}
 
 				for (auto const& mesh : staticModelCmp.meshes)
 				{
@@ -338,9 +456,12 @@ namespace vob::aoegl
 		{
 			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, riggedModelCmp.boundingRadius))
 			{
-				// TODO: don't need for static, do elsewhere
 				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-				glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+				if (modelParams != riggedModelCmp.modelParams)
+				{
+					riggedModelCmp.modelParams = modelParams;
+					glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+				}
 
 				for (auto const& mesh : riggedModelCmp.meshes)
 				{
@@ -366,12 +487,126 @@ namespace vob::aoegl
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		glEndQuery(GL_TIME_ELAPSED);
 
-		// 5. Depth pre-pass
+		// 5. Sun Shadow
+		// BEGIN WIP
 		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[1]);
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
+		glDepthFunc(GL_LESS);
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
+		{
+			auto const culledSpotLight = culledLights[shadowSpotLights[i].culledLightIndex];
+			auto const spotLightFrustumPlanes = computeSpotLightFrustumPlanes(
+				culledSpotLight.position, shadowSpotLights[i].rotation, k_spotLightNear, culledSpotLight.radius, shadowSpotLights[i].outerAngle);
+
+			auto const lightViewParams = ViewParams{
+				.worldToView = glm::mat4{},
+				.viewToProjected = glm::mat4{},
+				.worldToProjected = spotLightShadowParams[i].worldToProjected,
+				.projectedToView = glm::mat4{},
+				.viewPosition = glm::vec3{}
+			};
+			glNamedBufferSubData(renderSceneContext.lightViewParamsUbo, 0, sizeof(ViewParams), &lightViewParams);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.spotShadowMaps[i].framebuffer);
+			glViewport(0, 0, renderSceneContext.spotShadowMaps[i].size.x, renderSceneContext.spotShadowMaps[i].size.y);
+			glClear(GL_DEPTH_BUFFER_BIT);
+
+			glUseProgram(renderSceneContext.staticDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
+			for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
+			{
+				if (testCameraFrustumIntersect(spotLightFrustumPlanes, position, staticModelCmp.boundingRadius))
+				{
+					auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+					if (modelParams != staticModelCmp.modelParams)
+					{
+						staticModelCmp.modelParams = modelParams;
+						glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+					}
+
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticModelCmp.modelParamsUbo);
+					for (auto const& mesh : staticModelCmp.meshes)
+					{
+						glBindVertexArray(mesh.meshVao);
+						glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+					}
+				}
+			}
+
+			glUseProgram(renderSceneContext.riggedDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
+			for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
+			{
+				if (testCameraFrustumIntersect(spotLightFrustumPlanes, position, riggedModelCmp.boundingRadius))
+				{
+					auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+					if (modelParams != riggedModelCmp.modelParams)
+					{
+						riggedModelCmp.modelParams = modelParams;
+						glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
+					}
+
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedModelCmp.modelParamsUbo);
+					glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedModelCmp.rigParamsUbo);
+					for (auto const& mesh : riggedModelCmp.meshes)
+					{
+						glBindVertexArray(mesh.meshVao);
+						glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+					}
+				}
+			}
+		}
+		{
+			// A. Prepare Data
+			auto const sunViewParams = ViewParams{
+				.worldToView = glm::mat4{},
+				.viewToProjected = glm::mat4{},
+				.worldToProjected = sunSpace,
+				.projectedToView = glm::mat4{},
+				.viewPosition = glm::vec3{}
+			};
+			glNamedBufferSubData(renderSceneContext.lightViewParamsUbo, 0, sizeof(ViewParams), &sunViewParams);
+
+			// B. Render Static Meshes
+			glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sunShadowMap.framebuffer);
+			glViewport(0, 0, renderSceneContext.sunShadowMap.size.x, renderSceneContext.sunShadowMap.size.y);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_DEPTH_TEST);
+			glDisable(GL_BLEND);
+			glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LESS);
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+			glUseProgram(renderSceneContext.staticDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
+			for (auto const& staticMesh : culledStaticMeshes)
+			{
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
+				glBindVertexArray(staticMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			}
+			glUseProgram(renderSceneContext.riggedDepthProgram);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
+			for (auto const& riggedMesh : culledRiggedMeshes)
+			{
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
+				glBindVertexArray(riggedMesh.meshVao);
+				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+			}
+		}
+		glEndQuery(GL_TIME_ELAPSED);
+		// END WIP
+
+		// 5. Depth pre-pass
+		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[2]);
 		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sceneFramebuffer);
-		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
+		glViewport(0, 0, renderSceneContext.sceneFramebufferSize.x, renderSceneContext.sceneFramebufferSize.y);
 		glClearDepth(1.0);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
 		glDepthMask(GL_TRUE);
@@ -416,9 +651,16 @@ namespace vob::aoegl
 		glEndQuery(GL_TIME_ELAPSED);
 
 		// 6. Opaque pass
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[2]);
+		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[3]);
 		glDepthFunc(GL_LEQUAL);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glBindTextureUnit(k_sunShadowMapTextureIndex, renderSceneContext.sunShadowMap.depthTexture);
+		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
+		{
+			glBindTextureUnit(k_spotLightShadowMapsFirstIndex + i, renderSceneContext.spotShadowMaps[i].depthTexture);
+		}
 		GraphicId currentForwardProgram = k_invalidId;
 		int32_t currentMaterialIndex = -1;
 #ifdef VOB_AOEGL_DEBUG
@@ -462,7 +704,7 @@ namespace vob::aoegl
 						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
 						for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
 						{
-							glBindTextureUnit(static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
+							glBindTextureUnit(k_materialTexturesFirstIndex + static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
 						}
 					}
 				}
@@ -508,7 +750,7 @@ namespace vob::aoegl
 						glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
 						for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
 						{
-							glBindTextureUnit(static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
+							glBindTextureUnit(k_materialTexturesFirstIndex + static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
 						}
 					}
 				}
@@ -531,34 +773,61 @@ namespace vob::aoegl
 		// TODO
 
 		// 10. Post process(es)
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[3]);
-		// TODO: implement various post process + ping-pong pattern
-		glBindFramebuffer(GL_FRAMEBUFFER, window.getDefaultFramebufferId());
-		glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_DEPTH_TEST);
-
+		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[4]);
 #ifdef VOB_AOEGL_DEBUG
 		if (k_debugMode != DebugMode::None)
 		{
+			glBindFramebuffer(GL_FRAMEBUFFER, window.getDefaultFramebufferId());
+			glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDisable(GL_DEPTH_TEST);
+
 			glUseProgram(renderSceneContext.debugPostProcessProgram);
-			glActiveTexture(GL_TEXTURE1);
-			glBindTexture(GL_TEXTURE_2D, renderSceneContext.sceneDepthTexture);
+			glBindTextureUnit(0, renderSceneContext.sceneColorTexture);
+			glBindTextureUnit(1, renderSceneContext.sceneDepthTexture);
+			glBindTextureUnit(2, renderSceneContext.sunShadowMap.depthTexture);
+			for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
+			{
+				glBindTextureUnit(3 + i, renderSceneContext.spotShadowMaps[i].depthTexture);
+			}
 			glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.debugParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightParamsUbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
+			glBindVertexArray(renderSceneContext.postProcessVao);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
 		else
 #endif
 		{
-			glUseProgram(renderSceneContext.postProcessProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.postProcessUbo);
+			glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
+			glDisable(GL_DEPTH_TEST);
+			glBindTextureUnit(1, renderSceneContext.sceneDepthTexture);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
+			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightParamsUbo);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
+			glBindVertexArray(renderSceneContext.postProcessVao);
+
+			auto const postProcessFramebuffers = std::array{
+				renderSceneContext.sceneFramebuffer, renderSceneContext.postProcessFramebuffer };
+			auto const postProcessColorTextures = std::array{
+				renderSceneContext.sceneColorTexture, renderSceneContext.postProcessColorTexture };
+			for (int32_t i = 0; i < mistd::isize(renderSceneContext.postProcesses); ++i)
+			{
+				auto const isLastPostProcess = i + 1 == mistd::isize(renderSceneContext.postProcesses);
+				auto const framebuffer = isLastPostProcess ? window.getDefaultFramebufferId() : postProcessFramebuffers[(i + 1) % 2];
+				glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+				glClear(GL_COLOR_BUFFER_BIT);
+
+				glBindTextureUnit(0, postProcessColorTextures[i % 2]);
+
+				auto const& postProcess = renderSceneContext.postProcesses[i];
+				glUseProgram(postProcess.program);
+				glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, postProcess.ubo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
 		}
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, renderSceneContext.sceneColorTexture);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightParamsUbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
-		glBindVertexArray(renderSceneContext.postProcessVao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glEndQuery(GL_TIME_ELAPSED);
 
 #ifdef VOB_AOEGL_DEBUG
@@ -566,10 +835,10 @@ namespace vob::aoegl
 		{
 			glFinish();
 			static int32_t accumulationCount = 50;
-			static std::array<float, 4> durations{ 0.0f };
-			static std::array<uint64_t, 4> accumulations{ 0 };
+			static std::array<float, 5> durations{ 0.0f };
+			static std::array<uint64_t, 5> accumulations{ 0 };
 			static int32_t accumulationIndex = 0;
-			for (int i = 0; i < 4; ++i)
+			for (int i = 0; i < 5; ++i)
 			{
 				uint64_t durationMs;
 				glGetQueryObjectui64v(renderSceneContext.timerQueries[i], GL_QUERY_RESULT, &durationMs);
@@ -577,7 +846,7 @@ namespace vob::aoegl
 			}
 			if (++accumulationIndex == accumulationCount)
 			{
-				for (int i = 0; i < 4; ++i)
+				for (int i = 0; i < 5; ++i)
 				{
 					durations[i] = (accumulations[i] / 1000000.0f) / accumulationCount;
 					accumulations[i] = 0;
@@ -591,9 +860,10 @@ namespace vob::aoegl
 			int32_t staticMeshCount = mistd::isize(culledStaticMeshes);
 			ImGui::InputInt("Static Mesh Count", &staticMeshCount);
 			ImGui::InputFloat("Light Clustering (ms)", &durations[0]);
-			ImGui::InputFloat("Depth Pre Pass (ms)", &durations[1]);
-			ImGui::InputFloat("Opaque Pass (ms)", &durations[2]);
-			ImGui::InputFloat("Post Process (ms)", &durations[3]);
+			ImGui::InputFloat("Sun Shadow Map (ms)", &durations[1]);
+			ImGui::InputFloat("Depth Pre Pass (ms)", &durations[2]);
+			ImGui::InputFloat("Opaque Pass (ms)", &durations[3]);
+			ImGui::InputFloat("Post Process (ms)", &durations[4]);
 			ImGui::EndDisabled();
 		}
 		ImGui::End();

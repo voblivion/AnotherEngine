@@ -106,7 +106,10 @@ namespace vob::aoein
 		{
 			if (auto const* mouseButtonEvent = std::get_if<aoewi::MouseButtonEvent>(&a_windowEvent))
 			{
-				m_isPressed = mouseButtonEvent->button == m_button && mouseButtonEvent->pressed;
+				if (mouseButtonEvent->button == m_button)
+				{
+					m_isPressed = mouseButtonEvent->pressed;
+				}
 			}
 		}
 

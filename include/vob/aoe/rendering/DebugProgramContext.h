@@ -1,0 +1,32 @@
+#pragma once
+
+#include "vob/aoe/rendering/GraphicTypes.h"
+
+#include <vob/aoe/data/filesystem_database.h>
+#include "vob/aoe/data/id.h"
+#include <vob/aoe/data/single_file_loader.h>
+#include <vob/aoe/data/string_loader.h>
+
+#include <filesystem>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+
+namespace vob::aoegl
+{
+	struct DebugProgramContext
+	{
+		struct ForwardProgram
+		{
+			std::string_view name;
+			GraphicId staticProgram;
+			GraphicId riggedProgram;
+			std::filesystem::path shadingSourcePath;
+		};
+
+		aoedt::filesystem_indexer filesystemIndexer;
+		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
+		std::vector<ForwardProgram> forwardPrograms;
+	};
+}

@@ -28,6 +28,10 @@ namespace vob::aoegl
 		for (auto [entity, position, rotation, lightCmp] : m_lightEntities.get(a_wdap).each())
 		{
 			debugMeshContext.addSphere(position, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0f });
+			if (lightCmp.type == LightComponent::Type::Spot)
+			{
+				debugMeshContext.addLine(position, position + rotation * (lightCmp.radius * glm::vec3{ 0.0f, 0.0f, -1.0f }), aoegl::k_gray);
+			}
 		}
 	}
 }

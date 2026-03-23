@@ -14,8 +14,6 @@
 #include <vob/aoe/input/InputBindingUtils.h>
 #include <vob/aoe/input/WindowInputBindingSystem.h>
 #include <vob/aoe/physics/CarControllerSystem.h>
-#include <vob/aoe/physics/CarMaterialsComponent.h>
-#include <vob/aoe/physics/CarMaterialsSystem.h>
 #include <vob/aoe/physics/CollisionSystem.h>
 #include <vob/aoe/physics/DebugCollisionSystem.h>
 #include <vob/aoe/physics/MathUtils.h>
@@ -26,6 +24,7 @@
 #include <vob/aoe/rendering/CarRigSystem.h>
 #include <vob/aoe/rendering/DebugCameraDirectorContext.h>
 #include <vob/aoe/rendering/DebugCameraDirectorSystem.h>
+#include <vob/aoe/rendering/DebugProgramContext.h>
 #include <vob/aoe/rendering/DebugRenderLightsSystem.h>
 #include <vob/aoe/rendering/GpuObjects.h>
 #include <vob/aoe/rendering/ImageLoader.h>
@@ -243,21 +242,23 @@ namespace vob
 			excRegistry.destroy(toDestroy.begin(), toDestroy.end());
 			
 			// Car Colliders
-			for (auto [entity, position, rotation, carCollider, carController] : m_carEntities.get(a_wdap).each())
+			for (auto [entity, position, rotation, linearVelocityCmp, carColliderCmp, carController] : m_carEntities.get(a_wdap).each())
 			{
 				if (!excRegistry.valid(entity))
 				{
 					assert(entity == excRegistry.create(entity));
 					excRegistry.emplace<aoest::Position>(entity, position);
 					excRegistry.emplace<aoest::Rotation>(entity, rotation);
-					excRegistry.emplace<aoeph::CarCollider>(entity, carCollider);
+					excRegistry.emplace<aoest::LinearVelocityComponent>(entity, linearVelocityCmp);
+					excRegistry.emplace<aoeph::CarCollider>(entity, carColliderCmp);
 					excRegistry.emplace<aoeph::CarControllerComponent>(entity, carController);
 				}
 				else
 				{
 					excRegistry.get<aoest::Position>(entity) = position;
 					excRegistry.get<aoest::Rotation>(entity) = rotation;
-					excRegistry.get<aoeph::CarCollider>(entity) = carCollider;
+					excRegistry.get<aoest::LinearVelocityComponent>(entity) = linearVelocityCmp;
+					excRegistry.get<aoeph::CarCollider>(entity) = carColliderCmp;
 					excRegistry.get<aoeph::CarControllerComponent>(entity) = carController;
 				}
 			}
@@ -287,7 +288,7 @@ namespace vob
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<aoest::DebugFrameTimeContext const> m_debugFrameTimeContext;
 		aoeng::EcsWorldContextRef<SimulationExchangeContext> m_simulationExchangeContext;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
+		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoest::LinearVelocityComponent, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
 
 		// TODO: this could break thread-safety?
 		mutable std::vector<aoest::DebugSimulationFrameTimeEvent> m_debugSimulationFrameTimeEvents;
@@ -318,14 +319,16 @@ namespace vob
 			auto targetTime = excRegistry.ctx().get<aoest::InterpolationExchangeContext>().targetTime + m_interpolationContext.get(a_wdap).offset;
 
 			// Car Colliders
-			for (auto [entity, excPosition, excRotation, excCarCollider, excCarController]
-				: excRegistry.view<aoest::Position, aoest::Rotation, aoeph::CarCollider, aoeph::CarControllerComponent>().each())
+			for (auto [entity, excPosition, excRotation, excLinearVelocityCmp, excCarCollider, excCarController]
+				: excRegistry.view<aoest::Position, aoest::Rotation, aoest::LinearVelocityComponent, aoeph::CarCollider, aoeph::CarControllerComponent>().each())
 			{
-				auto [position, rotation, interpolatedPosition, interpolatedRotation, interpolationComponent, carCollider, carController] = m_carEntities.get(a_wdap).get(entity);
+				auto [position, rotation, linearVelocityCmp, interpolatedPosition, interpolatedRotation, interpolationComponent, carCollider, carController] =
+					m_carEntities.get(a_wdap).get(entity);
 				interpolatedPosition.source = position;
 				interpolatedPosition.target = excPosition;
 				interpolatedRotation.source = rotation;
 				interpolatedRotation.target = excRotation;
+				linearVelocityCmp = excLinearVelocityCmp;
 				carCollider = excCarCollider;
 				carController = excCarController;
 				interpolationComponent.sourceTime = sourceTime;
@@ -354,7 +357,15 @@ namespace vob
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<aoest::DebugSimulationFrameTimeHistoryContext> m_debugSimulationFrameTimeHistoryContext;
 		aoeng::EcsWorldContextRef<aoest::InterpolationContext> m_interpolationContext;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, aoest::InterpolatedPosition, aoest::InterpolatedRotation, aoest::InterpolationTimeComponent, aoeph::CarCollider, aoeph::CarControllerComponent> m_carEntities;
+		aoeng::EcsWorldViewRef<
+			aoest::Position,
+			aoest::Rotation,
+			aoest::LinearVelocityComponent,
+			aoest::InterpolatedPosition,
+			aoest::InterpolatedRotation,
+			aoest::InterpolationTimeComponent,
+			aoeph::CarCollider,
+			aoeph::CarControllerComponent> m_carEntities;
 
 		// TODO: is this ok/thread-safe? where does this belong to prevent allocating every time?
 		mutable std::vector<aoest::DebugSimulationFrameTimeEvent> m_debugSimulationFrameTimeEvents;
@@ -378,19 +389,12 @@ namespace vob
 		auto pollEventsId = addSystem<aoewi::PollEventsSystem>(ecsSystems);
 		auto prepareImGuiFrameId = addSystem<aoegl::PrepareImGuiFrameSystem>(ecsSystems);
 		auto windowInputBindingId = addSystem<aoein::WindowInputBindingSystem>(ecsSystems);
-		auto debugGameInputId = addSystem<aoein::DebugGameInputSystem>(ecsSystems);
-		auto debugCameraDirectorId = addSystem<aoegl::DebugCameraDirectorSystem>(ecsSystems);
-		auto debugDevblogId = addSystem<aoedb::DebugDevblogSystem>(ecsSystems);
-		auto debugDisplaySimulationFrameTimeId = addSystem<aoest::DebugDisplaySimulationFrameTimeSystem>(ecsSystems);
+		
 		auto ghostControllerId = addSystem<aoedb::GhostControllerSystem>(ecsSystems);
-		auto carMaterialsId = addSystem<aoeph::CarMaterialsSystem>(ecsSystems);
 		auto carRigId = addSystem<aoegl::CarRigSystem>(ecsSystems);
 
 		auto renderSceneId = addSystem<aoegl::RenderSceneSystem>(ecsSystems);
 
-		auto debugCollisionSystemId = addSystem<aoeph::DebugCollisionSystem>(ecsSystems);
-
-		auto debugRenderLightsId = addSystem<aoegl::DebugRenderLightsSystem>(ecsSystems);
 		auto renderDebugMeshId = addSystem<aoegl::RenderDebugMeshSystem>(ecsSystems);
 		auto renderImGuiFrameId = addSystem<aoegl::RenderImGuiFrameSystem>(ecsSystems);
 
@@ -400,13 +404,21 @@ namespace vob
 		auto transformInterpolationId = addSystem<aoest::TransformInterpolationSystem>(ecsSystems);
 		auto presExportId = addSystem<PresentationExportSystem>(ecsSystems);
 
+		// DEBUG
+		auto debugGameInputId = addSystem<aoein::DebugGameInputSystem>(ecsSystems);
+		auto debugCameraDirectorId = addSystem<aoegl::DebugCameraDirectorSystem>(ecsSystems);
+		auto debugDevblogId = addSystem<aoedb::DebugDevblogSystem>(ecsSystems);
+		auto debugDisplaySimulationFrameTimeId = addSystem<aoest::DebugDisplaySimulationFrameTimeSystem>(ecsSystems);
+		auto debugRenderLightsId = addSystem<aoegl::DebugRenderLightsSystem>(ecsSystems);
+		auto debugCollisionSystemId = addSystem<aoeph::DebugCollisionSystem>(ecsSystems);
+
+
 		aoeng::EcsSchedule ecsSchedule({ { "Presentation", {
 			{ tracyFrameId },
 			{ timeId },
 			{ simulationImportId },
 			{ transformInterpolationId },
 			{ prepareImGuiFrameId },
-			{ carMaterialsId },
 			{ carRigId },
 			{ debugCollisionSystemId },
 			{ attachmentId },
@@ -649,6 +661,8 @@ namespace vob
 
 			assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
 		}
+		auto& debugProgramContext = preRegistry.ctx().emplace<aoegl::DebugProgramContext>();
+
 		auto& debugRenderContext = preRegistry.ctx().emplace<aoegl::DebugRenderContext>();
 		{
 			auto const debugProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/debug_program.json"));
@@ -718,20 +732,32 @@ namespace vob
 			renderSceneContext.lightClusterCount = lightClusterCount;
 
 			// TODO: this context doesn't own shit
-			glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.sceneColorTexture);
-			glTextureStorage2D(renderSceneContext.sceneColorTexture, 1, GL_RGB8, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
-			glTextureParameteri(renderSceneContext.sceneColorTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTextureParameteri(renderSceneContext.sceneColorTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			{
+				glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.sceneColorTexture);
+				glTextureStorage2D(renderSceneContext.sceneColorTexture, 1, GL_RGB8, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
+				glTextureParameteri(renderSceneContext.sceneColorTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTextureParameteri(renderSceneContext.sceneColorTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.sceneDepthTexture);
-			glTextureStorage2D(renderSceneContext.sceneDepthTexture, 1, GL_DEPTH_COMPONENT24, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
-			glTextureParameteri(renderSceneContext.sceneDepthTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTextureParameteri(renderSceneContext.sceneDepthTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.sceneDepthTexture);
+				glTextureStorage2D(renderSceneContext.sceneDepthTexture, 1, GL_DEPTH_COMPONENT24, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
+				glTextureParameteri(renderSceneContext.sceneDepthTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(renderSceneContext.sceneDepthTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-			glCreateFramebuffers(1, &renderSceneContext.sceneFramebuffer);
-			glNamedFramebufferTexture(renderSceneContext.sceneFramebuffer, GL_COLOR_ATTACHMENT0, renderSceneContext.sceneColorTexture, 0);
-			glNamedFramebufferTexture(renderSceneContext.sceneFramebuffer, GL_DEPTH_ATTACHMENT, renderSceneContext.sceneDepthTexture, 0);
-			assert(glCheckNamedFramebufferStatus(renderSceneContext.sceneFramebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+				glCreateFramebuffers(1, &renderSceneContext.sceneFramebuffer);
+				glNamedFramebufferTexture(renderSceneContext.sceneFramebuffer, GL_COLOR_ATTACHMENT0, renderSceneContext.sceneColorTexture, 0);
+				glNamedFramebufferTexture(renderSceneContext.sceneFramebuffer, GL_DEPTH_ATTACHMENT, renderSceneContext.sceneDepthTexture, 0);
+				assert(glCheckNamedFramebufferStatus(renderSceneContext.sceneFramebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+			}
+			{
+				glCreateTextures(GL_TEXTURE_2D, 1, &renderSceneContext.postProcessColorTexture);
+				glTextureStorage2D(renderSceneContext.postProcessColorTexture, 1, GL_RGB8, k_sceneFramebufferSize.x, k_sceneFramebufferSize.y);
+				glTextureParameteri(renderSceneContext.postProcessColorTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTextureParameteri(renderSceneContext.postProcessColorTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+				glCreateFramebuffers(1, &renderSceneContext.postProcessFramebuffer);
+				glNamedFramebufferTexture(renderSceneContext.postProcessFramebuffer, GL_COLOR_ATTACHMENT0, renderSceneContext.postProcessColorTexture, 0);
+				assert(glCheckNamedFramebufferStatus(renderSceneContext.postProcessFramebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+			}
 
 			glCreateVertexArrays(1, &renderSceneContext.postProcessVao);
 		}
@@ -739,8 +765,23 @@ namespace vob
 			auto const defaultPostProcessProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/default_post_process.json"));
 			assert(defaultPostProcessProgramData != nullptr);
 			assert(defaultPostProcessProgramData->vertexShaderSource != nullptr && defaultPostProcessProgramData->fragmentShaderSource != nullptr);
-			renderSceneContext.postProcessProgram = aoegl::createProgram(
-				*defaultPostProcessProgramData->vertexShaderSource, *defaultPostProcessProgramData->fragmentShaderSource);
+
+			renderSceneContext.postProcesses.emplace_back(
+				aoegl::createProgram(*defaultPostProcessProgramData->vertexShaderSource, *defaultPostProcessProgramData->fragmentShaderSource),
+				aoegl::k_invalidId);
+
+			auto const fxaaPostProcessProgramData = shaderProgramDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/fxaa.json"));
+			assert(fxaaPostProcessProgramData != nullptr);
+			assert(fxaaPostProcessProgramData->vertexShaderSource != nullptr && fxaaPostProcessProgramData->fragmentShaderSource != nullptr);
+
+			aoegl::FxaaParams fxaaParams{ .screenSizeInv = glm::vec2{1.0f} / glm::vec2{ a_window.getSize() } };
+			aoegl::GraphicId fxaaParamsUbo;
+			glCreateBuffers(1, &fxaaParamsUbo);
+			glNamedBufferStorage(fxaaParamsUbo, sizeof(aoegl::FxaaParams), &fxaaParams, GL_DYNAMIC_STORAGE_BIT);
+
+			renderSceneContext.postProcesses.emplace_back(
+				aoegl::createProgram(*fxaaPostProcessProgramData->vertexShaderSource, *fxaaPostProcessProgramData->fragmentShaderSource),
+				fxaaParamsUbo);
 
 		}
 		{
@@ -755,7 +796,62 @@ namespace vob
 		}
 		{
 			// SHADOWS
-			glGenFramebuffers(mistd::isize(renderSceneContext.shadowMapFramebuffers), renderSceneContext.shadowMapFramebuffers.data());
+			constexpr int32_t k_sunShadowWidth = 4096;
+			constexpr int32_t k_sunShadowHeight = 4096;
+			constexpr int32_t k_spotShadowWidth = 2048;
+			constexpr int32_t k_spotShadowHeight = 2048;
+
+
+			{
+				auto& shadowMap = renderSceneContext.sunShadowMap;
+				shadowMap.size = glm::ivec2{ k_sunShadowWidth, k_sunShadowHeight };
+
+				glCreateTextures(GL_TEXTURE_2D, 1, &shadowMap.depthTexture);
+				glTextureStorage2D(shadowMap.depthTexture, 1, GL_DEPTH_COMPONENT32F, k_sunShadowWidth, k_sunShadowHeight);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+				glTextureParameterfv(shadowMap.depthTexture, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+				glCreateFramebuffers(1, &shadowMap.framebuffer);
+				glNamedFramebufferTexture(shadowMap.framebuffer, GL_DEPTH_ATTACHMENT, shadowMap.depthTexture, 0);
+				glNamedFramebufferDrawBuffer(shadowMap.framebuffer, GL_NONE);
+				glNamedFramebufferReadBuffer(shadowMap.framebuffer, GL_NONE);
+
+				assert(glCheckNamedFramebufferStatus(shadowMap.framebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+			}
+			for (int32_t i = 0; i < aoegl::k_maxSpotLightShadowMapCount; ++i)
+			{
+				auto const f = i < 2 ? 2 : 1;
+
+				auto& shadowMap = renderSceneContext.spotShadowMaps.emplace_back();
+				shadowMap.size = glm::ivec2{ f * k_spotShadowWidth, f * k_spotShadowHeight };
+
+				glCreateTextures(GL_TEXTURE_2D, 1, &shadowMap.depthTexture);
+				glTextureStorage2D(shadowMap.depthTexture, 1, GL_DEPTH_COMPONENT32F, f* k_spotShadowWidth, f* k_spotShadowHeight);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+				glTextureParameteri(shadowMap.depthTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+				float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+				glTextureParameterfv(shadowMap.depthTexture, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+				glCreateFramebuffers(1, &shadowMap.framebuffer);
+				glNamedFramebufferTexture(shadowMap.framebuffer, GL_DEPTH_ATTACHMENT, shadowMap.depthTexture, 0);
+				glNamedFramebufferDrawBuffer(shadowMap.framebuffer, GL_NONE);
+				glNamedFramebufferReadBuffer(shadowMap.framebuffer, GL_NONE);
+
+				assert(glCheckNamedFramebufferStatus(shadowMap.framebuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+			}
+
+			glCreateBuffers(1, &renderSceneContext.globalParamsUbo);
+			glNamedBufferStorage(renderSceneContext.globalParamsUbo, sizeof(aoegl::GlobalParams), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
+
+			glCreateBuffers(1, &renderSceneContext.lightViewParamsUbo);
+			glNamedBufferStorage(renderSceneContext.lightViewParamsUbo, sizeof(aoegl::ViewParams), nullptr, GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
 		}
 
 		auto const createTexture = [](auto const& image)
@@ -801,13 +897,18 @@ namespace vob
 			asphaltMetallicRoughnessTexture = createTexture(*image);
 		}
 
-		auto basicShadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/basic_shading.glsl"));
-		auto basicStaticForwardProgram = aoegl::createForwardProgram(*basicShadingSource, false /* use rig */);
-		auto basicRiggedForwardProgram = aoegl::createForwardProgram(*basicShadingSource, true /* use rig */);
+		auto const createForwardPrograms = [&stringDatabase, &filesystemIndexer, &debugProgramContext](std::string_view name, std::filesystem::path path)
+			{
+				auto shadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id(path));
+				auto staticProgram = aoegl::createForwardProgram(*shadingSource, false /* use rig */);
+				auto riggedProgram = aoegl::createForwardProgram(*shadingSource, true /* use rig */);
 
-		auto texturedShadingSource = stringDatabase.find(filesystemIndexer.get_runtime_id("data/new/shaders/texture_shading.glsl"));
-		auto texturedStaticForwardProgram = aoegl::createForwardProgram(*texturedShadingSource, false /* use rig */);
-		auto texturedRiggedForwardProgram = aoegl::createForwardProgram(*texturedShadingSource, true /* use rig */);
+				debugProgramContext.forwardPrograms.emplace_back(name, staticProgram, riggedProgram, path);
+				return std::pair{ staticProgram, riggedProgram };
+			};
+
+		auto [basicStaticForwardProgram, basicRiggedForwardProgram] = createForwardPrograms("basic", "data/new/shaders/basic_shading.glsl");
+		auto [texturedStaticForwardProgram, texturedRiggedForwardProgram] = createForwardPrograms("textured", "data/new/shaders/texture_shading.glsl");
 
 		std::vector<aoegl::GraphicId> asphaltTextureIds = { asphaltDiffuseTexture, asphaltNormalMapTexture, asphaltMetallicRoughnessTexture };
 		auto const asphaltMaterialIndex = materialManagerCtx.materialManager->emplaceMaterial(aoegl::k_invalidId, std::move(asphaltTextureIds));
@@ -1035,8 +1136,8 @@ namespace vob
 				presGameInputCtx,
 				presGameInputBindingCtx,
 				std::make_shared<aoein::UpDownInputValueBinding>(
-					std::make_shared<aoein::KeyboardKeyInputValueBinding>(aoein::Keyboard::Key::E),
-					std::make_shared<aoein::KeyboardKeyInputValueBinding>(aoein::Keyboard::Key::D)
+					std::make_shared<aoein::MouseButtonInputValueBinding>(aoein::Mouse::Button::Left),
+					std::make_shared<aoein::MouseButtonInputValueBinding>(aoein::Mouse::Button::Middle)
 				)
 			);
 			gcc.verticalMoveValueId = aoein::GameInputUtils::addInputValueBinding(
@@ -1160,7 +1261,10 @@ namespace vob
 			preRegistry.emplace<aoedb::DebugNameComponent>(e, "Local Player Car");
 			auto& pos = simRegistry.emplace<aoest::Position>(e, glm::vec3{ 400.0f, 3.0f, 580.0f });
 			pos = glm::vec3{ 00.0f, 3.0f, 0.0f };
-			simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(-std::numbers::pi_v<float>, glm::vec3{ 0.0f, 1.0f, 0.0f }));
+			// simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(-std::numbers::pi_v<float>, glm::vec3{ 0.0f, 1.0f, 0.0f }));
+			simRegistry.emplace<aoest::LinearVelocityComponent>(e);
+			simRegistry.emplace<aoest::AngularVelocityLocalComponent>(e);
+			simRegistry.emplace<aoest::Rotation>(e, glm::angleAxis(0.0f, glm::vec3{ 0.0f, 1.0f, 0.0f }));
 			auto& carCollider = simRegistry.emplace<aoeph::CarCollider>(e);
 			// front axel
 			carCollider.chassisParts.emplace_back(glm::vec3{ -0.01553f, 0.36325f, -1.75357f }, glm::quat(glm::vec3{ 0.0f }), glm::vec3{ 0.905f, 0.283f, 0.385f });
@@ -1210,6 +1314,7 @@ namespace vob
 
 			preRegistry.emplace<aoest::Position>(e, simRegistry.get<aoest::Position>(e));
 			preRegistry.emplace<aoest::Rotation>(e, simRegistry.get<aoest::Rotation>(e));
+			preRegistry.emplace<aoest::LinearVelocityComponent>(e, simRegistry.get<aoest::LinearVelocityComponent>(e));
 			preRegistry.emplace<aoeph::CarCollider>(e, simRegistry.get<aoeph::CarCollider>(e));
 			preRegistry.emplace<aoeph::CarControllerComponent>(e, simRegistry.get<aoeph::CarControllerComponent>(e));
 			preRegistry.emplace<aoest::InterpolatedPosition>(e).positions.fill(preRegistry.get<aoest::Position>(e));
@@ -1329,7 +1434,7 @@ namespace vob
 			auto leftHeadLight = preRegistry.create();
 			preRegistry.emplace<aoest::Position>(leftHeadLight);
 			preRegistry.emplace<aoest::Rotation>(leftHeadLight);
-			preRegistry.emplace<aoest::AttachmentComponent>(leftHeadLight, carEntity, glm::vec3{ -0.6f, 1.2f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoest::AttachmentComponent>(leftHeadLight, carEntity, glm::vec3{ -0.4f, 0.5f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 			preRegistry.emplace<aoegl::LightComponent>(leftHeadLight,
 				aoegl::LightComponent::Type::Spot,
 				50.0f /* radius */,
@@ -1341,7 +1446,7 @@ namespace vob
 			auto rightHeadLight = preRegistry.create();
 			preRegistry.emplace<aoest::Position>(rightHeadLight);
 			preRegistry.emplace<aoest::Rotation>(rightHeadLight);
-			preRegistry.emplace<aoest::AttachmentComponent>(rightHeadLight, carEntity, glm::vec3{ 0.6f, 1.2f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
+			preRegistry.emplace<aoest::AttachmentComponent>(rightHeadLight, carEntity, glm::vec3{ 0.4f, 0.5f, -2.0f }, glm::angleAxis(-0.5f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 			preRegistry.emplace<aoegl::LightComponent>(rightHeadLight,
 				aoegl::LightComponent::Type::Spot,
 				50.0f /* radius */,
@@ -1836,8 +1941,8 @@ namespace vob
 				{
 					auto const x = k_mapMinX + (j + 0.5f + 0.0f * rng()) * ((k_mapMaxX - k_mapMinX) / k_cols);
 					auto const y = 0.0f;
-					auto const z = k_mapMinZ + (i + 0.5f + 0.0f * rng()) * ((k_mapMaxZ - k_mapMinZ) / k_rows);
-					auto const r = glm::angleAxis(2.0f * std::numbers::pi_v<float> * (j % 2 == 0 ? 0.5f : 0.0f), glm::vec3{ 0.0f, 1.0f, 0.0f });
+					auto const z = k_mapMaxZ - (i + 0.5f + 0.0f * rng()) * ((k_mapMaxZ - k_mapMinZ) / k_rows);
+					auto const r = glm::angleAxis(std::numbers::pi_v<float> * (j % 2 == 0 ? 1.0f : 0.0f), glm::vec3{ 0.0f, 1.0f, 0.0f });
 
 					auto const lamp = preRegistry.create();
 					preRegistry.emplace<aoedb::DebugNameComponent>(lamp, std::pmr::string(std::format("Lamp {}", i)));
@@ -1895,12 +2000,17 @@ namespace vob
 
 					auto const light = preRegistry.create();
 					preRegistry.emplace<aoest::Position>(light, glm::vec3{ x, y, z } + r * glm::vec3{ -0.66f, 4.66f, 0.0f });
-					preRegistry.emplace<aoest::Rotation>(light, r);
+					preRegistry.emplace<aoest::Rotation>(light,
+						r
+						* glm::angleAxis(1.575f, glm::vec3{ 0.0f, 1.0f, 0.0f })
+						* glm::angleAxis(-1.075f, glm::vec3{ 1.0f, 0.0f, 0.0f }));
 					preRegistry.emplace<aoegl::LightComponent>(light,
-						aoegl::LightComponent::Type::Point,
-						22.0f /* radius */,
-						10.0f /* intensity */,
-						glm::vec3{0.9f + 0.1f * rng(),0.6f + 0.2f * rng(),0.5f + 0.1f * rng()} /* color */);
+						aoegl::LightComponent::Type::Spot,
+						2*22.0f /* radius */,
+						20.0f /* intensity */,
+						glm::vec3{0.9f + 0.1f * rng(),0.6f + 0.2f * rng(),0.5f + 0.1f * rng()} /* color */,
+						glm::radians(30.0f),
+						glm::radians(45.0f));
 				}
 			}
 		}

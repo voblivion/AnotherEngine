@@ -53,17 +53,6 @@ void glfwErrorCallback(int code, const char* description)
 
 #include <tracy/Tracy.hpp>
 
-void* operator new(size_t size)
-{
-	static bool k_minSizeBreak = 1;
-	static bool k_maxSizeBreak = 1;
-	if (k_minSizeBreak <= size && size <= k_maxSizeBreak)
-	{
-		__debugbreak();
-	}
-	return malloc(size);
-}
-
 int main()
 {
 	// Create data

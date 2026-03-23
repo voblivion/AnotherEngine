@@ -18,7 +18,7 @@ namespace vob::aoegl
 		auto const elapsedTime = std::chrono::duration<float>(m_timeContext.get(a_wdap).elapsedTime).count();
 
 		auto const carEntities = m_carEntities.get(a_wdap);
-		for (auto [entity, rotation, carColliderCmp, carControllerCmp, carRigCmp, riggedModelCmp] : carEntities.each())
+		for (auto [entity, rotation, linearVelocityCmp, carColliderCmp, carControllerCmp, riggedModelCmp, carRigCmp] : carEntities.each())
 		{
 			auto const forward = rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
 
@@ -42,7 +42,7 @@ namespace vob::aoegl
 
 			for (auto& spinningWheel : carRigCmp.spinningWheels)
 			{
-				spinningWheel.distance += glm::dot(carColliderCmp.linearVelocity, forward) * elapsedTime;
+				spinningWheel.distance += glm::dot(linearVelocityCmp.value, forward) * elapsedTime;
 				spinningWheel.distance = std::fmod(spinningWheel.distance, 2.0f * std::numbers::pi_v<float> *spinningWheel.wheelRadius);
 				auto const spinTransform = glm::rotate(
 					glm::mat4(1.0f), spinningWheel.distance / spinningWheel.wheelRadius, glm::vec3{ 0.0f, 1.0f, 0.0f });

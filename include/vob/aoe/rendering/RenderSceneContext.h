@@ -3,9 +3,10 @@
 #include "vob/aoe/rendering/GraphicTypes.h"
 
 #include <vob/misc/std/enum_traits.h>
+#include <vob/misc/std/bounded_vector.h>
 
+#include <chrono>
 
-#define VOB_AOEGL_DEBUG 1
 
 namespace vob::aoegl
 {
@@ -33,6 +34,13 @@ namespace vob::aoegl
 
 	struct RenderSceneContext
 	{
+		struct PostProcess
+		{
+			GraphicId program;
+			GraphicId ubo;
+		};
+		std::vector<PostProcess> postProcesses;
+
 		GraphicId postProcessUbo = k_invalidId;
 		GraphicId postProcessProgram = k_invalidId;
 		std::array<GraphicId, 10> timerQueries;
@@ -40,12 +48,33 @@ namespace vob::aoegl
 		int32_t maxLightCount;
 		// TODO: x, y, z where?
 		int32_t lightClusterCount;
+
 		GraphicId sceneFramebuffer;
 		GraphicId sceneColorTexture;
 		GraphicId sceneDepthTexture;
+		GraphicId postProcessFramebuffer;
+		GraphicId postProcessColorTexture;
+		// MSAA
+		//GraphicId resolveFramebuffer;
+		//GraphicId resolveColorTexture;
+		// FXAA
 		GraphicId postProcessVao;
 
+		// Shadow
+		struct ShadowMap
+		{
+			GraphicId framebuffer;
+			GraphicId depthTexture;
+			glm::ivec2 size;
+		};
+
+		glm::vec3 sunDirection = glm::normalize(glm::vec3{ 0.3f, -0.6f, 0.7f });
+		GraphicId lightViewParamsUbo = k_invalidId;
+		ShadowMap sunShadowMap;
+		mistd::bounded_vector<ShadowMap, k_maxSpotLightShadowMapCount> spotShadowMaps;
+
 		// Common
+		GraphicId globalParamsUbo = k_invalidId;
 		GraphicId viewParamsUbo = k_invalidId;
 		GraphicId lightParamsUbo = k_invalidId;
 		GraphicId lightsSsbo = k_invalidId;

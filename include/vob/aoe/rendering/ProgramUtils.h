@@ -10,7 +10,8 @@
 
 namespace vob::aoegl
 {
-	VOB_AOE_API GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource);
+	VOB_AOE_API GraphicId createProgram(
+		std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId = k_invalidId);
 
 	VOB_AOE_API GraphicId createComputeProgram(std::string_view a_computeShaderSource);
 
@@ -22,7 +23,8 @@ namespace vob::aoegl
 
 	VOB_AOE_API GraphicId createDepthProgram(bool a_useRig);
 
-	VOB_AOE_API GraphicId createForwardProgram(std::string_view a_shadingSource, bool a_useRig);
+	VOB_AOE_API GraphicId createForwardProgram(
+		std::string_view a_shadingSource, bool a_useRig, GraphicId optionalProgramId = k_invalidId);
 
 	VOB_AOE_API GraphicId createDebugForwardProgram(bool a_useRig);
 }

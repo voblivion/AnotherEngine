@@ -57,6 +57,7 @@ namespace vob::aoegl
 			std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
 			std::cerr << errorLog << std::endl;
 			debugPrintSource(a_shaderSource);
+			std::cerr << errorLog << std::endl;
 #endif
 			ignorable_assert(false && "Shader compilation failed.");
 			glDeleteShader(shaderId);
@@ -66,7 +67,7 @@ namespace vob::aoegl
 		return shaderId;
 	}
 
-	GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource)
+	GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId)
 	{
 		auto const vertexShaderId = createShader(GL_VERTEX_SHADER, a_vertexShaderSource);
 		if (vertexShaderId == k_invalidId)
@@ -81,10 +82,12 @@ namespace vob::aoegl
 			return k_invalidId;
 		}
 
-		auto const programId = glCreateProgram();
+		auto const programId = optionalProgramId != k_invalidId ? optionalProgramId : glCreateProgram();
 		glAttachShader(programId, vertexShaderId);
 		glAttachShader(programId, fragmentShaderId);
 		glLinkProgram(programId);
+		glDetachShader(programId, vertexShaderId);
+		glDetachShader(programId, fragmentShaderId);
 		glDeleteShader(vertexShaderId);
 		glDeleteShader(fragmentShaderId);
 
@@ -334,12 +337,12 @@ namespace vob::aoegl
 		return createProgram(vertexShaderSource, fragmentShaderSource);
 	}
 
-	GraphicId createForwardProgram(std::string_view a_shadingSource, bool a_useRig)
+	GraphicId createForwardProgram(std::string_view a_shadingSource, bool a_useRig, GraphicId optionalProgramId)
 	{
 		auto const vertexShaderSource = createVertexShaderSource(a_useRig, true /* use shading */);
 		auto const fragmentShaderSource = createFragmentForwardShaderSource(a_shadingSource);
 
-		return createProgram(vertexShaderSource, fragmentShaderSource);
+		return createProgram(vertexShaderSource, fragmentShaderSource, optionalProgramId);
 	}
 
 	GraphicId createDebugForwardProgram(bool a_useRig)

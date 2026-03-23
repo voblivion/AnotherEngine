@@ -21,5 +21,6 @@ namespace vob::aoegl
 		glm::vec3 color = glm::vec3{ 1.0f };
 		float innerAngle = 0.0f;
 		float outerAngle = 0.0f;
+		float shadowLightSize = 0.5f;
 	};
 }
