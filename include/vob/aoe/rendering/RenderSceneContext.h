@@ -4,6 +4,7 @@
 
 #include <vob/misc/std/enum_traits.h>
 #include <vob/misc/std/bounded_vector.h>
+#include <vob/misc/std/enum_map.h>
 
 #include <chrono>
 
@@ -32,6 +33,111 @@ namespace vob::aoegl
 		glm::mat4 model;
 	};
 
+	enum class RenderPass : uint8_t
+	{
+		LightClustering = 0,
+		ShadowMaps,
+		DepthPrePass,
+		DirectOpaque,
+		SSAO,
+		SSR,
+		OpaqueComposition,
+		Translucent,
+		PostProcesses
+	};
+
+	struct NewRenderSceneContext
+	{
+
+		// Parameters
+		int32_t lightsCapacity = 2048;
+		glm::ivec2 lightClusterTileSize = glm::ivec2{ 16 };
+		int32_t lightClusterZCount = 24;
+		int32_t lightClusterCapacity = 64;
+		int32_t lightClusteringWorkGroupSize = 128;
+
+		// Uniform Buffer Objects
+		GraphicId globalParamsUbo;
+		GraphicId viewParamsUbo;
+		GraphicId lightViewParamsUbo;
+		GraphicId lightingParamsUbo;
+		GraphicId shadowParamsUbo;
+		GraphicId ssaoParamsUbo;
+		GraphicId ssrParamsUbo = k_invalidId;
+		GraphicId debugParamsUbo;
+
+		// Shader Storage Buffer Objects
+		GraphicId lightsSsbo;
+		GraphicId lightClusterSizesSsbo;
+		GraphicId lightClusterIndicesSsbo;
+
+		// Framebuffers
+		GraphicId depthFramebuffer;
+
+		GraphicId ssaoFramebuffer;
+		GraphicId ambientOcclusionTexture;;
+
+		struct SpotLightShadowMapTarget
+		{
+			glm::ivec2 resolution;
+			GraphicId framebuffer;
+			GraphicId depthTexture;
+		};
+		// TODO: sun's cascading shadow map
+		std::array<SpotLightShadowMapTarget, k_spotLightShadowMapsCapacity> spotLightShadowMapTargets;
+
+		glm::ivec2 shadingResolution;
+		GraphicId directOpaqueFramebuffer;
+		GraphicId directOpaqueColorTexture;
+		GraphicId opaqueNormalTexture;
+		GraphicId opaqueSurfaceTexture; // r = reflectance, g = roughness (for now)
+		GraphicId opaqueGeometricNormalTexture;
+		GraphicId opaqueDepthTexture;
+
+		// TODO: don't like name `lit`
+
+		glm::ivec2 ssrResolution;
+		int32_t ssrMipLevels;
+		GraphicId ssrFramebuffer;
+		GraphicId ssrColorTexture;
+
+		GraphicId finalFramebuffer;
+		GraphicId finalColorTexture;
+
+		glm::ivec2 postProcessResolution;
+		struct PostProcessTarget
+		{
+			GraphicId framebuffer;
+			GraphicId colorTexture;
+		};
+		std::array<PostProcessTarget, 2> postProcessTargets;
+
+		// Programs
+		GraphicId lightClusteringProgram; // out: none
+		GraphicId staticShadowMapProgram;
+		GraphicId riggedShadowMapProgram;
+		GraphicId staticDepthProgram; // out: directOpaqueFramebuffer
+		GraphicId riggedDepthProgram; // out: directOpaqueFramebuffer
+		GraphicId ssaoProgram; // out: litOpaqueFramebuffer
+		GraphicId ssrProgram; // out: ssrFramebuffer
+		GraphicId opaqueCompositionProgram; // out: finalFramebuffer
+		struct PostProcess
+		{
+			GraphicId program;
+			GraphicId ubo;
+
+		};
+		std::vector<PostProcess> postProcesses;
+		GraphicId debugProgram;
+
+		// Other
+		GraphicId postProcessVao;
+		std::array<GraphicId, 2> totalTimerQueries;
+		mistd::enum_map<RenderPass, GraphicId> renderPassTimerQueries;
+		GraphicId environmentCubeMap;
+
+	};
+
 	struct RenderSceneContext
 	{
 		struct PostProcess
@@ -41,8 +147,18 @@ namespace vob::aoegl
 		};
 		std::vector<PostProcess> postProcesses;
 
-		GraphicId postProcessUbo = k_invalidId;
-		GraphicId postProcessProgram = k_invalidId;
+		GraphicId ssrUbo;
+		GraphicId ssrProgram;
+		GraphicId reflectionProgram;
+
+		// Temporary : could ping pong
+		GraphicId ssrFramebuffer;
+		GraphicId ssrColorTexture;
+		GraphicId reflectionFramebuffer;
+		GraphicId reflectionColorTexture;
+
+		mistd::enum_map<RenderPass, GraphicId> renderPassTimerQueries;
+		
 		std::array<GraphicId, 10> timerQueries;
 		glm::ivec2 sceneFramebufferSize;
 		int32_t maxLightCount;
@@ -51,6 +167,8 @@ namespace vob::aoegl
 
 		GraphicId sceneFramebuffer;
 		GraphicId sceneColorTexture;
+		GraphicId sceneNormalTexture;
+		GraphicId sceneSurfaceTexture;
 		GraphicId sceneDepthTexture;
 		GraphicId postProcessFramebuffer;
 		GraphicId postProcessColorTexture;
@@ -71,19 +189,18 @@ namespace vob::aoegl
 		glm::vec3 sunDirection = glm::normalize(glm::vec3{ 0.3f, -0.6f, 0.7f });
 		GraphicId lightViewParamsUbo = k_invalidId;
 		ShadowMap sunShadowMap;
-		mistd::bounded_vector<ShadowMap, k_maxSpotLightShadowMapCount> spotShadowMaps;
+		mistd::bounded_vector<ShadowMap, k_maxSpotLightShadowMapCount> spotLightShadowMaps;
 
 		// Common
 		GraphicId globalParamsUbo = k_invalidId;
 		GraphicId viewParamsUbo = k_invalidId;
-		GraphicId lightParamsUbo = k_invalidId;
+		GraphicId lightingParamsUbo = k_invalidId;
+		GraphicId shadowParamsUbo = k_invalidId;
 		GraphicId lightsSsbo = k_invalidId;
 		GraphicId lightClusterSizesSsbo = k_invalidId;
 		GraphicId lightClusterIndicesSsbo = k_invalidId;
 
 		// Debug
-		GraphicId staticDebugForwardProgram = k_invalidId;
-		GraphicId riggedDebugForwardProgram = k_invalidId;
 		GraphicId debugPostProcessProgram = k_invalidId;
 		GraphicId debugParamsUbo = k_invalidId;
 

@@ -30,7 +30,7 @@ namespace vob::aoegl
 
 		struct SpinningWheel
 		{
-			float wheelRadius = 0.0f;
+			int32_t wheelIndex = 0;
 			int32_t boneIndex = 0;
 			int32_t parentBoneIndex = 0;
 			glm::mat4 invBasePose = glm::mat4{ 1.0f };

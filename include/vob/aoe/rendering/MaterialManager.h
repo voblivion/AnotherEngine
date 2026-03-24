@@ -21,12 +21,12 @@ namespace vob::aoegl
 			return m_materials[a_materialIndex];
 		}
 
-		inline int32_t emplaceMaterial(GraphicId a_paramsUbo, std::vector<GraphicId> a_textureIds = {})
+		inline int32_t emplaceMaterial(GraphicId a_paramsUbo, mistd::bounded_vector<GraphicId, k_materialTexturesCapacity> a_textureIds = {})
 		{
 			if (m_freeIndices.empty())
 			{
 				auto const materialIndex = mistd::isize(m_materials);
-				m_materials.emplace_back(a_paramsUbo, std::move(a_textureIds));
+				m_materials.emplace_back(a_paramsUbo, a_textureIds);
 				m_inUses.emplace_back(true);
 				return materialIndex;
 			}
@@ -36,7 +36,7 @@ namespace vob::aoegl
 			assert(!m_inUses[materialIndex]);
 			m_inUses[materialIndex] = true;
 			m_freeIndices.pop_back();
-			m_materials[materialIndex] = Material{ a_paramsUbo, std::move(a_textureIds) };
+			m_materials[materialIndex] = Material{ a_paramsUbo, a_textureIds };
 			return materialIndex;
 		}
 

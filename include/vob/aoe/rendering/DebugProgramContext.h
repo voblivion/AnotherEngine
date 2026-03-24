@@ -25,8 +25,20 @@ namespace vob::aoegl
 			std::filesystem::path shadingSourcePath;
 		};
 
+		struct PostProcessProgram
+		{
+			std::string_view name;
+			GraphicId program;
+			std::filesystem::path sourcePath;
+		};
+
 		aoedt::filesystem_indexer filesystemIndexer;
 		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
+		std::vector<ForwardProgram> oldForwardPrograms;
 		std::vector<ForwardProgram> forwardPrograms;
+		GraphicId ssaoProgram;
+		GraphicId ssrProgram;
+		GraphicId opaqueCompositionProgram;
+		std::vector<PostProcessProgram> oldPostProcesses;
 	};
 }

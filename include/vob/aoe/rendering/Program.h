@@ -20,9 +20,4 @@ namespace vob::aoegl
 	{
 
 	};
-
-	struct PostProcessProgram : public Program
-	{
-		GraphicUniformLocation windowSize = k_invalidUniformLocation;
-	};
 }

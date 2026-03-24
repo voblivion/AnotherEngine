@@ -29,9 +29,7 @@ namespace vob::aoegl
 		auto const& program = debugRenderContext.debugProgram;
 
 		glClearDepth(1.0);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
+		glDisable(GL_DEPTH_TEST);
 		glUseProgram(program.id);
 		glLineWidth(2);
 

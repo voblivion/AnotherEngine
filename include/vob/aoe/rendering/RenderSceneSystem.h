@@ -9,7 +9,6 @@
 #include "vob/aoe/rendering/LightComponent.h"
 #include "vob/aoe/rendering/MaterialManagerContext.h"
 #include "vob/aoe/rendering/ModelComponent.h"
-#include "vob/aoe/rendering/PostProcessRenderContext.h"
 #include "vob/aoe/rendering/RenderSceneContext.h"
 #include "vob/aoe/rendering/SceneTextureContext.h"
 
@@ -31,6 +30,7 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<CameraDirectorContext> m_cameraDirectorContext;
 		aoeng::EcsWorldContextRef<RenderSceneContext> m_renderSceneContext;
+		aoeng::EcsWorldContextRef<NewRenderSceneContext> m_newRenderSceneContext;
 		aoeng::EcsWorldContextRef<MaterialManagerContext> m_materialManagerContext;
 		aoeng::EcsWorldContextRef<DebugProgramContext const> m_debugProgramContext;
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
@@ -45,5 +45,7 @@ namespace vob::aoegl
 		GraphicUniformLocation m_debugModeLoc = 0;
 		GraphicId m_sceneVao = k_invalidId;
 		GraphicId m_sceneVbo = k_invalidId;
+
+		bool executeNew(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 	};
 }

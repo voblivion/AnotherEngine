@@ -51,3 +51,8 @@
 /imgui.ini
 *.i
 /Manager.i
+/tools/GLSLGenerator/bin/x64
+/tools/GLSLGenerator/tmp/x64
+/tools/GLSLGenerator/GLSLGenerator.vcxproj
+/tools/GLSLGenerator/GLSLGenerator.vcxproj.filters
+/tools/GLSLGenerator/GLSLGenerator.vcxproj.user

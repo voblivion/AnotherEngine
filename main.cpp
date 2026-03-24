@@ -55,6 +55,8 @@ void glfwErrorCallback(int code, const char* description)
 
 int main()
 {
+	std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
+
 	// Create data
 	aoe::DataHolder data;
 

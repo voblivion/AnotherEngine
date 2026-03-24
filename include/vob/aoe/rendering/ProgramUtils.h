@@ -10,21 +10,39 @@
 
 namespace vob::aoegl
 {
-	VOB_AOE_API GraphicId createProgram(
+	// TODO: very old, remove please
+	void createProgram(ProgramData const& a_programData, DebugProgram& a_program);
+
+	GraphicId createProgram(
 		std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId = k_invalidId);
 
-	VOB_AOE_API GraphicId createComputeProgram(std::string_view a_computeShaderSource);
+	// TODO: somewhat old, remove
+	GraphicId oldCreateLightClusteringProgram(int32_t a_workGroupSize = 128);
 
-	VOB_AOE_API void createProgram(ProgramData const& a_programData, DebugProgram& a_program);
+	GraphicId oldCreateDepthProgram(bool a_useRig);
 
-	VOB_AOE_API void createProgram(ProgramData const& a_programData, PostProcessProgram& a_program);
-
-	VOB_AOE_API GraphicId createLightClusteringProgram(int32_t a_workGroupSize = 128);
-
-	VOB_AOE_API GraphicId createDepthProgram(bool a_useRig);
-
-	VOB_AOE_API GraphicId createForwardProgram(
+	GraphicId oldCreateForwardProgram(
 		std::string_view a_shadingSource, bool a_useRig, GraphicId optionalProgramId = k_invalidId);
 
-	VOB_AOE_API GraphicId createDebugForwardProgram(bool a_useRig);
+	GraphicId oldCreatePostProcessProgram(
+		std::string_view a_postProcessSource, GraphicId optionalProgramId = k_invalidId);
+
+	// TODO: remove what's above
+	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createDepthProgram(bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+	
+	GraphicId createShadowMapProgram(bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createSsaoProgram(GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createSsrProgram(GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createOpaqueCompositionProgram(GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createDebugProgram(GraphicId a_optionalProgramId = k_invalidId);
 }

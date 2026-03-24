@@ -33,8 +33,7 @@ namespace vob::aoegl
 
 			for (const auto& steeringWheel : carRigCmp.steeringWheels)
 			{
-				auto const& wheelState = carControllerCmp.wheels[steeringWheel.wheelIndex];
-				auto const steerTransform = glm::rotate(glm::mat4(1.0f), wheelState.steeringAngle, glm::vec3{ 0.0f, 0.0f, 1.0f });
+				auto const steerTransform = glm::rotate(glm::mat4(1.0f), carControllerCmp.state.steering * 0.52f, glm::vec3{ 0.0f, 0.0f, 1.0f });
 				auto const& parentBoneTransform = carRigCmp.boneTransforms[steeringWheel.parentBoneIndex];
 				carRigCmp.boneTransforms[steeringWheel.boneIndex] = parentBoneTransform * steeringWheel.baseTransformRelativeParent * steerTransform;
 				carRigCmp.bones[steeringWheel.boneIndex] = carRigCmp.boneTransforms[steeringWheel.boneIndex] * steeringWheel.invBasePose;
@@ -42,10 +41,14 @@ namespace vob::aoegl
 
 			for (auto& spinningWheel : carRigCmp.spinningWheels)
 			{
-				spinningWheel.distance += glm::dot(linearVelocityCmp.value, forward) * elapsedTime;
-				spinningWheel.distance = std::fmod(spinningWheel.distance, 2.0f * std::numbers::pi_v<float> *spinningWheel.wheelRadius);
+				auto const& wheelCol = carColliderCmp.wheels[spinningWheel.wheelIndex];
+				// TODO: approximate .. need to account for suspension dir too .. whatever.
+				auto const radius = glm::dot(wheelCol.radiuses, rotation * glm::vec3{ 0.0f, 1.0f, 0.0f });
+				auto const spin = carControllerCmp.state.currentGearIndex != 0 ? 1.0f : -1.0f;
+				spinningWheel.distance += spin * carControllerCmp.state.rotationSpeed * radius * elapsedTime;
+				spinningWheel.distance = std::fmod(spinningWheel.distance, 2.0f * std::numbers::pi_v<float> *radius);
 				auto const spinTransform = glm::rotate(
-					glm::mat4(1.0f), spinningWheel.distance / spinningWheel.wheelRadius, glm::vec3{ 0.0f, 1.0f, 0.0f });
+					glm::mat4(1.0f), spinningWheel.distance / radius, glm::vec3{ 0.0f, 1.0f, 0.0f });
 				auto const& parentBoneTransform = carRigCmp.boneTransforms[spinningWheel.parentBoneIndex];
 				carRigCmp.boneTransforms[spinningWheel.boneIndex] = parentBoneTransform * spinningWheel.baseTransformRelativeParent * spinTransform;
 				carRigCmp.bones[spinningWheel.boneIndex] = carRigCmp.boneTransforms[spinningWheel.boneIndex] * spinningWheel.invBasePose;

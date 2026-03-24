@@ -21,6 +21,7 @@ namespace vob::aoegl
 			Normals,
 			LocalNormals,
 			UVs,
+			SSR,
 			ShadowSun,
 			ShadowSpot0,
 			ShadowSpot1,
@@ -28,6 +29,7 @@ namespace vob::aoegl
 			ShadowSpot3,
 			ShadowSpot4,
 			ShadowSpot5,
+			Color,
 			DebugOnly,
 			Count
 		};
@@ -126,6 +128,17 @@ namespace vob::aoegl
 		float spotInnerAngleCos;
 		int32_t spotShadowMapIndex;
 		float _unused0;
+	};
+
+	struct alignas(16) SsrParams
+	{
+		int mode = 0;
+		int log2Step = 6;
+		int log2SubStep = 3;
+		float maxRangeRatio = 1.0f;
+		float thicknessRatio = 0.05f;
+		float initialBiasRatio = 0.01f;
+		float maxThickness = 1.0f;
 	};
 
 	struct DebugParams
