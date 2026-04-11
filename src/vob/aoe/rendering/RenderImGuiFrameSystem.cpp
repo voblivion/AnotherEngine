@@ -12,7 +12,7 @@ namespace vob::aoegl
 		m_imGuiContext.init(a_wdar);
 	}
 
-	void RenderImGuiFrameSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
+	void RenderImGuiFrameSystem::execute([[maybe_unused]] aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		ImGui::Render();
 		if (ImGui::GetDrawData()->CmdListsCount > 0)

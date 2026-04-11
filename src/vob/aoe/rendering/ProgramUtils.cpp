@@ -22,7 +22,7 @@
 #define VOB_AOEGL_CORE_SHADER_DIR_OLD "data/shaders/old/"
 #endif
 
-#pragma optimize("", off)
+
 namespace vob::aoegl
 {
 #if !defined(NDEBUG) || defined(AOEGL_DEBUG)
@@ -70,7 +70,7 @@ namespace vob::aoegl
 		return shaderId;
 	}
 
-	GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId)
+	GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
 	{
 		auto const vertexShaderId = createShader(GL_VERTEX_SHADER, a_vertexShaderSource);
 		if (vertexShaderId == k_invalidId)
@@ -85,7 +85,7 @@ namespace vob::aoegl
 			return k_invalidId;
 		}
 
-		auto const programId = optionalProgramId != k_invalidId ? optionalProgramId : glCreateProgram();
+		auto const programId = a_optionalProgramId != k_invalidId ? a_optionalProgramId : glCreateProgram();
 		glAttachShader(programId, vertexShaderId);
 		glAttachShader(programId, fragmentShaderId);
 		glLinkProgram(programId);
@@ -184,7 +184,7 @@ namespace vob::aoegl
 
 	namespace
 	{
-		GraphicId createComputeProgram(std::string_view a_computeShaderSource)
+		GraphicId createComputeProgram(std::string_view a_computeShaderSource, GraphicId a_optionalProgramId = k_invalidId)
 		{
 			auto const computeShaderId = createShader(GL_COMPUTE_SHADER, a_computeShaderSource);
 			if (computeShaderId == k_invalidId)
@@ -192,7 +192,7 @@ namespace vob::aoegl
 				return k_invalidId;
 			}
 
-			auto const programId = glCreateProgram();
+			auto const programId = a_optionalProgramId != k_invalidId ? a_optionalProgramId : glCreateProgram();
 			glAttachShader(programId, computeShaderId);
 			glLinkProgram(programId);
 			glDeleteShader(computeShaderId);
@@ -401,7 +401,7 @@ namespace vob::aoegl
 		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/light_clustering_shader.glsl");
 		setDefines(computeShaderSource, defines);
 		processIncludes(computeShaderSource);
-		return createComputeProgram(computeShaderSource);
+		return createComputeProgram(computeShaderSource, a_optionalProgramId);
 	}
 
 	GraphicId createGeometryProgram(

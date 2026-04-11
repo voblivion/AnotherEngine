@@ -63,6 +63,18 @@ namespace vob::aoest
 				auto const force = softFollowComponent.elasticity * toTargetPosition - softFollowComponent.damping * softFollowComponent.velocity;
 				position += softFollowComponent.velocity * (elapsedTime / 2);
 				softFollowComponent.velocity += force / softFollowComponent.mass * elapsedTime;
+				if (std::abs(softFollowComponent.velocity.x) > 1e10f)
+				{
+					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.x);
+				}
+				if (std::abs(softFollowComponent.velocity.y) > 1e10f)
+				{
+					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.y);
+				}
+				if (std::abs(softFollowComponent.velocity.z) > 1e10f)
+				{
+					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.z);
+				}
 				position += softFollowComponent.velocity * (elapsedTime / 2);
 			}
 

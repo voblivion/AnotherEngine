@@ -40,9 +40,15 @@ namespace vob::aoest
 			auto const sourceRotation = interpolatedRotation.rotations[(interpolatedRotation.endIndex + sourceOffset) % interpolatedTime.times.size()];
 			auto const targetRotation = interpolatedRotation.rotations[(interpolatedRotation.endIndex + targetOffset) % interpolatedTime.times.size()];
 
+			auto const updateDuration = std::chrono::duration<float>(targetTime - sourceTime).count();
+			if (updateDuration < std::numeric_limits<float>::epsilon())
+			{
+				position = targetPosition;
+				rotation = targetRotation;
+				continue;
+			}
 
-			auto const progressRatio = std::chrono::duration<float>(currentTime - sourceTime).count()
-				/ std::chrono::duration<float>(targetTime - sourceTime).count();
+			auto const progressRatio = std::chrono::duration<float>(currentTime - sourceTime).count() / updateDuration;
 
 			position = sourcePosition + progressRatio * (targetPosition - sourcePosition);
 			rotation = glm::slerp(sourceRotation, targetRotation, progressRatio);

@@ -15,9 +15,9 @@ namespace vob::aoein
 
 		virtual float getValue() const = 0;
 
-		virtual void processEvent(aoewi::WindowEvent const& a_windowEvent) {};
+		virtual void processEvent([[maybe_unused]] aoewi::WindowEvent const& a_windowEvent) {};
 
-		virtual void update(aoewi::IWindow const& a_window, float a_dt) {};
+		virtual void update([[maybe_unused]] aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt) {};
 	};
 
 	struct MouseAxisInputValueBinding : public AInputValueBinding
@@ -70,7 +70,7 @@ namespace vob::aoein
 			return m_value;
 		}
 
-		void update(aoewi::IWindow const& a_window, float a_dt) override
+		void update([[maybe_unused]] aoewi::IWindow const& a_window, float a_dt) override
 		{
 			if (m_speed > 0.0f)
 			{
@@ -188,7 +188,7 @@ namespace vob::aoein
 			return m_value;
 		}
 
-		void update(aoewi::IWindow const& a_window, float a_dt) override
+		void update(aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt) override
 		{
 			if (a_window.isGamepadPresent(m_gamepadIndex))
 			{
@@ -275,9 +275,9 @@ namespace vob::aoein
 	{
 		virtual ~AInputEventBinding() = default;
 
-		virtual bool processEvent(aoewi::WindowEvent const& a_windowEvent) { return false; };
+		virtual bool processEvent([[maybe_unused]] aoewi::WindowEvent const& a_windowEvent) { return false; };
 
-		virtual bool update(aoewi::IWindow const& a_window, float a_dt) { return false; }
+		virtual bool update([[maybe_unused]] aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt) { return false; }
 	};
 
 	struct MouseButtonEventBinding : public AInputEventBinding

@@ -48,7 +48,12 @@ namespace vob::aoeng
 				TracyLine,
 				0 /* color */
 			};
-			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true /* active */);
+
+#if defined TRACY_HAS_CALLSTACK && defined TRACY_CALLSTACK
+			tracy::ScopedZone varname(&loc, TRACY_CALLSTACK, true);
+#else
+			tracy::ScopedZone varname(&loc, true);
+#endif
 #endif
 			m_system.execute(a_wdap);
 		}

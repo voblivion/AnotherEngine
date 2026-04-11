@@ -47,7 +47,7 @@ namespace vob::aoeng
 	class EcsWorldContextRef
 	{
 	public:
-		void init(EcsWorldDataAccessRegistrar& a_wdar) const
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
 		{
 			// TODO: notify wdar of resource used.
 		}
@@ -62,7 +62,7 @@ namespace vob::aoeng
 	class EcsWorldViewRef
 	{
 	public:
-		void init(EcsWorldDataAccessRegistrar& a_wdar) const
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
 		{
 			// TODO: notify wdar of resource used.
 		}
@@ -82,7 +82,7 @@ namespace vob::aoeng
 	class EcsWorldQueryQueueRef
 	{
 	public:
-		void init(EcsWorldDataAccessRegistrar& a_wdar) const
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
 		{
 			// TODO: notify wdar of resource used.
 		}
@@ -96,7 +96,7 @@ namespace vob::aoeng
 	class EcsWorldGameControllerRef
 	{
 	public:
-		void init(EcsWorldDataAccessRegistrar& a_wdar) const
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
 		{
 			// TODO: notify wdar of resource used.
 		}

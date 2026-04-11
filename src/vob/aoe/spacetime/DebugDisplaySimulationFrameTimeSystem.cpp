@@ -32,14 +32,16 @@ namespace vob::aoest
 					debugSimulationFrameTimeHistoryContext.durationsInMs.begin(),
 					debugSimulationFrameTimeHistoryContext.durationsInMs.end()));
 				ImPlot::SetupAxesLimits(0, debugSimulationFrameTimeHistoryContext.historyLength, 0, maxTickDuration, ImPlotCond_Always);
+				ImPlotSpec spec;
+				spec.Offset = debugSimulationFrameTimeHistoryContext.nextIndex;
+				spec.Flags = ImPlotLineFlags_None;
 				ImPlot::PlotLine(
 					"##TickDurations",
 					debugSimulationFrameTimeHistoryContext.durationsInMs.data(),
 					debugSimulationFrameTimeHistoryContext.historyLength,
 					1.0,  // xscale
 					0.0,  // xstart
-					ImPlotLineFlags_None,
-					debugSimulationFrameTimeHistoryContext.nextIndex);
+					spec);
 				ImPlot::EndPlot();
 			}
 		}

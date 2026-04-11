@@ -86,7 +86,7 @@ namespace vob::aoein
 		using AxisId = typename decltype(axes)::BindingId;
 		using SwitchId = typename decltype(switches)::BindingId;
 
-		static constexpr AxisId kInvalidAxisId = -1;
+		static constexpr AxisId kInvalidAxisId = static_cast<uint32_t>(-1);
 		static constexpr SwitchId kInvalidSwitchId = -1;
 
 		void update(Inputs const& a_inputs, misph::measure_time const a_elapsedTime)

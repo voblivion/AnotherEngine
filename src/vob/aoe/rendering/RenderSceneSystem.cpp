@@ -76,8 +76,6 @@ namespace vob::aoegl
 		auto const tanHalfFov = std::tan(a_viewParams.fov * 0.5f);
 		auto const nearHalfHeight = a_viewParams.nearClip * tanHalfFov;
 		auto const nearHalfWidth = nearHalfHeight * a_viewParams.aspectRatio;
-		auto const farHalfHeight = a_viewParams.farClip * tanHalfFov;
-		auto const farHalfWidth = farHalfHeight * a_viewParams.aspectRatio;
 
 		auto const viewPosition = glm::vec3(a_viewParams.viewToWorld[3]);
 		auto const leftPlaneNormal = glm::normalize(glm::cross(nearCenter - cameraRight * nearHalfWidth - viewPosition, cameraUp));
@@ -146,8 +144,6 @@ namespace vob::aoegl
 		auto const tanHalfFov = std::tan(a_fov * 0.5f);
 		auto const nearHalfHeight = a_nearClip * tanHalfFov;
 		auto const nearHalfWidth = nearHalfHeight * a_aspectRatio;
-		auto const farHalfHeight = a_farClip * tanHalfFov;
-		auto const farHalfWidth = farHalfHeight * a_aspectRatio;
 
 		auto const leftPlaneNormal = glm::normalize(glm::cross(nearCenter - cameraRight * nearHalfWidth - a_position, cameraUp));
 		auto const rightPlaneNormal = glm::normalize(glm::cross(cameraUp, nearCenter + cameraRight * nearHalfWidth - a_position));
@@ -259,7 +255,7 @@ namespace vob::aoegl
 					a_pushChangeFunc(a_newState);
 					a_currentState = a_newState;
 				}
-				else if (t_expectedChange == GpuStateChange::LikelyYes)
+				else if constexpr (t_expectedChange == GpuStateChange::LikelyYes)
 				{
 					a_pushChangeFunc(a_newState);
 					a_currentState = a_newState;
@@ -420,7 +416,7 @@ namespace vob::aoegl
 			}
 
 			template<GpuStateChange t_expectedChange>
-			void useProgram(GraphicId a_program, bool expectChange = true)
+			void useProgram(GraphicId a_program)
 			{
 				changeState<t_expectedChange>(m_program, a_program, [](auto program) { glUseProgram(program); });
 			}
@@ -577,7 +573,6 @@ namespace vob::aoegl
 		}
 	}
 
-#pragma optimize("", off)
 	bool RenderSceneSystem::executeNew(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto const& renderSceneCtx = m_newRenderSceneContext.get(a_wdap);
@@ -1329,7 +1324,6 @@ namespace vob::aoegl
 		}
 #ifndef WIP
 		// TODO: where do these go?
-		constexpr int32_t kLightClusterWorkGroupSize = 128;
 		constexpr GraphicInt k_viewPostProcessConfigUboLocation = 0;
 		constexpr GraphicInt k_lightPostProcessConfigUboLocation = 1;
 		constexpr GraphicInt k_customPostProcessConfigUboLocation = 2;

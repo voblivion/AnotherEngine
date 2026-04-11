@@ -15,6 +15,6 @@ namespace vob::aoeng
 	public:
 		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar) {}
 
-		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdp) const { FrameMark; };
+		void execute([[maybe_unused]] aoeng::EcsWorldDataAccessProvider const& a_wdp) const { FrameMark; };
 	};
 }

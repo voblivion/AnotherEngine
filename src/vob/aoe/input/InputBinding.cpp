@@ -3,7 +3,7 @@
 
 namespace vob::aoein
 {
-	bool GamepadButtonEventBinding::update(aoewi::IWindow const& a_window, float a_dt)
+	bool GamepadButtonEventBinding::update(aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt)
 	{
 		auto const wasPressed = m_isPressed;
 		if (a_window.isGamepadPresent(m_gamepadIndex))

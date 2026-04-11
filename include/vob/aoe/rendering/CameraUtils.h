@@ -56,8 +56,6 @@ namespace vob::aoegl
 		auto const tanHalfFov = std::tan(a_cameraComponent.fov * 0.5f);
 		auto const nearHalfHeight = a_cameraComponent.nearClip * tanHalfFov;
 		auto const nearHalfWidth = nearHalfHeight * a_aspectRatio;
-		auto const farHalfHeight = a_cameraComponent.farClip * tanHalfFov;
-		auto const farHalfWidth = farHalfHeight * a_aspectRatio;
 
 		auto const leftPlaneNormal = glm::normalize(glm::cross(nearCenter - cameraRight * nearHalfWidth - a_cameraPos, cameraUp));
 		auto const rightPlaneNormal = glm::normalize(glm::cross(cameraUp, nearCenter + cameraRight * nearHalfWidth - a_cameraPos));

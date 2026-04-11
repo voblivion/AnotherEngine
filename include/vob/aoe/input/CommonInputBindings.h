@@ -24,7 +24,7 @@ namespace vob::aoein
 			return m_isPressed;
 		}
 
-		void update(Inputs const& a_inputs, misph::measure_time const a_elapsedTime) override
+		void update(Inputs const& a_inputs, [[maybe_unused]] misph::measure_time const a_elapsedTime) override
 		{
 			m_hasChanged = m_switchReference.hasChanged(a_inputs);
 			m_isPressed = m_switchReference.isPressed(a_inputs);
@@ -118,7 +118,7 @@ namespace vob::aoein
 			return m_value;
 		}
 
-		void update(Inputs const& a_inputs, misph::measure_time const a_elapsedTime) override
+		void update(Inputs const& a_inputs, [[maybe_unused]] misph::measure_time const a_elapsedTime) override
 		{
 			auto const oldValue = m_value;
 			m_value = m_axisReference.getValue(a_inputs) * m_sensitivity;

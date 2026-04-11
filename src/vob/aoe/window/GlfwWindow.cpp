@@ -553,10 +553,9 @@ namespace vob::aoewi
 	}
 
 	void GlfwWindow::frameBufferSizeCallback(
-		GLFWwindow* a_nativeHandle
-		, GLint a_width
-		, GLint a_height
-	)
+		[[maybe_unused]] GLFWwindow* a_nativeHandle,
+		[[maybe_unused]] GLint a_width,
+		[[maybe_unused]] GLint a_height)
 	{
 	}
 
@@ -576,6 +575,7 @@ namespace vob::aoewi
 			return;
 		}
 
+		std::cerr << "[";
 		switch (a_type)
 		{
 		case GL_DEBUG_TYPE_ERROR:

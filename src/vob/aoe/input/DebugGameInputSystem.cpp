@@ -90,14 +90,10 @@ namespace vob::aoein
 						{
 							ImPlot::SetupAxesLimits(
 								0, debugGameInputCtx.historyLength, debugValue.range.first, debugValue.range.second, ImPlotCond_Always);
-							ImPlot::PlotLine(
-								"##Values",
-								debugValue.values.data(),
-								debugGameInputCtx.historyLength,
-								1.0,  // xscale
-								0.0,  // xstart
-								ImPlotLineFlags_None,
-								debugGameInputCtx.nextIndex);
+							ImPlotSpec spec;
+							spec.Offset = debugGameInputCtx.nextIndex;
+							spec.Flags = ImPlotLineFlags_None;
+							ImPlot::PlotLine("##Values", debugValue.values.data(), debugGameInputCtx.historyLength, 1.0 /* xscale */, 0.0 /* xstart */, spec);
 						}
 						ImPlot::EndPlot();
 					}
