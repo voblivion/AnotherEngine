@@ -25,7 +25,10 @@ target_include_directories(implot PUBLIC external/implot)
 target_link_libraries(implot PUBLIC imgui)
 
 # AnotherEngine
-file(GLOB_RECURSE AOE_SOURCES CONFIGURE_DEPENDS src/vob/aoe/*.cpp)
+file(GLOB_RECURSE AOE_SOURCES CONFIGURE_DEPENDS
+    include/vob/aoe/*.*
+    src/vob/aoe/*.cpp
+)
 
 add_library(AnotherEngine STATIC ${AOE_SOURCES})
 add_library(vob::aoe ALIAS AnotherEngine)
@@ -39,7 +42,9 @@ target_include_directories(AnotherEngine PUBLIC
 target_compile_features(AnotherEngine PUBLIC cxx_std_23)
 
 target_compile_definitions(AnotherEngine PUBLIC
-    $<$<CONFIG:Profiling>:TRACY_ENABLE>
+    GLM_ENABLE_EXPERIMENTAL
+    GLM_FORCE_CXX17
+    GLM_FORCE_SIZE_T_LENGTH
 )
 
 target_link_libraries(AnotherEngine PUBLIC
@@ -53,3 +58,10 @@ target_link_libraries(AnotherEngine PUBLIC
     glfw
     glm::glm
 )
+
+add_executable(ShaderExporter tools/ShaderExporter/main.cpp)
+target_compile_features(ShaderExporter PRIVATE cxx_std_23)
+
+if(MSVC)
+    target_compile_options(AnotherEngine PRIVATE /W4 /wd4324)
+endif()
