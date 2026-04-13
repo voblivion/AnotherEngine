@@ -14,7 +14,7 @@ namespace vob::aoest
 	void DebugDisplaySimulationFrameTimeSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto& debugSimulationFrameTimeHistoryContext = m_debugSimulationFrameTimeHistoryContext.get(a_wdap);
-		if (ImGui::Begin("Fixed Rate Limiting"))
+		if (ImGui::Begin("Debug Simulation Frame Time"))
 		{
 			ImGui::InputInt("History Length", &debugSimulationFrameTimeHistoryContext.historyLength);
 			if (debugSimulationFrameTimeHistoryContext.durationsInMs.size() != debugSimulationFrameTimeHistoryContext.historyLength)

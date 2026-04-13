@@ -76,6 +76,11 @@ namespace vob::aoest
 					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.z);
 				}
 				position += softFollowComponent.velocity * (elapsedTime / 2);
+
+				if (glm::length(position - targetPosition) > 100.0f)
+				{
+					position = targetPosition + 100.0f * glm::normalize(position - targetPosition);
+				}
 			}
 
 			softFollowComponent.prevTargetPosition = followedPosition;
