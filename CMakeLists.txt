@@ -40,6 +40,7 @@ target_include_directories(AnotherEngine PUBLIC
 )
 
 target_compile_features(AnotherEngine PUBLIC cxx_std_23)
+target_compile_options(AnotherEngine PRIVATE /Zc:preprocessor)
 
 target_compile_definitions(AnotherEngine PUBLIC
     GLM_ENABLE_EXPERIMENTAL
