@@ -13,27 +13,11 @@
 
 namespace vob::aoest
 {
-	struct position : public glm::vec3
-	{
-		template <typename... TArgs>
-		position(TArgs&&... a_args)
-			: glm::vec3{ std::forward<TArgs>(a_args)... }
-		{}
-	};
-
 	struct Position : public glm::vec3
 	{
 		template <typename... TArgs>
 		Position(TArgs&&... a_args)
 			: glm::vec3{ std::forward<TArgs>(a_args)... }
-		{}
-	};
-
-	struct rotation : public glm::quat
-	{
-		template <typename... TArgs>
-		rotation(TArgs&&... a_args)
-			: glm::quat{ std::forward<TArgs>(a_args)... }
 		{}
 	};
 
@@ -58,12 +42,6 @@ namespace vob::aoest
 	{
 		auto const transformedPosition = a_transform * glm::vec4{ a_position, 1.0f };
 		return glm::vec3{ transformedPosition } / transformedPosition.w;
-	}
-
-	inline glm::mat4x3 combine4x3(glm::vec3 const& a_position, glm::quat const& a_rotation)
-	{
-		auto const rotationMatrix = glm::mat3_cast(a_rotation);
-		return glm::mat4x3(rotationMatrix[0], rotationMatrix[1], rotationMatrix[2], a_position);
 	}
 
 	inline glm::vec3 normalize_safe(glm::vec3 const& a_vector, float a_epsilon = glm::epsilon<float>(), glm::vec3 const& a_defaultVector = glm::vec3{ 0.0f })
