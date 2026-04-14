@@ -25,12 +25,15 @@ namespace vob::aoegl
 
 		auto& debugMeshContext = m_debugMeshContext.get(a_wdap);
 
-		for (auto [entity, position, rotation, lightCmp] : m_lightEntities.get(a_wdap).each())
+		for (auto [entity, positionCmp, rotationCmp, lightCmp] : m_lightEntities.get(a_wdap).each())
 		{
-			debugMeshContext.addSphere(position, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0f });
+			debugMeshContext.addSphere(positionCmp.value, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0f });
 			if (lightCmp.type == LightComponent::Type::Spot)
 			{
-				debugMeshContext.addLine(position, position + rotation * (lightCmp.radius * glm::vec3{ 0.0f, 0.0f, -1.0f }), aoegl::k_gray);
+				debugMeshContext.addLine(
+					positionCmp.value,
+					positionCmp.value + rotationCmp.value * (lightCmp.radius * glm::vec3{ 0.0f, 0.0f, -1.0f }),
+					aoegl::k_gray);
 			}
 		}
 	}

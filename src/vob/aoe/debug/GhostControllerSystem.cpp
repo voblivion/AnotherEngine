@@ -1,6 +1,8 @@
-#include <vob/aoe/debug/GhostControllerSystem.h>
+#include "vob/aoe/debug/GhostControllerSystem.h"
 
-#include <glm/gtx/euler_angles.hpp>
+#include "vob/aoe/spacetime/TransformUtils.h"
+
+#include "glm/gtx/euler_angles.hpp"
 
 #include <chrono>
 #include <numbers>
@@ -21,7 +23,7 @@ namespace vob::aoedb
 		auto const& gameInputCtx = m_gameInputCtx.get(a_wdap);
 		auto const& gameInputEvents = gameInputCtx.getEvents();
 
-		for (auto [entity, position, rotation, ghostController] : m_ghostControllerEntities.get(a_wdap).each())
+		for (auto [entity, positionCmp, rotationCmp, ghostController] : m_ghostControllerEntities.get(a_wdap).each())
 		{
 			if (!(gameInputCtx.getValue(ghostController.enableRotationValueId) > 0.0f))
 			{
@@ -46,11 +48,11 @@ namespace vob::aoedb
 			moveDir.y = gameInputCtx.getValue(ghostController.verticalMoveValueId);
 			moveDir.z = -gameInputCtx.getValue(ghostController.longitudinalMoveValueId);
 			auto const move = moveDir * elapsedTime * ghostController.moveSpeed;
-			position += rotation * move;
+			positionCmp.value += rotationCmp.value * move;
 
 			// update rotation
 			float yaw, pitch, roll;
-			auto const transform = aoest::combine(position, rotation);
+			auto const transform = aoest::combine(positionCmp, rotationCmp);
 			glm::extractEulerAngleYXZ(transform, yaw, pitch, roll);
 			roll = 0.0f;
 			yaw -= gameInputCtx.getValue(ghostController.yawValueId) * elapsedTime;
@@ -59,7 +61,7 @@ namespace vob::aoedb
 			{
 				yaw += std::numbers::pi_v<float> *(pitch > 0.0f ? 1.0f : -1.0f);
 			}
-			rotation = glm::quat_cast(glm::eulerAngleYXZ(yaw, pitch, roll));
+			rotationCmp.value = glm::quat_cast(glm::eulerAngleYXZ(yaw, pitch, roll));
 		}
 	}
 }

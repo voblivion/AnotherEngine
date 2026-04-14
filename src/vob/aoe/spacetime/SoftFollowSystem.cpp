@@ -1,6 +1,8 @@
 #include <vob/aoe/spacetime/SoftFollowSystem.h>
 
-#include <vob/aoe/spacetime/Transform.h>
+#include "vob/aoe/spacetime/PositionComponent.h"
+#include "vob/aoe/spacetime/RotationComponent.h"
+#include "vob/aoe/spacetime/TransformUtils.h"
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -30,19 +32,20 @@ namespace vob::aoest
 		}
 		ImGui::End();
 
-		for (auto [entity, position, rotation, softFollowComponent] : m_softFollowingEntities.get(a_wdap).each())
+		for (auto [entity, positionCmp, rotationCmp, softFollowComponent] : m_softFollowingEntities.get(a_wdap).each())
 		{
 			if (!m_softFollowableEntities.get(a_wdap).contains(softFollowComponent.target))
 			{
 				continue;
 			}
 
-			auto const& [followedPosition, followedRotation, followedLinearVelocityCmp] = m_softFollowableEntities.get(a_wdap).get(softFollowComponent.target);
+			auto const& [followedPositionCmp, followedRotationCmp, followedLinearVelocityCmp] =
+				m_softFollowableEntities.get(a_wdap).get(softFollowComponent.target);
 
 			static float k_slowSpeed = 1.0f;
 			static float k_fastSpeed = 20.0f;
 
-			auto const slowPosition = followedPosition + followedRotation * softFollowComponent.positionOffset;
+			auto const slowPosition = transformPosition(followedPositionCmp, followedRotationCmp, softFollowComponent.positionOffset);
 
 			auto fastPosition = slowPosition;
 			auto const speed = glm::length(followedLinearVelocityCmp.value);
@@ -52,16 +55,16 @@ namespace vob::aoest
 				glm::vec3 rightDir = glm::normalize(glm::cross(glm::vec3{ 0.0f, 1.0f, 0.0f }, -velocityDir));
 				glm::vec3 upDir = glm::cross(-velocityDir, rightDir);
 				glm::mat3 local(rightDir, upDir, -velocityDir);
-				fastPosition = followedPosition + local * softFollowComponent.positionOffset;
+				fastPosition = followedPositionCmp.value + local * softFollowComponent.positionOffset;
 			}
 
 			auto const targetPosition = slowPosition + std::clamp((speed - k_slowSpeed) / (k_fastSpeed - k_slowSpeed), 0.0f, 1.0f) * (fastPosition - slowPosition);
 
-			if (glm::distance(position, targetPosition) > std::numeric_limits<float>::epsilon())
+			if (glm::distance(positionCmp.value, targetPosition) > std::numeric_limits<float>::epsilon())
 			{
-				auto const toTargetPosition = targetPosition - position;
+				auto const toTargetPosition = targetPosition - positionCmp.value;
 				auto const force = softFollowComponent.elasticity * toTargetPosition - softFollowComponent.damping * softFollowComponent.velocity;
-				position += softFollowComponent.velocity * (elapsedTime / 2);
+				positionCmp.value += softFollowComponent.velocity * (elapsedTime / 2);
 				softFollowComponent.velocity += force / softFollowComponent.mass * elapsedTime;
 				if (std::abs(softFollowComponent.velocity.x) > 1e10f)
 				{
@@ -75,15 +78,15 @@ namespace vob::aoest
 				{
 					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.z);
 				}
-				position += softFollowComponent.velocity * (elapsedTime / 2);
+				positionCmp.value += softFollowComponent.velocity * (elapsedTime / 2);
 
-				if (glm::length(position - targetPosition) > 100.0f)
+				if (glm::length(positionCmp.value - targetPosition) > 100.0f)
 				{
-					position = targetPosition + 100.0f * glm::normalize(position - targetPosition);
+					positionCmp.value = targetPosition + 100.0f * glm::normalize(positionCmp.value - targetPosition);
 				}
 			}
 
-			softFollowComponent.prevTargetPosition = followedPosition;
+			softFollowComponent.prevTargetPosition = followedPositionCmp.value;
 
 			if (k_debugSoftFollow)
 			{
@@ -94,11 +97,11 @@ namespace vob::aoest
 				m_debugMeshContext.get(a_wdap).addLine(targetPosition, fastPosition, aoegl::k_red);
 			}
 
-			auto const targetAim = followedPosition + followedRotation * softFollowComponent.aimOffset;
-			auto const toTargetAim = targetAim - position;
+			auto const targetAim = transformPosition(followedPositionCmp, followedRotationCmp, softFollowComponent.aimOffset);
+			auto const toTargetAim = targetAim - positionCmp.value;
 			auto const aimDir = glm::normalize(
-				glm::length(toTargetAim) > std::numeric_limits<float>::epsilon() ? toTargetAim : followedRotation * glm::vec3{ 0.0f, 0.0f, -1.0f });
-			rotation = glm::quatLookAt(aimDir, glm::vec3{ 0.0f, 1.0f, 0.0f });
+				glm::length(toTargetAim) > std::numeric_limits<float>::epsilon() ? toTargetAim : followedRotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f });
+			rotationCmp.value = glm::quatLookAt(aimDir, glm::vec3{ 0.0f, 1.0f, 0.0f });
 		}
 	}
 }

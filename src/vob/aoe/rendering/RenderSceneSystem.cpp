@@ -7,6 +7,7 @@
 
 #include "vob/aoe/debug/DebugNameUtils.h"
 #include "vob/aoe/debug/ImGuiUtils.h"
+#include "vob/aoe/spacetime/TransformUtils.h"
 
 #include <vob/misc/std/container_util.h>
 #include <vob/misc/std/enum_traits.h>
@@ -46,10 +47,10 @@ namespace vob::aoegl
 			};
 		}
 
-		auto const [position, rotation, cameraCmp] = a_cameraEntities.get(a_camera);
+		auto const [positionCmp, rotationCmp, cameraCmp] = a_cameraEntities.get(a_camera);
 		return CameraProperties{
-			.position = position,
-			.rotation = rotation,
+			.position = positionCmp.value,
+			.rotation = rotationCmp.value,
 			.nearClip = cameraCmp.nearClip,
 			.farClip = cameraCmp.farClip,
 			.fov = cameraCmp.fov
@@ -454,7 +455,7 @@ namespace vob::aoegl
 		UniformViewParams createViewParams(
 			aoewi::WindowContext const& a_windowCtx,
 			CameraDirectorContext const& a_cameraDirectorCtx,
-			entt::view<entt::get_t<aoest::Position const, aoest::Rotation const, CameraComponent const>> a_cameraEntities)
+			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const>> a_cameraEntities)
 		{
 			auto const resolution = a_windowCtx.window.get().getSize();
 			auto const invResolution = 1.0f / glm::vec2{ resolution };
@@ -493,7 +494,7 @@ namespace vob::aoegl
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumBounds const& a_viewFrustumBounds,
 			glm::vec3 const& a_lightFocusPosition,
-			entt::view<entt::get_t<aoest::Position const, aoest::Rotation const, LightComponent const>> a_lightEntities,
+			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
 			int32_t a_lightsCapacity,
 			glm::ivec2 const& a_lightClusterTileSize,
 			int32_t a_lightClusterZCount,
@@ -503,19 +504,19 @@ namespace vob::aoegl
 			// TODO: remove magic
 			static std::vector<CulledLight> culledLights;
 			culledLights.clear();
-			for (auto const [entity, position, rotation, lightCmp] : a_lightEntities.each())
+			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
-				if (!testIntersectViewFrustumBounds(a_viewFrustumBounds, position, lightCmp.radius))
+				if (!testIntersectViewFrustumBounds(a_viewFrustumBounds, positionCmp.value, lightCmp.radius))
 				{
 					continue;
 				}
 
-				auto const distanceImportance = 1.0f - glm::length(position - a_lightFocusPosition) / lightCmp.radius;
+				auto const distanceImportance = 1.0f - glm::length(positionCmp.value - a_lightFocusPosition) / lightCmp.radius;
 				auto const colorImportance = glm::dot(lightCmp.color, glm::vec3{ 0.299, 0.587, 0.114f });
 				auto const intensityImportance = lightCmp.intensity;
 				auto const importance = distanceImportance * colorImportance * intensityImportance;
 
-				culledLights.emplace_back(importance, position, rotation, &lightCmp);
+				culledLights.emplace_back(importance, positionCmp.value, rotationCmp.value, &lightCmp);
 			}
 			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
 			auto const lightingParams = UniformLightingParams{
@@ -573,7 +574,7 @@ namespace vob::aoegl
 		}
 	}
 
-	bool RenderSceneSystem::executeNew(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
+	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto const& renderSceneCtx = m_newRenderSceneContext.get(a_wdap);
 		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
@@ -776,11 +777,11 @@ namespace vob::aoegl
 		culledOpaqueStaticMeshes.clear();
 		static std::vector<CulledStaticMesh> culledTranslucentStaticMeshes;
 		culledTranslucentStaticMeshes.clear();
-		for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
+		for (auto const [entity, positionCmp, rotationCmp, staticModelCmp] : staticModelEntities.each())
 		{
-			if (testIntersectViewFrustumBounds(viewFrustumBounds, position, staticModelCmp.boundingRadius))
+			if (testIntersectViewFrustumBounds(viewFrustumBounds, positionCmp.value, staticModelCmp.boundingRadius))
 			{
-				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
 				if (staticModelCmp.modelParams != modelParams)
 				{
 					staticModelCmp.modelParams = modelParams;
@@ -817,11 +818,11 @@ namespace vob::aoegl
 		culledOpaqueRiggedMeshes.clear();
 		static std::vector<CulledRiggedMesh> culledTranslucentRiggedMeshes;
 		culledTranslucentRiggedMeshes.clear();
-		for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
+		for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp] : riggedModelEntities.each())
 		{
-			if (testIntersectViewFrustumBounds(viewFrustumBounds, position, riggedModelCmp.boundingRadius))
+			if (testIntersectViewFrustumBounds(viewFrustumBounds, positionCmp.value, riggedModelCmp.boundingRadius))
 			{
-				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
 				if (riggedModelCmp.modelParams != modelParams)
 				{
 					riggedModelCmp.modelParams = modelParams;
@@ -879,11 +880,11 @@ namespace vob::aoegl
 				glClear(GL_DEPTH_BUFFER_BIT);
 
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
-				for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
+				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp] : staticModelEntities.each())
 				{
-					if (testIntersectViewFrustumBounds(spotLightViewFrustumBounds, position, staticModelCmp.boundingRadius))
+					if (testIntersectViewFrustumBounds(spotLightViewFrustumBounds, positionCmp.value, staticModelCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (staticModelCmp.modelParams != modelParams)
 						{
 							staticModelCmp.modelParams = modelParams;
@@ -900,11 +901,11 @@ namespace vob::aoegl
 				}
 
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
-				for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
+				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp] : riggedModelEntities.each())
 				{
-					if (testIntersectViewFrustumBounds(spotLightViewFrustumBounds, position, riggedModelCmp.boundingRadius))
+					if (testIntersectViewFrustumBounds(spotLightViewFrustumBounds, positionCmp.value, riggedModelCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(position, rotation) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (riggedModelCmp.modelParams != modelParams)
 						{
 							riggedModelCmp.modelParams = modelParams;
@@ -1312,728 +1313,5 @@ namespace vob::aoegl
 			ImGui::EndDisabled();
 		}
 		ImGui::End();
-
-		return true;
-	}
-
-	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
-	{
-		if (executeNew(a_wdap))
-		{
-			return;
-		}
-#ifndef WIP
-		// TODO: where do these go?
-		constexpr GraphicInt k_viewPostProcessConfigUboLocation = 0;
-		constexpr GraphicInt k_lightPostProcessConfigUboLocation = 1;
-		constexpr GraphicInt k_customPostProcessConfigUboLocation = 2;
-		constexpr auto k_spotLightNear = 0.01f;
-
-		auto const& timeContext = m_timeContext.get(a_wdap);
-		auto const& renderSceneContext = m_renderSceneContext.get(a_wdap);
-		auto const& window = m_windowContext.get(a_wdap).window.get();
-		auto& cameraDirectorContext = m_cameraDirectorContext.get(a_wdap);
-		auto const cameraEntities = m_cameraEntities.get(a_wdap);
-		auto const& materialManager = *m_materialManagerContext.get(a_wdap).materialManager;
-
-#define VOB_AOEGL_DEBUG
-#ifdef VOB_AOEGL_DEBUG
-		static DebugMode::Type k_debugMode = DebugMode::None;
-		static int32_t k_debugActiveForwardProgramIndex = 0;
-		static int32_t k_ssrMode = 1;
-		static int32_t k_ssrLog2Step = 6;
-		static int32_t k_ssrLog2SubStep = 3;
-		static float k_ssrMaxRangeRatioMin = 0.01f;
-		static float k_ssrMaxRangeRatioMax = 100.0f;
-		static float k_ssrMaxRangeRatio = 0.1f;
-		static float k_ssrThicknessMin = 0.01f;
-		static float k_ssrThicknessMax = 0.5f;
-		static float k_ssrThickness = 0.05f;
-		static float k_ssrMaxThickness = 5.0f;
-		static float k_ssrInitialBiasRatio = 0.001f;
-		if (ImGui::Begin("Render"))
-		{
-			auto const toSmallStr = [](std::string_view a_stringView)
-				{
-					constexpr size_t k_maxSize = 16;
-					auto size = std::min(a_stringView.size(), k_maxSize);
-					std::array<char, k_maxSize + 1> smallStr;
-					std::memcpy(smallStr.data(), a_stringView.data(), size);
-					smallStr[size] = 0;
-					return smallStr;
-				};
-
-			auto const activeDebugModeName = mistd::enum_traits<DebugMode::Type>::cast(k_debugMode).value_or("None");
-			auto const activeDebugModeStr = toSmallStr(activeDebugModeName.substr(activeDebugModeName.rfind(":") + 1));
-			if (ImGui::BeginCombo("Debug Mode", activeDebugModeStr.data()))
-			{
-				for (auto const [debugMode, debugModeName] : mistd::enum_traits<DebugMode::Type>::valid_value_name_pairs)
-				{
-					auto const optionLabel = toSmallStr(debugModeName.substr(debugModeName.rfind(":") + 1));
-					if (ImGui::Selectable(optionLabel.data(), debugMode == k_debugMode))
-					{
-						k_debugMode = debugMode;
-					}
-
-					if (debugMode == k_debugMode)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
-				}
-
-				ImGui::EndCombo();
-			}
-
-			auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
-			if (!debugProgramCtx.oldForwardPrograms.empty())
-			{
-				ImGui::SeparatorText("Shading");
-				k_debugActiveForwardProgramIndex =
-					std::min(k_debugActiveForwardProgramIndex, mistd::isize(debugProgramCtx.oldForwardPrograms) - 1);
-
-				auto const activeForwardProgramNameStr = toSmallStr(debugProgramCtx.oldForwardPrograms[k_debugActiveForwardProgramIndex].name);
-				if (ImGui::BeginCombo("Forward Program", activeForwardProgramNameStr.data()))
-				{
-					for (int32_t i = 0; i < mistd::isize(debugProgramCtx.oldForwardPrograms); ++i)
-					{
-						auto const forwardProgramNameStr = toSmallStr(debugProgramCtx.oldForwardPrograms[i].name);
-						if (ImGui::Selectable(forwardProgramNameStr.data(), i == k_debugActiveForwardProgramIndex))
-						{
-							k_debugActiveForwardProgramIndex = i;
-						}
-
-						if (i == k_debugActiveForwardProgramIndex)
-						{
-							ImGui::SetItemDefaultFocus();
-						}
-					}
-					ImGui::EndCombo();
-				}
-
-				if (ImGui::Button("Recompile Forward Program"))
-				{
-					auto const& forwardProgram = debugProgramCtx.oldForwardPrograms[k_debugActiveForwardProgramIndex];
-					auto const shadingSource = debugProgramCtx.stringDatabase.find(
-						debugProgramCtx.filesystemIndexer.get_runtime_id(forwardProgram.shadingSourcePath));
-					oldCreateForwardProgram(*shadingSource, false /* use rig */, forwardProgram.staticProgram);
-					oldCreateForwardProgram(*shadingSource, true /* use rig */, forwardProgram.riggedProgram);
-				}
-				ImGui::SeparatorText("SSR");
-				ImGui::InputInt("Mode", &k_ssrMode);
-				ImGui::InputInt("Log2 Step", &k_ssrLog2Step);
-				ImGui::InputInt("Log2 Sub Step", &k_ssrLog2SubStep);
-				ImGui::InputFloat("Max Range Ratio Min", &k_ssrMaxRangeRatioMin);
-				ImGui::InputFloat("Max Range Ratio Max", &k_ssrMaxRangeRatioMax);
-				ImGui::SliderFloat("Max Range Ratio", &k_ssrMaxRangeRatio, k_ssrMaxRangeRatioMin, k_ssrMaxRangeRatioMax, "%.6f", ImGuiSliderFlags_Logarithmic);
-				ImGui::InputFloat("Thickness Min", &k_ssrThicknessMin);
-				ImGui::InputFloat("Thickness Max", &k_ssrThicknessMax);
-				ImGui::SliderFloat("Thickness Ratio", &k_ssrThickness, k_ssrThicknessMin, k_ssrThicknessMax, "%.6f", ImGuiSliderFlags_Logarithmic);
-				ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.1f, 10.0f, "%.6f");
-				ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.0001f, 0.5f, "%.6f", ImGuiSliderFlags_Logarithmic);
-
-				k_ssrLog2Step = std::max(0, k_ssrLog2Step);
-				k_ssrLog2SubStep = std::clamp(k_ssrLog2SubStep, 0, 12);
-				auto const ssrParams = SsrParams{
-					.mode = k_ssrMode,
-					.log2Step = k_ssrLog2Step,
-					.log2SubStep = k_ssrLog2SubStep,
-					.maxRangeRatio = k_ssrMaxRangeRatio,
-					.thicknessRatio = k_ssrThickness,
-					.initialBiasRatio = k_ssrInitialBiasRatio,
-					.maxThickness = k_ssrMaxThickness
-				};
-				glNamedBufferSubData(renderSceneContext.ssrUbo, 0, sizeof(ssrParams), &ssrParams);
-
-				if (ImGui::Button("Recompile SSR Program"))
-				{
-					auto const ssrSource = debugProgramCtx.stringDatabase.find(
-						debugProgramCtx.filesystemIndexer.get_runtime_id("data/shaders/ssr.glsl"));
-					oldCreatePostProcessProgram(*ssrSource, renderSceneContext.ssrProgram);
-				}
-				if (ImGui::Button("Recompile Reflection Program"))
-				{
-					auto const reflectionSource = debugProgramCtx.stringDatabase.find(
-						debugProgramCtx.filesystemIndexer.get_runtime_id("data/shaders/reflection.glsl"));
-					oldCreatePostProcessProgram(*reflectionSource, renderSceneContext.reflectionProgram);
-				}
-			}
-		}
-		ImGui::End();
-
-		if (k_debugMode != DebugMode::None)
-		{
-			auto const debugParams = DebugParams{
-				.mode = k_debugMode
-			};
-			glNamedBufferSubData(renderSceneContext.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
-
-		}
-
-		// TODO: separate window size from rendering size
-		auto const windowSize = window.getSize();
-		auto const aspectRatio = static_cast<float>(windowSize.x) / windowSize.y;
-		auto const cameraProperties = getCameraProperties(cameraDirectorContext.activeCameraEntity, cameraEntities);
-		auto const cameraTransform = aoest::combine(cameraProperties.position, cameraProperties.rotation);
-		auto const cameraFrustumPlanes = computeCameraFrustumPlanes(
-			cameraProperties.position,
-			cameraProperties.rotation,
-			cameraProperties.nearClip,
-			cameraProperties.farClip,
-			cameraProperties.fov,
-			aspectRatio);
-		auto const view = glm::inverse(cameraTransform);
-		auto const projection = glm::perspective(cameraProperties.fov, aspectRatio, cameraProperties.nearClip, cameraProperties.farClip);
-		auto const viewProjection = projection * view;
-		auto const invProjection = glm::inverse(projection);
-		// BEGIN WIP
-		auto const sunPosition = cameraProperties.position * glm::vec3{ 1.0f, 0.0f, 1.0f } + glm::vec3{ 0.0f, 24.0f, 0.0f };
-		auto const sunNearPlane = 1.0f;
-		auto const sunFarPlane = 128.0f;
-		auto const sunProjection = glm::ortho(-32.0f, 32.0f, -16.0f, 48.0f, sunNearPlane, sunFarPlane);
-		auto const cameraFacing = cameraProperties.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
-		auto const sunView = glm::lookAt(sunPosition, cameraProperties.position * glm::vec3{ 1.0f, 0.0f, 1.0f }, cameraFacing);
-		auto const sunSpace = sunProjection * sunView;
-		// END WIP
-
-		auto const shadowFocusPoint = cameraProperties.position
-			+ cameraProperties.rotation * (16.0f * glm::vec3{ 0.0f, 0.0f, -1.0f });
-		struct ShadowSpotLight
-		{
-			int32_t culledLightIndex;
-			float importance;
-			glm::quat rotation;
-			float outerAngle;
-			float lightSize;
-		};
-		// 1. Cull lights
-		// TODO: why magic?
-		static std::pmr::vector<Light> culledLights;
-		static std::pmr::vector<ShadowSpotLight> shadowSpotLights;
-		culledLights.clear();
-		shadowSpotLights.clear();
-		auto const lightEntities = m_lightEntities.get(a_wdap);
-		for (auto const [entity, position, rotation, lightCmp] : lightEntities.each())
-		{
-			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, lightCmp.radius))
-			{
-				auto const direction = glm::rotate(rotation, glm::vec3{ 0.0f, 0.0f, -1.0f });
-				auto const outerCosAngle = std::cos(lightCmp.outerAngle);
-				culledLights.emplace_back(
-					position,
-					lightCmp.radius,
-					lightCmp.color,
-					lightCmp.intensity,
-					direction,
-					lightCmp.type == LightComponent::Type::Point ? 0.0f : 1.0f,
-					outerCosAngle,
-					std::cos(lightCmp.innerAngle),
-					-1 /* shadowMapIndex */);
-
-				if (lightCmp.type == LightComponent::Type::Spot)
-				{
-					// TODO: improve logic for selecting most important spot light
-					auto const distance = glm::length(shadowFocusPoint - position);
-					auto const distanceFactor = lightCmp.radius / std::max(0.1f, distance);
-					auto const colorFactor = glm::dot(lightCmp.color, glm::vec3{ 0.299f, 0.587f, 0.114f });
-					auto const intensityFactor = lightCmp.intensity;
-					shadowSpotLights.emplace_back(
-						mistd::isize(culledLights) - 1, distanceFactor * colorFactor * intensityFactor, rotation, lightCmp.outerAngle, lightCmp.size);
-				}
-			}
-		}
-		std::array<ShadowParams, k_maxSpotLightShadowMapCount> spotLightShadowParams = {};
-		std::sort(shadowSpotLights.begin(), shadowSpotLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
-		shadowSpotLights.resize(std::min(shadowSpotLights.size(), renderSceneContext.spotLightShadowMaps.size()));
-		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
-		{
-			auto& culledLight = culledLights[shadowSpotLights[i].culledLightIndex];
-			culledLight.spotShadowMapIndex = i;
-
-			auto const lightViewToProjected = glm::perspective(2.0f * shadowSpotLights[i].outerAngle, 1.0f, k_spotLightNear, culledLight.radius);
-			auto const lightUpHint = shadowSpotLights[i].rotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
-			auto const lightWorldToView = glm::lookAt(culledLight.position, culledLight.position + culledLight.direction, lightUpHint);
-			auto const lightWorldToProjected = lightViewToProjected * lightWorldToView;
-			spotLightShadowParams[i] = ShadowParams{
-				.worldToProjected = lightWorldToProjected,
-				.nearPlane = k_spotLightNear,
-				.farPlane = culledLight.radius,
-				.lightSize = shadowSpotLights[i].lightSize
-			};
-		}
-		glNamedBufferSubData(renderSceneContext.lightsSsbo, 0, culledLights.size() * sizeof(Light), culledLights.data());
-
-		// 2. Set global scene rendering config
-		auto const globalParams = GlobalParams{
-			.worldTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - timeContext.worldStartTime).count()
-		};
-		glNamedBufferSubData(renderSceneContext.globalParamsUbo, 0, sizeof(GlobalParams), &globalParams);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_globalParamsUboLocation, renderSceneContext.globalParamsUbo);
-
-		auto const viewParams = ViewParams{
-			.worldToView = view,
-			.viewToProjected = projection,
-			.worldToProjected = viewProjection,
-			.projectedToView = invProjection,
-			.viewPosition = cameraProperties.position
-		};
-		glNamedBufferSubData(renderSceneContext.viewParamsUbo, 0, sizeof(ViewParams), &viewParams);
-
-		auto const lightParams = LightParams{
-			.sunShadowParams = { sunSpace, 1.0, sunFarPlane },
-			.spotLightShadowParams = spotLightShadowParams,
-			.lightClusterSizes = glm::ivec2{ 16 },
-			.resolution = renderSceneContext.sceneFramebufferSize,
-			.near = cameraProperties.nearClip,
-			.far = cameraProperties.farClip,
-			.lightClusterCountZ = 24,
-			.maxLightCountPerCluster = 64,
-			.totalLightCount = mistd::isize(culledLights)
-		};
-		glNamedBufferSubData(renderSceneContext.lightingParamsUbo, 0, sizeof(LightParams), &lightParams);
-
-		// 3. Compute light clusters
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[0]);
-		glUseProgram(renderSceneContext.lightClusteringProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightingParamsUbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-		auto const workGroupCount = static_cast<uint32_t>(
-			(renderSceneContext.lightClusterCount + renderSceneContext.lightClusteringWorkGroupSize - 1) / renderSceneContext.lightClusteringWorkGroupSize);
-		glDispatchCompute(workGroupCount, 1, 1);
-#endif
-
-		// 4. Cull meshes
-		static std::pmr::vector<CulledStaticMesh> culledStaticMeshes;
-		culledStaticMeshes.clear();
-		auto const staticModelEntities = m_staticModelEntities.get(a_wdap);
-		for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
-		{
-			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, staticModelCmp.boundingRadius))
-			{
-				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-				if (modelParams != staticModelCmp.oldModelParams)
-				{
-					staticModelCmp.oldModelParams = modelParams;
-					glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
-				}
-
-				for (auto const& mesh : staticModelCmp.meshes)
-				{
-					culledStaticMeshes.emplace_back(
-						mesh.oldProgram,
-						mesh.materialIndex,
-						mesh.meshVao,
-						staticModelCmp.modelParamsUbo,
-						mesh.indexCount);
-				}
-			}
-		}
-		std::sort(
-			culledStaticMeshes.begin(),
-			culledStaticMeshes.end(),
-			[](auto const& a_lhs, auto const& a_rhs)
-			{
-				return a_lhs.forwardProgram < a_rhs.forwardProgram
-					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialIndex < a_rhs.materialIndex);
-			});
-		static std::pmr::vector<CulledRiggedMesh> culledRiggedMeshes;
-		culledRiggedMeshes.clear();
-		auto const riggedModelEntities = m_riggedModelEntities.get(a_wdap);
-		for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
-		{
-			if (testCameraFrustumIntersect(cameraFrustumPlanes, position, riggedModelCmp.boundingRadius))
-			{
-				auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-				if (modelParams != riggedModelCmp.oldModelParams)
-				{
-					riggedModelCmp.oldModelParams = modelParams;
-					glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
-				}
-
-				for (auto const& mesh : riggedModelCmp.meshes)
-				{
-					culledRiggedMeshes.emplace_back(
-						mesh.oldProgram,
-						mesh.materialIndex,
-						mesh.meshVao,
-						riggedModelCmp.modelParamsUbo,
-						riggedModelCmp.rigParamsUbo,
-						mesh.indexCount);
-				}
-			}
-		}
-		std::sort(
-			culledRiggedMeshes.begin(),
-			culledRiggedMeshes.end(),
-			[](auto const& a_lhs, auto const& a_rhs)
-			{
-				return a_lhs.forwardProgram < a_rhs.forwardProgram
-					|| (a_lhs.forwardProgram == a_rhs.forwardProgram && a_lhs.materialIndex < a_rhs.materialIndex);
-			});
-
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-		glEndQuery(GL_TIME_ELAPSED);
-
-		// 5. Sun Shadow
-		// BEGIN WIP
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[1]);
-		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_BLEND);
-		glDepthMask(GL_TRUE);
-		glDepthFunc(GL_LESS);
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
-		{
-			auto const culledSpotLight = culledLights[shadowSpotLights[i].culledLightIndex];
-			auto const spotLightFrustumPlanes = computeSpotLightFrustumPlanes(
-				culledSpotLight.position, shadowSpotLights[i].rotation, k_spotLightNear, culledSpotLight.radius, shadowSpotLights[i].outerAngle);
-
-			auto const lightViewParams = ViewParams{
-				.worldToView = glm::mat4{},
-				.viewToProjected = glm::mat4{},
-				.worldToProjected = spotLightShadowParams[i].worldToProjected,
-				.projectedToView = glm::mat4{},
-				.viewPosition = glm::vec3{}
-			};
-			glNamedBufferSubData(renderSceneContext.lightViewParamsUbo, 0, sizeof(ViewParams), &lightViewParams);
-
-			glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.spotLightShadowMaps[i].framebuffer);
-			glViewport(0, 0, renderSceneContext.spotLightShadowMaps[i].size.x, renderSceneContext.spotLightShadowMaps[i].size.y);
-			glClear(GL_DEPTH_BUFFER_BIT);
-
-			glUseProgram(renderSceneContext.staticDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
-			for (auto const [entity, position, rotation, staticModelCmp] : staticModelEntities.each())
-			{
-				if (testCameraFrustumIntersect(spotLightFrustumPlanes, position, staticModelCmp.boundingRadius))
-				{
-					auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-					if (modelParams != staticModelCmp.oldModelParams)
-					{
-						staticModelCmp.oldModelParams = modelParams;
-						glNamedBufferSubData(staticModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
-					}
-
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticModelCmp.modelParamsUbo);
-					for (auto const& mesh : staticModelCmp.meshes)
-					{
-						glBindVertexArray(mesh.meshVao);
-						glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-					}
-				}
-			}
-
-			glUseProgram(renderSceneContext.riggedDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
-			for (auto const [entity, position, rotation, riggedModelCmp] : riggedModelEntities.each())
-			{
-				if (testCameraFrustumIntersect(spotLightFrustumPlanes, position, riggedModelCmp.boundingRadius))
-				{
-					auto const modelParams = ModelParams{ .modelToWorld = aoest::combine(position, rotation) };
-					if (modelParams != riggedModelCmp.oldModelParams)
-					{
-						riggedModelCmp.oldModelParams = modelParams;
-						glNamedBufferSubData(riggedModelCmp.modelParamsUbo, 0, sizeof(ModelParams), &modelParams);
-					}
-
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedModelCmp.modelParamsUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedModelCmp.rigParamsUbo);
-					for (auto const& mesh : riggedModelCmp.meshes)
-					{
-						glBindVertexArray(mesh.meshVao);
-						glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-					}
-				}
-			}
-		}
-		{
-			// A. Prepare Data
-			auto const sunViewParams = ViewParams{
-				.worldToView = glm::mat4{},
-				.viewToProjected = glm::mat4{},
-				.worldToProjected = sunSpace,
-				.projectedToView = glm::mat4{},
-				.viewPosition = glm::vec3{}
-			};
-			glNamedBufferSubData(renderSceneContext.lightViewParamsUbo, 0, sizeof(ViewParams), &sunViewParams);
-
-			// B. Render Static Meshes
-			glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sunShadowMap.framebuffer);
-			glViewport(0, 0, renderSceneContext.sunShadowMap.size.x, renderSceneContext.sunShadowMap.size.y);
-			glClear(GL_DEPTH_BUFFER_BIT);
-			glEnable(GL_DEPTH_TEST);
-			glDisable(GL_BLEND);
-			glDepthMask(GL_TRUE);
-			glDepthFunc(GL_LESS);
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-			glUseProgram(renderSceneContext.staticDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
-			for (auto const& staticMesh : culledStaticMeshes)
-			{
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
-				glBindVertexArray(staticMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-			glUseProgram(renderSceneContext.riggedDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.lightViewParamsUbo);
-			for (auto const& riggedMesh : culledRiggedMeshes)
-			{
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
-				glBindVertexArray(riggedMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-		}
-		glEndQuery(GL_TIME_ELAPSED);
-		// END WIP
-		
-		// 5. Depth pre-pass
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[2]);
-		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.sceneFramebuffer);
-		glViewport(0, 0, renderSceneContext.sceneFramebufferSize.x, renderSceneContext.sceneFramebufferSize.y);
-		glClearDepth(1.0);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_BLEND);
-		glDepthMask(GL_TRUE);
-		glDepthFunc(GL_LESS);
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		{
-			glUseProgram(renderSceneContext.staticDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-			for (auto const& staticMesh : culledStaticMeshes)
-			{
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
-				glBindVertexArray(staticMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-			glUseProgram(renderSceneContext.riggedDepthProgram);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-			for (auto const& riggedMesh : culledRiggedMeshes)
-			{
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
-				glBindVertexArray(riggedMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-		}
-		// NEW
-		// TODO
-		glEndQuery(GL_TIME_ELAPSED);
-
-		// 6. Opaque pass
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[3]);
-		glDepthFunc(GL_LEQUAL);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		glClearColor(k_blueprint.r, k_blueprint.g, k_blueprint.b, k_blueprint.a);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glBindTextureUnit(k_sunShadowMapTextureIndex, renderSceneContext.sunShadowMap.depthTexture);
-		for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
-		{
-			glBindTextureUnit(k_spotLightShadowMapsFirstIndex + i, renderSceneContext.spotLightShadowMaps[i].depthTexture);
-		}
-		GraphicId currentForwardProgram = k_invalidId;
-		int32_t currentMaterialIndex = -1;
-		{
-			for (auto const& staticMesh : culledStaticMeshes)
-			{
-				if (currentForwardProgram != staticMesh.forwardProgram)
-				{
-					glUseProgram(staticMesh.forwardProgram);
-					currentForwardProgram = staticMesh.forwardProgram;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightingParamsUbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-					currentMaterialIndex = -1;
-				}
-
-				if (currentMaterialIndex != staticMesh.materialIndex)
-				{
-					auto const& material = materialManager.getMaterial(staticMesh.materialIndex);
-					currentMaterialIndex = staticMesh.materialIndex;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
-					for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
-					{
-						glBindTextureUnit(k_materialTexturesFirstIndex + static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
-					}
-				}
-
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, staticMesh.modelParamsUbo);
-				glBindVertexArray(staticMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-
-			for (auto const& riggedMesh : culledRiggedMeshes)
-			{
-				if (currentForwardProgram != riggedMesh.forwardProgram)
-				{
-					glUseProgram(riggedMesh.forwardProgram);
-					currentForwardProgram = riggedMesh.forwardProgram;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightingParamsUbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightsSsboLocation, renderSceneContext.lightsSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterSizesSsboLocation, renderSceneContext.lightClusterSizesSsbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, k_lightClusterIndicesSsboLocation, renderSceneContext.lightClusterIndicesSsbo);
-					currentMaterialIndex = -1;
-				}
-
-				if (currentMaterialIndex != riggedMesh.materialIndex)
-				{
-					auto const& material = materialManager.getMaterial(riggedMesh.materialIndex);
-					currentMaterialIndex = riggedMesh.materialIndex;
-					glBindBufferBase(GL_UNIFORM_BUFFER, k_materialParamsUboLocation, material.paramsUbo);
-					for (int32_t slotIndex = 0; slotIndex < std::ssize(material.textureIds); ++slotIndex)
-					{
-						glBindTextureUnit(k_materialTexturesFirstIndex + static_cast<GraphicId>(slotIndex), material.textureIds[slotIndex]);
-					}
-				}
-
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_modelParamsUboLocation, riggedMesh.modelParamsUbo);
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_rigParamsUboLocation, riggedMesh.rigParamsUbo);
-				glBindVertexArray(riggedMesh.meshVao);
-				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			}
-		}
-		glEndQuery(GL_TIME_ELAPSED);
-
-		// 7. Transparent pass
-		// TODO
-		
-		// 8. Skybox pass
-		// TODO
-
-		// 9. Reflection pass
-		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.ssrFramebuffer);
-		glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_DEPTH_TEST);
-		glUseProgram(renderSceneContext.ssrProgram);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_viewParamsUboLocation, renderSceneContext.viewParamsUbo);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_lightParamsUboLocation, renderSceneContext.lightingParamsUbo);
-		glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.ssrUbo);
-		glBindTextureUnit(0, renderSceneContext.sceneColorTexture);
-		glBindTextureUnit(1, renderSceneContext.sceneNormalTexture);
-		glBindTextureUnit(2, renderSceneContext.sceneSurfaceTexture);
-		glBindTextureUnit(3, renderSceneContext.sceneDepthTexture);
-		glBindVertexArray(renderSceneContext.postProcessVao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-
-		glGenerateTextureMipmap(renderSceneContext.ssrColorTexture);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, renderSceneContext.reflectionFramebuffer);
-		glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(renderSceneContext.reflectionProgram);
-		glBindTextureUnit(0, renderSceneContext.sceneColorTexture);
-		glBindTextureUnit(1, renderSceneContext.sceneSurfaceTexture);
-		glBindTextureUnit(2, renderSceneContext.ssrColorTexture);
-		glBindVertexArray(renderSceneContext.postProcessVao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-#endif
-
-		// 10. Post processes
-		glBeginQuery(GL_TIME_ELAPSED, renderSceneContext.timerQueries[4]);
-#ifdef VOB_AOEGL_DEBUG
-		if (k_debugMode != DebugMode::None)
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, window.getDefaultFramebufferId());
-			glClearColor(k_black.r, k_black.g, k_black.b, k_black.a);
-			glClear(GL_COLOR_BUFFER_BIT);
-			glDisable(GL_DEPTH_TEST);
-
-			glUseProgram(renderSceneContext.debugPostProcessProgram);
-			glBindTextureUnit(0, renderSceneContext.reflectionColorTexture);
-			glBindTextureUnit(1, renderSceneContext.sceneNormalTexture);
-			glBindTextureUnit(2, renderSceneContext.sceneDepthTexture);
-			glBindTextureUnit(3, renderSceneContext.ssrColorTexture);
-			glBindTextureUnit(4, renderSceneContext.sunShadowMap.depthTexture);
-			for (int32_t i = 0; i < mistd::isize(shadowSpotLights); ++i)
-			{
-				glBindTextureUnit(5 + i, renderSceneContext.spotLightShadowMaps[i].depthTexture);
-			}
-			glBindTextureUnit(11, renderSceneContext.sceneColorTexture);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightingParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, renderSceneContext.debugParamsUbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
-			glBindVertexArray(renderSceneContext.postProcessVao);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-		}
-		else
-#endif
-		{
-			glClearColor(1.0f, 0.0f, 1.f, 1.0f);
-			glDisable(GL_DEPTH_TEST);
-			glBindTextureUnit(1, renderSceneContext.sceneDepthTexture);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_viewPostProcessConfigUboLocation, renderSceneContext.viewParamsUbo);
-			glBindBufferBase(GL_UNIFORM_BUFFER, k_lightPostProcessConfigUboLocation, renderSceneContext.lightingParamsUbo);
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderSceneContext.lightClusterSizesSsbo);
-			glBindVertexArray(renderSceneContext.postProcessVao);
-
-			auto const postProcessFramebuffers = std::array{
-				renderSceneContext.reflectionFramebuffer, renderSceneContext.postProcessFramebuffer };
-			auto const postProcessColorTextures = std::array{
-				renderSceneContext.reflectionColorTexture, renderSceneContext.postProcessColorTexture };
-			for (int32_t i = 0; i < mistd::isize(renderSceneContext.postProcesses); ++i)
-			{
-				auto const isLastPostProcess = i + 1 == mistd::isize(renderSceneContext.postProcesses);
-				auto const framebuffer = isLastPostProcess ? window.getDefaultFramebufferId() : postProcessFramebuffers[(i + 1) % 2];
-				glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-				glClear(GL_COLOR_BUFFER_BIT);
-
-				glBindTextureUnit(0, postProcessColorTextures[i % 2]);
-
-				auto const& postProcess = renderSceneContext.postProcesses[i];
-				glUseProgram(postProcess.program);
-				glBindBufferBase(GL_UNIFORM_BUFFER, k_customPostProcessConfigUboLocation, postProcess.ubo);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
-			}
-
-		}
-		glEndQuery(GL_TIME_ELAPSED);
-
-#ifdef VOB_AOEGL_DEBUG
-		if (ImGui::Begin("Render Performance"))
-		{
-			glFinish();
-			static int32_t accumulationCount = 50;
-			static std::array<float, 5> durations{ 0.0f };
-			static std::array<uint64_t, 5> accumulations{ 0 };
-			static int32_t accumulationIndex = 0;
-			for (int i = 0; i < 5; ++i)
-			{
-				uint64_t durationMs;
-				glGetQueryObjectui64v(renderSceneContext.timerQueries[i], GL_QUERY_RESULT, &durationMs);
-				accumulations[i] += durationMs;
-			}
-			if (++accumulationIndex == accumulationCount)
-			{
-				for (int i = 0; i < 5; ++i)
-				{
-					durations[i] = (accumulations[i] / 1000000.0f) / accumulationCount;
-					accumulations[i] = 0;
-				}
-				accumulationIndex = 0;
-			}
-
-			ImGui::BeginDisabled();
-			int32_t lightCount = mistd::isize(culledLights);
-			ImGui::InputInt("Light Count", &lightCount);
-			int32_t staticMeshCount = mistd::isize(culledStaticMeshes);
-			ImGui::InputInt("Static Mesh Count", &staticMeshCount);
-			ImGui::InputFloat("Light Clustering (ms)", &durations[0]);
-			ImGui::InputFloat("Sun Shadow Map (ms)", &durations[1]);
-			ImGui::InputFloat("Depth Pre Pass (ms)", &durations[2]);
-			ImGui::InputFloat("Opaque Pass (ms)", &durations[3]);
-			ImGui::InputFloat("Post Process (ms)", &durations[4]);
-			ImGui::EndDisabled();
-		}
-		ImGui::End();
-#endif
 	}
 }

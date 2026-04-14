@@ -6,7 +6,8 @@
 #include <vob/aoe/rendering/DebugMeshContext.h>
 
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/spacetime/Transform.h>
+#include "vob/aoe/spacetime/PositionComponent.h"
+#include "vob/aoe/spacetime/RotationComponent.h"
 
 
 namespace vob::aoegl
@@ -21,6 +22,6 @@ namespace vob::aoegl
 	private:
 		aoeng::EcsWorldContextRef<aoegl::DebugMeshContext> m_debugMeshContext;
 
-		aoeng::EcsWorldViewRef<aoest::Position const, aoest::Rotation const, LightComponent const> m_lightEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;
 	};
 }

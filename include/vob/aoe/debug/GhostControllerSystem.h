@@ -1,13 +1,14 @@
 #pragma once
 
-#include <vob/aoe/debug/GhostControllerComponent.h>
-#include <vob/aoe/debug/IsControlledTag.h>
+#include "vob/aoe/debug/GhostControllerComponent.h"
+#include "vob/aoe/debug/IsControlledTag.h"
 
-#include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/input/InputBindings.h>
-#include <vob/aoe/input/GameInputContext.h>
-#include <vob/aoe/spacetime/Transform.h>
-#include <vob/aoe/spacetime/TimeContext.h>
+#include "vob/aoe/engine/EcsWorldDataAccess.h"
+#include "vob/aoe/input/InputBindings.h"
+#include "vob/aoe/input/GameInputContext.h"
+#include "vob/aoe/spacetime/PositionComponent.h"
+#include "vob/aoe/spacetime/RotationComponent.h"
+#include "vob/aoe/spacetime/TimeContext.h"
 
 
 namespace vob::aoedb
@@ -22,6 +23,6 @@ namespace vob::aoedb
 	private:
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 		aoeng::EcsWorldContextRef<aoest::TimeContext const> m_timeContext;
-		aoeng::EcsWorldViewRef<aoest::Position, aoest::Rotation, GhostControllerComponent, IsControlledTag> m_ghostControllerEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent, aoest::RotationComponent, GhostControllerComponent, IsControlledTag> m_ghostControllerEntities;
 	};
 }
