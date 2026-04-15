@@ -33,7 +33,7 @@ void main()
         + uRig.bones[aBoneIndices.z] * aBoneWeights.z
         + uRig.bones[aBoneIndices.w] * aBoneWeights.w;
     
-    mat4 skinToWorld = uModel.modelToWorld;// *skin;
+    mat4 skinToWorld = uModel.modelToWorld * skin;
     vec4 position = skinToWorld * vec4(aPosition, 1.0);
 #if USE_SHADING || USE_NORMAL
     mat3 normalMatrix = mat3(skinToWorld);
