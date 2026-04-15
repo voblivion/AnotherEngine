@@ -34,6 +34,9 @@ namespace vob::aoeng
 		template <typename... TComponents>
 		friend class EcsWorldViewRef;
 
+		template <typename TComponent>
+		friend class EcsWorldComponentStorageRef;
+
 		friend class EcsWorldQueryQueueRef;
 
 		friend class EcsWorldGameControllerRef;
@@ -76,6 +79,21 @@ namespace vob::aoeng
 		decltype(auto) get(EcsWorldDataAccessProvider const& a_wdap, entt::exclude_t<TExcludes...> a_excludes = {}) const
 		{
 			return a_wdap.m_registry.view<TComponents...>(a_excludes);
+		}
+	};
+
+	template <typename TComponent>
+	class EcsWorldComponentStorageRef
+	{
+	public:
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
+		{
+			// TODO: notify wdar of resource used.
+		}
+
+		decltype(auto) get(EcsWorldDataAccessProvider const& a_wdap) const
+		{
+			return a_wdap.m_registry.storage<TComponent>();
 		}
 	};
 
