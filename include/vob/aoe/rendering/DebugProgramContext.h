@@ -39,6 +39,8 @@ namespace vob::aoegl
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
+		GraphicId skyBoxProgram;
+		std::filesystem::path skyBoxSourcePath;
 		std::vector<PostProcessProgram> oldPostProcesses;
 	};
 }

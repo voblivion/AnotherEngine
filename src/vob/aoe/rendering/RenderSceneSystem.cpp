@@ -686,6 +686,14 @@ namespace vob::aoegl
 				createSsrProgram(debugProgramCtx.ssrProgram);
 			}
 
+			if (ImGui::Button("Recompile Sky Box Program"))
+			{
+				std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
+				auto const skyBoxSource = debugProgramCtx.stringDatabase.find(
+					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyBoxSourcePath));
+				createQuadProgram(*skyBoxSource, debugProgramCtx.skyBoxProgram);
+			}
+
 			auto const activeShadingProgramStr = toSmallStr(debugProgramCtx.forwardPrograms[k_activeShadingProgramIndex].name);
 			if (ImGui::BeginCombo("Shading Program", activeShadingProgramStr.data()))
 			{
@@ -1110,7 +1118,20 @@ namespace vob::aoegl
 			gpuState.enableBlend<GpuStateChange::SurelyYes>();
 		}
 
-		// XII - Post Processes
+		// XII - Sky Box
+		if (renderSceneCtx.skyBoxProgram != k_invalidId)
+		{
+			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::SkyBox]);
+			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
+			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
+			gpuState.bindFramebuffer<GpuStateChange::SurelyNo>(renderSceneCtx.finalFramebuffer);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.skyBoxProgram);
+			// TODO: ubo?
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+		}
+
+		// XIII - Post Processes
 		if (k_debugMode != DebugMode2::None)
 		{
 			auto debugParams = UniformDebugParams{};

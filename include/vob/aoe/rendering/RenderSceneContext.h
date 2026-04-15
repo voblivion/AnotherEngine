@@ -43,6 +43,7 @@ namespace vob::aoegl
 		SSR,
 		OpaqueComposition,
 		Translucent,
+		SkyBox,
 		PostProcesses
 	};
 
@@ -121,6 +122,7 @@ namespace vob::aoegl
 		GraphicId ssaoProgram; // out: litOpaqueFramebuffer
 		GraphicId ssrProgram; // out: ssrFramebuffer
 		GraphicId opaqueCompositionProgram; // out: finalFramebuffer
+		GraphicId skyBoxProgram = k_invalidId;
 		struct PostProcess
 		{
 			GraphicId program;
