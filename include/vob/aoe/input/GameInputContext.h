@@ -44,6 +44,11 @@ namespace vob::aoein
 			m_events.push_back(a_id);
 		}
 
+		void removeEvent(GameInputEventId a_id)
+		{
+			std::erase(m_events, a_id);
+		}
+
 		void flushEvents()
 		{
 			m_events.clear();
