@@ -37,6 +37,8 @@ namespace vob::aoeng
 		template <typename TComponent>
 		friend class EcsWorldComponentStorageRef;
 
+		friend class EcsWorldRegistryRef;
+
 		friend class EcsWorldQueryQueueRef;
 
 		friend class EcsWorldGameControllerRef;
@@ -94,6 +96,20 @@ namespace vob::aoeng
 		decltype(auto) get(EcsWorldDataAccessProvider const& a_wdap) const
 		{
 			return a_wdap.m_registry.storage<TComponent>();
+		}
+	};
+
+	class EcsWorldRegistryRef
+	{
+	public:
+		void init([[maybe_unused]] EcsWorldDataAccessRegistrar& a_wdar) const
+		{
+			// TODO: notify wdar of resource used.
+		}
+
+		decltype(auto) get(EcsWorldDataAccessProvider const& a_wdap) const
+		{
+			return a_wdap.m_registry;
 		}
 	};
 
