@@ -30,7 +30,7 @@ namespace vob::aoest
 
 	inline glm::vec3 transformPosition(glm::mat4 const& a_transform, glm::vec3 const& a_position)
 	{
-		VOB_AOE_CHECK_TERMINATE_SLOW(glm::epsilonEqual((a_transform * glm::vec4{ a_position, 1.0f }).w, 1.0f), "Transform is not affine. Use TransformPositionSkewed.");
+		VOB_AOE_CHECK_TERMINATE_SLOW(glm::epsilonEqual((a_transform * glm::vec4{ a_position, 1.0f }).w, 1.0f, 0.01f), "Transform is not affine. Use TransformPositionSkewed.");
 		return glm::vec3(a_transform * glm::vec4{ a_position, 1.0f });
 	}
 
