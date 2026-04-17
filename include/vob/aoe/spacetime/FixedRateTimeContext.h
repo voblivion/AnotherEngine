@@ -12,6 +12,7 @@ namespace vob::aoest
 		// Runtime
 		int32_t debugRemainingTickCount = -1;
 		std::chrono::time_point<std::chrono::high_resolution_clock> tickStartTime = std::chrono::high_resolution_clock::now();
-		int32_t tickIndex = 0;
+		int32_t tickIndex = -1;
+		bool hasTickChanged = false;
 	};
 }

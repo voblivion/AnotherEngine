@@ -17,16 +17,19 @@ namespace vob::aoest
 
 		if (timeContext.tickStartTime <= fixedRateTimeContext.tickStartTime + fixedRateTimeContext.tickDuration)
 		{
+			fixedRateTimeContext.hasTickChanged = false;
 			return;
 		}
 
 		fixedRateTimeContext.tickStartTime += fixedRateTimeContext.tickDuration;
 		if (fixedRateTimeContext.debugRemainingTickCount == 0)
 		{
+			fixedRateTimeContext.hasTickChanged = false;
 			return;
 		}
 
 		++fixedRateTimeContext.tickIndex;
+		fixedRateTimeContext.hasTickChanged = true;
 		if (fixedRateTimeContext.debugRemainingTickCount > 0)
 		{
 			--fixedRateTimeContext.debugRemainingTickCount;
