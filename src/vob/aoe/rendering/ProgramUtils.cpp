@@ -18,9 +18,6 @@
 #ifndef VOB_AOEGL_SHADER_DIR
 #define VOB_AOEGL_SHADER_DIR "data/shaders/"
 #endif
-#ifndef VOB_AOEGL_CORE_SHADER_DIR_OLD
-#define VOB_AOEGL_CORE_SHADER_DIR_OLD "data/shaders/old/"
-#endif
 
 
 namespace vob::aoegl
@@ -113,73 +110,6 @@ namespace vob::aoegl
 		}
 
 		return programId;
-	}
-
-	void createProgram(ProgramData const& a_programData, Program& a_program)
-	{
-		a_program.id = k_invalidId;
-
-		if (a_programData.vertexShaderSource == nullptr
-			|| a_programData.fragmentShaderSource == nullptr)
-		{
-			ignorable_assert(false && "Missing shader source");
-			return;
-		}
-
-		auto const vertexShaderId = createShader(GL_VERTEX_SHADER, *a_programData.vertexShaderSource);
-		if (vertexShaderId == k_invalidId)
-		{
-			return;
-		}
-
-		auto const fragmentShaderId = createShader(GL_FRAGMENT_SHADER, *a_programData.fragmentShaderSource);
-		if (fragmentShaderId == k_invalidId)
-		{
-			glDeleteShader(vertexShaderId);
-			return;
-		}
-
-		a_program.id = glCreateProgram();
-		glAttachShader(a_program.id, vertexShaderId);
-		glAttachShader(a_program.id, fragmentShaderId);
-		glLinkProgram(a_program.id);
-		glDeleteShader(vertexShaderId);
-		glDeleteShader(fragmentShaderId);
-		GraphicInt linkStatus;
-		glGetProgramiv(a_program.id, GL_LINK_STATUS, &linkStatus);
-		if (linkStatus != GL_TRUE)
-		{
-#ifndef NDEBUG
-			GraphicInt errorLogLength;
-			glGetProgramiv(a_program.id, GL_INFO_LOG_LENGTH, &errorLogLength);
-			std::vector<char> rawErrorLog;
-			rawErrorLog.resize(errorLogLength);
-			glGetProgramInfoLog(
-				a_program.id, errorLogLength, &errorLogLength, rawErrorLog.data());
-			std::string_view errorLog{
-				rawErrorLog.data(), static_cast<std::size_t>(errorLogLength) };
-			std::cerr << errorLog << std::endl;
-#endif
-			a_program.id = 0;
-		}
-		glUseProgram(a_program.id);
-	}
-
-	void createProgram(ProgramData const& a_programData, SceneProgram& a_program)
-	{
-		createProgram(a_programData, static_cast<Program&>(a_program));
-		if (a_program.id == k_invalidId)
-		{
-			return;
-		}
-
-		a_program.viewPositionLocation = glGetUniformLocation(a_program.id, "u_viewPosition");
-		a_program.viewProjectionTransformLocation = glGetUniformLocation(a_program.id, "u_viewProjectionTransform");
-	}
-
-	void createProgram(ProgramData const& a_programData, DebugProgram& a_program)
-	{
-		createProgram(a_programData, static_cast<SceneProgram&>(a_program));
 	}
 
 	namespace
@@ -286,26 +216,6 @@ namespace vob::aoegl
 			return;
 		}
 
-		void oldProcessIncludes(std::string& a_source)
-		{
-			auto const includeRegex = std::regex(R"(#include\s*["<](.*?)[">])");
-			auto match = std::smatch{};
-			auto searchStart(a_source.cbegin());
-
-			while (std::regex_search(searchStart, a_source.cend(), match, includeRegex))
-			{
-				auto const includedFileName = std::string{ VOB_AOEGL_CORE_SHADER_DIR_OLD } + match[1].str();
-				auto const includedFileContent = readFile(includedFileName);
-
-				auto const matchPos = match.position(0) + (searchStart - a_source.cbegin());
-				a_source.replace(matchPos, match.length(0), includedFileContent);
-
-				searchStart = a_source.cbegin() + matchPos;
-			}
-
-			return;
-		}
-
 		std::string createVertexGeometryShaderSource(bool a_useRig, bool a_useShading)
 		{
 			std::vector<std::pair<std::string_view, std::string_view>> defines;
@@ -323,73 +233,6 @@ namespace vob::aoegl
 			processIncludes(source);
 			return source;
 		}
-
-		std::string oldCreateVertexGeometryShaderSource(bool a_useRig, bool a_useShading)
-		{
-			std::vector<std::pair<std::string_view, std::string_view>> defines;
-			if (a_useRig)
-			{
-				defines.emplace_back("USE_RIG", "1");
-			}
-			if (a_useShading)
-			{
-				defines.emplace_back("USE_SHADING", "1");
-			}
-
-			auto source = readFile(VOB_AOEGL_CORE_SHADER_DIR_OLD "basic_vertex_shader.glsl");
-			setDefines(source, defines);
-			oldProcessIncludes(source);
-			return source;
-		}
-
-		std::string createFragmentForwardShaderSource(std::string_view const& a_shadingSource)
-		{
-			auto source = readFile(VOB_AOEGL_CORE_SHADER_DIR_OLD "header_forward_fragment_shader.glsl");
-			source.append(a_shadingSource);
-			oldProcessIncludes(source);
-			return source;
-		}
-
-		std::string createVertexPostProcessShaderSource()
-		{
-			auto source = readFile(VOB_AOEGL_CORE_SHADER_DIR_OLD "post_process_vertex_shader.glsl");
-			oldProcessIncludes(source);
-			return source;
-		}
-	}
-
-	GraphicId oldCreateLightClusteringProgram(int32_t a_workGroupSize)
-	{
-		std::vector<std::pair<std::string_view, std::string_view>> defines;
-		auto const workGroupSizeStr = std::to_string(a_workGroupSize);
-		defines.emplace_back("WORK_GROUP_SIZE", workGroupSizeStr);
-
-		auto computeShaderSource = readFile(VOB_AOEGL_CORE_SHADER_DIR_OLD "light_clustering_compute_shader.glsl");
-		setDefines(computeShaderSource, defines);
-		oldProcessIncludes(computeShaderSource);
-		return createComputeProgram(computeShaderSource);
-	}
-
-	GraphicId oldCreateDepthProgram(bool a_useRig)
-	{
-		auto const vertexShaderSource = oldCreateVertexGeometryShaderSource(a_useRig, false /* use shading */);
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_CORE_SHADER_DIR_OLD "depth_fragment_shader.glsl");
-
-		return createProgram(vertexShaderSource, fragmentShaderSource);
-	}
-
-	GraphicId oldCreateForwardProgram(std::string_view a_shadingSource, bool a_useRig, GraphicId optionalProgramId)
-	{
-		auto const vertexShaderSource = oldCreateVertexGeometryShaderSource(a_useRig, true /* use shading */);
-		auto const fragmentShaderSource = createFragmentForwardShaderSource(a_shadingSource);
-
-		return createProgram(vertexShaderSource, fragmentShaderSource, optionalProgramId);
-	}
-
-	GraphicId oldCreatePostProcessProgram(std::string_view a_postProcessSource, GraphicId optionalProgramId)
-	{
-		auto const vertexShaderSource = createVertexPostProcessShaderSource();
-		return createProgram(vertexShaderSource, a_postProcessSource, optionalProgramId);
 	}
 
 	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId)
@@ -453,6 +296,7 @@ namespace vob::aoegl
 
 		auto fragmentShaderSource = std::string{ a_fragmentShaderSource };
 		processIncludes(fragmentShaderSource);
+
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
@@ -478,5 +322,16 @@ namespace vob::aoegl
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_fragment_shader.glsl");
 		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+	}
+
+	GraphicId createDebugGeometryProgram(GraphicId a_optionalProgramId)
+	{
+		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_geometry_vertex_shader.glsl");
+		processIncludes(vertexShaderSource);
+
+		auto fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_geometry_fragment_shader.glsl");
+		processIncludes(fragmentShaderSource);
+
+		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 }

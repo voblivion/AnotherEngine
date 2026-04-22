@@ -1,6 +1,7 @@
 #ifndef VOB_AOEGL_CORE_DEFINES_GLSL
 #define VOB_AOEGL_CORE_DEFINES_GLSL
 
+#define SUN_CASCADING_SHADOW_MAPS_CAPACITY 4
 #define SPOT_LIGHT_SHADOW_MAPS_CAPACITY 6
 #define RIG_BONES_CAPACITY 100
 #define MATERIAL_TEXTURES_CAPACITY 16
@@ -47,12 +48,14 @@
 #define BINDING_TEXTURE_POST_PROCESS_COLOR 0
 
 #define BINDING_TEXTURE_DEBUG 0
+#define BINDING_TEXTURE_ARRAY_DEBUG 1
 
 #define DEBUG_TYPE_COLOR_TEXTURE 0
 #define DEBUG_TYPE_SHADES_TEXTURE 1
 #define DEBUG_TYPE_DEPTH_TEXTURE 2
-#define DEBUG_TYPE_DIRECTION_TEXTURE 3
-#define DEBUG_TYPE_LIGHT_CLUSTERS 4
+#define DEBUG_TYPE_DEPTH_TEXTURE_ARRAY 3
+#define DEBUG_TYPE_DIRECTION_TEXTURE 4
+#define DEBUG_TYPE_LIGHT_CLUSTERS 5
 
 #ifdef __cplusplus
 #include <glm/glm.hpp>
@@ -106,6 +109,7 @@ struct ALIGN_16 UniformViewParams
     ubo_mat4 worldToClip;
     ubo_mat4 clipToView;
     ubo_mat4 viewToWorld;
+    ubo_mat4 debugViewToWorld; // TODO : remove me
     ubo_ivec2 resolution;
     ubo_vec2 invResolution;
     float nearClip;
@@ -122,9 +126,20 @@ struct ALIGN_16 UniformLightingParams
     ubo_ivec2 lightClusterTileSize;
     int lightClusterZCount;
     int lightClusterCapacity;
+    ubo_vec3 sunColor;
+    float sunIntensity;
+    ubo_vec3 sunDir;
 };
 
-struct ALIGN_16 GpuShadowLight
+struct ALIGN_16 GpuSunCascadingShadow
+{
+    ubo_mat4 worldToClip;
+    float maxViewDepth;
+    float nearClip;
+    float farClip;
+};
+
+struct ALIGN_16 GpuSpotLightShadow
 {
     ubo_mat4 worldToClip;
     float nearClip;
@@ -138,8 +153,9 @@ struct ALIGN_16 GpuShadowLight
 
 struct ALIGN_16 UniformShadowParams
 {
-    GpuShadowLight sun;
-    ARRAY(GpuShadowLight, SPOT_LIGHT_SHADOW_MAPS_CAPACITY, spotLights);
+    ARRAY(GpuSunCascadingShadow, SUN_CASCADING_SHADOW_MAPS_CAPACITY, sun);
+    ARRAY(GpuSpotLightShadow, SPOT_LIGHT_SHADOW_MAPS_CAPACITY, spotLights);
+    int sunCascadingShadowMapCount;
 };
 
 struct ALIGN_16 UniformModelParams
@@ -194,9 +210,11 @@ struct ALIGN_16 UniformSsaoParams
 struct ALIGN_16 UniformDebugParams
 {
     int8_t type;
+    int8_t index;
 };
 
 #ifdef __cplusplus
+    static constexpr int32_t k_sunCascadingShadowMapsCapacity = SUN_CASCADING_SHADOW_MAPS_CAPACITY;
 	static constexpr int32_t k_spotLightShadowMapsCapacity = SPOT_LIGHT_SHADOW_MAPS_CAPACITY;
 	static constexpr int32_t k_rigBonesCapacity = RIG_BONES_CAPACITY;
 	static constexpr int32_t k_materialTexturesCapacity = MATERIAL_TEXTURES_CAPACITY;
@@ -240,12 +258,14 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTexturePostProcessColor = BINDING_TEXTURE_POST_PROCESS_COLOR;
     
 	static constexpr uint32_t k_bindingTextureDebug = BINDING_TEXTURE_DEBUG;
+	static constexpr uint32_t k_bindingTextureArrayDebug = BINDING_TEXTURE_ARRAY_DEBUG;
     
     enum class DebugType : uint8_t
     {
         ColorTexture = DEBUG_TYPE_COLOR_TEXTURE,
         ShadesTexture = DEBUG_TYPE_SHADES_TEXTURE,
         DepthTexture = DEBUG_TYPE_DEPTH_TEXTURE,
+        DepthTextureArray = DEBUG_TYPE_DEPTH_TEXTURE_ARRAY,
         DirectionTexture = DEBUG_TYPE_DIRECTION_TEXTURE,
         LightClusters = DEBUG_TYPE_LIGHT_CLUSTERS,
     };

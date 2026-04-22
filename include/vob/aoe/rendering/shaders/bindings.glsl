@@ -67,7 +67,7 @@ layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL) uniform sampler2D
 layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_DEPTH) uniform sampler2D uSsao_OpaqueDepth;
 
 layout(binding = BINDING_TEXTURE_MATERIAL_AMBIENT_OCCLUSION) uniform sampler2D uShading_AmbientOcclusion;
-layout(binding = BINDING_TEXTURE_MATERIAL_SUN_SHADOW_MAP) uniform sampler2D uShading_SunShadowMap;
+layout(binding = BINDING_TEXTURE_MATERIAL_SUN_SHADOW_MAP) uniform sampler2DArray uShading_SunShadowMap;
 layout(binding = BINDING_TEXTURE_MATERIAL_SPOT_LIGHT_SHADOW_MAPS_BEGIN) uniform sampler2D uShading_SpotLightShadowMaps[SPOT_LIGHT_SHADOW_MAPS_CAPACITY];
 
 layout(binding = BINDING_TEXTURE_SSR_DIRECT_OPAQUE_COLOR) uniform sampler2D uSsr_DirectOpaqueColor;
@@ -83,4 +83,5 @@ layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP) unifor
 layout(binding = BINDING_TEXTURE_POST_PROCESS_COLOR) uniform sampler2D uPostProcess_Color;
 
 layout(binding = BINDING_TEXTURE_DEBUG) uniform sampler2D uDebug_Texture;
+layout(binding = BINDING_TEXTURE_ARRAY_DEBUG) uniform sampler2DArray uDebug_TextureArray;
 #endif // #ifndef VOB_AOEGL_CORE_BINDINGS_GLSL

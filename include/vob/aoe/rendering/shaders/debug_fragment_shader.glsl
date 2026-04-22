@@ -34,32 +34,38 @@ vec3 heat7Colors(float ratio)
 
 void main()
 {
-    vec3 c = texture(uDebug_Texture, vUv).rgb;
+    vec3 c;
     if (uDebug.type == DEBUG_TYPE_SHADES_TEXTURE)
     {
-        c = vec3(c.r);
+        c = vec3(texture(uDebug_Texture, vUv).r);
     }
     else if (uDebug.type == DEBUG_TYPE_DEPTH_TEXTURE)
     {
-        float linearDepth = linearizeDepth(c.r, uView.nearClip, uView.farClip);
+        float linearDepth = linearizeDepth(texture(uDebug_Texture, vUv).r, uView.nearClip, uView.farClip);
         // c = vec3(linearizeDepth(c.r, uView.nearClip, uView.farClip) / uView.farClip);
         // c = heat7Colors(log(linearizeDepth(c.r, uView.nearClip, uView.farClip) + 1.0) / log(uView.farClip + 1.0));
         // c = heat7Colors(linearizeDepth(c.r, uView.nearClip, uView.farClip) / uView.farClip);
         float normalizedLinearDepth = (linearDepth - uView.nearClip) / (uView.farClip - uView.nearClip);
-        float k = 10.0f;
+        float k = 10.0;
         c = heat7Colors(log(normalizedLinearDepth * k + 1.0) / log(k + 1.0));
+    }
+    else if (uDebug.type == DEBUG_TYPE_DEPTH_TEXTURE_ARRAY)
+    {
+        float d = texture(uDebug_TextureArray, vec3(vUv, uDebug.index)).r;
+        float k = 10.0;
+        c = heat7Colors(log(d * k + 1.0) / log(k + 1.0));
     }
     else if (uDebug.type == DEBUG_TYPE_DIRECTION_TEXTURE)
     {
-        c = c * 0.5 + 0.5;
+        c = texture(uDebug_Texture, vUv).rgb * 0.5 + 0.5;
     }
     else if (uDebug.type == DEBUG_TYPE_LIGHT_CLUSTERS)
     {
-        if (c.r < 1.0)
+        if (texture(uDebug_Texture, vUv).r < 1.0)
         {
             int lightClusterIndex = computeLightClusterIndex(
                 gl_FragCoord.xy,
-                c.r,
+                texture(uDebug_Texture, vUv).r,
                 uLighting.lightClusterTileSize,
                 uLighting.lightClusterZCount,
                 uView.resolution,

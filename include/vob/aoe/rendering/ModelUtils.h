@@ -1,9 +1,7 @@
 #pragma once
 
-#include <vob/aoe/api.h>
-
-#include <vob/aoe/rendering/Model.h>
-#include <vob/aoe/rendering/ModelData.h>
+#include "vob/aoe/rendering/Model.h"
+#include "vob/aoe/rendering/data/ModelData.h"
 
 
 namespace vob::aoegl
@@ -15,6 +13,6 @@ namespace vob::aoegl
 	constexpr static GraphicInt k_vertexBoneIndicesLocation = 4;
 	constexpr static GraphicInt k_vertexBoneWeightsLocation = 5;
 
-	VOB_AOE_API Model createStaticModel(StaticModelData const& a_staticModelData);
-	VOB_AOE_API Model createRiggedModel(RiggedModelData const& a_riggedModelData);
+	Model createStaticModel(StaticModelData const& a_staticModelData);
+	Model createRiggedModel(RiggedModelData const& a_riggedModelData);
 }

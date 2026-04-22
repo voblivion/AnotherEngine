@@ -2,13 +2,13 @@
 
 #include <vob/aoe/api.h>
 
-#include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/rendering/DebugMeshContext.h>
-#include <vob/aoe/spacetime/TimeContext.h>
+#include "vob/aoe/engine/EcsWorldDataAccess.h"
+#include "vob/aoe/rendering/contexts/DebugMeshContext.h"
+#include "vob/aoe/spacetime/TimeContext.h"
 #include "vob/aoe/spacetime/PositionComponent.h"
 #include "vob/aoe/spacetime/RotationComponent.h"
-#include <vob/aoe/spacetime/LinearVelocityComponent.h>
-#include <vob/aoe/spacetime/SoftFollowComponent.h>
+#include "vob/aoe/spacetime/LinearVelocityComponent.h"
+#include "vob/aoe/spacetime/SoftFollowComponent.h"
 
 
 namespace vob::aoest
