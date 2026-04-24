@@ -34,6 +34,7 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<DebugProgramContext const> m_debugProgramContext;
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const> m_focusEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, StaticModelComponent> m_staticModelEntities;

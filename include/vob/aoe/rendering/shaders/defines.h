@@ -109,7 +109,6 @@ struct ALIGN_16 UniformViewParams
     ubo_mat4 worldToClip;
     ubo_mat4 clipToView;
     ubo_mat4 viewToWorld;
-    ubo_mat4 debugViewToWorld; // TODO : remove me
     ubo_ivec2 resolution;
     ubo_vec2 invResolution;
     float nearClip;
@@ -155,6 +154,7 @@ struct ALIGN_16 UniformShadowParams
 {
     ARRAY(GpuSunCascadingShadow, SUN_CASCADING_SHADOW_MAPS_CAPACITY, sun);
     ARRAY(GpuSpotLightShadow, SPOT_LIGHT_SHADOW_MAPS_CAPACITY, spotLights);
+    ubo_mat4 sunReferenceViewToWorld;
     int sunCascadingShadowMapCount;
 };
 

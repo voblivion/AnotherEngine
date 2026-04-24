@@ -3,7 +3,7 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/engine/game.h>
-#include <vob/aoe/engine/frame_job.h>
+#include <vob/aoe/engine/FrameJob.h>
 #include <vob/aoe/engine/UnsynchronizedFrameJobsRepeater.h>
 
 #include <memory>

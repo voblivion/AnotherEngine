@@ -9,5 +9,6 @@ namespace vob::aoegl
 	{
 		entt::entity activeCameraEntity = entt::null;
 		entt::entity debugCameraEntity = entt::null;
+		entt::entity focusEntity = entt::null;
 	};
 }

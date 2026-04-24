@@ -2,7 +2,7 @@
 
 #include <vob/aoe/api.h>
 
-#include <vob/aoe/engine/frame_job.h>
+#include <vob/aoe/engine/FrameJob.h>
 
 #include <atomic>
 #include <memory>

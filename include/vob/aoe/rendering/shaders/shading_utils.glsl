@@ -81,6 +81,34 @@ vec3 uEvaluateLight(int lightIndex, vec3 position, vec3 normal, vec3 albedo, flo
     return evaluateLight(uLights[lightIndex], uView.viewToWorld[3].xyz, position, normal, albedo, metallic, roughness, reflectance);
 }
 
+float uEvaluateSunShadow(vec3 position)
+{
+    float fragViewDepth = dot(position - uShadow.sunReferenceViewToWorld[3].xyz, -normalize(uShadow.sunReferenceViewToWorld[2].xyz));
+    int sunCsmIndex = uShadow.sunCascadingShadowMapCount - 1;
+    for (int i = 0; i < uShadow.sunCascadingShadowMapCount; ++i)
+    {
+        if (fragViewDepth < uShadow.sun[i].maxViewDepth)
+        {
+            sunCsmIndex = i;
+            break;
+        }
+    }
+
+    vec4 sunShadowClipPos = uShadow.sun[sunCsmIndex].worldToClip * vec4(position, 1.0);
+    vec3 sunShadowNdc = sunShadowClipPos.xyz / sunShadowClipPos.w;
+    vec2 sunShadowUv = sunShadowNdc.xy * 0.5 + 0.5;
+
+    float sunShadowDepth = sunShadowNdc.z * 0.5 + 0.5;
+    float sunSampledDepth = texture(uShading_SunShadowMap, vec3(sunShadowUv, sunCsmIndex)).r;
+    
+    return sunShadowDepth > sunSampledDepth + 0.001 ? 1.0 : 0.0;
+}
+
+float uEvaluateAmbientOcclusion(vec4 coord)
+{
+    return texture(uShading_AmbientOcclusion, coord.xy * uView.invResolution).r;
+}
+
 vec3 uEvaluateLights(
     vec4 coord,
     vec3 position,
@@ -102,27 +130,11 @@ vec3 uEvaluateLights(
         color += (1.0 - shadow) * uEvaluateLight(lightIndex, position, normal, albedo, metallic, roughness, reflectance);
     }
     
-    float fragViewDepth = dot(position - uView.debugViewToWorld[3].xyz, -normalize(uView.debugViewToWorld[2].xyz));
-    int sunCsmIndex = uShadow.sunCascadingShadowMapCount - 1;
-    for (int i = 0; i < uShadow.sunCascadingShadowMapCount; ++i)
-    {
-        if (fragViewDepth < uShadow.sun[i].maxViewDepth)
-        {
-            sunCsmIndex = i;
-            break;
-        }
-    }
-
-    vec4 sunShadowClipPos = uShadow.sun[sunCsmIndex].worldToClip * vec4(position, 1.0);
-    vec3 sunShadowNdc = sunShadowClipPos.xyz / sunShadowClipPos.w;
-    vec2 sunShadowUv = sunShadowNdc.xy * 0.5 + 0.5;
-
-    float sunShadowDepth = sunShadowNdc.z * 0.5 + 0.5;
-    float sunSampledDepth = texture(uShading_SunShadowMap, vec3(sunShadowUv, sunCsmIndex)).r;
-    float sunShadow = sunShadowDepth > sunSampledDepth + 0.0005 ? 1.0 : 0.0;
+    float sunShadow = uEvaluateSunShadow(position);
     color += albedo * (1.0 - sunShadow) * uLighting.sunColor * uLighting.sunIntensity;
 
-    color += albedo * uLighting.ambientColor * texture(uShading_AmbientOcclusion, coord.xy * uView.invResolution).r;
+    float ambientOcclusion = uEvaluateAmbientOcclusion(coord);
+    color += albedo * uLighting.ambientColor * ambientOcclusion;
     
     return color;
 }

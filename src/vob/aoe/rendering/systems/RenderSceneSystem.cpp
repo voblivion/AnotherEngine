@@ -1,6 +1,7 @@
 #include "vob/aoe/rendering/systems/RenderSceneSystem.h"
 
 #include "vob/aoe/rendering/components/ModelComponent.h"
+#include "vob/aoe/rendering/CameraUtils.h"
 #include "vob/aoe/rendering/GpuState.h"
 #include "vob/aoe/rendering/ProgramUtils.h"
 
@@ -23,117 +24,6 @@
 #pragma optimize("", off)
 namespace vob::aoegl
 {
-	struct CameraProperties
-	{
-		glm::vec3 position;
-		glm::quat rotation;
-		float nearClip;
-		float farClip;
-		float fov;
-	};
-
-	template <typename TCameraView>
-	CameraProperties getCameraProperties(
-		entt::entity a_camera,
-		TCameraView const& a_cameraEntities)
-	{
-		if (!a_cameraEntities.contains(a_camera))
-		{
-			return CameraProperties{
-				.position = glm::vec3{0.0f},
-				.rotation = glm::quat{},
-				.nearClip = 0.1f,
-				.farClip = 1000.0f,
-				.fov = 70.0f * std::numbers::pi_v<float> / 360.0f
-			};
-		}
-
-		auto const [positionCmp, rotationCmp, cameraCmp] = a_cameraEntities.get(a_camera);
-		return CameraProperties{
-			.position = positionCmp.value,
-			.rotation = rotationCmp.value,
-			.nearClip = cameraCmp.nearClip,
-			.farClip = cameraCmp.farClip,
-			.fov = cameraCmp.fov
-		};
-	}
-
-	using ViewFrustumPlanes = std::array<std::pair<glm::vec3, float>, 6>;
-
-	ViewFrustumPlanes computeViewFrustumPlanes(UniformViewParams const& a_viewParams)
-	{
-		auto const cameraForward = -glm::vec3(a_viewParams.viewToWorld[2]);
-		auto const cameraRight = glm::vec3(a_viewParams.viewToWorld[0]);
-		auto const cameraUp = glm::vec3(a_viewParams.viewToWorld[1]);
-		auto const nearCenter = glm::vec3(a_viewParams.viewToWorld * glm::vec4(0.0, 0.0, -a_viewParams.nearClip, 1.0));
-		auto const farCenter = glm::vec3(a_viewParams.viewToWorld * glm::vec4(0.0, 0.0, -a_viewParams.farClip, 1.0));
-		auto const tanHalfFov = std::tan(a_viewParams.fov * 0.5f);
-		auto const nearHalfHeight = a_viewParams.nearClip * tanHalfFov;
-		auto const nearHalfWidth = nearHalfHeight * a_viewParams.aspectRatio;
-
-		auto const viewPosition = glm::vec3(a_viewParams.viewToWorld[3]);
-		auto const leftPlaneNormal = glm::normalize(glm::cross(nearCenter - cameraRight * nearHalfWidth - viewPosition, cameraUp));
-		auto const rightPlaneNormal = glm::normalize(glm::cross(cameraUp, nearCenter + cameraRight * nearHalfWidth - viewPosition));
-		auto const upPlaneNormal = glm::normalize(glm::cross(nearCenter + cameraUp * nearHalfHeight - viewPosition, cameraRight));
-		auto const downPlaneNormal = glm::normalize(glm::cross(cameraRight, nearCenter - cameraUp * nearHalfHeight - viewPosition));
-
-		return ViewFrustumPlanes{
-			std::pair{cameraForward, -glm::dot(cameraForward, nearCenter)},
-			std::pair{-cameraForward, -glm::dot(-cameraForward, farCenter)},
-			std::pair{leftPlaneNormal, -glm::dot(leftPlaneNormal, viewPosition)},
-			std::pair{rightPlaneNormal, -glm::dot(rightPlaneNormal, viewPosition)},
-			std::pair{upPlaneNormal, -glm::dot(upPlaneNormal, viewPosition)},
-			std::pair{downPlaneNormal, -glm::dot(downPlaneNormal, viewPosition)}
-		};
-	}
-
-	bool testIntersectViewFrustum(ViewFrustumPlanes const& a_viewFrustumPlanes, glm::vec3 const& a_position, float a_radius)
-	{
-		for (auto& viewFrustumPlane : a_viewFrustumPlanes)
-		{
-			if (glm::dot(viewFrustumPlane.first, a_position) + viewFrustumPlane.second < -a_radius)
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
-	bool testCameraFrustumIntersect(
-		std::array<std::pair<glm::vec3, float>, 6> const& a_cameraFrustumPlanes,
-		glm::vec3 const& a_position,
-		float a_radius)
-	{
-		for (auto const& plane : a_cameraFrustumPlanes)
-		{
-			if (glm::dot(plane.first, a_position) + plane.second < -a_radius)
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	struct CulledStaticMesh
-	{
-		GraphicId forwardProgram;
-		int32_t materialIndex;
-		GraphicId meshVao;
-		GraphicId modelParamsUbo;
-		int32_t indexCount;
-	};
-
-	struct CulledRiggedMesh
-	{
-		GraphicId forwardProgram;
-		int32_t materialIndex;
-		GraphicId meshVao;
-		GraphicId modelParamsUbo;
-		GraphicId rigParamsUbo;
-		int32_t indexCount;
-	};
-
 	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 
@@ -141,6 +31,33 @@ namespace vob::aoegl
 
 	namespace
 	{
+		struct CulledStaticMesh
+		{
+			GraphicId forwardProgram;
+			int32_t materialIndex;
+			GraphicId meshVao;
+			GraphicId modelParamsUbo;
+			int32_t indexCount;
+		};
+
+		struct CulledRiggedMesh
+		{
+			GraphicId forwardProgram;
+			int32_t materialIndex;
+			GraphicId meshVao;
+			GraphicId modelParamsUbo;
+			GraphicId rigParamsUbo;
+			int32_t indexCount;
+		};
+
+		struct CulledLight
+		{
+			float importance;
+			glm::vec3 position;
+			glm::quat rotation;
+			LightComponent const* lightComponent;
+		};
+
 		struct ScopedGpuTimerQuery
 		{
 			ScopedGpuTimerQuery(GraphicId queryId)
@@ -170,7 +87,7 @@ namespace vob::aoegl
 			auto const invResolution = 1.0f / glm::vec2{ resolution };
 			auto const aspectRatio = static_cast<float>(resolution.x) / resolution.y;
 
-			auto const [position, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntity, a_cameraEntities);
+			auto const [position, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntities, a_cameraEntity);
 			auto const viewToWorld = aoest::combine(position, rotation);
 			auto const worldToView = glm::inverse(viewToWorld);
 			auto const viewToClip = glm::perspective(fov, aspectRatio, nearClip, farClip);
@@ -192,14 +109,6 @@ namespace vob::aoegl
 			};
 		}
 
-		struct CulledLight
-		{
-			float importance;
-			glm::vec3 position;
-			glm::quat rotation;
-			LightComponent const* lightComponent;
-		};
-
 		static float texelSize = 1.0;
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
@@ -210,19 +119,19 @@ namespace vob::aoegl
 			int32_t a_lightClusterZCount,
 			int32_t a_lightClusterCapacity,
 			glm::mat4 a_clipToWorld,
+			glm::mat4 a_viewToWorld,
 			float a_nearClip,
 			float a_farClip,
 			glm::vec3 const& a_sunDir,
 			mistd::bounded_vector<float, k_sunCascadingShadowMapsCapacity> const& a_sunFarClips,
-			std::vector<GpuLight>& o_gpuLights,
-			mistd::bounded_vector<ViewFrustumPlanes, k_sunCascadingShadowMapsCapacity>& o_sunViewFrustumPlanes)
+			std::vector<GpuLight>& o_gpuLights)
 		{
 			// TODO: remove magic
 			static std::vector<CulledLight> culledLights;
 			culledLights.clear();
 			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
-				if (!testIntersectViewFrustum(a_viewFrustumPlanes, positionCmp.value, lightCmp.radius))
+				if (!testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value, lightCmp.radius))
 				{
 					continue;
 				}
@@ -304,17 +213,9 @@ namespace vob::aoegl
 					.farClip = maxZ
 				};
 
-				o_sunViewFrustumPlanes.push_back(
-					ViewFrustumPlanes{ {
-						{ sunZ, -minZ },
-						{ -sunZ, maxZ },
-						{ sunX, -minX },
-						{ -sunX, maxX },
-						{ sunY, -minY },
-						{ -sunY, maxY }} });
-
 				nearZ = farZ;
 			}
+			shadowParams.sunReferenceViewToWorld = a_viewToWorld;
 			shadowParams.sunCascadingShadowMapCount = mistd::isize(a_sunFarClips);
 
 			o_gpuLights.reserve(lightingParams.lightCount);
@@ -370,6 +271,7 @@ namespace vob::aoegl
 		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
 		auto const& materialManager = *m_materialManagerContext.get(a_wdap).materialManager;
 		auto const& window = m_windowContext.get(a_wdap).window.get();
+		auto const& cameraDirectorCtx = m_cameraDirectorContext.get(a_wdap);
 		auto staticModelEntities = m_staticModelEntities.get(a_wdap);
 		auto riggedModelEntities = m_riggedModelEntities.get(a_wdap);
 		GpuState gpuState;
@@ -529,30 +431,20 @@ namespace vob::aoegl
 		auto const globalParams = createGlobalParams(m_timeContext.get(a_wdap));
 		glNamedBufferSubData(renderSceneCtx.globalParamsUbo, 0, sizeof(globalParams), &globalParams);
 
-		// WIP
-		{
-			glm::vec3 up = glm::vec3{ 0.0f, 1.0f, 0.0f };
-			float angle = 2.0f * std::numbers::pi_v<float> *std::fmod(globalParams.worldTime * 0.1f, 1.0f);
-			glm::vec3 currentSunDir = glm::angleAxis(angle, up) * glm::normalize(glm::vec3{ 0.0f, 0.15f, -1.0f });
-			renderSceneCtx.sunDir = currentSunDir;
-		}
-
 		auto viewParams = createViewParams(
-			m_windowContext.get(a_wdap), m_cameraDirectorContext.get(a_wdap).activeCameraEntity, m_cameraEntities.get(a_wdap));
+			m_windowContext.get(a_wdap), cameraDirectorCtx.activeCameraEntity, m_cameraEntities.get(a_wdap));
 		auto const debugViewParams = createViewParams(
-			m_windowContext.get(a_wdap), m_cameraDirectorContext.get(a_wdap).debugCameraEntity, m_cameraEntities.get(a_wdap));
-		viewParams.debugViewToWorld = debugViewParams.viewToWorld;
+			m_windowContext.get(a_wdap),
+			cameraDirectorCtx.debugCameraEntity != entt::null ? cameraDirectorCtx.debugCameraEntity : cameraDirectorCtx.activeCameraEntity,
+			m_cameraEntities.get(a_wdap));
 		glNamedBufferSubData(renderSceneCtx.viewParamsUbo, 0, sizeof(viewParams), &viewParams);
 
-		auto const viewFrustumPlanes = computeViewFrustumPlanes(debugViewParams);
+		auto const viewFrustumPlanes = computeViewFrustumPlanes(debugViewParams.worldToClip);
 
 		// II - Prepare Lights & Shadows
-		// TODO: how to define light focus point
-		auto const lightFocusPositionH = viewParams.viewToWorld * glm::vec4{ 0.0, 0.0, -7.0f, 1.0f };
-		auto const lightFocusPosition = glm::vec3{ lightFocusPositionH } / lightFocusPositionH.w;
+		auto const lightFocusPosition = getFocusPosition(m_focusEntities.get(a_wdap), cameraDirectorCtx.focusEntity);
 		// TODO: remove magic
 		static std::vector<GpuLight> gpuLights;
-		mistd::bounded_vector<ViewFrustumPlanes, k_sunCascadingShadowMapsCapacity> sunViewFrustumPlanes;
 		gpuLights.clear();
 		auto const [lightingParams, shadowParams, spotLightShadowMapCount] = createLightingAndShadowParams(
 			viewFrustumPlanes,
@@ -563,12 +455,12 @@ namespace vob::aoegl
 			renderSceneCtx.lightClusterZCount,
 			renderSceneCtx.lightClusterCapacity,
 			glm::inverse(debugViewParams.worldToClip),
+			debugViewParams.viewToWorld,
 			debugViewParams.nearClip,
 			debugViewParams.farClip,
 			renderSceneCtx.sunDir,
 			renderSceneCtx.sunShadowMapFrustumFarClips,
-			gpuLights,
-			sunViewFrustumPlanes);
+			gpuLights);
 		glNamedBufferSubData(renderSceneCtx.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
 		glNamedBufferSubData(renderSceneCtx.shadowParamsUbo, 0, sizeof(shadowParams), &shadowParams);
 		glNamedBufferSubData(renderSceneCtx.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
@@ -606,7 +498,7 @@ namespace vob::aoegl
 		culledTranslucentStaticMeshes.clear();
 		for (auto const [entity, positionCmp, rotationCmp, staticModelCmp] : staticModelEntities.each())
 		{
-			if (testIntersectViewFrustum(viewFrustumPlanes, positionCmp.value, staticModelCmp.boundingRadius))
+			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, staticModelCmp.boundingRadius))
 			{
 				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
 				if (staticModelCmp.modelParams != modelParams)
@@ -646,7 +538,7 @@ namespace vob::aoegl
 		culledTranslucentRiggedMeshes.clear();
 		for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp] : riggedModelEntities.each())
 		{
-			if (testIntersectViewFrustum(viewFrustumPlanes, positionCmp.value, riggedModelCmp.boundingRadius))
+			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, riggedModelCmp.boundingRadius))
 			{
 				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
 				if (riggedModelCmp.modelParams != modelParams)
@@ -766,6 +658,8 @@ namespace vob::aoegl
 					debugMeshCtx.addLine(p5, p7, aoegl::k_gray);
 					debugMeshCtx.addLine(p6, p7, aoegl::k_gray);
 				}
+				
+				auto const sunViewFrustumPlanes = computeViewFrustumPlanes(sunShadowParams.worldToClip);
 
 				auto const sunViewParams = UniformViewParams{
 					.worldToClip = sunShadowParams.worldToClip,
@@ -788,7 +682,7 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp] : staticModelEntities.each())
 				{
-					if (true || testIntersectViewFrustum(sunViewFrustumPlanes[csmIndex], positionCmp.value, staticModelCmp.boundingRadius))
+					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, staticModelCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (staticModelCmp.modelParams != modelParams)
@@ -809,7 +703,7 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp] : riggedModelEntities.each())
 				{
-					if (true || testIntersectViewFrustum(sunViewFrustumPlanes[csmIndex], positionCmp.value, riggedModelCmp.boundingRadius))
+					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, riggedModelCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (riggedModelCmp.modelParams != modelParams)
@@ -842,7 +736,7 @@ namespace vob::aoegl
 				};
 				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(spotLightViewParams), &spotLightViewParams);
 
-				auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams);
+				auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams.worldToClip);
 
 				gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.spotLightShadowMapTargets[i].framebuffer);
 				gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, spotLightViewParams.resolution });
@@ -851,7 +745,7 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp] : staticModelEntities.each())
 				{
-					if (testIntersectViewFrustum(spotLightViewFrustumPlanes, positionCmp.value, staticModelCmp.boundingRadius))
+					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, staticModelCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (staticModelCmp.modelParams != modelParams)
@@ -872,7 +766,7 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp] : riggedModelEntities.each())
 				{
-					if (testIntersectViewFrustum(spotLightViewFrustumPlanes, positionCmp.value, riggedModelCmp.boundingRadius))
+					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, riggedModelCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
 						if (riggedModelCmp.modelParams != modelParams)
@@ -1204,13 +1098,13 @@ namespace vob::aoegl
 		else
 		{
 			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::PostProcesses]);
+			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
+			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
+			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+
 			if (!renderSceneCtx.postProcesses.empty())
 			{
-				gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
-				gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
-				gpuState.disableBlend<GpuStateChange::SurelyYes>();
-				glBindVertexArray(renderSceneCtx.postProcessVao);
-
 				auto nextTexture = renderSceneCtx.finalColorTexture;
 				for (int32_t i = 0; i < mistd::isize(renderSceneCtx.postProcesses) - 1; ++i)
 				{
@@ -1254,8 +1148,8 @@ namespace vob::aoegl
 		if (!debugMeshCtx.lines.empty())
 		{
 			glClearDepth(1.0);
-			glDisable(GL_DEPTH_TEST);
-			glUseProgram(renderSceneCtx.debugGeometryProgram);
+			gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugGeometryProgram);
 			glLineWidth(2);
 
 			glBindVertexArray(renderSceneCtx.debugGeometryVao);

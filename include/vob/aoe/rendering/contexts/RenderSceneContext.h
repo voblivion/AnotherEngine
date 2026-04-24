@@ -78,7 +78,7 @@ namespace vob::aoegl
 		GraphicId ssaoFramebuffer;
 		GraphicId ambientOcclusionTexture;
 
-		glm::vec3 sunDir = glm::normalize(glm::vec3{ 0.0f, 0.15f, -1.0f });
+		glm::vec3 sunDir = glm::normalize(glm::vec3{ 0.7f, 0.15f, -1.0f });
 		glm::ivec2 sunShadowMapResolution;
 		GraphicId sunShadowMapFramebuffer;
 		GraphicId sunShadowMapDepthTextureArray;
