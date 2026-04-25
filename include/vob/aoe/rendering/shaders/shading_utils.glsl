@@ -131,7 +131,8 @@ vec3 uEvaluateLights(
     }
     
     float sunShadow = uEvaluateSunShadow(position);
-    color += albedo * (1.0 - sunShadow) * uLighting.sunColor * uLighting.sunIntensity;
+    float sunNdotL = clamp(dot(uLighting.sunDir, normal), 0.0, 1.0);
+    color += albedo * sunNdotL * (1.0 - sunShadow) * uLighting.sunColor * uLighting.sunIntensity;
 
     float ambientOcclusion = uEvaluateAmbientOcclusion(coord);
     color += albedo * uLighting.ambientColor * ambientOcclusion;
