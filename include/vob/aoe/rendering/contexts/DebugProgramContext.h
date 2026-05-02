@@ -22,6 +22,7 @@ namespace vob::aoegl
 			std::string_view name;
 			GraphicId staticProgram;
 			GraphicId riggedProgram;
+			GraphicId instancedProgram;
 			std::filesystem::path shadingSourcePath;
 		};
 

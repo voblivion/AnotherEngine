@@ -14,11 +14,18 @@ namespace vob::aoegl
 
 	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId = k_invalidId);
 
-	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+	enum class ModelType
+	{
+		Static,
+		Rigged,
+		Instanced
+	};
 
-	GraphicId createDepthProgram(bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
 	
-	GraphicId createShadowMapProgram(bool a_useRig, GraphicId a_optionalProgramId = k_invalidId);
+	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId = k_invalidId);
 

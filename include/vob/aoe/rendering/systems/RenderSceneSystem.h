@@ -3,8 +3,10 @@
 #include "vob/aoe/api.h"
 
 #include "vob/aoe/rendering/components/CameraComponent.h"
+#include "vob/aoe/rendering/components/InstancedModelsComponent.h"
 #include "vob/aoe/rendering/components/LightComponent.h"
 #include "vob/aoe/rendering/components/ModelComponent.h"
+#include "vob/aoe/rendering/components/ModelTransformComponent.h"
 #include "vob/aoe/rendering/contexts/CameraDirectorContext.h"
 #include "vob/aoe/rendering/contexts/DebugMeshContext.h"
 #include "vob/aoe/rendering/contexts/DebugProgramContext.h"
@@ -37,8 +39,9 @@ namespace vob::aoegl
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const> m_focusEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, StaticModelComponent> m_staticModelEntities;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, RiggedModelComponent> m_riggedModelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, StaticModelComponent const, ModelTransformComponent> m_staticModelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, RiggedModelComponent const, ModelTransformComponent> m_riggedModelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, InstancedModelsComponent const, ModelTransformComponent> m_instancedModelsEntities;
 
 		// TODO: move out of system
 		GraphicId m_debugProgram = k_invalidId;

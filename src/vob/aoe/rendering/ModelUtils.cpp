@@ -129,4 +129,31 @@ namespace vob::aoegl
 	{
 		return createModel(a_riggedModelData);
 	}
+
+	Model createInstancedModel(StaticModelData const& a_staticModelData)
+	{
+		auto const model = createModel(a_staticModelData);
+
+		for (auto const& mesh : model.meshes)
+		{
+			static constexpr auto k_perInstanceDivisor = 1;
+			glVertexArrayBindingDivisor(mesh.vao, 1 /* binding index */, k_perInstanceDivisor);
+
+			for (auto i = 0; i < 4; ++i)
+			{
+				auto const location = k_instanceRow0Location + i;
+				glEnableVertexArrayAttrib(mesh.vao, location);
+				glVertexArrayAttribFormat(
+					mesh.vao,
+					location,
+					4 /* size */,
+					GL_FLOAT,
+					GL_FALSE,
+					i * sizeof(glm::vec4) /* offset */);
+				glVertexArrayAttribBinding(mesh.vao, location, 1 /* binding index */);
+			}
+		}
+
+		return model;
+	}
 }

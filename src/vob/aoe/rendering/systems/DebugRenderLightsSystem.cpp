@@ -28,7 +28,7 @@ namespace vob::aoegl
 		for (auto [entity, positionCmp, rotationCmp, lightCmp] : m_lightEntities.get(a_wdap).each())
 		{
 			debugMeshContext.addSphere(positionCmp.value, lightCmp.radius, aoegl::Rgba{ lightCmp.color, 1.0f });
-			if (lightCmp.type == LightComponent::Type::Spot)
+			if (lightCmp.type == LightType::Spot)
 			{
 				debugMeshContext.addLine(
 					positionCmp.value,

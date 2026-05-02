@@ -248,12 +248,19 @@ namespace vob::aoegl
 	}
 
 	GraphicId createGeometryProgram(
-		std::string_view a_fragmentShaderSource, bool a_useRig, bool a_useShading, bool a_useNormal, GraphicId a_optionalProgramId)
+		std::string_view a_fragmentShaderSource, ModelType a_modelType, bool a_useShading, bool a_useNormal, GraphicId a_optionalProgramId)
 	{
 		std::vector<std::pair<std::string_view, std::string_view>> defines;
-		if (a_useRig)
+		switch (a_modelType)
 		{
+		case ModelType::Rigged:
 			defines.emplace_back("USE_RIG", "1");
+			break;
+		case ModelType::Instanced:
+			defines.emplace_back("USE_INSTANCING", "1");
+			break;
+		default:
+			break;
 		}
 		if (a_useShading)
 		{
@@ -273,21 +280,21 @@ namespace vob::aoegl
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
-	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, bool a_useRig, GraphicId a_optionalProgramId)
+	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		return createGeometryProgram(a_fragmentShaderSource, a_useRig, true /* use shading */, false /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(a_fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, a_optionalProgramId);
 	}
 
-	GraphicId createDepthProgram(bool a_useRig, GraphicId a_optionalProgramId)
+	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_fragment_shader.glsl");
-		return createGeometryProgram(fragmentShaderSource, a_useRig, false /* use shading */, true /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(fragmentShaderSource, a_modelType, false /* use shading */, true /* use normal */, a_optionalProgramId);
 	}
 	
-	GraphicId createShadowMapProgram(bool a_useRig, GraphicId a_optionalProgramId)
+	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_fragment_shader.glsl");
-		return createGeometryProgram(fragmentShaderSource, a_useRig, false /* use shading */, false /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(fragmentShaderSource, a_modelType, false /* use shading */, false /* use normal */, a_optionalProgramId);
 	}
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)

@@ -14,6 +14,11 @@ layout(location = 3) in vec3 aTangent;
 #if USE_RIG
 layout(location = 4) in ivec4 aBoneIndices;
 layout(location = 5) in vec4 aBoneWeights;
+#elif USE_INSTANCING
+layout(location = 4) in vec4 aInstanceRow0;
+layout(location = 5) in vec4 aInstanceRow1;
+layout(location = 6) in vec4 aInstanceRow2;
+layout(location = 7) in vec4 aInstanceRow3;
 #endif
 
 #if USE_SHADING
@@ -37,6 +42,13 @@ void main()
     vec4 position = skinToWorld * vec4(aPosition, 1.0);
 #if USE_SHADING || USE_NORMAL
     mat3 normalMatrix = mat3(skinToWorld);
+#endif
+#elif USE_INSTANCING
+    mat4 instanceToModel = mat4(aInstanceRow0, aInstanceRow1, aInstanceRow2, aInstanceRow3);
+    mat4 instanceToWorld = uModel.modelToWorld * instanceToModel;
+    vec4 position = instanceToWorld * vec4(aPosition, 1.0);
+#if USE_SHADING || USE_NORMAL
+    mat3 normalMatrix = mat3(instanceToWorld);
 #endif
 #else
     vec4 position = uModel.modelToWorld * vec4(aPosition, 1.0);

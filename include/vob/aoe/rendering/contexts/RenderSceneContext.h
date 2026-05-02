@@ -118,14 +118,16 @@ namespace vob::aoegl
 		std::array<PostProcessTarget, 2> postProcessTargets;
 
 		// Programs
-		GraphicId lightClusteringProgram; // out: none
+		GraphicId lightClusteringProgram;
 		GraphicId staticShadowMapProgram;
 		GraphicId riggedShadowMapProgram;
-		GraphicId staticDepthProgram; // out: directOpaqueFramebuffer
-		GraphicId riggedDepthProgram; // out: directOpaqueFramebuffer
-		GraphicId ssaoProgram; // out: litOpaqueFramebuffer
-		GraphicId ssrProgram; // out: ssrFramebuffer
-		GraphicId opaqueCompositionProgram; // out: finalFramebuffer
+		GraphicId instancedShadowMapProgram;
+		GraphicId staticDepthProgram;
+		GraphicId riggedDepthProgram;
+		GraphicId instancedDepthProgram;
+		GraphicId ssaoProgram;
+		GraphicId ssrProgram;
+		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
 		struct PostProcess
 		{
