@@ -18,7 +18,7 @@ namespace vob::aoegl
 
 	struct Model
 	{
-		std::pmr::vector<Mesh> meshes;
+		std::vector<Mesh> meshes;
 		float boundingRadius = 0.0f;
 	};
 }
