@@ -79,6 +79,15 @@ namespace vob::aoeng
 			m_toTheirs[theirOffset].mappedEntity = a_theirEntity;
 		}
 
+		void unMapEntities(entt::entity a_ourEntity)
+		{
+			auto const theirOffset = static_cast<size_t>(entt::to_entity(a_ourEntity)) - static_cast<size_t>(m_staticEntityCount);
+			auto const theirEntity = m_toTheirs[theirOffset].mappedEntity;
+			m_toTheirs[theirOffset].mappedEntity = entt::null;
+			auto const ourOffset = static_cast<size_t>(entt::to_entity(theirEntity)) - static_cast<size_t>(m_staticEntityCount);
+			m_toOurs[ourOffset].mappedEntity = entt::null;
+		}
+
 	private:
 		struct EntityMapping
 		{
