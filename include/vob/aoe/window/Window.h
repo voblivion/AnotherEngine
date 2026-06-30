@@ -75,7 +75,7 @@ namespace vob::aoewi
 
 	struct MouseMoveEvent
 	{
-		glm::ivec2 position;
+		glm::vec2 position;
 	};
 
 	struct MouseHoverEvent
@@ -122,6 +122,7 @@ namespace vob::aoewi
 		virtual bool isHovered() const = 0;
 		virtual void setCursorState(CursorState a_cursorState) = 0;
 
+		virtual glm::vec2 getMousePosition() const = 0;
 		virtual bool isGamepadPresent(int32_t a_gamepadIndex) const = 0;
 		virtual bool isGamepadButtonPressed(int32_t a_gamepadIndex, aoein::Gamepad::Button a_button) const = 0;
 		virtual float getGamepadAxisValue(int32_t a_gamepadIndex, aoein::Gamepad::Axis a_axis) const = 0;

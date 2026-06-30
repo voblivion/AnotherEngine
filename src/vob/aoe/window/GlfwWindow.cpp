@@ -26,6 +26,16 @@ namespace vob::aoewi
 		, GLFWmonitor* const a_monitor
 		, GLFWwindow* const a_share)
 	{
+		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+		if (a_monitor != nullptr)
+		{
+			GLFWvidmode const* mode = glfwGetVideoMode(a_monitor);
+			glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+			glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+			glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+			glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+		}
+
 		m_nativeHandle = glfwCreateWindow(a_size.x, a_size.y, a_title, a_monitor, a_share);
 		if (m_nativeHandle == nullptr)
 		{
@@ -104,6 +114,14 @@ namespace vob::aoewi
 	void GlfwWindow::setCursorState(CursorState a_cursorState)
 	{
 		glfwSetInputMode(m_nativeHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL + static_cast<GLenum>(a_cursorState));
+	}
+
+	glm::vec2 GlfwWindow::getMousePosition() const
+	{
+		double x;
+		double y;
+		glfwGetCursorPos(m_nativeHandle, &x, &y);
+		return { static_cast<float>(x), static_cast<float>(y) };
 	}
 
 	bool GlfwWindow::isGamepadPresent(int a_gamepadIndex) const
@@ -514,7 +532,7 @@ namespace vob::aoewi
 	)
 	{
 		auto const window = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(a_nativeHandle));
-		window->pushEvent(MouseMoveEvent{ { a_x, a_y } });
+		window->pushEvent(MouseMoveEvent{ { static_cast<float>(a_x), static_cast<float>(a_y) } });
 	}
 
 	void GlfwWindow::mouseEnterEventCallback(

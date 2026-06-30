@@ -50,6 +50,7 @@ namespace vob::aoewi
 		bool isHovered() const override;
 		void setCursorState(CursorState a_cursorState) override;
 
+		glm::vec2 getMousePosition() const override;
 		bool isGamepadPresent(int32_t a_gamepadIndex) const override;
 		bool isGamepadButtonPressed(int32_t a_gamepadIndex, aoein::Gamepad::Button a_button) const override;
 		float getGamepadAxisValue(int32_t a_gamepadIndex, aoein::Gamepad::Axis a_axis) const override;
