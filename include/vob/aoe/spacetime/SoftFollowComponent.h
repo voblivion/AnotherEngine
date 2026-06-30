@@ -10,14 +10,14 @@ namespace vob::aoest
 	{
 		// Configuration
 		entt::entity target = entt::null;
-		glm::vec3 positionOffset = glm::vec3{ 0.0f };
-		glm::vec3 aimOffset = glm::vec3{ 0.0f };
-		float elasticity = 500.0f;
-		float mass = 1.0f;
-		float damping = 150.0f;
-		
-		// State
-		glm::vec3 velocity = glm::vec3{ 0.0f };
-		glm::vec3 prevTargetPosition = glm::vec3{ 0.0f };
+
+		float positionDistance = 10.0f;
+		float positionPitch = 0.5f;
+
+		float lookAheadDistance = 10.0f;
+
+		// TODO: runtime makes it a mix of world's up and ground's up
+		glm::vec3 referenceUp = glm::vec3{ 0.0f, 1.0f, 0.0f };
+		glm::vec3 currentDir = glm::vec3{ 0.0f };
 	};
 }
