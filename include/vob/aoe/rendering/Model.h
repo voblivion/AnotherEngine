@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vob/aoe/rendering/GraphicTypes.h>
+#include "vob/aoe/rendering/resources/GpuMesh.h"
 
 #include <cstdint>
 #include <vector>

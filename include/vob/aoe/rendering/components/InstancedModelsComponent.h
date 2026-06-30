@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vob/aoe/rendering/GraphicTypes.h>
-#include <vob/aoe/rendering/ShadingPass.h>
+#include <vob/aoe/rendering/ShadedMesh.h>
+#include <vob/aoe/rendering/resources/GpuBuffer.h>
+#include <vob/aoe/rendering/resources/Handle.h>
 
 #include "vob/aoe/rendering/shaders/defines.h"
 
@@ -15,17 +17,9 @@ namespace vob::aoegl
 	{
 		struct Model
 		{
-			struct Mesh
-			{
-				ShadingPass shadingPass = ShadingPass::Opaque;
-				GraphicId program = k_invalidId;
-				int32_t materialIndex = -1;
-				GraphicId meshVao = k_invalidId;
-				int32_t indexCount = 0;
-			};
-
-			std::vector<Mesh> meshes;
-			GraphicId instanceTransformVbo;
+			std::vector<ShadedMesh> meshes;
+			GraphicId instanceTransformsVbo;
+			Handle<GpuBuffer> instanceTransforms;
 			int32_t instanceCount = 0;
 		};
 

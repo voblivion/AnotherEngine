@@ -181,6 +181,47 @@ namespace vob::aoegl
 			}
 		}
 
+		void addCircle(
+			glm::vec3 const& a_position,
+			glm::quat const& a_rotation,
+			float a_radius,
+			aoegl::Rgba const& a_color,
+			int32_t a_subdivisions = 8)
+		{
+			auto const r = a_radius * glm::mat3_cast(a_rotation);
+			auto const v0 = static_cast<GraphicIndex>(vertices.size());
+			for (auto i = 0; i < a_subdivisions; ++i)
+			{
+				auto const a = (2 * i * std::numbers::pi_v<float>) / a_subdivisions;
+				auto const p = a_position + r * glm::vec3{ 0.0f, std::cos(a), std::sin(a) };
+				vertices.emplace_back(p, a_color);
+				lines.emplace_back(v0 + i, v0 + ((i + 1) % a_subdivisions));
+			}
+		}
+
+		void addArc(
+			glm::vec3 const& a_position,
+			glm::quat const& a_rotation,
+			float a_radius,
+			float a_angleFrom,
+			float a_angleTo,
+			aoegl::Rgba const& a_color,
+			int32_t a_subdivisions = 8)
+		{
+			auto const r = a_radius * glm::mat3_cast(a_rotation);
+			auto const v0 = static_cast<GraphicIndex>(vertices.size());
+			auto const a0 = a_angleFrom;
+			auto const p0 = a_position + r * glm::vec3{ 0.0f, std::cos(a0), std::sin(a0) };
+			vertices.emplace_back(p0, a_color);
+			for (auto i = 1; i <= a_subdivisions; ++i)
+			{
+				auto const a = a_angleFrom + ((a_angleTo - a_angleFrom) * i) / a_subdivisions;
+				auto const p = a_position + r * glm::vec3{ 0.0f, std::cos(a), std::sin(a) };
+				vertices.emplace_back(p, a_color);
+				lines.emplace_back(v0 + (i - 1), v0 + i);
+			}
+		}
+
 		void addSphere(
 			glm::vec3 const& a_position,
 			float a_radius,
