@@ -2,6 +2,9 @@
 
 #include <vob/misc/std/container_util.h>
 
+#include <imgui.h>
+#include <chrono>
+
 
 namespace vob::aoest
 {
@@ -29,6 +32,7 @@ namespace vob::aoest
 			if (sourceOffset + 1 == mistd::isize(interpolatedTime.times))
 			{
 				positionCmp.value = interpolatedPositionCmp.positions[(interpolatedPositionCmp.endIndex + sourceOffset) % interpolatedTime.times.size()];
+				rotationCmp.value = interpolatedRotationCmp.rotations[(interpolatedRotationCmp.endIndex + sourceOffset) % interpolatedTime.times.size()];
 				continue;
 			}
 
