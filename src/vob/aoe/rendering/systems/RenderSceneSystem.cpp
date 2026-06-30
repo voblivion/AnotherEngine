@@ -32,25 +32,6 @@ namespace vob::aoegl
 
 	namespace
 	{
-		struct CulledStaticMesh
-		{
-			GraphicId forwardProgram;
-			int32_t materialIndex;
-			GraphicId meshVao;
-			GraphicId modelParamsUbo;
-			int32_t indexCount;
-		};
-
-		struct CulledRiggedMesh
-		{
-			GraphicId forwardProgram;
-			int32_t materialIndex;
-			GraphicId meshVao;
-			GraphicId modelParamsUbo;
-			GraphicId rigParamsUbo;
-			int32_t indexCount;
-		};
-
 		struct CulledLight
 		{
 			float importance;
@@ -270,13 +251,53 @@ namespace vob::aoegl
 		auto& debugMeshCtx = m_debugMeshContext.get(a_wdap);
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
 		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
-		auto const& materialManager = *m_materialManagerContext.get(a_wdap).materialManager;
+		auto const& gpuResourceRegistriesCtx = m_gpuResourceRegistriesContext.get(a_wdap);
+		auto const& materialRegistry = *gpuResourceRegistriesCtx.materialRegistry;
 		auto const& window = m_windowContext.get(a_wdap).window.get();
 		auto const& cameraDirectorCtx = m_cameraDirectorContext.get(a_wdap);
 		auto staticModelEntities = m_staticModelEntities.get(a_wdap);
 		auto riggedModelEntities = m_riggedModelEntities.get(a_wdap);
 		auto instancedModelsEntities = m_instancedModelsEntities.get(a_wdap);
 		GpuState gpuState;
+
+		// HACK: make sun rotate
+		{
+			static auto startT = std::chrono::high_resolution_clock::now();
+			static auto prevT = startT;
+			auto const t = std::chrono::high_resolution_clock::now();
+			if (window.isGamepadButtonPressed(0, aoein::Gamepad::Button::LS))
+			{
+				startT -= 9 * (t - prevT);
+			}
+			prevT = t;
+			auto const d = 60.0f + std::chrono::duration<float>(t - startT).count();
+			auto const a = std::fmod(0.03f * d, 2.0f * std::numbers::pi_v<float>);
+			auto const sunDir = glm::vec3{ glm::rotate(glm::mat4{1.0f}, a, glm::vec3{0.0f, 1.0f, 0.0f})
+				* glm::normalize(glm::vec4{ 0.7f, 0.15f, -1.0f, 0.0f }) };
+			renderSceneCtx.sunDir = sunDir;
+
+			struct alignas(16) UiPostProcessParams
+			{
+				int32_t speed;
+				int32_t dist;
+				int32_t score;
+			};
+			auto movingEntities = m_movingEntities.get(a_wdap);
+			auto movingEntity = movingEntities.front();
+			auto [movingRotationCmp, movingLinearVelocityCmp, hackScoreCmp] = movingEntities.get(movingEntity);
+			auto const forward = movingRotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f };
+			auto const speed = static_cast<int32_t>(std::round(glm::dot(forward, movingLinearVelocityCmp.value) * 3.6f));
+			auto uiParams = UiPostProcessParams{
+				.speed = speed,
+				.dist = static_cast<int32_t>(hackScoreCmp.dist),
+				.score = static_cast<int32_t>(hackScoreCmp.score)
+			};
+			glNamedBufferSubData(
+				renderSceneCtx.postProcesses[1].ubo,
+				0,
+				sizeof(uiParams),
+				&uiParams);
+		}
 
 		glQueryCounter(renderSceneCtx.totalTimerQueries[0], GL_TIMESTAMP);
 		// 0 - Prepare Debug
@@ -346,11 +367,11 @@ namespace vob::aoegl
 			ImGui::InputInt("Log2 Sub Step", &k_ssrLog2SubStep);
 			static float k_ssrThicknessRatio = 0.1f;
 			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMaxRangeRatio = 0.02f;
+			static float k_ssrMaxRangeRatio = 100.0f;
 			ImGui::SliderFloat("Max Range Ratio", &k_ssrMaxRangeRatio, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrInitialBiasRatio = 0.005f;
+			static float k_ssrInitialBiasRatio = 0.001f;
 			ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMaxThickness = 0.01f;
+			static float k_ssrMaxThickness = 0.25f;
 			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 10.0f);
 
 			auto const ssrParams = UniformSsrParams{
@@ -490,9 +511,9 @@ namespace vob::aoegl
 		struct CulledStaticMesh
 		{
 			GraphicId shadingProgram;
-			int32_t materialIndex;
+			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
-			GraphicId meshVao;
+			GraphicId vao;
 			int32_t indexCount;
 		};
 		static std::vector<CulledStaticMesh> culledOpaqueStaticMeshes;
@@ -504,9 +525,9 @@ namespace vob::aoegl
 			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 			{
 				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-				if (modelTransformCmp.modelParams != modelParams)
+				if (modelTransformCmp.prevModelParams != modelParams)
 				{
-					modelTransformCmp.modelParams = modelParams;
+					modelTransformCmp.prevModelParams = modelParams;
 					glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 				}
 
@@ -515,10 +536,10 @@ namespace vob::aoegl
 					switch (mesh.shadingPass)
 					{
 					case ShadingPass::Opaque:
-						culledOpaqueStaticMeshes.emplace_back(mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, mesh.meshVao, mesh.indexCount);
+						culledOpaqueStaticMeshes.emplace_back(mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, mesh.vao, mesh.indexCount);
 						break;
 					case ShadingPass::Translucent:
-						culledTranslucentStaticMeshes.emplace_back(mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, mesh.meshVao, mesh.indexCount);
+						culledTranslucentStaticMeshes.emplace_back(mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, mesh.vao, mesh.indexCount);
 						break;
 					default:
 						break;
@@ -529,10 +550,10 @@ namespace vob::aoegl
 		struct CulledRiggedMesh
 		{
 			GraphicId shadingProgram;
-			int32_t materialIndex;
+			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId rigParamsUbo;
-			GraphicId meshVao;
+			GraphicId vao;
 			int32_t indexCount;
 		};
 		static std::vector<CulledRiggedMesh> culledOpaqueRiggedMeshes;
@@ -544,9 +565,9 @@ namespace vob::aoegl
 			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 			{
 				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-				if (modelTransformCmp.modelParams != modelParams)
+				if (modelTransformCmp.prevModelParams != modelParams)
 				{
-					modelTransformCmp.modelParams = modelParams;
+					modelTransformCmp.prevModelParams = modelParams;
 					glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 				}
 
@@ -556,11 +577,11 @@ namespace vob::aoegl
 					{
 					case ShadingPass::Opaque:
 						culledOpaqueRiggedMeshes.emplace_back(
-							mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, riggedModelCmp.rigParamsUbo, mesh.meshVao, mesh.indexCount);
+							mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, riggedModelCmp.rigParamsUbo, mesh.vao, mesh.indexCount);
 						break;
 					case ShadingPass::Translucent:
 						culledTranslucentRiggedMeshes.emplace_back(
-							mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, riggedModelCmp.rigParamsUbo, mesh.meshVao, mesh.indexCount);
+							mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, riggedModelCmp.rigParamsUbo, mesh.vao, mesh.indexCount);
 						break;
 					default:
 						break;
@@ -571,11 +592,11 @@ namespace vob::aoegl
 		struct CulledInstancedMesh
 		{
 			GraphicId shadingProgram;
-			int32_t materialIndex;
+			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
-			GraphicId instanceTransformVbo;
+			GraphicId instanceTransformsVbo;
 			int32_t instanceCount;
-			GraphicId meshVao;
+			GraphicId vao;
 			int32_t indexCount;
 		};
 		static std::vector<CulledInstancedMesh> culledOpaqueInstancedMeshes;
@@ -587,9 +608,9 @@ namespace vob::aoegl
 			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 			{
 				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-				if (modelTransformCmp.modelParams != modelParams)
+				if (modelTransformCmp.prevModelParams != modelParams)
 				{
-					modelTransformCmp.modelParams = modelParams;
+					modelTransformCmp.prevModelParams = modelParams;
 					glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 				}
 
@@ -601,11 +622,11 @@ namespace vob::aoegl
 						{
 						case ShadingPass::Opaque:
 							culledOpaqueInstancedMeshes.emplace_back(
-								mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, model.instanceTransformVbo, model.instanceCount, mesh.meshVao, mesh.indexCount);
+								mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, model.instanceTransformsVbo, model.instanceCount, mesh.vao, mesh.indexCount);
 							break;
 						case ShadingPass::Translucent:
 							culledTranslucentInstancedMeshes.emplace_back(
-								mesh.program, mesh.materialIndex, modelTransformCmp.modelParamsUbo, model.instanceTransformVbo, model.instanceCount, mesh.meshVao, mesh.indexCount);
+								mesh.program, mesh.material, modelTransformCmp.modelParamsUbo, model.instanceTransformsVbo, model.instanceCount, mesh.vao, mesh.indexCount);
 							break;
 						default:
 							break;
@@ -734,16 +755,16 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
 						for (auto const& mesh : staticModelCmp.meshes)
 						{
-							glBindVertexArray(mesh.meshVao);
+							glBindVertexArray(mesh.vao);
 							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 						}
 					}
@@ -755,9 +776,9 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
@@ -765,7 +786,7 @@ namespace vob::aoegl
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
 						for (auto const& mesh : riggedModelCmp.meshes)
 						{
-							glBindVertexArray(mesh.meshVao);
+							glBindVertexArray(mesh.vao);
 							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 						}
 					}
@@ -777,9 +798,9 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
@@ -787,9 +808,9 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
@@ -799,10 +820,10 @@ namespace vob::aoegl
 						{
 							for (auto const& mesh : model.meshes)
 							{
-								glBindVertexArray(mesh.meshVao);
+								glBindVertexArray(mesh.vao);
 								glBindVertexBuffer(
 									1,
-									model.instanceTransformVbo,
+									model.instanceTransformsVbo,
 									0 /* offset */,
 									sizeof(glm::mat4));
 								glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
@@ -837,16 +858,16 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
 						for (auto const& mesh : staticModelCmp.meshes)
 						{
-							glBindVertexArray(mesh.meshVao);
+							glBindVertexArray(mesh.vao);
 							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 						}
 					}
@@ -858,9 +879,9 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
@@ -868,7 +889,7 @@ namespace vob::aoegl
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
 						for (auto const& mesh : riggedModelCmp.meshes)
 						{
-							glBindVertexArray(mesh.meshVao);
+							glBindVertexArray(mesh.vao);
 							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
 						}
 					}
@@ -880,9 +901,9 @@ namespace vob::aoegl
 					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
 					{
 						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.modelParams != modelParams)
+						if (modelTransformCmp.prevModelParams != modelParams)
 						{
-							modelTransformCmp.modelParams = modelParams;
+							modelTransformCmp.prevModelParams = modelParams;
 							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
 						}
 
@@ -892,10 +913,10 @@ namespace vob::aoegl
 						{
 							for (auto const& mesh : model.meshes)
 							{
-								glBindVertexArray(mesh.meshVao);
+								glBindVertexArray(mesh.vao);
 								glBindVertexBuffer(
 									1,
-									model.instanceTransformVbo,
+									model.instanceTransformsVbo,
 									0 /* offset */,
 									sizeof(glm::mat4));
 								glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
@@ -929,7 +950,7 @@ namespace vob::aoegl
 			{
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledStaticOpaqueMesh.modelParamsUbo);
 
-				glBindVertexArray(culledStaticOpaqueMesh.meshVao);
+				glBindVertexArray(culledStaticOpaqueMesh.vao);
 				glDrawElements(GL_TRIANGLES, culledStaticOpaqueMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 			}
 
@@ -939,7 +960,7 @@ namespace vob::aoegl
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledOpaqueRiggedMesh.modelParamsUbo);
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, culledOpaqueRiggedMesh.rigParamsUbo);
 
-				glBindVertexArray(culledOpaqueRiggedMesh.meshVao);
+				glBindVertexArray(culledOpaqueRiggedMesh.vao);
 				glDrawElements(GL_TRIANGLES, culledOpaqueRiggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 			}
 
@@ -948,10 +969,10 @@ namespace vob::aoegl
 			{
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledOpaqueInstancedMesh.modelParamsUbo);
 
-				glBindVertexArray(culledOpaqueInstancedMesh.meshVao);
+				glBindVertexArray(culledOpaqueInstancedMesh.vao);
 				glBindVertexBuffer(
 					1,
-					culledOpaqueInstancedMesh.instanceTransformVbo,
+					culledOpaqueInstancedMesh.instanceTransformsVbo,
 					0 /* offset */,
 					sizeof(glm::mat4));
 				glDrawElementsInstanced(GL_TRIANGLES, culledOpaqueInstancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, culledOpaqueInstancedMesh.instanceCount);
@@ -1005,66 +1026,55 @@ namespace vob::aoegl
 			}
 			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.directOpaqueFramebuffer);
 			glClear(GL_COLOR_BUFFER_BIT);
-			int32_t currentMaterialIndex = -1;
+			GraphicId currentShadingProgram;
+			WeakHandle<GpuMaterial> currentMaterial;
+			auto const applyMeshShadingParams = [&](auto const& mesh)
+				{
+					if (currentShadingProgram != mesh.shadingProgram)
+					{
+						gpuState.useProgram<GpuStateChange::LikelyYes>(mesh.shadingProgram);
+						currentShadingProgram = mesh.shadingProgram;
+					}
+					if (currentMaterial != mesh.material && mesh.material.isValid())
+					{
+						auto const& material = materialRegistry.get(mesh.material);
+						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
+						for (int32_t i = 0; i < mistd::isize(material.textureIds); ++i)
+						{
+							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureMaterialCustomsBegin + i, material.textureIds[i]);
+						}
+						currentMaterial = mesh.material;
+					}
+				};
 			for (auto const& culledOpaqueStaticMesh : culledOpaqueStaticMeshes)
 			{
-				gpuState.useProgram<GpuStateChange::LikelyNo>(culledOpaqueStaticMesh.shadingProgram);
-				if (currentMaterialIndex != culledOpaqueStaticMesh.materialIndex && culledOpaqueStaticMesh.materialIndex != -1)
-				{
-					auto const& material = materialManager.getMaterial(culledOpaqueStaticMesh.materialIndex);
-					gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-					for (int32_t i = 0; i < mistd::isize(material.textureIds); ++i)
-					{
-						gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureMaterialCustomsBegin + i, material.textureIds[i]);
-					}
-					currentMaterialIndex = culledOpaqueStaticMesh.materialIndex;
-				}
+				applyMeshShadingParams(culledOpaqueStaticMesh);
 
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledOpaqueStaticMesh.modelParamsUbo);
 
-				glBindVertexArray(culledOpaqueStaticMesh.meshVao);
+				glBindVertexArray(culledOpaqueStaticMesh.vao);
 				glDrawElements(GL_TRIANGLES, culledOpaqueStaticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 			}
 			for (auto const& culledOpaqueRiggedMesh : culledOpaqueRiggedMeshes)
 			{
-				gpuState.useProgram<GpuStateChange::LikelyNo>(culledOpaqueRiggedMesh.shadingProgram);
-				if (currentMaterialIndex != culledOpaqueRiggedMesh.materialIndex && culledOpaqueRiggedMesh.materialIndex != -1)
-				{
-					auto const& material = materialManager.getMaterial(culledOpaqueRiggedMesh.materialIndex);
-					gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-					for (int32_t i = 0; i < mistd::isize(material.textureIds); ++i)
-					{
-						gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureMaterialCustomsBegin + i, material.textureIds[i]);
-					}
-					currentMaterialIndex = culledOpaqueRiggedMesh.materialIndex;
-				}
+				applyMeshShadingParams(culledOpaqueRiggedMesh);
 
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledOpaqueRiggedMesh.modelParamsUbo);
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, culledOpaqueRiggedMesh.rigParamsUbo);
 
-				glBindVertexArray(culledOpaqueRiggedMesh.meshVao);
+				glBindVertexArray(culledOpaqueRiggedMesh.vao);
 				glDrawElements(GL_TRIANGLES, culledOpaqueRiggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
 			}
 			for (auto const& culledOpaqueInstancedMesh : culledOpaqueInstancedMeshes)
 			{
-				gpuState.useProgram<GpuStateChange::LikelyNo>(culledOpaqueInstancedMesh.shadingProgram);
-				if (currentMaterialIndex != culledOpaqueInstancedMesh.materialIndex && culledOpaqueInstancedMesh.materialIndex != -1)
-				{
-					auto const& material = materialManager.getMaterial(culledOpaqueInstancedMesh.materialIndex);
-					gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-					for (int32_t i = 0; i < mistd::isize(material.textureIds); ++i)
-					{
-						gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureMaterialCustomsBegin + i, material.textureIds[i]);
-					}
-					currentMaterialIndex = culledOpaqueInstancedMesh.materialIndex;
-				}
+				applyMeshShadingParams(culledOpaqueInstancedMesh);
 
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, culledOpaqueInstancedMesh.modelParamsUbo);
 
-				glBindVertexArray(culledOpaqueInstancedMesh.meshVao);
+				glBindVertexArray(culledOpaqueInstancedMesh.vao);
 				glBindVertexBuffer(
 					1,
-					culledOpaqueInstancedMesh.instanceTransformVbo,
+					culledOpaqueInstancedMesh.instanceTransformsVbo,
 					0 /* offset */,
 					sizeof(glm::mat4));
 				glDrawElementsInstanced(GL_TRIANGLES, culledOpaqueInstancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, culledOpaqueInstancedMesh.instanceCount);
