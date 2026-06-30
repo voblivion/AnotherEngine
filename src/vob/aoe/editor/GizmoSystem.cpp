@@ -8,7 +8,7 @@
 #include <limits>
 #include <variant>
 
-#pragma optimize("", off)
+
 namespace vob::aoedi
 {
 	void GizmoSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

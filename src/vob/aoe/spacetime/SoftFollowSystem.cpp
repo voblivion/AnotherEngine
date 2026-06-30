@@ -15,7 +15,6 @@
 #include <limits>
 
 
-#pragma optimize("", off)
 namespace vob::aoest
 {
 	void SoftFollowSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
