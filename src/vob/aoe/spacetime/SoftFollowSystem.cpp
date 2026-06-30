@@ -4,7 +4,10 @@
 #include "vob/aoe/spacetime/RotationComponent.h"
 #include "vob/aoe/spacetime/TransformUtils.h"
 
+#include "vob/aoe/math/MathUtils.h"
+
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include "imgui.h"
 
@@ -12,6 +15,7 @@
 #include <limits>
 
 
+#pragma optimize("", off)
 namespace vob::aoest
 {
 	void SoftFollowSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
@@ -26,82 +30,80 @@ namespace vob::aoest
 		auto const elapsedTime = std::chrono::duration<float>(m_timeContext.get(a_wdap).elapsedTime).count();
 
 		static bool k_debugSoftFollow = false;
-		if (ImGui::Begin("Soft Follow"))
+		auto const isImGuiOpen = ImGui::Begin("Soft Follow");
+		if (isImGuiOpen)
 		{
 			ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
 		}
-		ImGui::End();
 
-		for (auto [entity, positionCmp, rotationCmp, softFollowComponent] : m_softFollowingEntities.get(a_wdap).each())
+		static float k_minSpeedThreshold = 5.0f;
+		static float k_maxSpeedThreshold = 20.0f;
+		static float k_minPositionChangeRate = 0.1f;
+		static float k_maxPositionChangeRate = 0.3f;
+		static float k_minRotationChangeRate = 0.002f;
+		static float k_maxRotationChangeRate = 0.02f;
+
+		for (auto [entity, positionCmp, rotationCmp, softFollowCmp] : m_softFollowingEntities.get(a_wdap).each())
 		{
-			if (!m_softFollowableEntities.get(a_wdap).contains(softFollowComponent.target))
+			if (!m_softFollowableEntities.get(a_wdap).contains(softFollowCmp.target))
 			{
 				continue;
 			}
 
 			auto const& [followedPositionCmp, followedRotationCmp, followedLinearVelocityCmp] =
-				m_softFollowableEntities.get(a_wdap).get(softFollowComponent.target);
+				m_softFollowableEntities.get(a_wdap).get(softFollowCmp.target);
 
-			static float k_slowSpeed = 1.0f;
-			static float k_fastSpeed = 20.0f;
+			auto const& targetPosition = followedPositionCmp.value;
+			auto const& targetRotation = followedRotationCmp.value;
+			auto const& targetVelocity = followedLinearVelocityCmp.value;
+			auto const targetSpeed = glm::length(targetVelocity);
+			
+			auto const movingBlend = std::clamp(targetSpeed / k_minSpeedThreshold, 0.0f, 1.0f);
+			auto const speedBlend = std::clamp((targetSpeed - k_minSpeedThreshold) / (k_maxSpeedThreshold - k_minSpeedThreshold), 0.0f, 1.0f);
 
-			auto const slowPosition = transformPosition(followedPositionCmp, followedRotationCmp, softFollowComponent.positionOffset);
+			// forward & up
+			auto const targetForward = targetRotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
+			auto const velocityForward = aoema::normalizeWithDefault(targetVelocity, targetForward);
+			auto const referenceForward = aoema::normalizeWithDefault(glm::mix(targetForward, velocityForward, movingBlend), velocityForward);
+			auto const& referenceUp = softFollowCmp.referenceUp;
 
-			auto fastPosition = slowPosition;
-			auto const speed = glm::length(followedLinearVelocityCmp.value);
-			if (speed > k_slowSpeed)
-			{
-				glm::vec3 velocityDir = glm::normalize(followedLinearVelocityCmp.value);
-				glm::vec3 rightDir = glm::normalize(glm::cross(glm::vec3{ 0.0f, 1.0f, 0.0f }, -velocityDir));
-				glm::vec3 upDir = glm::cross(-velocityDir, rightDir);
-				glm::mat3 local(rightDir, upDir, -velocityDir);
-				fastPosition = followedPositionCmp.value + local * softFollowComponent.positionOffset;
-			}
+			// desired position
+			auto const positionPitch = softFollowCmp.positionPitch;
+			auto const behindDir = std::sin(positionPitch) * referenceUp - std::cos(positionPitch) * referenceForward;
+			auto const desiredPosition = targetPosition + behindDir * softFollowCmp.positionDistance;
 
-			auto const targetPosition = slowPosition + std::clamp((speed - k_slowSpeed) / (k_fastSpeed - k_slowSpeed), 0.0f, 1.0f) * (fastPosition - slowPosition);
+			// desired aim point
+			auto const desiredAimPoint = targetPosition + referenceForward * softFollowCmp.lookAheadDistance;
 
-			if (glm::distance(positionCmp.value, targetPosition) > std::numeric_limits<float>::epsilon())
-			{
-				auto const toTargetPosition = targetPosition - positionCmp.value;
-				auto const force = softFollowComponent.elasticity * toTargetPosition - softFollowComponent.damping * softFollowComponent.velocity;
-				positionCmp.value += softFollowComponent.velocity * (elapsedTime / 2);
-				softFollowComponent.velocity += force / softFollowComponent.mass * elapsedTime;
-				if (std::abs(softFollowComponent.velocity.x) > 1e10f)
-				{
-					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.x);
-				}
-				if (std::abs(softFollowComponent.velocity.y) > 1e10f)
-				{
-					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.y);
-				}
-				if (std::abs(softFollowComponent.velocity.z) > 1e10f)
-				{
-					softFollowComponent.velocity *= 1e10f / std::abs(softFollowComponent.velocity.z);
-				}
-				positionCmp.value += softFollowComponent.velocity * (elapsedTime / 2);
-
-				if (glm::length(positionCmp.value - targetPosition) > 100.0f)
-				{
-					positionCmp.value = targetPosition + 100.0f * glm::normalize(positionCmp.value - targetPosition);
-				}
-			}
-
-			softFollowComponent.prevTargetPosition = followedPositionCmp.value;
+			// smooth position
+			auto const& currentDir = softFollowCmp.currentDir;
+			auto const desiredDir = behindDir * softFollowCmp.positionDistance;
+			auto const positionChangeRate = glm::mix(k_minPositionChangeRate * softFollowCmp.lookAheadDistance, k_maxPositionChangeRate * softFollowCmp.lookAheadDistance, speedBlend);
+			auto const desiredPositionChange = desiredDir - currentDir;
+			auto const newDir = glm::length(desiredPositionChange) < positionChangeRate * elapsedTime
+				? desiredDir : currentDir + glm::normalize(desiredPositionChange) * positionChangeRate * elapsedTime;
+			auto const newPosition = targetPosition + newDir;
 
 			if (k_debugSoftFollow)
 			{
-				m_debugMeshContext.get(a_wdap).addSphere(slowPosition, 0.1f, aoegl::k_blue);
-				m_debugMeshContext.get(a_wdap).addSphere(targetPosition, 0.15f, aoegl::k_green);
-				m_debugMeshContext.get(a_wdap).addSphere(fastPosition, 0.1f, aoegl::k_red);
-				m_debugMeshContext.get(a_wdap).addLine(slowPosition, targetPosition, aoegl::k_blue);
-				m_debugMeshContext.get(a_wdap).addLine(targetPosition, fastPosition, aoegl::k_red);
+				m_debugMeshContext.get(a_wdap).addSphere(positionCmp.value, 0.1f, aoegl::k_blue);
+				m_debugMeshContext.get(a_wdap).addSphere(newPosition, 0.15f, aoegl::k_green);
+				m_debugMeshContext.get(a_wdap).addSphere(desiredPosition, 0.1f, aoegl::k_red);
+				m_debugMeshContext.get(a_wdap).addLine(positionCmp.value, newPosition, aoegl::k_green);
+				m_debugMeshContext.get(a_wdap).addLine(newPosition, desiredPosition, aoegl::k_red);
 			}
 
-			auto const targetAim = transformPosition(followedPositionCmp, followedRotationCmp, softFollowComponent.aimOffset);
-			auto const toTargetAim = targetAim - positionCmp.value;
-			auto const aimDir = glm::normalize(
-				glm::length(toTargetAim) > std::numeric_limits<float>::epsilon() ? toTargetAim : followedRotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f });
-			rotationCmp.value = glm::quatLookAt(aimDir, glm::vec3{ 0.0f, 1.0f, 0.0f });
+			positionCmp.value = newPosition;
+
+			softFollowCmp.currentDir = newPosition - targetPosition;
+
+			// smooth rotation
+			auto const rotationChangeRate = glm::mix(k_minRotationChangeRate, k_maxRotationChangeRate, speedBlend);
+			auto const toDesiredAimPoint = glm::normalize(desiredAimPoint - positionCmp.value);
+			auto const desiredRotation = glm::quatLookAt(toDesiredAimPoint, referenceUp);
+			rotationCmp.value = glm::slerp(rotationCmp.value, desiredRotation, rotationChangeRate);
 		}
+
+		ImGui::End();
 	}
 }
