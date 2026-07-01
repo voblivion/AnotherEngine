@@ -12,9 +12,15 @@
 
 namespace vob::aoegl
 {
-	struct DebugVertex
+	struct WorldDebugVertex
 	{
 		glm::vec3 position;
+		glm::vec4 color;
+	};
+
+	struct DebugVertex
+	{
+		glm::dvec3 position;
 		Rgba color = Rgba{ ColorChannel{ 1.0f } };
 	};
 
@@ -44,15 +50,15 @@ namespace vob::aoegl
 			lines.emplace_back(v0, v1);
 		}
 
-		void addLine(glm::vec3 const& a_source, glm::vec3 const& a_target, Rgba const& a_color)
+		void addLine(glm::dvec3 const& a_source, glm::dvec3 const& a_target, Rgba const& a_color)
 		{
 			addLine(DebugVertex{ a_source, a_color }, DebugVertex{ a_target, a_color });
 		}
 
 		void addTriangle(
-			glm::vec3 const& a_p0,
-			glm::vec3 const& a_p1,
-			glm::vec3 const& a_p2,
+			glm::dvec3 const& a_p0,
+			glm::dvec3 const& a_p1,
+			glm::dvec3 const& a_p2,
 			Rgba const& a_color,
 			int32_t a_subdivisions = -1,
 			float a_subdivisionLength = 1.0f)
@@ -74,10 +80,10 @@ namespace vob::aoegl
 
 			for (int i = 0; i < subdivisions; ++i)
 			{
-				auto const q1 = p1 + static_cast<float>(i) / (subdivisions + 1) * (p0 - p1);
-				auto const r1 = p1 + static_cast<float>(i + 1) / (subdivisions + 1) * (p0 - p1);
-				auto const q2 = p2 + static_cast<float>(i) / (subdivisions + 1) * (p0 - p2);
-				auto const r2 = p2 + static_cast<float>(i + 1) / (subdivisions + 1) * (p0 - p2);
+				auto const q1 = p1 + static_cast<double>(i) / (subdivisions + 1) * (p0 - p1);
+				auto const r1 = p1 + static_cast<double>(i + 1) / (subdivisions + 1) * (p0 - p1);
+				auto const q2 = p2 + static_cast<double>(i) / (subdivisions + 1) * (p0 - p2);
+				auto const r2 = p2 + static_cast<double>(i + 1) / (subdivisions + 1) * (p0 - p2);
 
 				addLine(q1, r1, a_color);
 				addLine(r1, r2, a_color);
@@ -85,17 +91,17 @@ namespace vob::aoegl
 				addLine(q2, q1, a_color);
 			}
 
-			auto const r1 = p1 + static_cast<float>(subdivisions) / (subdivisions + 1) * (p0 - p1);
-			auto const r2 = p2 + static_cast<float>(subdivisions) / (subdivisions + 1) * (p0 - p2);
+			auto const r1 = p1 + static_cast<double>(subdivisions) / (subdivisions + 1) * (p0 - p1);
+			auto const r2 = p2 + static_cast<double>(subdivisions) / (subdivisions + 1) * (p0 - p2);
 
 			addLine(r1, p0, a_color);
 			addLine(r2, p0, a_color);
 		}
 
 		void addEllipsoid(
-			glm::vec3 const& a_position,
+			glm::dvec3 const& a_position,
 			glm::quat const& a_rotation,
-			glm::vec3 const& a_radiuses,
+			glm::dvec3 const& a_radiuses,
 			aoegl::Rgba const& a_color,
 			int32_t a_horizontalSliceCount = 3,
 			int32_t a_horizontalSliceSubdivisionCount = 4,
@@ -123,9 +129,9 @@ namespace vob::aoegl
 						auto const vSliceAngle = (static_cast<float>(v) / a_verticalSliceCount) * std::numbers::pi_v<float>;
 						auto const vSliceCos = std::cos(vSliceAngle);
 						auto const vSliceSin = std::sin(vSliceAngle);
-						auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
-						auto const localPos1 = glm::vec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
-						addLine(a_position + a_rotation * localPos0, a_position + a_rotation * localPos1, a_color);
+						auto const localPos0 = glm::dvec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
+						auto const localPos1 = glm::dvec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
+						addLine(a_position + glm::dquat(a_rotation) * localPos0, a_position + glm::dquat(a_rotation) * localPos1, a_color);
 					}
 				}
 
@@ -148,9 +154,9 @@ namespace vob::aoegl
 						auto const vSubSin0 = std::sin(vSubAngle0);
 						auto const vSubCos1 = std::cos(vSubAngle1);
 						auto const vSubSin1 = std::sin(vSubAngle1);
-						auto const localPos0 = glm::vec3{ r * a_radiuses.x * vSubSin0, y, r * a_radiuses.z * vSubCos0 };
-						auto const localPos1 = glm::vec3{ r * a_radiuses.x * vSubSin1, y, r * a_radiuses.z * vSubCos1 };
-						addLine(a_position + a_rotation * localPos0, a_position + a_rotation * localPos1, a_color);
+						auto const localPos0 = glm::dvec3{ r * a_radiuses.x * vSubSin0, y, r * a_radiuses.z * vSubCos0 };
+						auto const localPos1 = glm::dvec3{ r * a_radiuses.x * vSubSin1, y, r * a_radiuses.z * vSubCos1 };
+						addLine(a_position + glm::dquat(a_rotation) * localPos0, a_position + glm::dquat(a_rotation) * localPos1, a_color);
 					}
 				}
 			}
@@ -174,15 +180,15 @@ namespace vob::aoegl
 					auto const vSliceAngle = (static_cast<float>(v) / a_verticalSliceCount) * std::numbers::pi_v<float>;
 					auto const vSliceCos = std::cos(vSliceAngle);
 					auto const vSliceSin = std::sin(vSliceAngle);
-					auto const localPos0 = glm::vec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
-					auto const localPos1 = glm::vec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
-					addLine(a_position + a_rotation * localPos0, a_position + a_rotation * localPos1, a_color);
+					auto const localPos0 = glm::dvec3{ r0 * a_radiuses.x * vSliceSin, y0, r0 * a_radiuses.z * vSliceCos };
+					auto const localPos1 = glm::dvec3{ r1 * a_radiuses.x * vSliceSin, y1, r1 * a_radiuses.z * vSliceCos };
+					addLine(a_position + glm::dquat(a_rotation) * localPos0, a_position + glm::dquat(a_rotation) * localPos1, a_color);
 				}
 			}
 		}
 
 		void addCircle(
-			glm::vec3 const& a_position,
+			glm::dvec3 const& a_position,
 			glm::quat const& a_rotation,
 			float a_radius,
 			aoegl::Rgba const& a_color,
@@ -193,14 +199,14 @@ namespace vob::aoegl
 			for (auto i = 0; i < a_subdivisions; ++i)
 			{
 				auto const a = (2 * i * std::numbers::pi_v<float>) / a_subdivisions;
-				auto const p = a_position + r * glm::vec3{ 0.0f, std::cos(a), std::sin(a) };
+				auto const p = a_position + glm::dquat(r) * glm::dvec3{ 0.0f, std::cos(a), std::sin(a) };
 				vertices.emplace_back(p, a_color);
 				lines.emplace_back(v0 + i, v0 + ((i + 1) % a_subdivisions));
 			}
 		}
 
 		void addArc(
-			glm::vec3 const& a_position,
+			glm::dvec3 const& a_position,
 			glm::quat const& a_rotation,
 			float a_radius,
 			float a_angleFrom,
@@ -211,19 +217,19 @@ namespace vob::aoegl
 			auto const r = a_radius * glm::mat3_cast(a_rotation);
 			auto const v0 = static_cast<GraphicIndex>(vertices.size());
 			auto const a0 = a_angleFrom;
-			auto const p0 = a_position + r * glm::vec3{ 0.0f, std::cos(a0), std::sin(a0) };
+			auto const p0 = a_position + glm::dquat(r) * glm::dvec3{ 0.0f, std::cos(a0), std::sin(a0) };
 			vertices.emplace_back(p0, a_color);
 			for (auto i = 1; i <= a_subdivisions; ++i)
 			{
 				auto const a = a_angleFrom + ((a_angleTo - a_angleFrom) * i) / a_subdivisions;
-				auto const p = a_position + r * glm::vec3{ 0.0f, std::cos(a), std::sin(a) };
+				auto const p = a_position + glm::dquat(r) * glm::dvec3{ 0.0f, std::cos(a), std::sin(a) };
 				vertices.emplace_back(p, a_color);
 				lines.emplace_back(v0 + (i - 1), v0 + i);
 			}
 		}
 
 		void addSphere(
-			glm::vec3 const& a_position,
+			glm::dvec3 const& a_position,
 			float a_radius,
 			aoegl::Rgba const& a_color,
 			int32_t a_horizontalSliceCount = 3,
@@ -234,7 +240,7 @@ namespace vob::aoegl
 			addEllipsoid(
 				a_position,
 				glm::quat{},
-				glm::vec3{ a_radius },
+				glm::dvec3{ a_radius },
 				a_color,
 				a_horizontalSliceCount,
 				a_horizontalSliceSubdivisionCount,
@@ -243,20 +249,20 @@ namespace vob::aoegl
 		}
 
 		void addObb(
-			glm::vec3 const& a_position,
+			glm::dvec3 const& a_position,
 			glm::quat const& a_rotation,
 			glm::vec3 const& a_halfExtents,
 			aoegl::Rgba const& a_color)
 		{
 			auto const v0 = static_cast<GraphicIndex>(vertices.size());
-			auto const p0 = a_position + a_rotation * (-a_halfExtents);
-			auto const p1 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, -a_halfExtents.y, -a_halfExtents.z };
-			auto const p2 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
-			auto const p3 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
-			auto const p4 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
-			auto const p5 = a_position + a_rotation * glm::vec3{ a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
-			auto const p6 = a_position + a_rotation * glm::vec3{ -a_halfExtents.x, a_halfExtents.y, a_halfExtents.z };
-			auto const p7 = a_position + a_rotation * a_halfExtents;
+			auto const p0 = a_position + glm::dquat(a_rotation) * glm::dvec3{ -a_halfExtents };
+			auto const p1 = a_position + glm::dquat(a_rotation) * glm::dvec3{ a_halfExtents.x, -a_halfExtents.y, -a_halfExtents.z };
+			auto const p2 = a_position + glm::dquat(a_rotation) * glm::dvec3{ -a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
+			auto const p3 = a_position + glm::dquat(a_rotation) * glm::dvec3{ a_halfExtents.x, a_halfExtents.y, -a_halfExtents.z };
+			auto const p4 = a_position + glm::dquat(a_rotation) * glm::dvec3{ -a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
+			auto const p5 = a_position + glm::dquat(a_rotation) * glm::dvec3{ a_halfExtents.x, -a_halfExtents.y, a_halfExtents.z };
+			auto const p6 = a_position + glm::dquat(a_rotation) * glm::dvec3{ -a_halfExtents.x, a_halfExtents.y, a_halfExtents.z };
+			auto const p7 = a_position + glm::dquat(a_rotation) * glm::dvec3{ a_halfExtents };
 			vertices.emplace_back(p0, a_color);
 			vertices.emplace_back(p1, a_color);
 			vertices.emplace_back(p2, a_color);
@@ -280,19 +286,19 @@ namespace vob::aoegl
 		}
 
 		void addAabb(
-			glm::vec3 const& a_min,
-			glm::vec3 const& a_max,
+			glm::dvec3 const& a_min,
+			glm::dvec3 const& a_max,
 			aoegl::Rgba const& a_color)
 		{
-			addObb((a_min + a_max) / 2.0f, glm::quat(1.0f, 0.0f, 0.0f, 0.0f), (a_max - a_min) / 2.0f, a_color);
+			addObb((a_min + a_max) / 2.0, glm::quat(1.0, 0.0, 0.0, 0.0), (a_max - a_min) / 2.0, a_color);
 			/*auto const v0 = static_cast<GraphicIndex>(vertices.size());
 			vertices.emplace_back(a_min, a_color);
-			vertices.emplace_back(glm::vec3{ a_max.x, a_min.y, a_min.z }, a_color);
-			vertices.emplace_back(glm::vec3{ a_min.x, a_max.y, a_min.z }, a_color);
-			vertices.emplace_back(glm::vec3{ a_max.x, a_max.y, a_min.z }, a_color);
-			vertices.emplace_back(glm::vec3{ a_min.x, a_min.y, a_max.z }, a_color);
-			vertices.emplace_back(glm::vec3{ a_max.x, a_min.y, a_max.z }, a_color);
-			vertices.emplace_back(glm::vec3{ a_min.x, a_max.y, a_max.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_max.x, a_min.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_min.x, a_max.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_max.x, a_max.y, a_min.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_min.x, a_min.y, a_max.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_max.x, a_min.y, a_max.z }, a_color);
+			vertices.emplace_back(glm::dvec3{ a_min.x, a_max.y, a_max.z }, a_color);
 			vertices.emplace_back(a_max, a_color);
 			lines.emplace_back(v0 + 0, v0 + 1);
 			lines.emplace_back(v0 + 1, v0 + 3);

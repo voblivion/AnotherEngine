@@ -32,7 +32,7 @@ namespace vob::aoegl
 			{
 				debugMeshContext.addLine(
 					positionCmp.value,
-					positionCmp.value + rotationCmp.value * (lightCmp.radius * glm::vec3{ 0.0f, 0.0f, -1.0f }),
+					positionCmp.value + glm::dquat{ rotationCmp.value } * (static_cast<double>(lightCmp.radius) * glm::dvec3{ 0.0, 0.0, -1.0 }),
 					aoegl::k_gray);
 			}
 		}

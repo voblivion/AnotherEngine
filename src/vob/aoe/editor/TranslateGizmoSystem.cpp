@@ -39,7 +39,7 @@ namespace vob::aoedi
 		{
 			auto const color = aoegl::toRgba(a_color * (a_gizmoCtx.hoveredHandle.lock() == a_handle ? 1.0f : 0.5f));
 
-			auto const dir = a_rotationCmp.value * a_handle->getAxis() * glm::vec3{ 1.0f, 0.0f, 0.0f };
+			auto const dir = glm::dquat{ a_rotationCmp.value } *glm::dquat{ a_handle->getAxis() } * glm::dvec3{ 1.0, 0.0, 0.0 };
 
 			a_handle->updateTransform(a_positionCmp.value, a_rotationCmp.value);
 			a_debugMeshCtx.addLine(a_positionCmp.value, a_positionCmp.value + dir, color);

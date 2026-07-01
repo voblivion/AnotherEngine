@@ -34,14 +34,19 @@ namespace vob::aoest
 		return glm::vec3(a_transform * glm::vec4{ a_position, 1.0f });
 	}
 
-	inline glm::vec3 transformPosition(glm::vec3 const& a_transformPosition, glm::quat const& a_transformRotation, glm::vec3 const& a_position)
+	inline glm::dvec3 transformPosition(glm::dvec3 const& a_transformPosition, glm::mat3 const& a_transformRotation, glm::vec3 const& a_position)
 	{
-		return a_transformPosition + a_transformRotation * a_position;
+		return a_transformPosition + glm::dvec3{ a_transformRotation * a_position };
 	}
 
-	inline glm::vec3 transformPosition(PositionComponent const& a_positionCmp, RotationComponent const& a_rotationCmp, glm::vec3 const& a_position)
+	inline glm::dvec3 transformPosition(glm::dvec3 const& a_transformPosition, glm::dquat const& a_transformRotation, glm::dvec3 const& a_position)
 	{
-		return a_positionCmp.value + a_rotationCmp.value * a_position;
+		return a_transformPosition + glm::dquat(a_transformRotation) * a_position;
+	}
+
+	inline glm::dvec3 transformPosition(PositionComponent const& a_positionCmp, RotationComponent const& a_rotationCmp, glm::dvec3 const& a_position)
+	{
+		return a_positionCmp.value + glm::dquat(a_rotationCmp.value) * a_position;
 	}
 
 	inline glm::vec3 transformDirection(glm::mat4 const& a_transform, glm::vec3 const& a_direction)

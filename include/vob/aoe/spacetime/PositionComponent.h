@@ -7,6 +7,6 @@ namespace vob::aoest
 {
 	struct PositionComponent
 	{
-		glm::vec3 value;
+		glm::dvec3 value;
 	};
 }

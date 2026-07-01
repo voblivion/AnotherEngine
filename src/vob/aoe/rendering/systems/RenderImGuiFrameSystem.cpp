@@ -16,7 +16,7 @@ namespace vob::aoegl
 		ImGui::Render();
 		if (ImGui::GetDrawData()->CmdListsCount > 0)
 		{
-			//ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			// ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
 	}
 }

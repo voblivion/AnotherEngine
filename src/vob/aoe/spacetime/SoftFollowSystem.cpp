@@ -69,10 +69,10 @@ namespace vob::aoest
 			// desired position
 			auto const positionPitch = softFollowCmp.positionPitch;
 			auto const behindDir = std::sin(positionPitch) * referenceUp - std::cos(positionPitch) * referenceForward;
-			auto const desiredPosition = targetPosition + behindDir * softFollowCmp.positionDistance;
+			auto const desiredPosition = targetPosition + glm::dvec3{ behindDir * softFollowCmp.positionDistance };
 
 			// desired aim point
-			auto const desiredAimPoint = targetPosition + referenceForward * softFollowCmp.lookAheadDistance;
+			auto const desiredAimPoint = targetPosition + glm::dvec3{ referenceForward * softFollowCmp.lookAheadDistance };
 
 			// smooth position
 			auto const& currentDir = softFollowCmp.currentDir;
@@ -81,7 +81,7 @@ namespace vob::aoest
 			auto const desiredPositionChange = desiredDir - currentDir;
 			auto const newDir = glm::length(desiredPositionChange) < positionChangeRate * elapsedTime
 				? desiredDir : currentDir + glm::normalize(desiredPositionChange) * positionChangeRate * elapsedTime;
-			auto const newPosition = targetPosition + newDir;
+			auto const newPosition = targetPosition + glm::dvec3{ newDir };
 
 			if (k_debugSoftFollow)
 			{
@@ -99,7 +99,7 @@ namespace vob::aoest
 			// smooth rotation
 			auto const rotationChangeRate = glm::mix(k_minRotationChangeRate, k_maxRotationChangeRate, speedBlend);
 			auto const toDesiredAimPoint = glm::normalize(desiredAimPoint - positionCmp.value);
-			auto const desiredRotation = glm::quatLookAt(toDesiredAimPoint, referenceUp);
+			auto const desiredRotation = glm::quat{ glm::quatLookAt(toDesiredAimPoint, glm::dvec3{ referenceUp }) };
 			rotationCmp.value = glm::slerp(rotationCmp.value, desiredRotation, rotationChangeRate);
 		}
 

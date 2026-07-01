@@ -18,7 +18,7 @@ namespace vob::aoegl
 {
 	struct CameraProperties
 	{
-		glm::vec3 position;
+		glm::dvec3 position;
 		glm::quat rotation;
 		float nearClip;
 		float farClip;
@@ -32,7 +32,7 @@ namespace vob::aoegl
 		if (!a_cameraEntities.contains(a_cameraEntity))
 		{
 			return CameraProperties{
-				.position = glm::vec3{ 0.0f },
+				.position = glm::dvec3{ 0.0f },
 				.rotation = glm::quat{ 1.0f, 0.0f, 0.0f, 0.0f },
 				.nearClip = 0.1f,
 				.farClip = 1000.0f,
@@ -50,7 +50,7 @@ namespace vob::aoegl
 		};
 	}
 
-	inline glm::vec3 getFocusPosition(
+	inline glm::dvec3 getFocusPosition(
 		entt::view<entt::get_t<aoest::PositionComponent const>> a_focusEntities, entt::entity a_focusEntity)
 	{
 		if (!a_focusEntities.contains(a_focusEntity))

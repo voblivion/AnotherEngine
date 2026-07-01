@@ -60,7 +60,7 @@ namespace vob::aoegl
 			};
 		}
 
-		UniformViewParams createViewParams(
+		std::pair<UniformViewParams, glm::dvec3> createViewParams(
 			aoewi::WindowContext const& a_windowCtx,
 			entt::entity a_cameraEntity,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const>> a_cameraEntities)
@@ -69,14 +69,18 @@ namespace vob::aoegl
 			auto const invResolution = 1.0f / glm::vec2{ resolution };
 			auto const aspectRatio = static_cast<float>(resolution.x) / resolution.y;
 
-			auto const [position, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntities, a_cameraEntity);
-			auto const viewToWorld = aoest::combine(position, rotation);
+			auto const [realCameraPosition, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntities, a_cameraEntity);
+			
+			auto const worldOriginPosition = 1024.0 * glm::floor(realCameraPosition / 1024.0);
+			auto const cameraPosition = glm::vec3{ realCameraPosition - worldOriginPosition };
+			
+			auto const viewToWorld = aoest::combine(cameraPosition, rotation);
 			auto const worldToView = glm::inverse(viewToWorld);
 			auto const viewToClip = glm::perspective(fov, aspectRatio, nearClip, farClip);
 			auto const worldToClip = viewToClip * worldToView;
 			auto const clipToView = glm::inverse(viewToClip);
 			
-			return UniformViewParams{
+			return std::make_pair(UniformViewParams{
 				.worldToView = worldToView,
 				.viewToClip = viewToClip,
 				.worldToClip = worldToClip,
@@ -88,18 +92,19 @@ namespace vob::aoegl
 				.farClip = farClip,
 				.fov = fov,
 				.aspectRatio = aspectRatio
-			};
+			}, worldOriginPosition);
 		}
 
 		static float texelSize = 1.0;
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
-			glm::vec3 const& a_lightFocusPosition,
+			glm::dvec3 const& a_lightFocusPosition,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
 			int32_t a_lightsCapacity,
 			glm::ivec2 const& a_lightClusterTileSize,
 			int32_t a_lightClusterZCount,
 			int32_t a_lightClusterCapacity,
+			glm::dvec3 const& a_worldOriginPosition,
 			glm::mat4 a_clipToWorld,
 			glm::mat4 a_viewToWorld,
 			float a_nearClip,
@@ -113,17 +118,17 @@ namespace vob::aoegl
 			culledLights.clear();
 			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
-				if (!testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value, lightCmp.radius))
+				if (!testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value - a_worldOriginPosition, lightCmp.radius))
 				{
 					continue;
 				}
 
-				auto const distanceImportance = 1.0f - glm::length(positionCmp.value - a_lightFocusPosition) / lightCmp.radius;
+				auto const distanceImportance = 1.0f - static_cast<float>(glm::length(positionCmp.value - a_lightFocusPosition)) / lightCmp.radius;
 				auto const colorImportance = glm::dot(lightCmp.color, glm::vec3{ 0.299, 0.587, 0.114f });
 				auto const intensityImportance = lightCmp.intensity;
 				auto const importance = distanceImportance * colorImportance * intensityImportance;
 
-				culledLights.emplace_back(importance, positionCmp.value, rotationCmp.value, &lightCmp);
+				culledLights.emplace_back(importance, positionCmp.value - a_worldOriginPosition, rotationCmp.value, &lightCmp);
 			}
 			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
 			auto const lightingParams = UniformLightingParams{
@@ -455,9 +460,9 @@ namespace vob::aoegl
 		auto const globalParams = createGlobalParams(m_timeContext.get(a_wdap));
 		glNamedBufferSubData(renderSceneCtx.globalParamsUbo, 0, sizeof(globalParams), &globalParams);
 
-		auto viewParams = createViewParams(
+		auto [viewParams, worldOriginPosition] = createViewParams(
 			m_windowContext.get(a_wdap), cameraDirectorCtx.activeCameraEntity, m_cameraEntities.get(a_wdap));
-		auto const debugViewParams = createViewParams(
+		auto const [debugViewParams, debugWorldOriginPosition] = createViewParams(
 			m_windowContext.get(a_wdap),
 			cameraDirectorCtx.debugCameraEntity != entt::null ? cameraDirectorCtx.debugCameraEntity : cameraDirectorCtx.activeCameraEntity,
 			m_cameraEntities.get(a_wdap));
@@ -478,6 +483,7 @@ namespace vob::aoegl
 			renderSceneCtx.lightClusterTileSize,
 			renderSceneCtx.lightClusterZCount,
 			renderSceneCtx.lightClusterCapacity,
+			worldOriginPosition,
 			glm::inverse(debugViewParams.worldToClip),
 			debugViewParams.viewToWorld,
 			debugViewParams.nearClip,
@@ -522,9 +528,9 @@ namespace vob::aoegl
 		culledTranslucentStaticMeshes.clear();
 		for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
 		{
-			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 			{
-				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 				if (modelTransformCmp.prevModelParams != modelParams)
 				{
 					modelTransformCmp.prevModelParams = modelParams;
@@ -562,9 +568,9 @@ namespace vob::aoegl
 		culledTranslucentRiggedMeshes.clear();
 		for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
 		{
-			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 			{
-				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 				if (modelTransformCmp.prevModelParams != modelParams)
 				{
 					modelTransformCmp.prevModelParams = modelParams;
@@ -605,9 +611,9 @@ namespace vob::aoegl
 		culledTranslucentInstancedMeshes.clear();
 		for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
 		{
-			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+			if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 			{
-				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+				auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 				if (modelTransformCmp.prevModelParams != modelParams)
 				{
 					modelTransformCmp.prevModelParams = modelParams;
@@ -644,14 +650,14 @@ namespace vob::aoegl
 		if (k_debugCameraFrustum)
 		{
 			auto const clipToWorld = glm::inverse(debugViewParams.worldToClip);
-			auto p0 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f });
-			auto p1 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f });
-			auto p2 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f });
-			auto p3 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f });
-			auto p4 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f });
-			auto p5 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f });
-			auto p6 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f });
-			auto p7 = aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f });
+			auto p0 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
+			auto p1 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
+			auto p2 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
+			auto p3 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
+			auto p4 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
+			auto p5 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
+			auto p6 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
+			auto p7 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
 			debugMeshCtx.addLine(p0, p1, aoegl::k_orange);
 			debugMeshCtx.addLine(p0, p2, aoegl::k_orange);
 			debugMeshCtx.addLine(p0, p4, aoegl::k_orange);
@@ -697,24 +703,24 @@ namespace vob::aoegl
 						{
 							return (viewNearClip + viewFarClip - 2.0f * viewNearClip * viewFarClip / a_clip) / (viewFarClip - viewNearClip);
 						};
-					auto s0 = aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) });
-					auto s1 = aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) });
-					auto s2 = aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) });
-					auto s3 = aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) });
+					auto s0 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+					auto s1 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+					auto s2 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+					auto s3 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
 					debugMeshCtx.addLine(s0, s1, aoegl::k_yellow);
 					debugMeshCtx.addLine(s0, s2, aoegl::k_yellow);
 					debugMeshCtx.addLine(s1, s3, aoegl::k_yellow);
 					debugMeshCtx.addLine(s2, s3, aoegl::k_yellow);
 
 					auto const sunClipToWorld = glm::inverse(sunShadowParams.worldToClip);
-					auto p0 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f });
-					auto p1 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f });
-					auto p2 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f });
-					auto p3 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f });
-					auto p4 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f });
-					auto p5 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f });
-					auto p6 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f });
-					auto p7 = aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f });
+					auto p0 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
+					auto p1 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
+					auto p2 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
+					auto p3 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
+					auto p4 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
+					auto p5 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
+					auto p6 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
+					auto p7 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
 					debugMeshCtx.addLine(p0, p1, aoegl::k_gray);
 					debugMeshCtx.addLine(p0, p2, aoegl::k_gray);
 					debugMeshCtx.addLine(p0, p4, aoegl::k_gray);
@@ -752,9 +758,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
 				{
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -773,9 +779,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
 				{
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -795,19 +801,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
 				{
-					if (testViewFrustumPlanes(viewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
-						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
-
-					}
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
-					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp, rotationCmp) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -855,9 +851,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
 				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -876,9 +872,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
 				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -898,9 +894,9 @@ namespace vob::aoegl
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
 				for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
 				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value, modelTransformCmp.boundingRadius))
+					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value, rotationCmp.value) };
+						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
 						if (modelTransformCmp.prevModelParams != modelParams)
 						{
 							modelTransformCmp.prevModelParams = modelParams;
@@ -1321,11 +1317,18 @@ namespace vob::aoegl
 
 			glBindVertexArray(renderSceneCtx.debugGeometryVao);
 
+			static std::vector<WorldDebugVertex> worldDebugVertices;
+			worldDebugVertices.clear();
+			for (auto const& debugVertex : debugMeshCtx.vertices)
+			{
+				worldDebugVertices.emplace_back(glm::vec3{ debugVertex.position - worldOriginPosition }, glm::vec4{ debugVertex.color });
+			}
+
 			glBindBuffer(GL_ARRAY_BUFFER, renderSceneCtx.debugGeometryVbo);
 			glBufferData(
 				GL_ARRAY_BUFFER,
-				debugMeshCtx.vertices.size() * sizeof(decltype(debugMeshCtx.vertices.front())),
-				debugMeshCtx.vertices.data(),
+				worldDebugVertices.size() * sizeof(decltype(worldDebugVertices.front())),
+				worldDebugVertices.data(),
 				GL_STATIC_DRAW);
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderSceneCtx.debugGeometryEbo);
