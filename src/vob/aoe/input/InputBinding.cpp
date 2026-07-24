@@ -13,4 +13,14 @@ namespace vob::aoein
 
 		return m_isPressed && !wasPressed;
 	}
+
+	bool KeyboardKeyEventBinding::processEvent(aoewi::WindowEvent const& a_windowEvent)
+	{
+		if (auto const* keyboardKeyEvent = std::get_if<aoewi::KeyEvent>(&a_windowEvent))
+		{
+			return keyboardKeyEvent->key == m_key && keyboardKeyEvent->action == m_action;
+		}
+
+		return false;
+	}
 }
