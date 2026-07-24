@@ -280,6 +280,22 @@ namespace vob::aoein
 		virtual bool update([[maybe_unused]] aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt) { return false; }
 	};
 
+	struct KeyboardKeyEventBinding : public AInputEventBinding
+	{
+	public:
+		explicit KeyboardKeyEventBinding(aoein::Keyboard::Key a_key, aoewi::KeyEvent::Action a_action = aoewi::KeyEvent::Action::Press)
+			: m_key{ a_key }
+			, m_action{ a_action }
+		{
+		}
+
+		bool processEvent(aoewi::WindowEvent const& a_windowEvent) override;
+
+	private:
+		aoein::Keyboard::Key m_key;
+		aoewi::KeyEvent::Action m_action;
+	};
+
 	struct MouseButtonEventBinding : public AInputEventBinding
 	{
 	public:
