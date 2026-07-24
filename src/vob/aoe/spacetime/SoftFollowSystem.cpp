@@ -28,19 +28,25 @@ namespace vob::aoest
 	{
 		auto const elapsedTime = std::chrono::duration<float>(m_timeContext.get(a_wdap).elapsedTime).count();
 
-		static bool k_debugSoftFollow = false;
-		auto const isImGuiOpen = ImGui::Begin("Soft Follow");
-		if (isImGuiOpen)
-		{
-			ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
-		}
-
 		static float k_minSpeedThreshold = 5.0f;
 		static float k_maxSpeedThreshold = 20.0f;
 		static float k_minPositionChangeRate = 0.1f;
 		static float k_maxPositionChangeRate = 0.3f;
 		static float k_minRotationChangeRate = 0.002f;
 		static float k_maxRotationChangeRate = 0.02f;
+
+		static bool k_debugSoftFollow = false;
+		auto const isImGuiOpen = ImGui::Begin("Soft Follow");
+		if (isImGuiOpen)
+		{
+			ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
+			ImGui::InputFloat("Min Speed Threshold", &k_minSpeedThreshold);
+			ImGui::InputFloat("Max Speed Threshold", &k_maxSpeedThreshold);
+			ImGui::InputFloat("Min Position Change Rate", &k_minPositionChangeRate);
+			ImGui::InputFloat("Max Position Change Rate", &k_maxPositionChangeRate);
+			ImGui::InputFloat("Min Rotation Change Rate", &k_minRotationChangeRate);
+			ImGui::InputFloat("Max Rotation Change Rate", &k_maxRotationChangeRate);
+		}
 
 		for (auto [entity, positionCmp, rotationCmp, softFollowCmp] : m_softFollowingEntities.get(a_wdap).each())
 		{

@@ -46,6 +46,7 @@ namespace vob::aoegl
 					cameraDirectorCtx.activeCameraEntity = *cameraEntities.begin();
 				}
 			}
+			// TODO: what is this doing here??
 			else if (eventId == debugCameraDirectorCtx.quitInputEventId)
 			{
 				m_gameController.get(a_wdap).requestStop();
