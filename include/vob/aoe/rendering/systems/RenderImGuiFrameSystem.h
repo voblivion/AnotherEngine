@@ -1,14 +1,15 @@
 #pragma once
 
-#include <vob/aoe/api.h>
+#include "vob/aoe/rendering/contexts/ImGuiContext.h"
 
-#include <vob/aoe/engine/EcsWorldDataAccess.h>
-#include <vob/aoe/window/WindowContext.h>
+#include "vob/aoe/engine/EcsWorldDataAccess.h"
+#include "vob/aoe/input/GameInputContext.h"
+#include "vob/aoe/window/WindowContext.h"
 
 
 namespace vob::aoegl
 {
-	class VOB_AOE_API RenderImGuiFrameSystem
+	class RenderImGuiFrameSystem
 	{
 	public:
 		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar);
@@ -16,5 +17,7 @@ namespace vob::aoegl
 
 	private:
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
+		aoeng::EcsWorldContextRef<ImGuiContext> m_imGuiContext;
+		aoeng::EcsWorldContextRef<aoein::GameInputContext> m_gameInputCtx;
 	};
 }
