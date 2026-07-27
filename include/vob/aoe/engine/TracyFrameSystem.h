@@ -13,7 +13,7 @@ namespace vob::aoeng
 	class TracyFrameSystem
 	{
 	public:
-		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar) {}
+		void init([[maybe_unused]] aoeng::EcsWorldDataAccessRegistrar& a_wdar) {}
 
 		void execute([[maybe_unused]] aoeng::EcsWorldDataAccessProvider const& a_wdp) const { FrameMark; };
 	};

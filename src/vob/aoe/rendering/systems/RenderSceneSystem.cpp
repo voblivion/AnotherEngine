@@ -27,7 +27,20 @@ namespace vob::aoegl
 {
 	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-
+		m_timeContext.init(a_wdar);
+		m_cameraDirectorContext.init(a_wdar);
+		m_renderSceneCtx.init(a_wdar);
+		m_gpuResourceRegistriesContext.init(a_wdar);
+		m_debugProgramContext.init(a_wdar);
+		m_debugMeshContext.init(a_wdar);
+		m_windowContext.init(a_wdar);
+		m_focusEntities.init(a_wdar);
+		m_cameraEntities.init(a_wdar);
+		m_lightEntities.init(a_wdar);
+		m_staticModelEntities.init(a_wdar);
+		m_riggedModelEntities.init(a_wdar);
+		m_instancedModelsEntities.init(a_wdar);
+		m_movingEntities.init(a_wdar);
 	}
 
 	namespace

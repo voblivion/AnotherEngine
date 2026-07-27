@@ -20,6 +20,7 @@ namespace vob::aoest
 	void SoftFollowSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_timeContext.init(a_wdar);
+		m_debugMeshContext.init(a_wdar);
 		m_softFollowableEntities.init(a_wdar);
 		m_softFollowingEntities.init(a_wdar);
 	}

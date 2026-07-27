@@ -68,6 +68,9 @@ namespace vob::aoedi
 
 	void TranslateGizmoSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
+		m_debugMeshCtx.init(a_wdar);
+		m_gizmoCtx.init(a_wdar);
+		m_gizmoEntities.init(a_wdar);
 	}
 
 	void TranslateGizmoSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

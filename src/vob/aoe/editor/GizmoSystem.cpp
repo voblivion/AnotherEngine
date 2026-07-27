@@ -13,6 +13,11 @@ namespace vob::aoedi
 {
 	void GizmoSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
+		m_windowCtx.init(a_wdar);
+		m_cameraDirectorCtx.init(a_wdar);
+		m_gizmoCtx.init(a_wdar);
+		m_cameraEntities.init(a_wdar);
+		m_gizmoEntities.init(a_wdar);
 	}
 
 	void GizmoSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

@@ -10,7 +10,9 @@ namespace vob::aoest
 {
 	void TransformInterpolationSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-
+		m_timeContext.init(a_wdar);
+		m_interpolationContext.init(a_wdar);
+		m_transformEntities.init(a_wdar);
 	}
 
 	void TransformInterpolationSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

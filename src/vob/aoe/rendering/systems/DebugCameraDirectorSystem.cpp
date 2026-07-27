@@ -10,7 +10,12 @@ namespace vob::aoegl
 {
 	void DebugCameraDirectorSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-		// TODO
+		m_gameController.init(a_wdar);
+		m_cameraDirectorCtx.init(a_wdar);
+		m_gameInputCtx.init(a_wdar);
+		m_debugCameraDirectorCtx.init(a_wdar);
+		m_debugNameEntities.init(a_wdar);
+		m_cameraEntities.init(a_wdar);
 	}
 
 	void DebugCameraDirectorSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

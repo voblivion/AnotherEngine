@@ -8,7 +8,7 @@ namespace vob::aoest
 {
 	void DebugDisplaySimulationFrameTimeSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-
+		m_debugSimulationFrameTimeHistoryContext.init(a_wdar);
 	}
 
 	void DebugDisplaySimulationFrameTimeSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

@@ -7,7 +7,8 @@ namespace vob::aoegl
 {
 	void DebugRenderLightsSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-
+		m_debugMeshContext.init(a_wdar);
+		m_lightEntities.init(a_wdar);
 	}
 
 	void DebugRenderLightsSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

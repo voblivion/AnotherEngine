@@ -11,7 +11,8 @@ namespace vob::aoest
 {
 	void AttachmentSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-
+		m_transformEntities.init(a_wdar);
+		m_attachedEntities.init(a_wdar);
 	}
 
 	void AttachmentSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const

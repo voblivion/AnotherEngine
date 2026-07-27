@@ -12,6 +12,7 @@ namespace vob::aoedb
 {
 	void GhostControllerSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
+		m_gameInputCtx.init(a_wdar);
 		m_timeContext.init(a_wdar);
 		m_ghostControllerEntities.init(a_wdar);
 	}

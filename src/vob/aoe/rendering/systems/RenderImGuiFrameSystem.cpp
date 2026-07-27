@@ -9,6 +9,8 @@ namespace vob::aoegl
 	void RenderImGuiFrameSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_windowContext.init(a_wdar);
+		m_imGuiContext.init(a_wdar);
+		m_gameInputCtx.init(a_wdar);
 	}
 
 	void RenderImGuiFrameSystem::execute([[maybe_unused]] aoeng::EcsWorldDataAccessProvider const& a_wdap) const

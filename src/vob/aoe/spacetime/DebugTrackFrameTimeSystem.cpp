@@ -7,6 +7,8 @@ namespace vob::aoest
 {
 	void DebugTrackFrameTimeSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
+		m_timeContext.init(a_wdar);
+		m_debugFrameTimeContext.init(a_wdar);
 	}
 
 	void DebugTrackFrameTimeSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
