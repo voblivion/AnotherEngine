@@ -77,22 +77,4 @@ namespace vob::aoein
 	private:
 		mistd::id_map<std::shared_ptr<TBindingBase>> m_bindings;
 	};
-
-	struct InputBindings
-	{
-		BasicInputBindings<IAxisInputBinding> axes;
-		BasicInputBindings<ISwitchInputBinding> switches;
-
-		using AxisId = typename decltype(axes)::BindingId;
-		using SwitchId = typename decltype(switches)::BindingId;
-
-		static constexpr AxisId kInvalidAxisId = static_cast<uint32_t>(-1);
-		static constexpr SwitchId kInvalidSwitchId = -1;
-
-		void update(Inputs const& a_inputs, misph::measure_time const a_elapsedTime)
-		{
-			axes.update(a_inputs, a_elapsedTime);
-			switches.update(a_inputs, a_elapsedTime);
-		}
-	};
 }
