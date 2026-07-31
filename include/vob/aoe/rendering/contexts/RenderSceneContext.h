@@ -76,6 +76,7 @@ namespace vob::aoegl
 		// Framebuffers
 		GraphicId depthFramebuffer;
 
+		glm::ivec2 ssaoResolution;
 		GraphicId ssaoFramebuffer;
 		GraphicId ambientOcclusionTexture;
 
@@ -110,7 +111,6 @@ namespace vob::aoegl
 		GraphicId finalFramebuffer;
 		GraphicId finalColorTexture;
 
-		glm::ivec2 postProcessResolution;
 		struct PostProcessTarget
 		{
 			GraphicId framebuffer;

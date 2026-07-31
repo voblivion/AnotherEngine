@@ -1013,7 +1013,7 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboSsao, renderSceneCtx.ssaoParamsUbo);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueGeometricNormal, renderSceneCtx.opaqueGeometricNormalTexture);
-			beginPass(gpuState, renderSceneCtx.ssaoFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+			beginPass(gpuState, renderSceneCtx.ssaoFramebuffer, renderSceneCtx.ssaoResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoProgram);
 
 			if (k_ssaoEnabled)
@@ -1298,7 +1298,7 @@ namespace vob::aoegl
 				for (int32_t i = 0; i < mistd::isize(renderSceneCtx.postProcesses) - 1; ++i)
 				{
 					gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, nextTexture);
-					beginPass(gpuState, renderSceneCtx.postProcessTargets[i % 2].framebuffer, renderSceneCtx.postProcessResolution, renderSceneCtx.targetParamsUbo);
+					beginPass(gpuState, renderSceneCtx.postProcessTargets[i % 2].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 					nextTexture = renderSceneCtx.postProcessTargets[i % 2].colorTexture;
 
 					auto const& postProcess = renderSceneCtx.postProcesses[i];
