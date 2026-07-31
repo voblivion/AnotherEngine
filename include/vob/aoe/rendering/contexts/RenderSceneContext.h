@@ -60,6 +60,7 @@ namespace vob::aoegl
 		// Uniform Buffer Objects
 		GraphicId globalParamsUbo;
 		GraphicId viewParamsUbo;
+		GraphicId targetParamsUbo;
 		GraphicId lightViewParamsUbo;
 		GraphicId lightingParamsUbo;
 		GraphicId shadowParamsUbo;

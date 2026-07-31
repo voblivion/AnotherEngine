@@ -13,6 +13,11 @@ layout(std140, binding = BINDING_UBO_VIEW) uniform ViewParams
     UniformViewParams uView;
 };
 
+layout(std140, binding = BINDING_UBO_TARGET) uniform TargetParams
+{
+    UniformTargetParams uTarget;
+};
+
 layout(std140, binding = BINDING_UBO_LIGHTING) uniform LightingParams
 {
     UniformLightingParams uLighting;

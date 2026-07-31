@@ -12,11 +12,12 @@
 
 #define BINDING_UBO_GLOBAL 0
 #define BINDING_UBO_VIEW 1
-#define BINDING_UBO_LIGHTING 2
-#define BINDING_UBO_SHADOW 3
-#define BINDING_UBO_MODEL 4
-#define BINDING_UBO_RIG 5
-#define BINDING_UBO_CUSTOM 6
+#define BINDING_UBO_TARGET 2
+#define BINDING_UBO_LIGHTING 3
+#define BINDING_UBO_SHADOW 4
+#define BINDING_UBO_MODEL 5
+#define BINDING_UBO_RIG 6
+#define BINDING_UBO_CUSTOM 7
 #define BINDING_UBO_MATERIAL BINDING_UBO_CUSTOM
 #define BINDING_UBO_SSAO BINDING_UBO_CUSTOM
 #define BINDING_UBO_SSR BINDING_UBO_CUSTOM
@@ -116,6 +117,12 @@ struct ALIGN_16 UniformViewParams
     // Not really needed for glsl, but handy + there is room
     float fov;
     float aspectRatio;
+};
+
+struct ALIGN_16 UniformTargetParams
+{
+    ubo_ivec2 resolution;
+    ubo_vec2 invResolution;
 };
 
 struct ALIGN_16 UniformLightingParams
@@ -223,6 +230,7 @@ struct ALIGN_16 UniformDebugParams
 
 	static constexpr uint32_t k_bindingUboGlobal = BINDING_UBO_GLOBAL;
 	static constexpr uint32_t k_bindingUboView = BINDING_UBO_VIEW;
+	static constexpr uint32_t k_bindingUboTarget = BINDING_UBO_TARGET;
 	static constexpr uint32_t k_bindingUboLighting = BINDING_UBO_LIGHTING;
 	static constexpr uint32_t k_bindingUboShadow = BINDING_UBO_SHADOW;
     static constexpr uint32_t k_bindingUboModel = BINDING_UBO_MODEL;
@@ -279,6 +287,7 @@ struct ALIGN_16 UniformDebugParams
 
 #undef BINDING_UBO_GLOBAL
 #undef BINDING_UBO_VIEW
+#undef BINDING_UBO_TARGET
 #undef BINDING_UBO_LIGHTING
 #undef BINDING_UBO_SHADOW
 #undef BINDING_UBO_CUSTOM

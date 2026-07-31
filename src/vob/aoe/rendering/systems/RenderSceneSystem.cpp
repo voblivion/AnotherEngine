@@ -262,6 +262,22 @@ namespace vob::aoegl
 
 			return { lightingParams, shadowParams, spotLightShadowMapCount };
 		}
+
+		void beginPass(
+			GpuState& a_gpuState
+			, GraphicId a_framebuffer
+			, glm::ivec2 a_resolution
+			, GraphicId a_targetParamsUbo)
+		{
+			a_gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(a_framebuffer);
+			a_gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, a_resolution });
+
+			auto const targetParams = UniformTargetParams{
+				.resolution = a_resolution,
+				.invResolution = 1.0f / glm::vec2{ a_resolution } };
+			glNamedBufferSubData(a_targetParamsUbo, 0, sizeof(targetParams), &targetParams);
+			a_gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboTarget, a_targetParamsUbo);
+		}
 	}
 
 	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -696,8 +712,7 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.lightViewParamsUbo);
 
 			// A - Sun CSM
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.sunShadowMapFramebuffer);
-			gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, renderSceneCtx.sunShadowMapResolution });
+			beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.sunShadowMapResolution, renderSceneCtx.targetParamsUbo);
 
 			for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips); ++csmIndex)
 			{
@@ -844,10 +859,12 @@ namespace vob::aoegl
 			// B - Spot Lights
 			for (int32_t i = 0; i < spotLightShadowMapCount; ++i)
 			{
+				auto const& spotLightShadowMapTarget = renderSceneCtx.spotLightShadowMapTargets[i];
+
 				auto const spotLightViewParams = UniformViewParams{
 					.worldToClip = shadowParams.spotLights[i].worldToClip,
 					.viewToWorld = shadowParams.spotLights[i].viewToWorld,
-					.resolution = renderSceneCtx.spotLightShadowMapTargets[i].resolution,
+					.resolution = spotLightShadowMapTarget.resolution,
 					.nearClip = shadowParams.spotLights[i].nearClip,
 					.farClip = shadowParams.spotLights[i].farClip,
 					.fov = shadowParams.spotLights[i].fov,
@@ -857,8 +874,7 @@ namespace vob::aoegl
 
 				auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams.worldToClip);
 
-				gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.spotLightShadowMapTargets[i].framebuffer);
-				gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, spotLightViewParams.resolution });
+				beginPass(gpuState, spotLightShadowMapTarget.framebuffer, spotLightShadowMapTarget.resolution, renderSceneCtx.targetParamsUbo);
 				glClear(GL_DEPTH_BUFFER_BIT);
 
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
@@ -950,8 +966,8 @@ namespace vob::aoegl
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.depthFramebuffer);
-			gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, renderSceneCtx.shadingResolution });
+
+			beginPass(gpuState, renderSceneCtx.depthFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticDepthProgram);
@@ -999,7 +1015,7 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboSsao, renderSceneCtx.ssaoParamsUbo);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueGeometricNormal, renderSceneCtx.opaqueGeometricNormalTexture);
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoFramebuffer);
+			beginPass(gpuState, renderSceneCtx.ssaoFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoProgram);
 
 			if (k_ssaoEnabled)
@@ -1033,7 +1049,7 @@ namespace vob::aoegl
 				gpuState.bindTexture<GpuStateChange::SurelyYes>(
 					k_bindingTextureMaterialSpotLightShadowMapsBegin + i, renderSceneCtx.spotLightShadowMapTargets[i].depthTexture);
 			}
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.directOpaqueFramebuffer);
+			beginPass(gpuState, renderSceneCtx.directOpaqueFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			glClear(GL_COLOR_BUFFER_BIT);
 			GraphicId currentShadingProgram;
 			WeakHandle<GpuMaterial> currentMaterial;
@@ -1104,7 +1120,8 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.ssrFramebuffer);
+
+			beginPass(gpuState, renderSceneCtx.ssrFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrProgram);
 
 			if (k_ssrEnabled)
@@ -1131,7 +1148,7 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::SurelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.ssrColorTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionEnvironmentCubeMap, renderSceneCtx.environmentCubeMap);
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.finalFramebuffer);
+			beginPass(gpuState, renderSceneCtx.finalFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.opaqueCompositionProgram);
 
 			// glBindVertexArray(renderSceneCtx.postProcessVao);
@@ -1155,7 +1172,6 @@ namespace vob::aoegl
 			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::SkyBox]);
 			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
-			gpuState.bindFramebuffer<GpuStateChange::SurelyNo>(renderSceneCtx.finalFramebuffer);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.skyBoxProgram);
 			// TODO: ubo?
 			glBindVertexArray(renderSceneCtx.postProcessVao);
@@ -1264,8 +1280,8 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureDebug, debugTexture);
 			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureArrayDebug, debugTextureArray);
 
-			gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(window.getDefaultFramebufferId());
-			gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, renderSceneCtx.postProcessResolution });
+			// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
+			beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugProgram);
 
 			glBindVertexArray(renderSceneCtx.postProcessVao);
@@ -1285,7 +1301,7 @@ namespace vob::aoegl
 				for (int32_t i = 0; i < mistd::isize(renderSceneCtx.postProcesses) - 1; ++i)
 				{
 					gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, nextTexture);
-					gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(renderSceneCtx.postProcessTargets[i % 2].framebuffer);
+					beginPass(gpuState, renderSceneCtx.postProcessTargets[i % 2].framebuffer, renderSceneCtx.postProcessResolution, renderSceneCtx.targetParamsUbo);
 					nextTexture = renderSceneCtx.postProcessTargets[i % 2].colorTexture;
 
 					auto const& postProcess = renderSceneCtx.postProcesses[i];
@@ -1297,8 +1313,9 @@ namespace vob::aoegl
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
+				// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
+				beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
 				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, nextTexture);
-				gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(window.getDefaultFramebufferId());
 
 				auto const& lastPostProcess = renderSceneCtx.postProcesses.back();
 				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, lastPostProcess.ubo);
