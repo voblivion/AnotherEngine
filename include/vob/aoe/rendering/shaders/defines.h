@@ -110,8 +110,6 @@ struct ALIGN_16 UniformViewParams
     ubo_mat4 worldToClip;
     ubo_mat4 clipToView;
     ubo_mat4 viewToWorld;
-    ubo_ivec2 resolution;
-    ubo_vec2 invResolution;
     float nearClip;
     float farClip;
     // Not really needed for glsl, but handy + there is room
@@ -129,6 +127,7 @@ struct ALIGN_16 UniformLightingParams
 {
     ubo_vec3 ambientColor;
     int lightCount;
+    ubo_ivec2 lightClusterResolution;
     ubo_ivec2 lightClusterTileSize;
     int lightClusterZCount;
     int lightClusterCapacity;

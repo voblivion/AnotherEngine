@@ -6,11 +6,11 @@
 int uComputeLightClusterIndex()
 {
     return computeLightClusterIndex(
-        gl_FragCoord.xy,
+        gl_FragCoord.xy * uTarget.invResolution * vec2(uLighting.lightClusterResolution),
         gl_FragCoord.z,
         uLighting.lightClusterTileSize,
         uLighting.lightClusterZCount,
-        uView.resolution,
+        uLighting.lightClusterResolution,
         uView.nearClip,
         uView.farClip);
 }
@@ -106,7 +106,7 @@ float uEvaluateSunShadow(vec3 position)
 
 float uEvaluateAmbientOcclusion(vec4 coord)
 {
-    return texture(uShading_AmbientOcclusion, coord.xy * uView.invResolution).r;
+    return texture(uShading_AmbientOcclusion, coord.xy * uTarget.invResolution).r;
 }
 
 vec3 uEvaluateLights(

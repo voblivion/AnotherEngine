@@ -47,6 +47,8 @@ float rgb2luma(vec3 rgb){
 /** Performs FXAA post-process anti-aliasing as described in the Nvidia FXAA white paper and the associated shader code.
 */
 void main(){
+	vec2 invSourceResolution = 1.0 / vec2(textureSize(uColorTexture, 0));
+
 	vec3 colorCenter = texture(uColorTexture, vUv).rgb;
 	
 	// Luma at the current fragment
@@ -95,7 +97,7 @@ void main(){
 	bool isHorizontal = (edgeHorizontal >= edgeVertical);
 	
 	// Choose the step size (one pixel) accordingly.
-	float stepLength = isHorizontal ? uView.invResolution.y : uView.invResolution.x;
+	float stepLength = isHorizontal ? invSourceResolution.y : invSourceResolution.x;
 	
 	// Select the two neighboring texels lumas in the opposite direction to the local edge.
 	float luma1 = isHorizontal ? lumaDown : lumaLeft;
@@ -129,7 +131,7 @@ void main(){
 	}
 	
 	// Compute offset (for each iteration step) in the right direction.
-	vec2 offset = isHorizontal ? vec2(uView.invResolution.x,0.0) : vec2(0.0, uView.invResolution.y);
+	vec2 offset = isHorizontal ? vec2(invSourceResolution.x,0.0) : vec2(0.0, invSourceResolution.y);
 	// Compute UVs to explore on each side of the edge, orthogonally. The QUALITY allows us to step faster.
 	vec2 uv1 = currentUv - offset * QUALITY(0);
 	vec2 uv2 = currentUv + offset * QUALITY(0);

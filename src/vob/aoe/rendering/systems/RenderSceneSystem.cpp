@@ -78,9 +78,8 @@ namespace vob::aoegl
 			entt::entity a_cameraEntity,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const>> a_cameraEntities)
 		{
-			auto const resolution = a_windowCtx.window.get().getSize();
-			auto const invResolution = 1.0f / glm::vec2{ resolution };
-			auto const aspectRatio = static_cast<float>(resolution.x) / resolution.y;
+			auto const displayResolution = a_windowCtx.window.get().getSize();
+			auto const aspectRatio = static_cast<float>(displayResolution.x) / displayResolution.y;
 
 			auto const [realCameraPosition, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntities, a_cameraEntity);
 			
@@ -99,8 +98,6 @@ namespace vob::aoegl
 				.worldToClip = worldToClip,
 				.clipToView = clipToView,
 				.viewToWorld = viewToWorld,
-				.resolution = resolution,
-				.invResolution = invResolution,
 				.nearClip = nearClip,
 				.farClip = farClip,
 				.fov = fov,
@@ -114,6 +111,7 @@ namespace vob::aoegl
 			glm::dvec3 const& a_lightFocusPosition,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
 			int32_t a_lightsCapacity,
+			glm::ivec2 const& a_lightClusterResolution,
 			glm::ivec2 const& a_lightClusterTileSize,
 			int32_t a_lightClusterZCount,
 			int32_t a_lightClusterCapacity,
@@ -147,6 +145,7 @@ namespace vob::aoegl
 			auto const lightingParams = UniformLightingParams{
 				.ambientColor = glm::vec3{ 0.5f },
 				.lightCount = std::min(mistd::isize(culledLights), a_lightsCapacity),
+				.lightClusterResolution = a_lightClusterResolution,
 				.lightClusterTileSize = a_lightClusterTileSize,
 				.lightClusterZCount = a_lightClusterZCount,
 				.lightClusterCapacity = a_lightClusterCapacity,
@@ -509,6 +508,7 @@ namespace vob::aoegl
 			lightFocusPosition,
 			m_lightEntities.get(a_wdap),
 			renderSceneCtx.lightsCapacity,
+			renderSceneCtx.shadingResolution,
 			renderSceneCtx.lightClusterTileSize,
 			renderSceneCtx.lightClusterZCount,
 			renderSceneCtx.lightClusterCapacity,
@@ -536,8 +536,8 @@ namespace vob::aoegl
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLightClusterSizes, renderSceneCtx.lightClusterSizesSsbo);
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLightClusterIndices, renderSceneCtx.lightClusterIndicesSsbo);
 
-			auto const lightClusterXYCount = (renderSceneCtx.shadingResolution + renderSceneCtx.lightClusterTileSize - 1) / renderSceneCtx.lightClusterTileSize;
-			auto const lightClusterCount = lightClusterXYCount.x * lightClusterXYCount.y * renderSceneCtx.lightClusterZCount;
+			auto const lightClusterXYCount = (lightingParams.lightClusterResolution + lightingParams.lightClusterTileSize - 1) / lightingParams.lightClusterTileSize;
+			auto const lightClusterCount = lightClusterXYCount.x * lightClusterXYCount.y * lightingParams.lightClusterZCount;
 			auto const workGroupCount = (lightClusterCount + renderSceneCtx.lightClusteringWorkGroupSize - 1) / renderSceneCtx.lightClusteringWorkGroupSize;
 			glDispatchCompute(static_cast<uint32_t>(workGroupCount), 1, 1);
 		}
@@ -767,7 +767,6 @@ namespace vob::aoegl
 
 				auto const sunViewParams = UniformViewParams{
 					.worldToClip = sunShadowParams.worldToClip,
-					.resolution = renderSceneCtx.sunShadowMapResolution,
 					.nearClip = sunShadowParams.nearClip,
 					.farClip = sunShadowParams.farClip,
 					.fov = 0.0f,
@@ -864,7 +863,6 @@ namespace vob::aoegl
 				auto const spotLightViewParams = UniformViewParams{
 					.worldToClip = shadowParams.spotLights[i].worldToClip,
 					.viewToWorld = shadowParams.spotLights[i].viewToWorld,
-					.resolution = spotLightShadowMapTarget.resolution,
 					.nearClip = shadowParams.spotLights[i].nearClip,
 					.farClip = shadowParams.spotLights[i].farClip,
 					.fov = shadowParams.spotLights[i].fov,
@@ -1211,7 +1209,6 @@ namespace vob::aoegl
 				auto const spotLightViewParams = UniformViewParams{
 					.worldToClip = shadowParams.spotLights[k_debugShadowMapIndex].worldToClip,
 					.viewToWorld = shadowParams.spotLights[k_debugShadowMapIndex].viewToWorld,
-					.resolution = renderSceneCtx.spotLightShadowMapTargets[k_debugShadowMapIndex].resolution,
 					.nearClip = shadowParams.spotLights[k_debugShadowMapIndex].nearClip,
 					.farClip = shadowParams.spotLights[k_debugShadowMapIndex].farClip,
 					.fov = shadowParams.spotLights[k_debugShadowMapIndex].fov,

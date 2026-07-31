@@ -8,7 +8,7 @@ layout(local_size_x = WORK_GROUP_SIZE) in;
 
 void main()
 {
-    ivec2 clusterXYCount = ivec2(ceil(vec2(uView.resolution) / float(uLighting.lightClusterTileSize)));
+    ivec2 clusterXYCount = ivec2(ceil(vec2(uLighting.lightClusterResolution) / float(uLighting.lightClusterTileSize)));
     int clusterCount = clusterXYCount.x * clusterXYCount.y * uLighting.lightClusterZCount;
 
     int clusterIndex = int(gl_GlobalInvocationID.x);
@@ -21,7 +21,7 @@ void main()
         clusterIndex,
         uLighting.lightClusterTileSize,
         uLighting.lightClusterZCount,
-        uView.resolution,
+        uLighting.lightClusterResolution,
         uView.clipToView,
         uView.nearClip,
         uView.farClip);

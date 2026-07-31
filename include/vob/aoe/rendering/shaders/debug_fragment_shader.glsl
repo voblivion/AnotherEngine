@@ -64,11 +64,11 @@ void main()
         if (texture(uDebug_Texture, vUv).r < 1.0)
         {
             int lightClusterIndex = computeLightClusterIndex(
-                gl_FragCoord.xy,
+                gl_FragCoord.xy * uTarget.invResolution * vec2(uLighting.lightClusterResolution),
                 texture(uDebug_Texture, vUv).r,
                 uLighting.lightClusterTileSize,
                 uLighting.lightClusterZCount,
-                uView.resolution,
+                uLighting.lightClusterResolution,
                 uView.nearClip,
                 uView.farClip);
             int lightClusterSize = uLightClusterSizes[lightClusterIndex];
