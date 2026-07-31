@@ -46,6 +46,10 @@
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR 2
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP 3
 
+#define BINDING_TEXTURE_ANTI_ALIASING_COLOR 0
+
+#define BINDING_TEXTURE_PRESENT_COLOR 0
+
 #define BINDING_TEXTURE_POST_PROCESS_COLOR 0
 
 #define BINDING_TEXTURE_DEBUG 0
@@ -262,6 +266,10 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionSsrColor = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR;
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionEnvironmentCubeMap = BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP;
 
+	static constexpr uint32_t k_bindingTextureAntiAliasingColor = BINDING_TEXTURE_ANTI_ALIASING_COLOR;
+
+	static constexpr uint32_t k_bindingTexturePresentColor = BINDING_TEXTURE_PRESENT_COLOR;
+
 	static constexpr uint32_t k_bindingTexturePostProcessColor = BINDING_TEXTURE_POST_PROCESS_COLOR;
     
 	static constexpr uint32_t k_bindingTextureDebug = BINDING_TEXTURE_DEBUG;
@@ -314,6 +322,8 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP
 
+#undef BINDING_TEXTURE_ANTI_ALIASING_COLOR
+#undef BINDING_TEXTURE_PRESENT_COLOR
 #undef BINDING_TEXTURE_POST_PROCESS_COLOR
 
 #undef DEBUG_TYPE_COLOR

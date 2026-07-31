@@ -85,6 +85,10 @@ layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE) uniform samp
 layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR) uniform sampler2D uOpaqueComposition_SsrColor;
 layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP) uniform sampler2D uOpaqueComposition_EnvironmentCubeMap;
 
+layout(binding = BINDING_TEXTURE_ANTI_ALIASING_COLOR) uniform sampler2D uAntiAliasing_Color;
+
+layout(binding = BINDING_TEXTURE_PRESENT_COLOR) uniform sampler2D uPresent_Color;
+
 layout(binding = BINDING_TEXTURE_POST_PROCESS_COLOR) uniform sampler2D uPostProcess_Color;
 
 layout(binding = BINDING_TEXTURE_DEBUG) uniform sampler2D uDebug_Texture;

@@ -31,8 +31,6 @@
 in vec2 vUv;
 out vec4 FragColor;
 
-layout(binding = 0) uniform sampler2D uColorTexture;
-
 // Settings for FXAA.
 #define EDGE_THRESHOLD_MIN 0.0312
 #define EDGE_THRESHOLD_MAX 0.125
@@ -47,18 +45,18 @@ float rgb2luma(vec3 rgb){
 /** Performs FXAA post-process anti-aliasing as described in the Nvidia FXAA white paper and the associated shader code.
 */
 void main(){
-	vec2 invSourceResolution = 1.0 / vec2(textureSize(uColorTexture, 0));
+	vec2 invSourceResolution = 1.0 / vec2(textureSize(uAntiAliasing_Color, 0));
 
-	vec3 colorCenter = texture(uColorTexture, vUv).rgb;
+	vec3 colorCenter = texture(uAntiAliasing_Color, vUv).rgb;
 	
 	// Luma at the current fragment
 	float lumaCenter = rgb2luma(colorCenter);
 	
 	// Luma at the four direct neighbours of the current fragment.
-	float lumaDown 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2( 0,-1)).rgb); 
-	float lumaUp 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2( 0, 1)).rgb);
-	float lumaLeft 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2(-1, 0)).rgb);
-	float lumaRight = rgb2luma(textureOffset(uColorTexture, vUv, ivec2( 1, 0)).rgb);
+	float lumaDown 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2( 0,-1)).rgb); 
+	float lumaUp 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2( 0, 1)).rgb);
+	float lumaLeft 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2(-1, 0)).rgb);
+	float lumaRight = rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2( 1, 0)).rgb);
 	
 	// Find the maximum and minimum luma around the current fragment.
 	float lumaMin = min(lumaCenter, min(min(lumaDown, lumaUp), min(lumaLeft, lumaRight)));
@@ -74,10 +72,10 @@ void main(){
 	}
 	
 	// Query the 4 remaining corners lumas.
-	float lumaDownLeft 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2(-1,-1)).rgb);
-	float lumaUpRight 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2( 1, 1)).rgb);
-	float lumaUpLeft 	= rgb2luma(textureOffset(uColorTexture, vUv, ivec2(-1, 1)).rgb);
-	float lumaDownRight = rgb2luma(textureOffset(uColorTexture, vUv, ivec2( 1,-1)).rgb);
+	float lumaDownLeft 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2(-1,-1)).rgb);
+	float lumaUpRight 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2( 1, 1)).rgb);
+	float lumaUpLeft 	= rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2(-1, 1)).rgb);
+	float lumaDownRight = rgb2luma(textureOffset(uAntiAliasing_Color, vUv, ivec2( 1,-1)).rgb);
 	
 	// Combine the four edges lumas (using intermediary variables for future computations with the same values).
 	float lumaDownUp = lumaDown + lumaUp;
@@ -137,8 +135,8 @@ void main(){
 	vec2 uv2 = currentUv + offset * QUALITY(0);
 	
 	// Read the lumas at both current extremities of the exploration segment, and compute the delta wrt to the local average luma.
-	float lumaEnd1 = rgb2luma(textureLod(uColorTexture, uv1, 0.0).rgb);
-	float lumaEnd2 = rgb2luma(textureLod(uColorTexture, uv2, 0.0).rgb);
+	float lumaEnd1 = rgb2luma(textureLod(uAntiAliasing_Color, uv1, 0.0).rgb);
+	float lumaEnd2 = rgb2luma(textureLod(uAntiAliasing_Color, uv2, 0.0).rgb);
 	lumaEnd1 -= lumaLocalAverage;
 	lumaEnd2 -= lumaLocalAverage;
 	
@@ -161,12 +159,12 @@ void main(){
 		for(int i = 2; i < ITERATIONS; i++){
 			// If needed, read luma in 1st direction, compute delta.
 			if(!reached1){
-				lumaEnd1 = rgb2luma(textureLod(uColorTexture, uv1, 0.0).rgb);
+				lumaEnd1 = rgb2luma(textureLod(uAntiAliasing_Color, uv1, 0.0).rgb);
 				lumaEnd1 = lumaEnd1 - lumaLocalAverage;
 			}
 			// If needed, read luma in opposite direction, compute delta.
 			if(!reached2){
-				lumaEnd2 = rgb2luma(textureLod(uColorTexture, uv2, 0.0).rgb);
+				lumaEnd2 = rgb2luma(textureLod(uAntiAliasing_Color, uv2, 0.0).rgb);
 				lumaEnd2 = lumaEnd2 - lumaLocalAverage;
 			}
 			// If the luma deltas at the current extremities is larger than the local gradient, we have reached the side of the edge.
@@ -236,6 +234,6 @@ void main(){
 	}
 	
 	// Read the color at the new UV coordinates, and use it.
-	vec3 finalColor = textureLod(uColorTexture, finalUv, 0.0).rgb;
+	vec3 finalColor = textureLod(uAntiAliasing_Color, finalUv, 0.0).rgb;
 	FragColor = vec4(finalColor, 1.0);
 }

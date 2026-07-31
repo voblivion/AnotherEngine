@@ -131,6 +131,7 @@ namespace vob::aoegl
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
 		GraphicId aaProgram;
+		GraphicId presentProgram;
 		GraphicId hudProgram;
 		GraphicId hudParamsUbo;
 		GraphicId debugProgram;
