@@ -130,13 +130,9 @@ namespace vob::aoegl
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
-		struct PostProcess
-		{
-			GraphicId program;
-			GraphicId ubo;
-
-		};
-		std::vector<PostProcess> postProcesses;
+		GraphicId aaProgram;
+		GraphicId hudProgram;
+		GraphicId hudParamsUbo;
 		GraphicId debugProgram;
 		GraphicId debugGeometryProgram;
 

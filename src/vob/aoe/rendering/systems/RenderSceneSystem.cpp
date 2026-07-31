@@ -326,7 +326,7 @@ namespace vob::aoegl
 				.score = static_cast<int32_t>(hackScoreCmp.score)
 			};
 			glNamedBufferSubData(
-				renderSceneCtx.postProcesses[1].ubo,
+				renderSceneCtx.hudParamsUbo,
 				0,
 				sizeof(uiParams),
 				&uiParams);
@@ -1292,45 +1292,19 @@ namespace vob::aoegl
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 
-			if (!renderSceneCtx.postProcesses.empty())
-			{
-				auto nextTexture = renderSceneCtx.finalColorTexture;
-				for (int32_t i = 0; i < mistd::isize(renderSceneCtx.postProcesses) - 1; ++i)
-				{
-					gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, nextTexture);
-					beginPass(gpuState, renderSceneCtx.postProcessTargets[i % 2].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
-					nextTexture = renderSceneCtx.postProcessTargets[i % 2].colorTexture;
+			// Anti Aliasing
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, renderSceneCtx.finalColorTexture);
+			beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.aaProgram);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
 
-					auto const& postProcess = renderSceneCtx.postProcesses[i];
-					// Few post processes need ubo.
-					gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, postProcess.ubo);
-					gpuState.useProgram<GpuStateChange::SurelyYes>(postProcess.program);
-
-					// glBindVertexArray(renderSceneCtx.postProcessVao);
-					glDrawArrays(GL_TRIANGLES, 0, 3);
-				}
-
-				// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
-				beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, nextTexture);
-
-				auto const& lastPostProcess = renderSceneCtx.postProcesses.back();
-				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, lastPostProcess.ubo);
-				gpuState.useProgram<GpuStateChange::SurelyYes>(lastPostProcess.program);
-
-				// glBindVertexArray(renderSceneCtx.postProcessVao);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
-			}
-			else
-			{
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, renderSceneCtx.finalFramebuffer);
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, window.getDefaultFramebufferId());
-				glBlitFramebuffer(
-					0, 0, renderSceneCtx.shadingResolution.x, renderSceneCtx.shadingResolution.y,
-					0, 0, window.getSize().x, window.getSize().y,
-					GL_COLOR_BUFFER_BIT,
-					GL_NEAREST);
-			}
+			// Hud
+			// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePostProcessColor, renderSceneCtx.postProcessTargets[0].colorTexture);
+			beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, renderSceneCtx.hudParamsUbo);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hudProgram);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
 		glQueryCounter(renderSceneCtx.totalTimerQueries[1], GL_TIMESTAMP);
 
