@@ -20,7 +20,7 @@
 
 namespace vob::aoegl
 {
-	class RenderSceneSystem
+	class RenderFrameSystem
 	{
 	public:
 		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar);

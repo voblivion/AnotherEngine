@@ -1,4 +1,4 @@
-#include "vob/aoe/rendering/systems/RenderSceneSystem.h"
+#include "vob/aoe/rendering/systems/RenderFrameSystem.h"
 
 #include "vob/aoe/rendering/CameraUtils.h"
 #include "vob/aoe/rendering/components/InstancedModelsComponent.h"
@@ -25,7 +25,7 @@
 
 namespace vob::aoegl
 {
-	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
+	void RenderFrameSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_timeContext.init(a_wdar);
 		m_cameraDirectorContext.init(a_wdar);
@@ -278,7 +278,7 @@ namespace vob::aoegl
 		}
 	}
 
-	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
+	void RenderFrameSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto& debugMeshCtx = m_debugMeshContext.get(a_wdap);
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
@@ -1282,8 +1282,38 @@ namespace vob::aoegl
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.presentProgram);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
+			// Debug Geometry
+			if (!debugMeshCtx.lines.empty())
+			{
+				gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugGeometryProgram);
+				glLineWidth(2);
+
+				glBindVertexArray(renderSceneCtx.debugGeometryVao);
+
+				static std::vector<WorldDebugVertex> worldDebugVertices;
+				worldDebugVertices.clear();
+				for (auto const& debugVertex : debugMeshCtx.vertices)
+				{
+					worldDebugVertices.emplace_back(glm::vec3{ debugVertex.position - worldOriginPosition }, glm::vec4{ debugVertex.color });
+				}
+
+				glNamedBufferData(
+					renderSceneCtx.debugGeometryVbo,
+					worldDebugVertices.size() * sizeof(decltype(worldDebugVertices.front())),
+					worldDebugVertices.data(),
+					GL_STREAM_DRAW);
+
+				glNamedBufferData(
+					renderSceneCtx.debugGeometryEbo,
+					debugMeshCtx.lines.size() * sizeof(decltype(debugMeshCtx.lines.front())),
+					debugMeshCtx.lines.data(),
+					GL_STREAM_DRAW);
+
+				glDrawElements(GL_LINES, 2 * mistd::isize(debugMeshCtx.lines), GL_UNSIGNED_INT, nullptr);
+			}
+
 			// Hud
-			gpuState.bindFramebuffer<GpuStateChange::SurelyNo>(window.getDefaultFramebufferId());
 			gpuState.enableBlend<GpuStateChange::SurelyYes>();
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, renderSceneCtx.hudParamsUbo);
@@ -1293,41 +1323,7 @@ namespace vob::aoegl
 		}
 		glQueryCounter(renderSceneCtx.totalTimerQueries[1], GL_TIMESTAMP);
 
-		// XIV - Debug Geometry
-		if (!debugMeshCtx.lines.empty())
-		{
-			glClearDepth(1.0);
-			gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugGeometryProgram);
-			glLineWidth(2);
-
-			glBindVertexArray(renderSceneCtx.debugGeometryVao);
-
-			static std::vector<WorldDebugVertex> worldDebugVertices;
-			worldDebugVertices.clear();
-			for (auto const& debugVertex : debugMeshCtx.vertices)
-			{
-				worldDebugVertices.emplace_back(glm::vec3{ debugVertex.position - worldOriginPosition }, glm::vec4{ debugVertex.color });
-			}
-
-			glBindBuffer(GL_ARRAY_BUFFER, renderSceneCtx.debugGeometryVbo);
-			glBufferData(
-				GL_ARRAY_BUFFER,
-				worldDebugVertices.size() * sizeof(decltype(worldDebugVertices.front())),
-				worldDebugVertices.data(),
-				GL_STATIC_DRAW);
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderSceneCtx.debugGeometryEbo);
-			glBufferData(
-				GL_ELEMENT_ARRAY_BUFFER,
-				debugMeshCtx.lines.size() * sizeof(decltype(debugMeshCtx.lines.front())),
-				debugMeshCtx.lines.data(),
-				GL_STATIC_DRAW);
-
-			glDrawElements(GL_LINES, 2 * mistd::isize(debugMeshCtx.lines), GL_UNSIGNED_INT, nullptr);
-
-			debugMeshCtx.clear();
-		}
+		debugMeshCtx.clear();
 
 		if (ImGui::Begin("Render Performance"))
 		{
