@@ -1,10 +1,13 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/shaders/defines.h"
 
 #include <vob/misc/std/enum_traits.h>
 #include <vob/misc/std/bounded_vector.h>
 #include <vob/misc/std/enum_map.h>
+
+#include <glm/glm.hpp>
 
 #include <chrono>
 

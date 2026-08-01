@@ -40,7 +40,6 @@ namespace vob::aoegl
 		m_staticModelEntities.init(a_wdar);
 		m_riggedModelEntities.init(a_wdar);
 		m_instancedModelsEntities.init(a_wdar);
-		m_movingEntities.init(a_wdar);
 	}
 
 	namespace
@@ -308,28 +307,6 @@ namespace vob::aoegl
 			auto const sunDir = glm::vec3{ glm::rotate(glm::mat4{1.0f}, a, glm::vec3{0.0f, 1.0f, 0.0f})
 				* glm::normalize(glm::vec4{ 0.7f, 0.15f, -1.0f, 0.0f }) };
 			renderSceneCtx.sunDir = sunDir;
-
-			struct alignas(16) UiPostProcessParams
-			{
-				int32_t speed;
-				int32_t dist;
-				int32_t score;
-			};
-			auto movingEntities = m_movingEntities.get(a_wdap);
-			auto movingEntity = movingEntities.front();
-			auto [movingRotationCmp, movingLinearVelocityCmp, hackScoreCmp] = movingEntities.get(movingEntity);
-			auto const forward = movingRotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f };
-			auto const speed = static_cast<int32_t>(std::round(glm::dot(forward, movingLinearVelocityCmp.value) * 3.6f));
-			auto uiParams = UiPostProcessParams{
-				.speed = speed,
-				.dist = static_cast<int32_t>(hackScoreCmp.dist),
-				.score = static_cast<int32_t>(hackScoreCmp.score)
-			};
-			glNamedBufferSubData(
-				renderSceneCtx.hudParamsUbo,
-				0,
-				sizeof(uiParams),
-				&uiParams);
 		}
 
 		glQueryCounter(renderSceneCtx.totalTimerQueries[0], GL_TIMESTAMP);

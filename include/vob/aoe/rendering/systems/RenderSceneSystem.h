@@ -17,10 +17,6 @@
 #include "vob/aoe/spacetime/TimeContext.h"
 #include "vob/aoe/window/WindowContext.h"
 
-// HACK
-#include "vob/aoe/spacetime/LinearVelocityComponent.h"
-#include "vob/aoe/hack/HackScoreComponent.h"
-
 
 namespace vob::aoegl
 {
@@ -44,8 +40,6 @@ namespace vob::aoegl
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, StaticModelComponent const, ModelTransformComponent> m_staticModelEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, RiggedModelComponent const, ModelTransformComponent> m_riggedModelEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, InstancedModelsComponent const, ModelTransformComponent> m_instancedModelsEntities;
-		// HACK
-		aoeng::EcsWorldViewRef<aoest::RotationComponent const, aoest::LinearVelocityComponent, aoehk::HackScoreComponent> m_movingEntities;
 
 		// TODO: move out of system
 		GraphicId m_debugProgram = k_invalidId;
