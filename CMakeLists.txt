@@ -64,5 +64,5 @@ add_executable(ShaderExporter tools/ShaderExporter/main.cpp)
 target_compile_features(ShaderExporter PRIVATE cxx_std_23)
 
 if(MSVC)
-    target_compile_options(AnotherEngine PRIVATE /W4 /wd4324)
+    target_compile_options(AnotherEngine PRIVATE /W4 /WX /wd4324)
 endif()
