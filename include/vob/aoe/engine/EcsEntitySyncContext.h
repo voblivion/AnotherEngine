@@ -54,7 +54,7 @@ namespace vob::aoeng
 
 		void setStaticEntityCount(size_t a_staticEntityCount)
 		{
-			m_staticEntityCount = a_staticEntityCount;
+			m_staticEntityCount = static_cast<entt::entt_traits<entt::entity>::entity_type>(a_staticEntityCount);
 		}
 
 		void mapEntities(entt::entity a_ourEntity, entt::entity a_theirEntity)
