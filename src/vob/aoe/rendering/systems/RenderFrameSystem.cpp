@@ -30,6 +30,7 @@ namespace vob::aoegl
 		m_timeContext.init(a_wdar);
 		m_cameraDirectorContext.init(a_wdar);
 		m_renderSceneCtx.init(a_wdar);
+		m_renderProfilingCtx.init(a_wdar);
 		m_gpuResourceRegistriesContext.init(a_wdar);
 		m_debugProgramContext.init(a_wdar);
 		m_debugMeshContext.init(a_wdar);
@@ -50,19 +51,6 @@ namespace vob::aoegl
 			glm::vec3 position;
 			glm::quat rotation;
 			LightComponent const* lightComponent;
-		};
-
-		struct ScopedGpuTimerQuery
-		{
-			ScopedGpuTimerQuery(GraphicId queryId)
-			{
-				glBeginQuery(GL_TIME_ELAPSED, queryId);
-			}
-
-			~ScopedGpuTimerQuery()
-			{
-				glEndQuery(GL_TIME_ELAPSED);
-			}
 		};
 
 		UniformGlobalParams createGlobalParams(aoest::TimeContext const& a_timeCtx)
@@ -282,6 +270,7 @@ namespace vob::aoegl
 	{
 		auto& debugMeshCtx = m_debugMeshContext.get(a_wdap);
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
+		auto& renderProfilingCtx = m_renderProfilingCtx.get(a_wdap);
 		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
 		auto const& gpuResourceRegistriesCtx = m_gpuResourceRegistriesContext.get(a_wdap);
 		auto const& materialRegistry = *gpuResourceRegistriesCtx.materialRegistry;
@@ -309,7 +298,6 @@ namespace vob::aoegl
 			renderSceneCtx.sunDir = sunDir;
 		}
 
-		glQueryCounter(renderSceneCtx.totalTimerQueries[0], GL_TIMESTAMP);
 		// 0 - Prepare Debug
 		enum class DebugMode2
 		{
@@ -503,7 +491,7 @@ namespace vob::aoegl
 
 		// III - Cluster Lights
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::LightClustering]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Light Clustering");
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.lightClusteringProgram);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
@@ -679,7 +667,7 @@ namespace vob::aoegl
 		}
 
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::ShadowMaps]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Shadow Maps");
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.enableDepthWrite<GpuStateChange::SurelyYes>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Less);
@@ -931,7 +919,7 @@ namespace vob::aoegl
 
 		// VI - Depth Pre-Pass
 		{
-			ScopedGpuTimerQuery timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::DepthPrePass]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Depth Pre-Pass");
 			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.enableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyNo>(GpuDepthFunc::Less);
@@ -981,7 +969,7 @@ namespace vob::aoegl
 
 		// VII - SSAO
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::SSAO]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "SSAO");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyYes>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
@@ -1007,7 +995,7 @@ namespace vob::aoegl
 
 		// VIII - Direct Opaque Lighting
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::DirectOpaque]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Direct Opaque");
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
@@ -1083,7 +1071,7 @@ namespace vob::aoegl
 
 		// IX - SSR
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::SSR]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "SSR");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1114,7 +1102,7 @@ namespace vob::aoegl
 
 		// X - Opaque Composition
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::OpaqueComposition]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Opaque Composition");
 			gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1132,7 +1120,7 @@ namespace vob::aoegl
 
 		// XI - Translucent
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::Translucent]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Translucent");
 			// TODO
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
@@ -1144,7 +1132,7 @@ namespace vob::aoegl
 		// XII - Sky Box
 		if (renderSceneCtx.skyBoxProgram != k_invalidId)
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::SkyBox]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Sky Box");
 			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.skyBoxProgram);
@@ -1263,7 +1251,7 @@ namespace vob::aoegl
 		}
 		else
 		{
-			ScopedGpuTimerQuery const timerQuery(renderSceneCtx.renderPassTimerQueries[RenderPass::PostProcesses]);
+			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Post Processes");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
@@ -1321,69 +1309,10 @@ namespace vob::aoegl
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
 		}
-		glQueryCounter(renderSceneCtx.totalTimerQueries[1], GL_TIMESTAMP);
-
 		debugMeshCtx.clear();
 
-		if (ImGui::Begin("Render Performance"))
-		{
-			glFinish();
-			static int32_t accumulationIndex = 0;
-			static int32_t accumulationCount = 50;
-			static float totalDuration = 0.0f;
-			static uint64_t totalAccumulation = 0;
-			static mistd::enum_map<RenderPass, float> renderPassDurations;
-			static mistd::enum_map<RenderPass, uint64_t> renderPassAccumulations;
-			for (auto renderPass : mistd::enum_traits<RenderPass>::valid_values)
-			{
-				uint64_t durationMs;
-				glGetQueryObjectui64v(renderSceneCtx.renderPassTimerQueries[renderPass], GL_QUERY_RESULT, &durationMs);
-				renderPassAccumulations[renderPass] += durationMs;
-			}
-			uint64_t totalStartTimeMs;
-			glGetQueryObjectui64v(renderSceneCtx.totalTimerQueries[0], GL_QUERY_RESULT, &totalStartTimeMs);
-			uint64_t totalStopTimeMs;
-			glGetQueryObjectui64v(renderSceneCtx.totalTimerQueries[1], GL_QUERY_RESULT, &totalStopTimeMs);
-			totalAccumulation += totalStopTimeMs - totalStartTimeMs;
-			if (++accumulationIndex == accumulationCount)
-			{
-				for (auto renderPass : mistd::enum_traits<RenderPass>::valid_values)
-				{
-					renderPassDurations[renderPass] = (float(renderPassAccumulations[renderPass]) / 1'000'000.0f) / accumulationCount;
-					renderPassAccumulations[renderPass] = 0;
-				}
-				totalDuration = (float(totalAccumulation) / 1'000'000.0f) / accumulationCount;
-				totalAccumulation = 0;
-				accumulationIndex = 0;
-			}
-
-			ImGui::BeginDisabled();
-			int32_t lightCount = mistd::isize(gpuLights);
-			ImGui::InputInt("Light Count", &lightCount);
-			int32_t staticOpaqueMeshCount = mistd::isize(culledOpaqueStaticMeshes);
-			ImGui::InputInt("Static Mesh Count", &staticOpaqueMeshCount);
-			int32_t riggedOpaqueMeshCount = mistd::isize(culledOpaqueRiggedMeshes);
-			ImGui::InputInt("Rigged Mesh Count", &riggedOpaqueMeshCount);
-
-			auto const toSmallStr = [](std::string_view a_stringView)
-				{
-					constexpr size_t k_maxSize = 16;
-					auto size = std::min(a_stringView.size(), k_maxSize);
-					std::array<char, k_maxSize + 1> smallStr;
-					std::memcpy(smallStr.data(), a_stringView.data(), size);
-					smallStr[size] = 0;
-					return smallStr;
-				};
-			for (auto renderPass : mistd::enum_traits<RenderPass>::valid_values)
-			{
-				auto const renderPassName = mistd::enum_traits<RenderPass>::cast(renderPass).value_or("");
-				auto const renderPassStr = toSmallStr(renderPassName.substr(renderPassName.rfind(':') + 1));
-				ImGui::InputFloat(renderPassStr.data(), &renderPassDurations[renderPass]);
-			}
-			ImGui::InputFloat("TOTAL", &totalDuration);
-
-			ImGui::EndDisabled();
-		}
-		ImGui::End();
+		renderProfilingCtx.lightCount = mistd::isize(gpuLights);
+		renderProfilingCtx.staticOpaqueMeshCount = mistd::isize(culledOpaqueStaticMeshes);
+		renderProfilingCtx.riggedOpaqueMeshCount = mistd::isize(culledOpaqueRiggedMeshes);
 	}
 }

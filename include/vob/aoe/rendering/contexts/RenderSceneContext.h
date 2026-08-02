@@ -36,20 +36,6 @@ namespace vob::aoegl
 		glm::mat4 model;
 	};
 
-	enum class RenderPass : uint8_t
-	{
-		LightClustering = 0,
-		ShadowMaps,
-		DepthPrePass,
-		DirectOpaque,
-		SSAO,
-		SSR,
-		OpaqueComposition,
-		Translucent,
-		SkyBox,
-		PostProcesses
-	};
-
 	struct RenderSceneContext
 	{
 
@@ -145,8 +131,6 @@ namespace vob::aoegl
 		GraphicId debugGeometryVbo;
 		GraphicId debugGeometryEbo;
 		GraphicId postProcessVao;
-		std::array<GraphicId, 2> totalTimerQueries;
-		mistd::enum_map<RenderPass, GraphicId> renderPassTimerQueries;
 		GraphicId environmentCubeMap;
 
 	};

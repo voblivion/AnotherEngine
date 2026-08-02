@@ -9,6 +9,7 @@
 #include "vob/aoe/rendering/contexts/DebugMeshContext.h"
 #include "vob/aoe/rendering/contexts/DebugProgramContext.h"
 #include "vob/aoe/rendering/contexts/GpuResourceRegistriesContext.h"
+#include "vob/aoe/rendering/contexts/RenderProfilingContext.h"
 #include "vob/aoe/rendering/contexts/RenderSceneContext.h"
 
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
@@ -30,6 +31,7 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<CameraDirectorContext> m_cameraDirectorContext;
 		aoeng::EcsWorldContextRef<RenderSceneContext> m_renderSceneCtx;
+		aoeng::EcsWorldContextRef<RenderProfilingContext> m_renderProfilingCtx;
 		aoeng::EcsWorldContextRef<GpuResourceRegistriesContext> m_gpuResourceRegistriesContext;
 		aoeng::EcsWorldContextRef<DebugProgramContext const> m_debugProgramContext;
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
