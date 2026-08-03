@@ -10,6 +10,7 @@ namespace vob::aoegl
 	{
 		m_windowContext.init(a_wdar);
 		m_imGuiContext.init(a_wdar);
+		m_renderProfilingCtx.init(a_wdar);
 		m_gameInputCtx.init(a_wdar);
 	}
 
@@ -29,6 +30,8 @@ namespace vob::aoegl
 		{
 			if (imGuiCtx.isDisplayed)
 			{
+				auto& renderProfilingCtx = m_renderProfilingCtx.get(a_wdap);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "ImGui");
 				ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 			}
 		}

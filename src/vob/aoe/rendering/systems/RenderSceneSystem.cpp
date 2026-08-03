@@ -1,4 +1,4 @@
-#include "vob/aoe/rendering/systems/RenderFrameSystem.h"
+#include "vob/aoe/rendering/systems/RenderSceneSystem.h"
 
 #include "vob/aoe/rendering/CameraUtils.h"
 #include "vob/aoe/rendering/components/InstancedModelsComponent.h"
@@ -25,7 +25,7 @@
 
 namespace vob::aoegl
 {
-	void RenderFrameSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
+	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_timeContext.init(a_wdar);
 		m_cameraDirectorContext.init(a_wdar);
@@ -266,7 +266,7 @@ namespace vob::aoegl
 		}
 	}
 
-	void RenderFrameSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
+	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		auto& debugMeshCtx = m_debugMeshContext.get(a_wdap);
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
@@ -449,9 +449,10 @@ namespace vob::aoegl
 		}
 		ImGui::End();
 
+		VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Scene");
+
 		// I - Prepare Scene
 		auto const globalParams = createGlobalParams(m_timeContext.get(a_wdap));
-		glNamedBufferSubData(renderSceneCtx.globalParamsUbo, 0, sizeof(globalParams), &globalParams);
 
 		auto [viewParams, worldOriginPosition] = createViewParams(
 			m_windowContext.get(a_wdap), cameraDirectorCtx.activeCameraEntity, m_cameraEntities.get(a_wdap));
@@ -459,7 +460,6 @@ namespace vob::aoegl
 			m_windowContext.get(a_wdap),
 			cameraDirectorCtx.debugCameraEntity != entt::null ? cameraDirectorCtx.debugCameraEntity : cameraDirectorCtx.activeCameraEntity,
 			m_cameraEntities.get(a_wdap));
-		glNamedBufferSubData(renderSceneCtx.viewParamsUbo, 0, sizeof(viewParams), &viewParams);
 
 		auto const viewFrustumPlanes = computeViewFrustumPlanes(debugViewParams.worldToClip);
 
@@ -485,13 +485,18 @@ namespace vob::aoegl
 			renderSceneCtx.sunDir,
 			renderSceneCtx.sunShadowMapFrustumFarClips,
 			gpuLights);
-		glNamedBufferSubData(renderSceneCtx.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
-		glNamedBufferSubData(renderSceneCtx.shadowParamsUbo, 0, sizeof(shadowParams), &shadowParams);
-		glNamedBufferSubData(renderSceneCtx.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Update Buffers");
+			glNamedBufferSubData(renderSceneCtx.globalParamsUbo, 0, sizeof(globalParams), &globalParams);
+			glNamedBufferSubData(renderSceneCtx.viewParamsUbo, 0, sizeof(viewParams), &viewParams);
+			glNamedBufferSubData(renderSceneCtx.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
+			glNamedBufferSubData(renderSceneCtx.shadowParamsUbo, 0, sizeof(shadowParams), &shadowParams);
+			glNamedBufferSubData(renderSceneCtx.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
+		}
 
 		// III - Cluster Lights
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Light Clustering");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Light Clustering");
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.lightClusteringProgram);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
@@ -667,7 +672,7 @@ namespace vob::aoegl
 		}
 
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Shadow Maps");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Shadow Maps");
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.enableDepthWrite<GpuStateChange::SurelyYes>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Less);
@@ -677,237 +682,243 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.lightViewParamsUbo);
 
 			// A - Sun CSM
-			beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.sunShadowMapResolution, renderSceneCtx.targetParamsUbo);
-
-			for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips); ++csmIndex)
 			{
-				auto const& sunShadowParams = shadowParams.sun[csmIndex];
-				if (csmIndex == k_debugShadowMapIndex)
+				beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.sunShadowMapResolution, renderSceneCtx.targetParamsUbo);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sun CSM");
+				for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips); ++csmIndex)
 				{
-					debugSunNear = sunShadowParams.nearClip;
-					debugSunFar = sunShadowParams.farClip;
-				}
-				if (k_debugCameraFrustum)
-				{
-					auto const viewClipToWorld = glm::inverse(debugViewParams.worldToClip);
-					auto const viewNearClip = debugViewParams.nearClip;
-					auto const viewFarClip = debugViewParams.farClip;
-					auto const clipZ = [viewNearClip, viewFarClip](auto const a_clip)
-						{
-							return (viewNearClip + viewFarClip - 2.0f * viewNearClip * viewFarClip / a_clip) / (viewFarClip - viewNearClip);
-						};
-					auto s0 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-					auto s1 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-					auto s2 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-					auto s3 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-					debugMeshCtx.addLine(s0, s1, aoegl::k_yellow);
-					debugMeshCtx.addLine(s0, s2, aoegl::k_yellow);
-					debugMeshCtx.addLine(s1, s3, aoegl::k_yellow);
-					debugMeshCtx.addLine(s2, s3, aoegl::k_yellow);
-
-					auto const sunClipToWorld = glm::inverse(sunShadowParams.worldToClip);
-					auto p0 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
-					auto p1 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
-					auto p2 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
-					auto p3 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
-					auto p4 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
-					auto p5 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
-					auto p6 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
-					auto p7 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
-					debugMeshCtx.addLine(p0, p1, aoegl::k_gray);
-					debugMeshCtx.addLine(p0, p2, aoegl::k_gray);
-					debugMeshCtx.addLine(p0, p4, aoegl::k_gray);
-					debugMeshCtx.addLine(p1, p3, aoegl::k_gray);
-					debugMeshCtx.addLine(p1, p5, aoegl::k_gray);
-					debugMeshCtx.addLine(p2, p3, aoegl::k_gray);
-					debugMeshCtx.addLine(p2, p6, aoegl::k_gray);
-					debugMeshCtx.addLine(p3, p7, aoegl::k_gray);
-					debugMeshCtx.addLine(p4, p5, aoegl::k_gray);
-					debugMeshCtx.addLine(p4, p6, aoegl::k_gray);
-					debugMeshCtx.addLine(p5, p7, aoegl::k_gray);
-					debugMeshCtx.addLine(p6, p7, aoegl::k_gray);
-				}
-				
-				auto const sunViewFrustumPlanes = computeViewFrustumPlanes(sunShadowParams.worldToClip);
-
-				auto const sunViewParams = UniformViewParams{
-					.worldToClip = sunShadowParams.worldToClip,
-					.nearClip = sunShadowParams.nearClip,
-					.farClip = sunShadowParams.farClip,
-					.fov = 0.0f,
-					.aspectRatio = 0.0f
-				};
-				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(sunViewParams), &sunViewParams);
-
-				glNamedFramebufferTextureLayer(
-					renderSceneCtx.sunShadowMapFramebuffer,
-					GL_DEPTH_ATTACHMENT,
-					renderSceneCtx.sunShadowMapDepthTextureArray,
-					0 /* mip level */,
-					csmIndex);
-				glClear(GL_DEPTH_BUFFER_BIT);
-
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
-				{
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+					auto const& sunShadowParams = shadowParams.sun[csmIndex];
+					if (csmIndex == k_debugShadowMapIndex)
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
-						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
-
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-						for (auto const& mesh : staticModelCmp.meshes)
-						{
-							glBindVertexArray(mesh.vao);
-							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-						}
+						debugSunNear = sunShadowParams.nearClip;
+						debugSunFar = sunShadowParams.farClip;
 					}
-				}
-
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
-				{
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+					if (k_debugCameraFrustum)
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
-						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
+						auto const viewClipToWorld = glm::inverse(debugViewParams.worldToClip);
+						auto const viewNearClip = debugViewParams.nearClip;
+						auto const viewFarClip = debugViewParams.farClip;
+						auto const clipZ = [viewNearClip, viewFarClip](auto const a_clip)
+							{
+								return (viewNearClip + viewFarClip - 2.0f * viewNearClip * viewFarClip / a_clip) / (viewFarClip - viewNearClip);
+							};
+						auto s0 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+						auto s1 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+						auto s2 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+						auto s3 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
+						debugMeshCtx.addLine(s0, s1, aoegl::k_yellow);
+						debugMeshCtx.addLine(s0, s2, aoegl::k_yellow);
+						debugMeshCtx.addLine(s1, s3, aoegl::k_yellow);
+						debugMeshCtx.addLine(s2, s3, aoegl::k_yellow);
 
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
-						for (auto const& mesh : riggedModelCmp.meshes)
-						{
-							glBindVertexArray(mesh.vao);
-							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-						}
+						auto const sunClipToWorld = glm::inverse(sunShadowParams.worldToClip);
+						auto p0 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
+						auto p1 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
+						auto p2 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
+						auto p3 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
+						auto p4 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
+						auto p5 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
+						auto p6 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
+						auto p7 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
+						debugMeshCtx.addLine(p0, p1, aoegl::k_gray);
+						debugMeshCtx.addLine(p0, p2, aoegl::k_gray);
+						debugMeshCtx.addLine(p0, p4, aoegl::k_gray);
+						debugMeshCtx.addLine(p1, p3, aoegl::k_gray);
+						debugMeshCtx.addLine(p1, p5, aoegl::k_gray);
+						debugMeshCtx.addLine(p2, p3, aoegl::k_gray);
+						debugMeshCtx.addLine(p2, p6, aoegl::k_gray);
+						debugMeshCtx.addLine(p3, p7, aoegl::k_gray);
+						debugMeshCtx.addLine(p4, p5, aoegl::k_gray);
+						debugMeshCtx.addLine(p4, p6, aoegl::k_gray);
+						debugMeshCtx.addLine(p5, p7, aoegl::k_gray);
+						debugMeshCtx.addLine(p6, p7, aoegl::k_gray);
 					}
-				}
 
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
-				{
-					if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+					auto const sunViewFrustumPlanes = computeViewFrustumPlanes(sunShadowParams.worldToClip);
+
+					auto const sunViewParams = UniformViewParams{
+						.worldToClip = sunShadowParams.worldToClip,
+						.nearClip = sunShadowParams.nearClip,
+						.farClip = sunShadowParams.farClip,
+						.fov = 0.0f,
+						.aspectRatio = 0.0f
+					};
+					glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(sunViewParams), &sunViewParams);
+
+					glNamedFramebufferTextureLayer(
+						renderSceneCtx.sunShadowMapFramebuffer,
+						GL_DEPTH_ATTACHMENT,
+						renderSceneCtx.sunShadowMapDepthTextureArray,
+						0 /* mip level */,
+						csmIndex);
+					glClear(GL_DEPTH_BUFFER_BIT);
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
+						if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
 
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-
-						for (auto const& model : instancedModelsCmp.models)
-						{
-							for (auto const& mesh : model.meshes)
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+							for (auto const& mesh : staticModelCmp.meshes)
 							{
 								glBindVertexArray(mesh.vao);
-								glBindVertexBuffer(
-									1,
-									model.instanceTransformsVbo,
-									0 /* offset */,
-									sizeof(glm::mat4));
-								glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
+								glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+							}
+						}
+					}
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
+					{
+						if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+						{
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
+
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
+							for (auto const& mesh : riggedModelCmp.meshes)
+							{
+								glBindVertexArray(mesh.vao);
+								glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+							}
+						}
+					}
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
+					{
+						if (testViewFrustumPlanes(sunViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+						{
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
+
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+
+							for (auto const& model : instancedModelsCmp.models)
+							{
+								for (auto const& mesh : model.meshes)
+								{
+									glBindVertexArray(mesh.vao);
+									glBindVertexBuffer(
+										1,
+										model.instanceTransformsVbo,
+										0 /* offset */,
+										sizeof(glm::mat4));
+									glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
+								}
 							}
 						}
 					}
 				}
 			}
 			// B - Spot Lights
-			for (int32_t i = 0; i < spotLightShadowMapCount; ++i)
 			{
-				auto const& spotLightShadowMapTarget = renderSceneCtx.spotLightShadowMapTargets[i];
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Spot Lights");
 
-				auto const spotLightViewParams = UniformViewParams{
-					.worldToClip = shadowParams.spotLights[i].worldToClip,
-					.viewToWorld = shadowParams.spotLights[i].viewToWorld,
-					.nearClip = shadowParams.spotLights[i].nearClip,
-					.farClip = shadowParams.spotLights[i].farClip,
-					.fov = shadowParams.spotLights[i].fov,
-					.aspectRatio = 1.0f
-				};
-				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(spotLightViewParams), &spotLightViewParams);
-
-				auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams.worldToClip);
-
-				beginPass(gpuState, spotLightShadowMapTarget.framebuffer, spotLightShadowMapTarget.resolution, renderSceneCtx.targetParamsUbo);
-				glClear(GL_DEPTH_BUFFER_BIT);
-
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
+				for (int32_t i = 0; i < spotLightShadowMapCount; ++i)
 				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+					auto const& spotLightShadowMapTarget = renderSceneCtx.spotLightShadowMapTargets[i];
+
+					auto const spotLightViewParams = UniformViewParams{
+						.worldToClip = shadowParams.spotLights[i].worldToClip,
+						.viewToWorld = shadowParams.spotLights[i].viewToWorld,
+						.nearClip = shadowParams.spotLights[i].nearClip,
+						.farClip = shadowParams.spotLights[i].farClip,
+						.fov = shadowParams.spotLights[i].fov,
+						.aspectRatio = 1.0f
+					};
+					glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(spotLightViewParams), &spotLightViewParams);
+
+					auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams.worldToClip);
+
+					beginPass(gpuState, spotLightShadowMapTarget.framebuffer, spotLightShadowMapTarget.resolution, renderSceneCtx.targetParamsUbo);
+					glClear(GL_DEPTH_BUFFER_BIT);
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.staticShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, staticModelCmp, modelTransformCmp] : staticModelEntities.each())
 					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
+						if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
 
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-						for (auto const& mesh : staticModelCmp.meshes)
-						{
-							glBindVertexArray(mesh.vao);
-							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-						}
-					}
-				}
-
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
-				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
-					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
-						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
-
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
-						for (auto const& mesh : riggedModelCmp.meshes)
-						{
-							glBindVertexArray(mesh.vao);
-							glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
-						}
-					}
-				}
-
-				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
-				for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
-				{
-					if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
-					{
-						auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
-						if (modelTransformCmp.prevModelParams != modelParams)
-						{
-							modelTransformCmp.prevModelParams = modelParams;
-							glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
-						}
-
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
-
-						for (auto const& model : instancedModelsCmp.models)
-						{
-							for (auto const& mesh : model.meshes)
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+							for (auto const& mesh : staticModelCmp.meshes)
 							{
 								glBindVertexArray(mesh.vao);
-								glBindVertexBuffer(
-									1,
-									model.instanceTransformsVbo,
-									0 /* offset */,
-									sizeof(glm::mat4));
-								glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
+								glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+							}
+						}
+					}
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.riggedShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, riggedModelCmp, modelTransformCmp] : riggedModelEntities.each())
+					{
+						if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+						{
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
+
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedModelCmp.rigParamsUbo);
+							for (auto const& mesh : riggedModelCmp.meshes)
+							{
+								glBindVertexArray(mesh.vao);
+								glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+							}
+						}
+					}
+
+					gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.instancedShadowMapProgram);
+					for (auto const [entity, positionCmp, rotationCmp, instancedModelsCmp, modelTransformCmp] : instancedModelsEntities.each())
+					{
+						if (testViewFrustumPlanes(spotLightViewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+						{
+							auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+							if (modelTransformCmp.prevModelParams != modelParams)
+							{
+								modelTransformCmp.prevModelParams = modelParams;
+								glNamedBufferSubData(modelTransformCmp.modelParamsUbo, 0, sizeof(modelParams), &modelParams);
+							}
+
+							gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, modelTransformCmp.modelParamsUbo);
+
+							for (auto const& model : instancedModelsCmp.models)
+							{
+								for (auto const& mesh : model.meshes)
+								{
+									glBindVertexArray(mesh.vao);
+									glBindVertexBuffer(
+										1,
+										model.instanceTransformsVbo,
+										0 /* offset */,
+										sizeof(glm::mat4));
+									glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr, model.instanceCount);
+								}
 							}
 						}
 					}
@@ -919,7 +930,7 @@ namespace vob::aoegl
 
 		// VI - Depth Pre-Pass
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Depth Pre-Pass");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Depth Pre-Pass");
 			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.enableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyNo>(GpuDepthFunc::Less);
@@ -969,7 +980,7 @@ namespace vob::aoegl
 
 		// VII - SSAO
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "SSAO");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSAO");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyYes>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
@@ -995,7 +1006,7 @@ namespace vob::aoegl
 
 		// VIII - Direct Opaque Lighting
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Direct Opaque");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Direct Opaque");
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
@@ -1071,7 +1082,7 @@ namespace vob::aoegl
 
 		// IX - SSR
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "SSR");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSR");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1102,7 +1113,7 @@ namespace vob::aoegl
 
 		// X - Opaque Composition
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Opaque Composition");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Opaque Composition");
 			gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1120,7 +1131,7 @@ namespace vob::aoegl
 
 		// XI - Translucent
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Translucent");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Translucent");
 			// TODO
 			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
@@ -1132,7 +1143,7 @@ namespace vob::aoegl
 		// XII - Sky Box
 		if (renderSceneCtx.skyBoxProgram != k_invalidId)
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Sky Box");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sky Box");
 			gpuState.enableDepthTest<GpuStateChange::SurelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.skyBoxProgram);
@@ -1251,28 +1262,35 @@ namespace vob::aoegl
 		}
 		else
 		{
-			auto const timerGuard = startTimedGpuScope(renderProfilingCtx.timers, renderProfilingCtx.writeTimerSlotIndex, "Post Processes");
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Post Processes");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 
 			// Anti Aliasing
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureAntiAliasingColor, renderSceneCtx.finalColorTexture);
-			beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.aaProgram);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Anti Aliasing");
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureAntiAliasingColor, renderSceneCtx.finalColorTexture);
+				beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.aaProgram);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
 
 			// Present
-			// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePresentColor, renderSceneCtx.postProcessTargets[0].colorTexture);
-			beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.presentProgram);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Present");
+				// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePresentColor, renderSceneCtx.postProcessTargets[0].colorTexture);
+				beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.presentProgram);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
 
 			// Debug Geometry
 			if (!debugMeshCtx.lines.empty())
 			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Debug Geometry");
 				gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugGeometryProgram);
 				glLineWidth(2);
@@ -1302,12 +1320,15 @@ namespace vob::aoegl
 			}
 
 			// Hud
-			gpuState.enableBlend<GpuStateChange::SurelyYes>();
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, renderSceneCtx.hudParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hudProgram);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Hud");
+				gpuState.enableBlend<GpuStateChange::SurelyYes>();
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, renderSceneCtx.hudParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hudProgram);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+				gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			}
 		}
 		debugMeshCtx.clear();
 
