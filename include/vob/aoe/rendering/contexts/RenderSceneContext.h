@@ -119,6 +119,8 @@ namespace vob::aoegl
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
+		GraphicId tonemapProgram;
+		GraphicId tonemapParamsUbo;
 		GraphicId aaProgram;
 		GraphicId presentProgram;
 		GraphicId hudProgram;

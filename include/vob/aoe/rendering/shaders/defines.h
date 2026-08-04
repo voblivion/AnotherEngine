@@ -22,6 +22,7 @@
 #define BINDING_UBO_SSAO BINDING_UBO_CUSTOM
 #define BINDING_UBO_SSR BINDING_UBO_CUSTOM
 #define BINDING_UBO_POST_PROCESS BINDING_UBO_CUSTOM
+#define BINDING_UBO_TONEMAP BINDING_UBO_CUSTOM
 #define BINDING_UBO_DEBUG BINDING_UBO_CUSTOM
 
 #define BINDING_SSBO_LIGHTS 0
@@ -45,6 +46,8 @@
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE 1
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR 2
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP 3
+
+#define BINDING_TEXTURE_TONEMAP_COLOR 0
 
 #define BINDING_TEXTURE_ANTI_ALIASING_COLOR 0
 
@@ -217,6 +220,14 @@ struct ALIGN_16 UniformSsaoParams
     float threshold;
 };
 
+struct ALIGN_16 UniformTonemapParams
+{
+    ubo_vec3 colorFilter;
+    float exposure;
+    float contrast;
+    float saturation;
+};
+
 struct ALIGN_16 UniformDebugParams
 {
     int8_t type;
@@ -242,6 +253,7 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingUboSsao = BINDING_UBO_SSAO;
 	static constexpr uint32_t k_bindingUboSsr = BINDING_UBO_SSR;
 	static constexpr uint32_t k_bindingUboPostProcess = BINDING_UBO_POST_PROCESS;
+	static constexpr uint32_t k_bindingUboTonemap = BINDING_UBO_TONEMAP;
 	static constexpr uint32_t k_bindingUboDebug = BINDING_UBO_DEBUG;
 
 	static constexpr uint32_t k_bindingSsboLights = BINDING_SSBO_LIGHTS;
@@ -265,6 +277,8 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionOpaqueSurface = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE;
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionSsrColor = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR;
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionEnvironmentCubeMap = BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP;
+
+	static constexpr uint32_t k_bindingTextureTonemapColor = BINDING_TEXTURE_TONEMAP_COLOR;
 
 	static constexpr uint32_t k_bindingTextureAntiAliasingColor = BINDING_TEXTURE_ANTI_ALIASING_COLOR;
 
@@ -301,6 +315,7 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_UBO_MATERIAL
 #undef BINDING_UBO_SSR
 #undef BINDING_UBO_POST_PROCESS
+#undef BINDING_UBO_TONEMAP
 #undef BINDING_UBO_MODEL
 #undef BINDING_UBO_RIG
 
@@ -322,6 +337,7 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP
 
+#undef BINDING_TEXTURE_TONEMAP_COLOR
 #undef BINDING_TEXTURE_ANTI_ALIASING_COLOR
 #undef BINDING_TEXTURE_PRESENT_COLOR
 #undef BINDING_TEXTURE_POST_PROCESS_COLOR

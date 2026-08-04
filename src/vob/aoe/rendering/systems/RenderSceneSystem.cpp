@@ -137,7 +137,7 @@ namespace vob::aoegl
 				.lightClusterZCount = a_lightClusterZCount,
 				.lightClusterCapacity = a_lightClusterCapacity,
 				.sunColor = glm::vec3{ 1.0f, 0.5f, 0.4f },
-				.sunIntensity = 1.0f,
+				.sunIntensity = 3.0f,
 				.sunDir = a_sunDir
 			};
 
@@ -381,6 +381,24 @@ namespace vob::aoegl
 				.maxThickness = k_ssrMaxThickness
 			};
 			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
+
+			ImGui::SeparatorText("Tonemap");
+			static float k_tonemapExposure = 1.0f;
+			ImGui::SliderFloat("Exposure", &k_tonemapExposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			static glm::vec3 k_tonemapColorFilter{ 1.0f };
+			ImGui::ColorEdit3("Color Filter", &k_tonemapColorFilter.x);
+			static float k_tonemapContrast = 1.0f;
+			ImGui::SliderFloat("Contrast", &k_tonemapContrast, 0.0f, 2.0f);
+			static float k_tonemapSaturation = 1.0f;
+			ImGui::SliderFloat("Saturation", &k_tonemapSaturation, 0.0f, 2.0f);
+
+			auto const tonemapParams = UniformTonemapParams{
+				.colorFilter = k_tonemapColorFilter,
+				.exposure = k_tonemapExposure,
+				.contrast = k_tonemapContrast,
+				.saturation = k_tonemapSaturation
+			};
+			glNamedBufferSubData(renderSceneCtx.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
 
 			ImGui::SeparatorText("Shaders");
 			static int32_t k_activeShadingProgramIndex = 0;
@@ -1268,11 +1286,21 @@ namespace vob::aoegl
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 
+			// Tonemap
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Tonemap");
+				gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboTonemap, renderSceneCtx.tonemapParamsUbo);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureTonemapColor, renderSceneCtx.finalColorTexture);
+				beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.tonemapProgram);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
 			// Anti Aliasing
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Anti Aliasing");
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureAntiAliasingColor, renderSceneCtx.finalColorTexture);
-				beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureAntiAliasingColor, renderSceneCtx.postProcessTargets[0].colorTexture);
+				beginPass(gpuState, renderSceneCtx.postProcessTargets[1].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.aaProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
@@ -1281,7 +1309,7 @@ namespace vob::aoegl
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Present");
 				// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePresentColor, renderSceneCtx.postProcessTargets[0].colorTexture);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePresentColor, renderSceneCtx.postProcessTargets[1].colorTexture);
 				beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.presentProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
