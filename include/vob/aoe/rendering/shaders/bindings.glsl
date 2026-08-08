@@ -99,5 +99,4 @@ layout(binding = BINDING_TEXTURE_PRESENT_COLOR) uniform sampler2D uPresent_Color
 layout(binding = BINDING_TEXTURE_POST_PROCESS_COLOR) uniform sampler2D uPostProcess_Color;
 
 layout(binding = BINDING_TEXTURE_DEBUG) uniform sampler2D uDebug_Texture;
-layout(binding = BINDING_TEXTURE_ARRAY_DEBUG) uniform sampler2DArray uDebug_TextureArray;
 #endif // #ifndef VOB_AOEGL_CORE_BINDINGS_GLSL

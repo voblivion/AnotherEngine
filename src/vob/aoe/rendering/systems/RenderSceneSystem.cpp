@@ -34,6 +34,7 @@ namespace vob::aoegl
 		m_gpuResourceRegistriesContext.init(a_wdar);
 		m_debugProgramContext.init(a_wdar);
 		m_debugMeshContext.init(a_wdar);
+		m_debugRenderInspectorCtx.init(a_wdar);
 		m_windowContext.init(a_wdar);
 		m_focusEntities.init(a_wdar);
 		m_cameraEntities.init(a_wdar);
@@ -264,6 +265,106 @@ namespace vob::aoegl
 			glNamedBufferSubData(a_targetParamsUbo, 0, sizeof(targetParams), &targetParams);
 			a_gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboTarget, a_targetParamsUbo);
 		}
+
+		void captureDebugRenderOutput(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, GraphicId a_texture
+			, GraphicEnum a_sourceTarget
+			, int32_t a_sourceLayer
+			, DebugType a_type
+			, glm::vec2 a_depthRange)
+		{
+			auto resolution = glm::ivec2{};
+			auto internalFormat = GraphicInt{};
+			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_WIDTH, &resolution.x);
+			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_HEIGHT, &resolution.y);
+			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+
+			if (a_inspectorCtx.capturedTexture == k_invalidId
+				|| a_inspectorCtx.capturedResolution != resolution
+				|| a_inspectorCtx.capturedInternalFormat != static_cast<GraphicEnum>(internalFormat))
+			{
+				if (a_inspectorCtx.capturedTexture != k_invalidId)
+				{
+					glDeleteTextures(1, &a_inspectorCtx.capturedTexture);
+				}
+				glCreateTextures(GL_TEXTURE_2D, 1, &a_inspectorCtx.capturedTexture);
+				glTextureStorage2D(a_inspectorCtx.capturedTexture, 1, internalFormat, resolution.x, resolution.y);
+				glTextureParameteri(a_inspectorCtx.capturedTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(a_inspectorCtx.capturedTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				a_inspectorCtx.capturedResolution = resolution;
+				a_inspectorCtx.capturedInternalFormat = static_cast<GraphicEnum>(internalFormat);
+			}
+
+			glCopyImageSubData(
+				a_texture, a_sourceTarget, 0, 0, 0, a_sourceLayer
+				, a_inspectorCtx.capturedTexture, GL_TEXTURE_2D, 0, 0, 0, 0
+				, resolution.x, resolution.y, 1);
+
+			a_inspectorCtx.capturedType = a_type;
+			a_inspectorCtx.capturedDepthRange = a_depthRange;
+		}
+
+		void debugInspectRenderOutput(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, std::string_view a_name
+			, GraphicId a_texture
+			, DebugType a_type
+			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+		{
+			a_inspectorCtx.names.push_back(a_name);
+			if (a_name != a_inspectorCtx.selectedName)
+			{
+				return;
+			}
+
+			captureDebugRenderOutput(a_inspectorCtx, a_texture, GL_TEXTURE_2D, 0, a_type, a_depthRange);
+		}
+
+		void debugInspectRenderOutputLayer(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, std::string_view a_name
+			, GraphicId a_textureArray
+			, int32_t a_layer
+			, DebugType a_type
+			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+		{
+			a_inspectorCtx.names.push_back(a_name);
+			if (a_name != a_inspectorCtx.selectedName)
+			{
+				return;
+			}
+
+			captureDebugRenderOutput(a_inspectorCtx, a_textureArray, GL_TEXTURE_2D_ARRAY, a_layer, a_type, a_depthRange);
+		}
+
+		void debugDrawInspectedRenderOutput(
+			GpuState& a_gpuState
+			, RenderSceneContext const& a_renderSceneCtx
+			, DebugRenderInspectorContext const& a_inspectorCtx
+			, GraphicId a_framebuffer
+			, glm::ivec2 a_resolution)
+		{
+			auto const debugParams = UniformDebugParams{
+				.depthRange = a_inspectorCtx.capturedDepthRange,
+				.exposure = a_inspectorCtx.exposure,
+				.type = static_cast<int8_t>(a_inspectorCtx.capturedType)
+			};
+			glNamedBufferSubData(a_renderSceneCtx.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
+
+			a_gpuState.disableDepthTest<GpuStateChange::LikelyNo>();
+			a_gpuState.disableBlend<GpuStateChange::LikelyNo>();
+			a_gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
+			a_gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboView, a_renderSceneCtx.viewParamsUbo);
+			a_gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboDebug, a_renderSceneCtx.debugParamsUbo);
+			a_gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureDebug, a_inspectorCtx.capturedTexture);
+
+			beginPass(a_gpuState, a_framebuffer, a_resolution, a_renderSceneCtx.targetParamsUbo);
+			a_gpuState.useProgram<GpuStateChange::LikelyYes>(a_renderSceneCtx.debugProgram);
+
+			glBindVertexArray(a_renderSceneCtx.postProcessVao);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+		}
 	}
 
 	void RenderSceneSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -271,6 +372,7 @@ namespace vob::aoegl
 		auto& debugMeshCtx = m_debugMeshContext.get(a_wdap);
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
 		auto& renderProfilingCtx = m_renderProfilingCtx.get(a_wdap);
+		auto& debugRenderInspectorCtx = m_debugRenderInspectorCtx.get(a_wdap);
 		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
 		auto const& gpuResourceRegistriesCtx = m_gpuResourceRegistriesContext.get(a_wdap);
 		auto const& materialRegistry = *gpuResourceRegistriesCtx.materialRegistry;
@@ -299,40 +401,31 @@ namespace vob::aoegl
 		}
 
 		// 0 - Prepare Debug
-		enum class DebugMode2
-		{
-			None,
-			LightClusters,
-			SunShadowMap,
-			SpotLightShadowMap,
-			OpaqueGeometricNormal,
-			OpaqueDepth,
-			AmbientOcclusion,
-			DirectOpaqueColor,
-			OpaqueNormal,
-			OpaqueSurface,
-			SsrColor,
-			FinalColor,
-		};
-		static DebugMode2 k_debugMode = DebugMode2::None;
 		static int32_t k_debugShadowMapIndex = 0;
 		static bool k_debugCameraFrustum = false;
 		static bool k_ssaoEnabled = true;
 		static bool k_ssrEnabled = true;
 		if (ImGui::Begin("Render Debug"))
 		{
-			aoedb::ImGuiEnumCombo("Debug Mode", &k_debugMode);
-			ImGui::BeginDisabled(k_debugMode != DebugMode2::SunShadowMap && k_debugMode != DebugMode2::SpotLightShadowMap);
+			auto& inspectedName = debugRenderInspectorCtx.selectedName;
+			if (ImGui::BeginCombo("Inspect", inspectedName.empty() ? "None" : inspectedName.data()))
+			{
+				if (ImGui::Selectable("None", inspectedName.empty()))
+				{
+					inspectedName = {};
+				}
+				for (auto const name : debugRenderInspectorCtx.names)
+				{
+					if (ImGui::Selectable(name.data(), name == inspectedName))
+					{
+						inspectedName = name;
+					}
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::SliderFloat("Inspect Exposure", &debugRenderInspectorCtx.exposure, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			ImGui::InputInt("Shadow Map Index", &k_debugShadowMapIndex);
-			ImGui::EndDisabled();
-			if (k_debugMode == DebugMode2::SunShadowMap)
-			{
-				k_debugShadowMapIndex = std::clamp(k_debugShadowMapIndex, 0, mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips) - 1);
-			}
-			else if (k_debugMode == DebugMode2::SpotLightShadowMap)
-			{
-				k_debugShadowMapIndex = std::clamp(k_debugShadowMapIndex, 0, k_spotLightShadowMapsCapacity - 1);
-			}
+			k_debugShadowMapIndex = std::max(k_debugShadowMapIndex, 0);
 			ImGui::Checkbox("Frustum", &k_debugCameraFrustum);
 
 			ImGui::SeparatorText("SSAO");
@@ -466,6 +559,8 @@ namespace vob::aoegl
 
 		}
 		ImGui::End();
+
+		debugRenderInspectorCtx.names.clear();
 
 		VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Scene");
 
@@ -944,6 +1039,26 @@ namespace vob::aoegl
 			}
 
 			// TODO: generate sun's shadow map
+
+			auto const sunCsmIndex = std::min(k_debugShadowMapIndex, mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips) - 1);
+			debugInspectRenderOutputLayer(
+				debugRenderInspectorCtx
+				, "Sun Shadow Map"
+				, renderSceneCtx.sunShadowMapDepthTextureArray
+				, sunCsmIndex
+				, DebugType::DepthTexture
+				, glm::vec2{ debugSunNear, debugSunFar });
+
+			if (spotLightShadowMapCount > 0)
+			{
+				auto const spotLightIndex = std::min(k_debugShadowMapIndex, spotLightShadowMapCount - 1);
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx
+					, "Spot Shadow Map"
+					, renderSceneCtx.spotLightShadowMapTargets[spotLightIndex].depthTexture
+					, DebugType::DepthTexture
+					, glm::vec2{ shadowParams.spotLights[spotLightIndex].nearClip, shadowParams.spotLights[spotLightIndex].farClip });
+			}
 		}
 
 		// VI - Depth Pre-Pass
@@ -994,6 +1109,10 @@ namespace vob::aoegl
 					sizeof(glm::mat4));
 				glDrawElementsInstanced(GL_TRIANGLES, culledOpaqueInstancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, culledOpaqueInstancedMesh.instanceCount);
 			}
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Geometric Normal", renderSceneCtx.opaqueGeometricNormalTexture, DebugType::DirectionTexture);
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Depth", renderSceneCtx.opaqueDepthTexture, DebugType::DepthTexture, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Light Clusters", renderSceneCtx.opaqueDepthTexture, DebugType::LightClusters);
 		}
 
 		// VII - SSAO
@@ -1020,6 +1139,8 @@ namespace vob::aoegl
 				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 1.0 });
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Ambient Occlusion", renderSceneCtx.ambientOcclusionTexture, DebugType::ShadesTexture);
 		}
 
 		// VIII - Direct Opaque Lighting
@@ -1096,6 +1217,10 @@ namespace vob::aoegl
 					sizeof(glm::mat4));
 				glDrawElementsInstanced(GL_TRIANGLES, culledOpaqueInstancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, culledOpaqueInstancedMesh.instanceCount);
 			}
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Direct Opaque Color", renderSceneCtx.directOpaqueColorTexture, DebugType::ColorTexture);
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Normal", renderSceneCtx.opaqueNormalTexture, DebugType::DirectionTexture);
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Surface", renderSceneCtx.opaqueSurfaceTexture, DebugType::ColorTexture);
 		}
 
 		// IX - SSR
@@ -1127,6 +1252,8 @@ namespace vob::aoegl
 				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrColorTexture, DebugType::ColorTexture);
 		}
 
 		// X - Opaque Composition
@@ -1145,6 +1272,8 @@ namespace vob::aoegl
 
 			// glBindVertexArray(renderSceneCtx.postProcessVao);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Composition", renderSceneCtx.finalColorTexture, DebugType::ColorTexture);
 		}
 
 		// XI - Translucent
@@ -1168,117 +1297,11 @@ namespace vob::aoegl
 			// TODO: ubo?
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Sky Box", renderSceneCtx.finalColorTexture, DebugType::ColorTexture);
 		}
 
 		// XIII - Post Processes
-		if (k_debugMode != DebugMode2::None)
-		{
-			auto debugParams = UniformDebugParams{};
-			auto viewParamsUbo = renderSceneCtx.viewParamsUbo;
-			auto debugTexture = k_invalidId;
-			auto debugTextureArray = k_invalidId;
-			switch (k_debugMode)
-			{
-			case DebugMode2::LightClusters:
-			{
-				debugTexture = renderSceneCtx.opaqueDepthTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::LightClusters);
-				break;
-			}
-			case DebugMode2::SunShadowMap:
-			{
-				auto const sunViewParams = UniformViewParams{
-					.nearClip = debugSunNear,
-					.farClip = debugSunFar
-				};
-				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(sunViewParams), &sunViewParams);
-				viewParamsUbo = renderSceneCtx.lightViewParamsUbo;
-				debugTextureArray = renderSceneCtx.sunShadowMapDepthTextureArray;
-				debugParams.type = static_cast<int8_t>(DebugType::DepthTextureArray);
-				debugParams.index = static_cast<int8_t>(k_debugShadowMapIndex);
-				break;
-			}
-			case DebugMode2::SpotLightShadowMap:
-			{
-				auto const spotLightViewParams = UniformViewParams{
-					.worldToClip = shadowParams.spotLights[k_debugShadowMapIndex].worldToClip,
-					.viewToWorld = shadowParams.spotLights[k_debugShadowMapIndex].viewToWorld,
-					.nearClip = shadowParams.spotLights[k_debugShadowMapIndex].nearClip,
-					.farClip = shadowParams.spotLights[k_debugShadowMapIndex].farClip,
-					.fov = shadowParams.spotLights[k_debugShadowMapIndex].fov,
-					.aspectRatio = 1.0f
-				};
-				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(spotLightViewParams), &spotLightViewParams);
-				viewParamsUbo = renderSceneCtx.lightViewParamsUbo;
-				debugTexture = renderSceneCtx.spotLightShadowMapTargets[k_debugShadowMapIndex].depthTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::DepthTexture);
-				break;
-			}
-			case DebugMode2::OpaqueDepth:
-			{
-				debugTexture = renderSceneCtx.opaqueDepthTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::DepthTexture);
-				break;
-			}
-			case DebugMode2::OpaqueGeometricNormal:
-			{
-				debugTexture = renderSceneCtx.opaqueGeometricNormalTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::DirectionTexture);
-				break;
-			}
-			case DebugMode2::AmbientOcclusion:
-			{
-				debugTexture = renderSceneCtx.ambientOcclusionTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::ShadesTexture);
-				break;
-			}
-			case DebugMode2::DirectOpaqueColor:
-			{
-				debugTexture = renderSceneCtx.directOpaqueColorTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::ColorTexture);
-				break;
-			}
-			case DebugMode2::OpaqueNormal:
-			{
-				debugTexture = renderSceneCtx.opaqueNormalTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::DirectionTexture);
-				break;
-			}
-			case DebugMode2::OpaqueSurface:
-			{
-				debugTexture = renderSceneCtx.opaqueSurfaceTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::ColorTexture);
-				break;
-			}
-			case DebugMode2::SsrColor:
-			{
-				debugTexture = renderSceneCtx.ssrColorTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::ColorTexture);
-				break;
-			}
-			case DebugMode2::FinalColor:
-			{
-				debugTexture = renderSceneCtx.finalColorTexture;
-				debugParams.type = static_cast<uint8_t>(DebugType::ColorTexture);
-				break;
-			}
-			}
-			glNamedBufferSubData(renderSceneCtx.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
-
-			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
-			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboView, viewParamsUbo);
-			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboDebug, renderSceneCtx.debugParamsUbo);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureDebug, debugTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureArrayDebug, debugTextureArray);
-
-			// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
-			beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.debugProgram);
-
-			glBindVertexArray(renderSceneCtx.postProcessVao);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-		}
-		else
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Post Processes");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
@@ -1294,6 +1317,8 @@ namespace vob::aoegl
 				beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.tonemapProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
+
+				debugInspectRenderOutput(debugRenderInspectorCtx, "Tonemap", renderSceneCtx.postProcessTargets[0].colorTexture, DebugType::ColorTexture);
 			}
 
 			// Anti Aliasing
@@ -1303,6 +1328,8 @@ namespace vob::aoegl
 				beginPass(gpuState, renderSceneCtx.postProcessTargets[1].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.aaProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
+
+				debugInspectRenderOutput(debugRenderInspectorCtx, "Anti Aliasing", renderSceneCtx.postProcessTargets[1].colorTexture, DebugType::ColorTexture);
 			}
 
 			// Present
@@ -1358,6 +1385,19 @@ namespace vob::aoegl
 				gpuState.disableBlend<GpuStateChange::SurelyYes>();
 			}
 		}
+
+		if (std::ranges::find(debugRenderInspectorCtx.names, debugRenderInspectorCtx.selectedName)
+			!= debugRenderInspectorCtx.names.end())
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Debug Inspector");
+			debugDrawInspectedRenderOutput(
+				gpuState
+				, renderSceneCtx
+				, debugRenderInspectorCtx
+				, window.getDefaultFramebufferId()
+				, window.getSize());
+		}
+
 		debugMeshCtx.clear();
 
 		renderProfilingCtx.lightCount = mistd::isize(gpuLights);

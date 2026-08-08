@@ -35,25 +35,20 @@ vec3 heat7Colors(float ratio)
 void main()
 {
     vec3 c;
-    if (uDebug.type == DEBUG_TYPE_SHADES_TEXTURE)
+    if (uDebug.type == DEBUG_TYPE_COLOR_TEXTURE)
     {
-        c = vec3(texture(uDebug_Texture, vUv).r);
+        c = texture(uDebug_Texture, vUv).rgb * uDebug.exposure;
+    }
+    else if (uDebug.type == DEBUG_TYPE_SHADES_TEXTURE)
+    {
+        c = vec3(texture(uDebug_Texture, vUv).r * uDebug.exposure);
     }
     else if (uDebug.type == DEBUG_TYPE_DEPTH_TEXTURE)
     {
-        float linearDepth = linearizeDepth(texture(uDebug_Texture, vUv).r, uView.nearClip, uView.farClip);
-        // c = vec3(linearizeDepth(c.r, uView.nearClip, uView.farClip) / uView.farClip);
-        // c = heat7Colors(log(linearizeDepth(c.r, uView.nearClip, uView.farClip) + 1.0) / log(uView.farClip + 1.0));
-        // c = heat7Colors(linearizeDepth(c.r, uView.nearClip, uView.farClip) / uView.farClip);
-        float normalizedLinearDepth = (linearDepth - uView.nearClip) / (uView.farClip - uView.nearClip);
+        float linearDepth = linearizeDepth(texture(uDebug_Texture, vUv).r, uDebug.depthRange.x, uDebug.depthRange.y);
+        float normalizedLinearDepth = (linearDepth - uDebug.depthRange.x) / (uDebug.depthRange.y - uDebug.depthRange.x);
         float k = 10.0;
         c = heat7Colors(log(normalizedLinearDepth * k + 1.0) / log(k + 1.0));
-    }
-    else if (uDebug.type == DEBUG_TYPE_DEPTH_TEXTURE_ARRAY)
-    {
-        float d = texture(uDebug_TextureArray, vec3(vUv, uDebug.index)).r;
-        float k = 10.0;
-        c = heat7Colors(log(d * k + 1.0) / log(k + 1.0));
     }
     else if (uDebug.type == DEBUG_TYPE_DIRECTION_TEXTURE)
     {

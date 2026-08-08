@@ -56,14 +56,12 @@
 #define BINDING_TEXTURE_POST_PROCESS_COLOR 0
 
 #define BINDING_TEXTURE_DEBUG 0
-#define BINDING_TEXTURE_ARRAY_DEBUG 1
 
 #define DEBUG_TYPE_COLOR_TEXTURE 0
 #define DEBUG_TYPE_SHADES_TEXTURE 1
 #define DEBUG_TYPE_DEPTH_TEXTURE 2
-#define DEBUG_TYPE_DEPTH_TEXTURE_ARRAY 3
-#define DEBUG_TYPE_DIRECTION_TEXTURE 4
-#define DEBUG_TYPE_LIGHT_CLUSTERS 5
+#define DEBUG_TYPE_DIRECTION_TEXTURE 3
+#define DEBUG_TYPE_LIGHT_CLUSTERS 4
 
 #ifdef __cplusplus
 #include <glm/glm.hpp>
@@ -230,8 +228,9 @@ struct ALIGN_16 UniformTonemapParams
 
 struct ALIGN_16 UniformDebugParams
 {
+    ubo_vec2 depthRange;
+    float exposure;
     int8_t type;
-    int8_t index;
 };
 
 #ifdef __cplusplus
@@ -287,14 +286,12 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTexturePostProcessColor = BINDING_TEXTURE_POST_PROCESS_COLOR;
     
 	static constexpr uint32_t k_bindingTextureDebug = BINDING_TEXTURE_DEBUG;
-	static constexpr uint32_t k_bindingTextureArrayDebug = BINDING_TEXTURE_ARRAY_DEBUG;
     
     enum class DebugType : uint8_t
     {
         ColorTexture = DEBUG_TYPE_COLOR_TEXTURE,
         ShadesTexture = DEBUG_TYPE_SHADES_TEXTURE,
         DepthTexture = DEBUG_TYPE_DEPTH_TEXTURE,
-        DepthTextureArray = DEBUG_TYPE_DEPTH_TEXTURE_ARRAY,
         DirectionTexture = DEBUG_TYPE_DIRECTION_TEXTURE,
         LightClusters = DEBUG_TYPE_LIGHT_CLUSTERS,
     };
