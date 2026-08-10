@@ -36,6 +36,8 @@ namespace vob::aoegl
 		glm::mat4 model;
 	};
 
+	constexpr int32_t k_bloomMipsCapacity = 12;
+
 	struct RenderSceneContext
 	{
 
@@ -100,6 +102,17 @@ namespace vob::aoegl
 		GraphicId finalFramebuffer;
 		GraphicId finalColorTexture;
 
+		struct BloomMip
+		{
+			GraphicId framebuffer;
+			GraphicId colorTexture;
+			glm::ivec2 resolution;
+		};
+		mistd::bounded_vector<BloomMip, k_bloomMipsCapacity> bloomMips;
+
+		GraphicId bloomCombinedFramebuffer;
+		GraphicId bloomCombinedColorTexture;
+
 		struct PostProcessTarget
 		{
 			GraphicId framebuffer;
@@ -119,6 +132,10 @@ namespace vob::aoegl
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
+		GraphicId bloomDownsampleProgram;
+		GraphicId bloomUpsampleProgram;
+		GraphicId bloomCombineProgram;
+		GraphicId bloomParamsUbo;
 		GraphicId tonemapProgram;
 		GraphicId tonemapParamsUbo;
 		GraphicId aaProgram;

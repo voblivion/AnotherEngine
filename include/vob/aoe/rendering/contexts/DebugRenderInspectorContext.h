@@ -16,6 +16,8 @@ namespace vob::aoegl
 		std::string_view selectedName;
 		std::vector<std::string_view> names;
 		float exposure = 1.0f;
+		int32_t selectedIndex = 0;
+		int32_t selectedIndexCount = 0;
 
 		GraphicId capturedTexture = k_invalidId;
 		glm::ivec2 capturedResolution{ 0 };

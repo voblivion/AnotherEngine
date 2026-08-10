@@ -305,6 +305,20 @@ namespace vob::aoegl
 			a_inspectorCtx.capturedDepthRange = a_depthRange;
 		}
 
+		int32_t debugInspectIndex(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, std::string_view a_name
+			, int32_t a_count)
+		{
+			if (a_name != a_inspectorCtx.selectedName || a_count <= 0)
+			{
+				return 0;
+			}
+
+			a_inspectorCtx.selectedIndexCount = a_count;
+			return std::clamp(a_inspectorCtx.selectedIndex, 0, a_count - 1);
+		}
+
 		void debugInspectRenderOutput(
 			DebugRenderInspectorContext& a_inspectorCtx
 			, std::string_view a_name
@@ -401,10 +415,10 @@ namespace vob::aoegl
 		}
 
 		// 0 - Prepare Debug
-		static int32_t k_debugShadowMapIndex = 0;
 		static bool k_debugCameraFrustum = false;
 		static bool k_ssaoEnabled = true;
 		static bool k_ssrEnabled = true;
+		static bool k_bloomEnabled = true;
 		if (ImGui::Begin("Render Debug"))
 		{
 			auto& inspectedName = debugRenderInspectorCtx.selectedName;
@@ -424,8 +438,12 @@ namespace vob::aoegl
 				ImGui::EndCombo();
 			}
 			ImGui::SliderFloat("Inspect Exposure", &debugRenderInspectorCtx.exposure, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			ImGui::InputInt("Shadow Map Index", &k_debugShadowMapIndex);
-			k_debugShadowMapIndex = std::max(k_debugShadowMapIndex, 0);
+			if (debugRenderInspectorCtx.selectedIndexCount > 0)
+			{
+				ImGui::InputInt("Inspect Index", &debugRenderInspectorCtx.selectedIndex);
+				debugRenderInspectorCtx.selectedIndex = std::clamp(
+					debugRenderInspectorCtx.selectedIndex, 0, debugRenderInspectorCtx.selectedIndexCount - 1);
+			}
 			ImGui::Checkbox("Frustum", &k_debugCameraFrustum);
 
 			ImGui::SeparatorText("SSAO");
@@ -474,6 +492,23 @@ namespace vob::aoegl
 				.maxThickness = k_ssrMaxThickness
 			};
 			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
+
+			ImGui::SeparatorText("Bloom");
+			ImGui::Checkbox("Enable##bloom", &k_bloomEnabled);
+			static float k_bloomStrength = 0.25f;
+			ImGui::SliderFloat("Strength", &k_bloomStrength, 0.0f, 1.0f);
+			static float k_bloomFilterRadius = 1.0f;
+			ImGui::SliderFloat("Filter Radius", &k_bloomFilterRadius, 0.5f, 3.0f);
+			static bool k_bloomKarisAverage = true;
+			ImGui::Checkbox("Karis Average", &k_bloomKarisAverage);
+
+			auto const bloomParams = UniformBloomParams{
+				.filterRadius = k_bloomFilterRadius,
+				.strength = k_bloomStrength,
+				.useKarisAverage = k_bloomKarisAverage ? 1 : 0,
+				.levelCount = mistd::isize(renderSceneCtx.bloomMips)
+			};
+			glNamedBufferSubData(renderSceneCtx.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
 
 			ImGui::SeparatorText("Tonemap");
 			static float k_tonemapExposure = 1.0f;
@@ -561,6 +596,7 @@ namespace vob::aoegl
 		ImGui::End();
 
 		debugRenderInspectorCtx.names.clear();
+		debugRenderInspectorCtx.selectedIndexCount = 0;
 
 		VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Scene");
 
@@ -798,10 +834,12 @@ namespace vob::aoegl
 			{
 				beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.sunShadowMapResolution, renderSceneCtx.targetParamsUbo);
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sun CSM");
+				auto const debugSunCsmIndex = std::clamp(
+					debugRenderInspectorCtx.selectedIndex, 0, mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips) - 1);
 				for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips); ++csmIndex)
 				{
 					auto const& sunShadowParams = shadowParams.sun[csmIndex];
-					if (csmIndex == k_debugShadowMapIndex)
+					if (csmIndex == debugSunCsmIndex)
 					{
 						debugSunNear = sunShadowParams.nearClip;
 						debugSunFar = sunShadowParams.farClip;
@@ -1040,7 +1078,8 @@ namespace vob::aoegl
 
 			// TODO: generate sun's shadow map
 
-			auto const sunCsmIndex = std::min(k_debugShadowMapIndex, mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips) - 1);
+			auto const sunCsmIndex = debugInspectIndex(
+				debugRenderInspectorCtx, "Sun Shadow Map", mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips));
 			debugInspectRenderOutputLayer(
 				debugRenderInspectorCtx
 				, "Sun Shadow Map"
@@ -1051,7 +1090,8 @@ namespace vob::aoegl
 
 			if (spotLightShadowMapCount > 0)
 			{
-				auto const spotLightIndex = std::min(k_debugShadowMapIndex, spotLightShadowMapCount - 1);
+				auto const spotLightIndex = debugInspectIndex(
+					debugRenderInspectorCtx, "Spot Shadow Map", spotLightShadowMapCount);
 				debugInspectRenderOutput(
 					debugRenderInspectorCtx
 					, "Spot Shadow Map"
@@ -1301,19 +1341,107 @@ namespace vob::aoegl
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Sky Box", renderSceneCtx.finalColorTexture, DebugType::ColorTexture);
 		}
 
+		auto const bloomEnabled = k_bloomEnabled && !renderSceneCtx.bloomMips.empty();
+
+		// XII-bis - Bloom Downsample
+		if (bloomEnabled)
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Downsample");
+			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomDownsampleProgram);
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+
+			auto const& firstMip = renderSceneCtx.bloomMips[0];
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureBloomSource, renderSceneCtx.finalColorTexture);
+			beginPass(gpuState, firstMip.framebuffer, firstMip.resolution, renderSceneCtx.targetParamsUbo);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			auto const karisOff = 0;
+			glNamedBufferSubData(
+				renderSceneCtx.bloomParamsUbo, offsetof(UniformBloomParams, useKarisAverage), sizeof(karisOff), &karisOff);
+
+			for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.bloomMips); ++mipIndex)
+			{
+				auto const& mip = renderSceneCtx.bloomMips[mipIndex];
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex - 1].colorTexture);
+				beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
+			auto const inspectedMipIndex = debugInspectIndex(
+				debugRenderInspectorCtx, "Bloom Downsample", mistd::isize(renderSceneCtx.bloomMips));
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx
+				, "Bloom Downsample"
+				, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
+				, DebugType::ColorTexture);
+		}
+
+		// XII-ter - Bloom Upsample
+		if (bloomEnabled)
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Upsample");
+			gpuState.enableBlend<GpuStateChange::SurelyYes>();
+			glBlendFunc(GL_ONE, GL_ONE);
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomUpsampleProgram);
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+
+			for (int32_t mipIndex = mistd::isize(renderSceneCtx.bloomMips) - 2; mipIndex >= 0; --mipIndex)
+			{
+				auto const& mip = renderSceneCtx.bloomMips[mipIndex];
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex + 1].colorTexture);
+				beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
+			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+
+			auto const inspectedMipIndex = debugInspectIndex(
+				debugRenderInspectorCtx, "Bloom Upsample", mistd::isize(renderSceneCtx.bloomMips));
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx
+				, "Bloom Upsample"
+				, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
+				, DebugType::ColorTexture);
+		}
+
+		// XII-quater - Bloom Combine
+		if (bloomEnabled)
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Combine");
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineScene, renderSceneCtx.finalColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineBloom, renderSceneCtx.bloomMips[0].colorTexture);
+			beginPass(gpuState, renderSceneCtx.bloomCombinedFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomCombineProgram);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx
+				, "Bloom Combine"
+				, renderSceneCtx.bloomCombinedColorTexture
+				, DebugType::ColorTexture);
+		}
+
 		// XIII - Post Processes
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Post Processes");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
-			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			gpuState.disableBlend<GpuStateChange::LikelyNo>();
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 
 			// Tonemap
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Tonemap");
 				gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboTonemap, renderSceneCtx.tonemapParamsUbo);
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureTonemapColor, renderSceneCtx.finalColorTexture);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureTonemapColor
+					, bloomEnabled ? renderSceneCtx.bloomCombinedColorTexture : renderSceneCtx.finalColorTexture);
 				beginPass(gpuState, renderSceneCtx.postProcessTargets[0].framebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.tonemapProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);

@@ -48,6 +48,11 @@ layout(std140, binding = BINDING_UBO_SSAO) uniform SsaoParams
     UniformSsaoParams uSsao;
 };
 
+layout(std140, binding = BINDING_UBO_BLOOM) uniform BloomParams
+{
+    UniformBloomParams uBloom;
+};
+
 layout(std140, binding = BINDING_UBO_TONEMAP) uniform TonemapParams
 {
     UniformTonemapParams uTonemap;
@@ -89,6 +94,11 @@ layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_DIRECT_OPAQUE_COLOR) uniform
 layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE) uniform sampler2D uOpaqueComposition_OpaqueSurface;
 layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR) uniform sampler2D uOpaqueComposition_SsrColor;
 layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_ENVIRONMENT_CUBE_MAP) uniform sampler2D uOpaqueComposition_EnvironmentCubeMap;
+
+layout(binding = BINDING_TEXTURE_BLOOM_SOURCE) uniform sampler2D uBloom_Source;
+
+layout(binding = BINDING_TEXTURE_BLOOM_COMBINE_SCENE) uniform sampler2D uBloomCombine_Scene;
+layout(binding = BINDING_TEXTURE_BLOOM_COMBINE_BLOOM) uniform sampler2D uBloomCombine_Bloom;
 
 layout(binding = BINDING_TEXTURE_TONEMAP_COLOR) uniform sampler2D uTonemap_Color;
 
