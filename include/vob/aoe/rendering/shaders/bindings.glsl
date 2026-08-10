@@ -81,9 +81,9 @@ layout(std430, binding = BINDING_SSBO_LIGHT_CLUSTER_INDICES) buffer ShaderStorag
 layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL) uniform sampler2D uSsao_OpaqueGeometricNormal;
 layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_DEPTH) uniform sampler2D uSsao_OpaqueDepth;
 
-layout(binding = BINDING_TEXTURE_MATERIAL_AMBIENT_OCCLUSION) uniform sampler2D uShading_AmbientOcclusion;
-layout(binding = BINDING_TEXTURE_MATERIAL_SUN_SHADOW_MAP) uniform sampler2DArray uShading_SunShadowMap;
-layout(binding = BINDING_TEXTURE_MATERIAL_SPOT_LIGHT_SHADOW_MAPS_BEGIN) uniform sampler2D uShading_SpotLightShadowMaps[SPOT_LIGHT_SHADOW_MAPS_CAPACITY];
+layout(binding = BINDING_TEXTURE_SHADING_AMBIENT_OCCLUSION) uniform sampler2D uShading_AmbientOcclusion;
+layout(binding = BINDING_TEXTURE_SHADING_SUN_SHADOW_MAP) uniform sampler2DArray uShading_SunShadowMap;
+layout(binding = BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN) uniform sampler2D uShading_SpotLightShadowMaps[SPOT_LIGHT_SHADOW_MAPS_CAPACITY];
 
 layout(binding = BINDING_TEXTURE_SSR_DIRECT_OPAQUE_COLOR) uniform sampler2D uSsr_DirectOpaqueColor;
 layout(binding = BINDING_TEXTURE_SSR_OPAQUE_SURFACE) uniform sampler2D uSsr_OpaqueSurface;
@@ -100,13 +100,11 @@ layout(binding = BINDING_TEXTURE_BLOOM_SOURCE) uniform sampler2D uBloom_Source;
 layout(binding = BINDING_TEXTURE_BLOOM_COMBINE_SCENE) uniform sampler2D uBloomCombine_Scene;
 layout(binding = BINDING_TEXTURE_BLOOM_COMBINE_BLOOM) uniform sampler2D uBloomCombine_Bloom;
 
-layout(binding = BINDING_TEXTURE_TONEMAP_COLOR) uniform sampler2D uTonemap_Color;
+layout(binding = BINDING_TEXTURE_TONEMAP_SOURCE) uniform sampler2D uTonemap_Source;
 
-layout(binding = BINDING_TEXTURE_ANTI_ALIASING_COLOR) uniform sampler2D uAntiAliasing_Color;
+layout(binding = BINDING_TEXTURE_ANTI_ALIASING_SOURCE) uniform sampler2D uAntiAliasing_Source;
 
-layout(binding = BINDING_TEXTURE_PRESENT_COLOR) uniform sampler2D uPresent_Color;
+layout(binding = BINDING_TEXTURE_PRESENT_SOURCE) uniform sampler2D uPresent_Source;
 
-layout(binding = BINDING_TEXTURE_POST_PROCESS_COLOR) uniform sampler2D uPostProcess_Color;
-
-layout(binding = BINDING_TEXTURE_DEBUG) uniform sampler2D uDebug_Texture;
+layout(binding = BINDING_TEXTURE_DEBUG_SOURCE) uniform sampler2D uDebug_Source;
 #endif // #ifndef VOB_AOEGL_CORE_BINDINGS_GLSL

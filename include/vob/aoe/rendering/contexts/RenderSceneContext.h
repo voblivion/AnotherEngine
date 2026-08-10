@@ -92,8 +92,6 @@ namespace vob::aoegl
 		GraphicId opaqueGeometricNormalTexture;
 		GraphicId opaqueDepthTexture;
 
-		// TODO: don't like name `lit`
-
 		glm::ivec2 ssrResolution;
 		int32_t ssrMipLevels;
 		GraphicId ssrFramebuffer;

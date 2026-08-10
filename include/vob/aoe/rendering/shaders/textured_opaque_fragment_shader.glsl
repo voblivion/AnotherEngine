@@ -5,9 +5,9 @@
 #include "core/bindings.glsl"
 #include "core/shading_utils.glsl"
 
-layout(binding = BINDING_TEXTURE_MATERIAL_CUSTOMS_BEGIN) uniform sampler2D albedo;
-layout(binding = BINDING_TEXTURE_MATERIAL_CUSTOMS_BEGIN + 1) uniform sampler2D normalMap;
-layout(binding = BINDING_TEXTURE_MATERIAL_CUSTOMS_BEGIN + 2) uniform sampler2D metallicRoughness;
+layout(binding = BINDING_TEXTURE_SHADING_MATERIAL_BEGIN) uniform sampler2D albedo;
+layout(binding = BINDING_TEXTURE_SHADING_MATERIAL_BEGIN + 1) uniform sampler2D normalMap;
+layout(binding = BINDING_TEXTURE_SHADING_MATERIAL_BEGIN + 2) uniform sampler2D metallicRoughness;
 
 in vec3 vPosition;
 in vec2 vUv;

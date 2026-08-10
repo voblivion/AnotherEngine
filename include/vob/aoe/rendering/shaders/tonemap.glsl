@@ -23,7 +23,7 @@ vec3 encodeSrgb(vec3 color)
 
 void main()
 {
-    vec3 color = texture(uTonemap_Color, vUv).rgb;
+    vec3 color = texture(uTonemap_Source, vUv).rgb;
 
     color *= uTonemap.exposure * uTonemap.colorFilter;
     color = encodeSrgb(tonemapAces(color));
