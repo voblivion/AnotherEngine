@@ -225,9 +225,10 @@ struct ALIGN_16 UniformSsaoParams
 struct ALIGN_16 UniformBloomParams
 {
     float filterRadius;
+    float scatter;
     float strength;
     int useKarisAverage;
-    int levelCount;
+    float totalWeight;
 };
 
 struct ALIGN_16 UniformTonemapParams

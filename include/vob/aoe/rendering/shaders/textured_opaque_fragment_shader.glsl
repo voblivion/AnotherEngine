@@ -24,7 +24,7 @@ void main()
     vec3 normalMapSample = texture(normalMap, vUv).rgb * 2.0 - 1.0;
     vec3 normal = normalize(vTBN * normalMapSample);
     
-    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, albedoSample, metallicRoughnessSample.r, metallicRoughnessSample.g, 0.0);
+    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, albedoSample, metallicRoughnessSample.r, metallicRoughnessSample.g, 0.5);
     oNormal = normal;
     oSurface = vec3(metallicRoughnessSample, 0.0);
 }

@@ -23,7 +23,7 @@ layout(location = 2) out vec3 oSurface;
 void main()
 {
     vec3 normal = normalize(vTBN * vec3(0.0, 0.0, 1.0));
-    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, 0.0);
+    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, 0.5);
     oNormal = normal;
     oSurface = vec3(uMetallic, uRoughness, 0.0);
 }
