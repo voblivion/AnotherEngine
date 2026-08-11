@@ -495,18 +495,24 @@ namespace vob::aoegl
 
 			ImGui::SeparatorText("Bloom");
 			ImGui::Checkbox("Enable##bloom", &k_bloomEnabled);
-			static float k_bloomStrength = 0.25f;
+			static float k_bloomScatter = 0.5f;
+			ImGui::SliderFloat("Scatter", &k_bloomScatter, 0.0f, 3.0f);
+			static float k_bloomStrength = 0.05f;
 			ImGui::SliderFloat("Strength", &k_bloomStrength, 0.0f, 1.0f);
 			static float k_bloomFilterRadius = 1.0f;
 			ImGui::SliderFloat("Filter Radius", &k_bloomFilterRadius, 0.5f, 3.0f);
 			static bool k_bloomKarisAverage = true;
 			ImGui::Checkbox("Karis Average", &k_bloomKarisAverage);
 
+			auto const bloomLevelCount = static_cast<float>(mistd::isize(renderSceneCtx.bloomMips));
 			auto const bloomParams = UniformBloomParams{
 				.filterRadius = k_bloomFilterRadius,
+				.scatter = k_bloomScatter,
 				.strength = k_bloomStrength,
 				.useKarisAverage = k_bloomKarisAverage ? 1 : 0,
-				.levelCount = mistd::isize(renderSceneCtx.bloomMips)
+				.totalWeight = std::abs(1.0f - k_bloomScatter) < 1e-4f
+					? bloomLevelCount
+					: (1.0f - std::pow(k_bloomScatter, bloomLevelCount)) / (1.0f - k_bloomScatter)
 			};
 			glNamedBufferSubData(renderSceneCtx.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
 

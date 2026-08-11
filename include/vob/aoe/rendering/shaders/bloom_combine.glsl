@@ -13,5 +13,5 @@ void main()
     vec3 scene = texture(uBloomCombine_Scene, vUv).rgb;
     vec3 bloom = texture(uBloomCombine_Bloom, vUv).rgb;
 
-    FragColor = vec4(mix(scene, bloom / float(uBloom.levelCount), uBloom.strength), 1.0);
+    FragColor = vec4(mix(scene, bloom / uBloom.totalWeight, uBloom.strength), 1.0);
 }

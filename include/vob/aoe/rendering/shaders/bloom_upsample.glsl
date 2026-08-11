@@ -27,5 +27,5 @@ void main()
         + (b + d + f + h) * 2.0
         + e * 4.0;
 
-    FragColor = vec4(color * (1.0 / 16.0), 1.0);
+    FragColor = vec4(uBloom.scatter * color * (1.0 / 16.0), 1.0);
 }
