@@ -11,6 +11,7 @@ out vec4 oColor;
 
 void main()
 {
-    oColor = texture(uOpaqueComposition_DirectOpaqueColor, vUv)
-        + texture(uOpaqueComposition_SsrColor, vUv) * texture(uOpaqueComposition_OpaqueSurface, vUv).r;
+    vec3 f0 = texture(uOpaqueComposition_OpaqueSurface, vUv).rgb;
+    oColor = vec4(
+        texture(uOpaqueComposition_DirectOpaqueColor, vUv).rgb + texture(uOpaqueComposition_SsrColor, vUv).rgb * f0, 1.0);
 }

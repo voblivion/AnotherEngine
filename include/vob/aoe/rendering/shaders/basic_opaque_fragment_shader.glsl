@@ -18,12 +18,14 @@ in mat3 vTBN;
 
 layout(location = 0) out vec3 oColor;
 layout(location = 1) out vec3 oNormal;
-layout(location = 2) out vec3 oSurface;
+layout(location = 2) out vec4 oSurface;
 
 void main()
 {
     vec3 normal = normalize(vTBN * vec3(0.0, 0.0, 1.0));
-    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, 0.5);
+    float reflectance = 0.5;
+
+    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, reflectance);
     oNormal = normal;
-    oSurface = vec3(uMetallic, uRoughness, 0.0);
+    oSurface = vec4(mix(vec3(0.16 * reflectance * reflectance), uAlbedo.xyz, uMetallic), uRoughness);
 }

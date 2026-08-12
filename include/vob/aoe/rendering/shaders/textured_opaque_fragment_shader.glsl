@@ -15,7 +15,7 @@ in mat3 vTBN;
 
 layout(location = 0) out vec3 oColor;
 layout(location = 1) out vec3 oNormal;
-layout(location = 2) out vec3 oSurface;
+layout(location = 2) out vec4 oSurface;
 
 void main()
 {
@@ -23,8 +23,11 @@ void main()
     vec2 metallicRoughnessSample = texture(metallicRoughness, vUv).rg;
     vec3 normalMapSample = texture(normalMap, vUv).rgb * 2.0 - 1.0;
     vec3 normal = normalize(vTBN * normalMapSample);
-    
-    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, albedoSample, metallicRoughnessSample.r, metallicRoughnessSample.g, 0.5);
+    float reflectance = 0.5;
+
+    oColor = uEvaluateLights(gl_FragCoord, vPosition, normal, albedoSample, metallicRoughnessSample.r, metallicRoughnessSample.g, reflectance);
     oNormal = normal;
-    oSurface = vec3(metallicRoughnessSample, 0.0);
+    oSurface = vec4(
+        mix(vec3(0.16 * reflectance * reflectance), albedoSample, metallicRoughnessSample.r),
+        metallicRoughnessSample.g);
 }

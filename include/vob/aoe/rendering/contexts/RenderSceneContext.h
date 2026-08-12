@@ -88,7 +88,7 @@ namespace vob::aoegl
 		GraphicId directOpaqueFramebuffer;
 		GraphicId directOpaqueColorTexture;
 		GraphicId opaqueNormalTexture;
-		GraphicId opaqueSurfaceTexture; // r = reflectance, g = roughness (for now)
+		GraphicId opaqueSurfaceTexture; // rgb = f0, a = roughness
 		GraphicId opaqueGeometricNormalTexture;
 		GraphicId opaqueDepthTexture;
 
