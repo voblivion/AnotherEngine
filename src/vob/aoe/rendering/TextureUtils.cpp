@@ -30,7 +30,7 @@ namespace vob::aoegl
 		};
 	}
 
-	GpuTexture createTexture(ImageData const& a_image, TextureSettings const& a_settings)
+	GpuTexture createTexture(ImageData const& a_image, TextureSettings const& a_settings, float a_maxAnisotropy)
 	{
 		auto const invalidTexture = GpuTexture{ k_invalidId, GL_TEXTURE_2D };
 
@@ -114,6 +114,10 @@ namespace vob::aoegl
 
 		glTextureParameteri(texture.id, GL_TEXTURE_MIN_FILTER, mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
 		glTextureParameteri(texture.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if (mipLevels > 1)
+		{
+			glTextureParameterf(texture.id, GL_TEXTURE_MAX_ANISOTROPY, a_maxAnisotropy);
+		}
 
 		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_R, static_cast<GraphicInt>(a_settings.swizzle[0]));
 		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_G, static_cast<GraphicInt>(a_settings.swizzle[1]));

@@ -9,5 +9,6 @@
 
 namespace vob::aoegl
 {
-	GpuTexture createTexture(ImageData const& a_image, TextureSettings const& a_settings);
+	// TODO: maxAnisotropy should be a sampler parameter instead of a texture parameter
+	GpuTexture createTexture(ImageData const& a_image, TextureSettings const& a_settings, float a_maxAnisotropy);
 }
