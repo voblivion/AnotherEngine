@@ -33,7 +33,7 @@ namespace vob::aoegl
 		mistd::bounded_vector<TextureSlot, k_materialTexturesCapacity> textureSlots;
 		mistd::bounded_vector<int32_t, k_materialTexturesCapacity> depthOnlyTextureSlotIndices;
 
-		bool hasOpacitySupport = false;
+		bool isMasked = false;
 		bool isTwoSided = false;
 	};
 }

@@ -2,6 +2,7 @@
 
 #include "vob/aoe/rendering/resources/GpuMaterial.h"
 #include "vob/aoe/rendering/resources/GpuShader.h"
+#include "vob/aoe/rendering/resources/GpuTexture.h"
 
 
 namespace vob::aoegl
@@ -28,7 +29,6 @@ namespace vob::aoegl
 				{
 					glDeleteBuffers(1, &gpuMaterial.paramsUbo);
 				}
-				glDeleteTextures(mistd::isize(gpuMaterial.textureIds), gpuMaterial.textureIds.data());
 			});
 
 		auto& meshRegistry = *gpuResourceRegistriesCtx.meshRegistry;
@@ -45,6 +45,12 @@ namespace vob::aoegl
 				glDeleteProgram(gpuShader.staticProgram);
 				glDeleteProgram(gpuShader.riggedProgram);
 				glDeleteProgram(gpuShader.instancedProgram);
+			});
+
+		auto& textureRegistry = *gpuResourceRegistriesCtx.textureRegistry;
+		textureRegistry.processUnusedResources([](GpuTexture gpuTexture)
+			{
+				glDeleteTextures(1, &gpuTexture.id);
 			});
 	}
 }

@@ -290,13 +290,25 @@ namespace vob::aoegl
 	}
 
 	GraphicId createShadingProgram(
-		std::string_view a_shellSource
-		, std::string_view a_partialSource
+		std::string_view a_partialSource
 		, std::span<std::string const> a_defines
+		, ShadingPass a_shadingPass
 		, ModelType a_modelType
 		, GraphicId a_optionalProgramId)
 	{
-		auto fragmentShaderSource = std::string{ a_shellSource };
+		auto const shellPath = [a_shadingPass]
+			{
+				switch (a_shadingPass)
+				{
+				case ShadingPass::Opaque:
+					return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+				default:
+					ignorable_assert(false && "No shell for this shading pass yet.");
+					return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+				}
+			}();
+
+		auto fragmentShaderSource = readFile(shellPath);
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_partialSource;
 		return createGeometryProgram(

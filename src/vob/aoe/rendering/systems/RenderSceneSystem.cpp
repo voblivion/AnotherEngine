@@ -1223,9 +1223,9 @@ namespace vob::aoegl
 					{
 						auto const& material = materialRegistry.get(mesh.material);
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-						for (int32_t i = 0; i < mistd::isize(material.textureIds); ++i)
+						for (int32_t i = 0; i < mistd::isize(material.textures); ++i)
 						{
-							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingMaterialBegin + i, material.textureIds[i]);
+							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingMaterialBegin + i, material.textures[i].id);
 						}
 						currentMaterial = mesh.material;
 					}

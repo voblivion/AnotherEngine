@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vob/aoe/rendering/resources/GpuShader.h"
+#include "vob/aoe/rendering/resources/GpuTexture.h"
 #include "vob/aoe/rendering/resources/Handle.h"
 
 #include "vob/misc/std/bounded_vector.h"
@@ -15,8 +16,14 @@ namespace vob::aoegl
 {
 	struct GpuMaterial
 	{
+		struct TextureSlot
+		{
+			Handle<GpuTexture> texture;
+			GraphicId id = k_invalidId;
+		};
+
 		Handle<GpuShader> shader;
 		GraphicId paramsUbo;
-		mistd::bounded_vector<GraphicId, k_materialTexturesCapacity> textureIds;
+		mistd::bounded_vector<TextureSlot, k_materialTexturesCapacity> textures;
 	};
 }

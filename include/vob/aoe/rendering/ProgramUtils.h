@@ -3,6 +3,7 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/rendering/GraphicTypes.h>
+#include <vob/aoe/rendering/ShadingPass.h>
 
 #include <span>
 #include <string>
@@ -25,11 +26,11 @@ namespace vob::aoegl
 
 	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
 
-	// Appends a material partial to a pass shell; the shell forward-declares what the partial defines.
+	// Appends a material partial to the pass shell; the shell forward-declares what the partial defines.
 	GraphicId createShadingProgram(
-		std::string_view a_shellSource
-		, std::string_view a_partialSource
+		std::string_view a_partialSource
 		, std::span<std::string const> a_defines
+		, ShadingPass a_shadingPass
 		, ModelType a_modelType
 		, GraphicId a_optionalProgramId = k_invalidId);
 
