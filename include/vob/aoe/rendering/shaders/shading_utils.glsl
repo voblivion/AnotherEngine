@@ -116,7 +116,8 @@ vec3 uEvaluateLights(
     vec3 albedo,
     float metallic,
     float roughness,
-    float reflectance)
+    float reflectance,
+    float occlusion)
 {
     vec3 color = vec3(0.0);
     
@@ -134,10 +135,22 @@ vec3 uEvaluateLights(
     float sunNdotL = clamp(dot(uLighting.sunDir, normal), 0.0, 1.0);
     color += albedo * sunNdotL * (1.0 - sunShadow) * uLighting.sunColor * uLighting.sunIntensity;
 
-    float ambientOcclusion = uEvaluateAmbientOcclusion(coord);
+    float ambientOcclusion = uEvaluateAmbientOcclusion(coord) * occlusion;
     color += albedo * uLighting.ambientColor * ambientOcclusion;
-    
+
     return color;
+}
+
+vec3 uEvaluateLights(
+    vec4 coord,
+    vec3 position,
+    vec3 normal,
+    vec3 albedo,
+    float metallic,
+    float roughness,
+    float reflectance)
+{
+    return uEvaluateLights(coord, position, normal, albedo, metallic, roughness, reflectance, 1.0);
 }
 
 #endif // #ifndef VOB_AOEGL_SHADING_UTILS_GLSL

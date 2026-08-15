@@ -166,7 +166,7 @@ namespace vob::aoegl
 			return buffer.str();
 		}
 
-		void setDefines(std::string& a_source, std::span<std::pair<std::string_view, std::string_view>> a_defines)
+		void setDefines(std::string& a_source, std::span<std::string const> a_defines)
 		{
 			if (a_defines.empty())
 			{
@@ -176,7 +176,7 @@ namespace vob::aoegl
 			auto definesSourceSize = size_t{ 0 };
 			for (auto const& define : a_defines)
 			{
-				definesSourceSize += std::char_traits<char>::length("#define ") + define.first.size() + 1 + define.second.size() + 1;
+				definesSourceSize += std::char_traits<char>::length("#define ") + define.size() + 1;
 			}
 			a_source.reserve(a_source.size() + definesSourceSize);
 
@@ -185,9 +185,7 @@ namespace vob::aoegl
 			for (auto const& define : a_defines)
 			{
 				definesSource += "#define ";
-				definesSource += define.first;
-				definesSource += " ";
-				definesSource += define.second;
+				definesSource += define;
 				definesSource += "\n";
 			}
 
@@ -218,14 +216,14 @@ namespace vob::aoegl
 
 		std::string createVertexGeometryShaderSource(bool a_useRig, bool a_useShading)
 		{
-			std::vector<std::pair<std::string_view, std::string_view>> defines;
+			std::vector<std::string> defines;
 			if (a_useRig)
 			{
-				defines.emplace_back("USE_RIG", "1");
+				defines.emplace_back("USE_RIG 1");
 			}
 			if (a_useShading)
 			{
-				defines.emplace_back("USE_SHADING", "1");
+				defines.emplace_back("USE_SHADING 1");
 			}
 
 			auto source = readFile(VOB_AOEGL_SHADER_DIR "core/geometry_vertex_shader.glsl");
@@ -237,9 +235,8 @@ namespace vob::aoegl
 
 	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId)
 	{
-		std::vector<std::pair<std::string_view, std::string_view>> defines;
-		auto const workGroupSizeStr = std::to_string(a_workGroupSize);
-		defines.emplace_back("WORK_GROUP_SIZE", workGroupSizeStr);
+		std::vector<std::string> defines;
+		defines.emplace_back("WORK_GROUP_SIZE " + std::to_string(a_workGroupSize));
 
 		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/light_clustering_shader.glsl");
 		setDefines(computeShaderSource, defines);
@@ -248,27 +245,32 @@ namespace vob::aoegl
 	}
 
 	GraphicId createGeometryProgram(
-		std::string_view a_fragmentShaderSource, ModelType a_modelType, bool a_useShading, bool a_useNormal, GraphicId a_optionalProgramId)
+		std::string_view a_fragmentShaderSource
+		, ModelType a_modelType
+		, bool a_useShading
+		, bool a_useNormal
+		, std::span<std::string const> a_extraDefines
+		, GraphicId a_optionalProgramId)
 	{
-		std::vector<std::pair<std::string_view, std::string_view>> defines;
+		std::vector<std::string> defines{ a_extraDefines.begin(), a_extraDefines.end() };
 		switch (a_modelType)
 		{
 		case ModelType::Rigged:
-			defines.emplace_back("USE_RIG", "1");
+			defines.emplace_back("USE_RIG 1");
 			break;
 		case ModelType::Instanced:
-			defines.emplace_back("USE_INSTANCING", "1");
+			defines.emplace_back("USE_INSTANCING 1");
 			break;
 		default:
 			break;
 		}
 		if (a_useShading)
 		{
-			defines.emplace_back("USE_SHADING", "1");
+			defines.emplace_back("USE_SHADING 1");
 		}
 		if (a_useNormal)
 		{
-			defines.emplace_back("USE_NORMAL", "1");
+			defines.emplace_back("USE_NORMAL 1");
 		}
 
 		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/geometry_vertex_shader.glsl");
@@ -276,25 +278,43 @@ namespace vob::aoegl
 		processIncludes(vertexShaderSource);
 
 		auto fragmentShaderSource = std::string{ a_fragmentShaderSource };
+		setDefines(fragmentShaderSource, defines);
 		processIncludes(fragmentShaderSource);
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
 	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		return createGeometryProgram(a_fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(
+			a_fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, {} /* extra defines */, a_optionalProgramId);
+	}
+
+	GraphicId createShadingProgram(
+		std::string_view a_shellSource
+		, std::string_view a_partialSource
+		, std::span<std::string const> a_defines
+		, ModelType a_modelType
+		, GraphicId a_optionalProgramId)
+	{
+		auto fragmentShaderSource = std::string{ a_shellSource };
+		fragmentShaderSource += '\n';
+		fragmentShaderSource += a_partialSource;
+		return createGeometryProgram(
+			fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, a_defines, a_optionalProgramId);
 	}
 
 	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_fragment_shader.glsl");
-		return createGeometryProgram(fragmentShaderSource, a_modelType, false /* use shading */, true /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(
+			fragmentShaderSource, a_modelType, false /* use shading */, true /* use normal */, {} /* extra defines */, a_optionalProgramId);
 	}
-	
+
 	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_fragment_shader.glsl");
-		return createGeometryProgram(fragmentShaderSource, a_modelType, false /* use shading */, false /* use normal */, a_optionalProgramId);
+		return createGeometryProgram(
+			fragmentShaderSource, a_modelType, false /* use shading */, false /* use normal */, {} /* extra defines */, a_optionalProgramId);
 	}
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
