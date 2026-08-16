@@ -473,22 +473,22 @@ namespace vob::aoegl
 			ImGui::Checkbox("Enable##ssr", &k_ssrEnabled);
 			static int k_ssrLog2Step = 7;
 			ImGui::InputInt("Log2 Step", &k_ssrLog2Step);
-			static int k_ssrLog2SubStep = 3;
+			static int k_ssrLog2SubStep = 4;
 			ImGui::InputInt("Log2 Sub Step", &k_ssrLog2SubStep);
-			static float k_ssrThicknessRatio = 0.1f;
-			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMaxRangeRatio = 100.0f;
-			ImGui::SliderFloat("Max Range Ratio", &k_ssrMaxRangeRatio, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrInitialBiasRatio = 0.001f;
+			static float k_ssrThicknessRatio = 0.125f;
+			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrMaxRange = 500.0f;
+			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrInitialBiasRatio = 0.01f;
 			ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMaxThickness = 0.25f;
-			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 10.0f);
+			static float k_ssrMaxThickness = 10.0f;
+			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 50.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 
 			auto const ssrParams = UniformSsrParams{
 				.log2Step = k_ssrLog2Step,
 				.log2SubStep = k_ssrLog2SubStep,
 				.thicknessRatio = k_ssrThicknessRatio,
-				.maxRangeRatio = k_ssrMaxRangeRatio,
+				.maxRange = k_ssrMaxRange,
 				.initialBiasRatio = k_ssrInitialBiasRatio,
 				.maxThickness = k_ssrMaxThickness
 			};
@@ -556,18 +556,16 @@ namespace vob::aoegl
 				createSsaoProgram(debugProgramCtx.ssaoProgram);
 			}
 
-			if (ImGui::Button("Recompile Ssr Program"))
+			if (ImGui::Button("Recompile Sky Programs"))
 			{
 				tryExportCoreShaders();
-				createSsrProgram(debugProgramCtx.ssrProgram);
-			}
-
-			if (ImGui::Button("Recompile Sky Box Program"))
-			{
-				tryExportCoreShaders();
-				auto const skyBoxSource = debugProgramCtx.stringDatabase.find(
+				auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
 					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyBoxSourcePath));
-				createQuadProgram(*skyBoxSource, debugProgramCtx.skyBoxProgram);
+				if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
+				{
+					createSkyProgram(*skyPartialSource, debugProgramCtx.skyBoxProgram);
+					createSsrProgram(*skyPartialSource, debugProgramCtx.ssrProgram);
+				}
 			}
 
 			auto const activeShaderStr = toSmallStr(debugProgramCtx.shaders[k_activeShaderIndex].shaderDefinition->name);
@@ -1300,7 +1298,7 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 
-			beginPass(gpuState, renderSceneCtx.ssrFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+			beginPass(gpuState, renderSceneCtx.ssrFramebuffer, renderSceneCtx.ssrResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrProgram);
 
 			if (k_ssrEnabled)

@@ -11,7 +11,9 @@ out vec4 oColor;
 
 void main()
 {
-    vec3 f0 = texture(uOpaqueComposition_OpaqueSurface, vUv).rgb;
-    oColor = vec4(
-        texture(uOpaqueComposition_DirectOpaqueColor, vUv).rgb + texture(uOpaqueComposition_SsrColor, vUv).rgb * f0, 1.0);
+    float roughness = texture(uOpaqueComposition_OpaqueSurface, vUv).a;
+    float maxLod = float(textureQueryLevels(uOpaqueComposition_SsrColor) - 1);
+    vec3 reflection = textureLod(uOpaqueComposition_SsrColor, vUv, roughness * maxLod).rgb;
+
+    oColor = vec4(texture(uOpaqueComposition_DirectOpaqueColor, vUv).rgb + reflection, 1.0);
 }

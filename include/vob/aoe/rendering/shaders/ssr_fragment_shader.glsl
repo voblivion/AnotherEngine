@@ -8,6 +8,8 @@
 in vec2 vUv;
 out vec4 oSsrColor;
 
+vec3 getSkyColor(vec3 dir, float lod);
+
 
 vec3 ReconstructViewPos2(vec2 uv, float depth)
 {
@@ -29,6 +31,16 @@ float LinearizeDepth(float depth)
     return uView.nearClip * uView.farClip / (uView.farClip - depth * (uView.farClip - uView.nearClip));
 }
 
+// Lazarov's analytic fit of the split-sum environment BRDF, so no LUT is needed
+vec2 envBrdfApprox(float NdotV, float roughness)
+{
+    const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
+    const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
+    vec4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    return vec2(-1.04, 1.04) * a004 + r.zw;
+}
+
 void main()
 {
     // --- skip background ---
@@ -42,7 +54,7 @@ void main()
     vec3 surface = texture(uSsr_OpaqueSurface, vUv).rgb;
     if (surface.r == 0.0)
     {
-        oSsrColor = vec4(0.0, 0.0, 0.5, 0.0);
+        oSsrColor = vec4(0.0);
         return;
     }
 
@@ -53,13 +65,24 @@ void main()
     // --- reflection ray in view space ---
     vec3 incident = normalize(viewPos - vec3(0.0)); // view-space: camera is at origin
     vec3 reflDir  = reflect(incident, normal);
-    
+
+    float roughness = texture(uSsr_OpaqueSurface, vUv).a;
+    float NdotV = max(dot(normal, -incident), 0.0);
+    vec2 envBrdf = envBrdfApprox(NdotV, roughness);
+    vec3 specularWeight = surface * envBrdf.x + envBrdf.y;
+
+    const float k_minSpecularWeight = 0.005;
+    if (max(max(specularWeight.r, specularWeight.g), specularWeight.b) < k_minSpecularWeight)
+    {
+        oSsrColor = vec4(0.0);
+        return;
+    }
+
     // --- project a far point along reflDir to get NDC ray direction ---
-    
+
     int steps = 1 << uSsr.log2Step;
-    float maxRange = uSsr.maxRangeRatio * steps;
-    
-    vec4 reflEndClip = uView.viewToClip * vec4(viewPos + reflDir * maxRange, 1.0);
+
+    vec4 reflEndClip = uView.viewToClip * vec4(viewPos + reflDir * uSsr.maxRange, 1.0);
     vec3 reflEndNDC  = reflEndClip.xyz / reflEndClip.w;
 
     // avoid self hits?
@@ -73,9 +96,12 @@ void main()
     vec3 rayStepNDC = (reflEndNDC - startNDC) / float(steps);
     
     
-    // no hit
-    vec4 color = vec4(0.0, 0.0, 0.0, 0);
+    vec3 hitColor = vec3(0.0);
+    float confidence = 0.0;
     vec3 sampleNDC = startNDC + rayStepNDC; // start one step ahead to avoid self-hit
+
+    float prevRay = LinearizeDepth(startNDC.z * 0.5 + 0.5);
+    float prevDiff = -1.0; // the ray starts in front of the surface it left
 
     for (int i = 0; i < steps; ++i, sampleNDC += rayStepNDC)
     {
@@ -89,11 +115,15 @@ void main()
         float linearRay   = LinearizeDepth(sampleNDC.z * 0.5 + 0.5);
 
         float diff = linearRay - linearScene;
-        float thickness = min(linearScene * uSsr.thicknessRatio, uSsr.maxThickness);
-        if (diff > 0.0 && diff < linearScene * thickness)
+        float advance = max(linearRay - prevRay, 0.0);
+        float thickness = max(advance, min(linearScene * uSsr.thicknessRatio, uSsr.maxThickness));
+
+        bool crossed = prevDiff <= 0.0 && diff > 0.0;
+        prevRay = linearRay;
+        prevDiff = diff;
+
+        if (crossed && diff < thickness)
         {
-            color = vec4(texture(uSsr_DirectOpaqueColor, uv).rgb, 1.0);
-            
             vec3 bisectStep = rayStepNDC * 0.5;
             sampleNDC -= rayStepNDC; // go back to last known miss
             
@@ -111,9 +141,21 @@ void main()
                 if (midRayLinear - midLinear > 0.0)
                     sampleNDC -= bisectStep; // behind surface, step back
             }
-            color = vec4(texture(uSsr_DirectOpaqueColor, sampleNDC.xy * 0.5 + 0.5).rgb, 1.0);
+            vec2 hitUv = sampleNDC.xy * 0.5 + 0.5;
+            hitColor = texture(uSsr_DirectOpaqueColor, hitUv).rgb;
+
+            vec2 borderDist = min(hitUv, 1.0 - hitUv);
+            confidence = smoothstep(0.0, 0.1, min(borderDist.x, borderDist.y));
             break;
         }
     }
-    oSsrColor = color;
+
+    // rays travelling back toward the camera need information the screen does not hold
+    confidence *= smoothstep(0.25, 0.0, reflDir.z);
+
+    float skyLod = clamp(roughness * 2.0, 0.0, 1.0);
+    vec3 reflDirWorld = normalize(mat3(uView.viewToWorld) * reflDir);
+    vec3 radiance = mix(getSkyColor(reflDirWorld, skyLod), hitColor, confidence);
+
+    oSsrColor = vec4(radiance * specularWeight, 1.0);
 }

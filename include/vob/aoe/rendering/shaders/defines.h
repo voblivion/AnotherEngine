@@ -207,7 +207,7 @@ struct ALIGN_16 UniformSsrParams
     int log2Step;
     int log2SubStep;
     float thicknessRatio;
-    float maxRangeRatio;
+    float maxRange;
     float initialBiasRatio;
     float maxThickness;
 };

@@ -42,7 +42,9 @@ namespace vob::aoegl
 
 	GraphicId createSsaoProgram(GraphicId a_optionalProgramId = k_invalidId);
 
-	GraphicId createSsrProgram(GraphicId a_optionalProgramId = k_invalidId);
+	GraphicId createSsrProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createSkyProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createOpaqueCompositionProgram(GraphicId a_optionalProgramId = k_invalidId);
 
