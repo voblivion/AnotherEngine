@@ -12,6 +12,8 @@
 
 namespace vob::aoegl
 {
+	bool tryExportCoreShaders();
+
 	GraphicId createProgram(
 		std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId = k_invalidId);
 
@@ -23,8 +25,6 @@ namespace vob::aoegl
 		Rigged,
 		Instanced
 	};
-
-	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
 
 	// Appends a material partial to the pass shell; the shell forward-declares what the partial defines.
 	GraphicId createShadingProgram(

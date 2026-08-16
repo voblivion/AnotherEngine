@@ -7,6 +7,7 @@
 #include "vob/aoe/rendering/GpuState.h"
 #include "vob/aoe/rendering/ProgramUtils.h"
 
+#include "vob/aoe/debug/Check.h"
 #include "vob/aoe/debug/DebugNameUtils.h"
 #include "vob/aoe/debug/ImGuiUtils.h"
 #include "vob/aoe/spacetime/TransformUtils.h"
@@ -535,7 +536,7 @@ namespace vob::aoegl
 			glNamedBufferSubData(renderSceneCtx.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
 
 			ImGui::SeparatorText("Shaders");
-			static int32_t k_activeShadingProgramIndex = 0;
+			static int32_t k_activeShaderIndex = 0;
 			auto const toSmallStr = [](std::string_view a_stringView)
 				{
 					constexpr size_t k_maxSize = 16;
@@ -546,56 +547,71 @@ namespace vob::aoegl
 					return smallStr;
 				};
 
-			k_activeShadingProgramIndex = std::min(k_activeShadingProgramIndex, mistd::isize(debugProgramCtx.forwardPrograms) - 1);
+			k_activeShaderIndex = std::min(k_activeShaderIndex, mistd::isize(debugProgramCtx.shaders) - 1);
 
 
 			if (ImGui::Button("Recompile Ssao Program"))
 			{
-				std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
+				tryExportCoreShaders();
 				createSsaoProgram(debugProgramCtx.ssaoProgram);
 			}
 
 			if (ImGui::Button("Recompile Ssr Program"))
 			{
-				std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
+				tryExportCoreShaders();
 				createSsrProgram(debugProgramCtx.ssrProgram);
 			}
 
 			if (ImGui::Button("Recompile Sky Box Program"))
 			{
-				std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
+				tryExportCoreShaders();
 				auto const skyBoxSource = debugProgramCtx.stringDatabase.find(
 					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyBoxSourcePath));
 				createQuadProgram(*skyBoxSource, debugProgramCtx.skyBoxProgram);
 			}
 
-			auto const activeShadingProgramStr = toSmallStr(debugProgramCtx.forwardPrograms[k_activeShadingProgramIndex].name);
-			if (ImGui::BeginCombo("Shading Program", activeShadingProgramStr.data()))
+			auto const activeShaderStr = toSmallStr(debugProgramCtx.shaders[k_activeShaderIndex].shaderDefinition->name);
+			if (ImGui::BeginCombo("Shader", activeShaderStr.data()))
 			{
-				for (int32_t i = 0; i < mistd::isize(debugProgramCtx.forwardPrograms); ++i)
+				for (int32_t i = 0; i < mistd::isize(debugProgramCtx.shaders); ++i)
 				{
-					auto const shadingProgramStr = toSmallStr(debugProgramCtx.forwardPrograms[i].name);
-					if (ImGui::Selectable(shadingProgramStr.data(), i == k_activeShadingProgramIndex))
+					auto const shaderStr = toSmallStr(debugProgramCtx.shaders[i].shaderDefinition->name);
+					if (ImGui::Selectable(shaderStr.data(), i == k_activeShaderIndex))
 					{
-						k_activeShadingProgramIndex = i;
+						k_activeShaderIndex = i;
 					}
 
-					if (i == k_activeShadingProgramIndex)
+					if (i == k_activeShaderIndex)
 					{
 						ImGui::SetItemDefaultFocus();
 					}
 				}
 				ImGui::EndCombo();
 			}
-			if (ImGui::Button("Recompile Shading Program"))
+			if (ImGui::Button("Recompile Shader"))
 			{
-				std::system("tools\\GLSLGenerator\\bin\\x64\\Release\\GLSLGenerator.exe include\\vob\\aoe\\rendering\\shaders data\\shaders\\core");
-				auto const& forwardProgram = debugProgramCtx.forwardPrograms[k_activeShadingProgramIndex];
-				auto const shadingSource = debugProgramCtx.stringDatabase.find(
-					debugProgramCtx.filesystemIndexer.get_runtime_id(forwardProgram.shadingSourcePath));
-				createShadingProgram(*shadingSource, ModelType::Static, forwardProgram.staticProgram);
-				createShadingProgram(*shadingSource, ModelType::Rigged, forwardProgram.riggedProgram);
-				createShadingProgram(*shadingSource, ModelType::Instanced, forwardProgram.instancedProgram);
+				tryExportCoreShaders();
+				auto const& shader = debugProgramCtx.shaders[k_activeShaderIndex];
+				auto const& shaderDefinition = *shader.shaderDefinition;
+				auto const& sourcePath = shaderDefinition.partialSourcePath;
+				auto const source = debugProgramCtx.stringDatabase.find(
+					debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
+				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string()))
+				{
+					auto const recompile = [&](ModelType a_modelType, GraphicId a_programId)
+						{
+							createShadingProgram(
+								*source
+								, shaderDefinition.defines
+								, shaderDefinition.shadingPass
+								, a_modelType
+								, a_programId);
+						};
+
+					recompile(ModelType::Static, shader.staticProgram);
+					recompile(ModelType::Rigged, shader.riggedProgram);
+					recompile(ModelType::Instanced, shader.instancedProgram);
+				}
 			}
 
 		}

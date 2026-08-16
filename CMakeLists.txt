@@ -63,6 +63,12 @@ target_link_libraries(AnotherEngine PUBLIC
 add_executable(ShaderExporter tools/ShaderExporter/main.cpp)
 target_compile_features(ShaderExporter PRIVATE cxx_std_23)
 
+target_compile_definitions(AnotherEngine PRIVATE
+    $<$<NOT:$<CONFIG:Release>>:VOB_AOEGL_SHADER_EXPORTER="$<TARGET_FILE:ShaderExporter>">
+    $<$<NOT:$<CONFIG:Release>>:VOB_AOEGL_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/include/vob/aoe/rendering/shaders">
+)
+add_dependencies(AnotherEngine ShaderExporter)
+
 if(MSVC)
     target_compile_options(AnotherEngine PRIVATE /W4 /WX /wd4324)
 endif()

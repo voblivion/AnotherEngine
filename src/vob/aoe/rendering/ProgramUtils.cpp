@@ -1,7 +1,10 @@
 #include <vob/aoe/rendering/ProgramUtils.h>
 
+#include <vob/aoe/debug/Check.h>
+
 #include <vob/misc/std/ignorable_assert.h>
 
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <regex>
@@ -35,6 +38,24 @@ namespace vob::aoegl
 		std::cout.flush();
 	}
 #endif
+
+	bool tryExportCoreShaders()
+	{
+#if defined(VOB_AOEGL_SHADER_EXPORTER) && defined(VOB_AOEGL_SHADER_SOURCE_DIR)
+		auto const exporter = std::filesystem::path{ VOB_AOEGL_SHADER_EXPORTER }.make_preferred();
+		auto const sourceDir = std::filesystem::path{ VOB_AOEGL_SHADER_SOURCE_DIR }.make_preferred();
+		auto const destinationDir = std::filesystem::path{ VOB_AOEGL_SHADER_DIR "core" }.make_preferred();
+
+		auto command = std::string{ '"' };
+		command += '"' + exporter.string() + "\" \"" + sourceDir.string() + "\" \"" + destinationDir.string() + '"';
+		command += '"';
+
+		auto const result = std::system(command.c_str());
+		return VOB_AOE_CHECK_LOG(result == 0, "Core shader export failed ({}).", result);
+#else
+		return false;
+#endif
+	}
 
 	GraphicId createShader(GraphicEnum a_shaderType, std::string_view a_shaderSource)
 	{
@@ -281,12 +302,6 @@ namespace vob::aoegl
 		setDefines(fragmentShaderSource, defines);
 		processIncludes(fragmentShaderSource);
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
-	}
-
-	GraphicId createShadingProgram(std::string_view a_fragmentShaderSource, ModelType a_modelType, GraphicId a_optionalProgramId)
-	{
-		return createGeometryProgram(
-			a_fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, {} /* extra defines */, a_optionalProgramId);
 	}
 
 	GraphicId createShadingProgram(

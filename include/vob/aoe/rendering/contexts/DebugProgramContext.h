@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/ShaderDefinition.h"
 
 #include <vob/aoe/data/filesystem_database.h>
 #include "vob/aoe/data/id.h"
@@ -17,13 +18,12 @@ namespace vob::aoegl
 {
 	struct DebugProgramContext
 	{
-		struct ForwardProgram
+		struct Shader
 		{
-			std::string_view name;
 			GraphicId staticProgram;
 			GraphicId riggedProgram;
 			GraphicId instancedProgram;
-			std::filesystem::path shadingSourcePath;
+			std::shared_ptr<ShaderDefinition const> shaderDefinition;
 		};
 
 		struct PostProcessProgram
@@ -35,7 +35,7 @@ namespace vob::aoegl
 
 		aoedt::filesystem_indexer filesystemIndexer;
 		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
-		std::vector<ForwardProgram> forwardPrograms;
+		std::vector<Shader> shaders;
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
