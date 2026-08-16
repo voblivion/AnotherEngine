@@ -1328,7 +1328,6 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::SurelyNo>(k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.directOpaqueColorTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.ssrColorTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionEnvironmentCubeMap, renderSceneCtx.environmentCubeMap);
 			beginPass(gpuState, renderSceneCtx.finalFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.opaqueCompositionProgram);
 

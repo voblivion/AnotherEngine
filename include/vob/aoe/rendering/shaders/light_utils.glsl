@@ -97,8 +97,7 @@ float geometrySchlickGGX(float NdotV, float k)
 float geometrySmith(float NdotV, float NdotL, float roughness)
 {
     float r = (roughness + 1.0);
-    // Note: higher 8.0 for less darkening at grazing angles; Epics maybe uses 8.0?
-    float k = (r * r) / 2.0;
+    float k = (r * r) / 8.0;
     float ggx2 = geometrySchlickGGX(NdotV, k);
     float ggx1 = geometrySchlickGGX(NdotL, k);
     return ggx1 * ggx2;
@@ -116,13 +115,42 @@ float evaluateLightAttenuation(GpuLight light, vec3 toLightDir, float toLightDis
     
     float relativeDist = toLightDist / light.radius;
     float relativeDistSq = relativeDist * relativeDist;
-    float distanceAttenuation = clamp(1.0 - relativeDistSq, 0.0, 1.0);
+    float window = clamp(1.0 - relativeDistSq * relativeDistSq, 0.0, 1.0);
+    float distanceAttenuation = window * window / (toLightDist * toLightDist + 0.0001);
     
     float cosTheta = dot(light.direction, -toLightDir);
     float spotAngleAttenuation = smoothstep(light.outerAngleCos, light.innerAngleCos, cosTheta);
     float angleAttenuation = mix(1.0, spotAngleAttenuation, isSpot);
     
     return distanceAttenuation * angleAttenuation;
+}
+
+vec3 evaluateBrdf(
+    vec3 L,
+    vec3 V,
+    vec3 N,
+    vec3 albedo,
+    float metallic,
+    float inRoughness,
+    float reflectance)
+{
+    float roughness = max(inRoughness, 0.045);
+
+    vec3 H = normalize(V + L);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+
+    vec3 F0 = mix(vec3(0.16 * reflectance * reflectance), albedo, metallic);
+
+    float NDF = distributionGGX(N, H, roughness);
+    float G = geometrySmith(NdotV, NdotL, roughness);
+    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 kD = vec3(1.0) - F;
+    kD *= 1.0 - metallic;
+    vec3 specular = (NDF * G * F) / (4.0 * NdotV * NdotL + 0.0001);
+
+    return kD * albedo / 3.14159265358979 + specular;
 }
 
 vec3 evaluateLight(
@@ -137,28 +165,16 @@ vec3 evaluateLight(
 {
     vec3 toLight = light.position - position;
     float toLightDist = length(toLight);
-    
+
     vec3 L = toLight / toLightDist;
     vec3 N = normal;
     vec3 V = normalize(viewPosition - position);
-    vec3 H = normalize(V + L);
-    float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-    
+
     float attenuation = evaluateLightAttenuation(light, L, toLightDist);
     vec3 radiance = light.color * light.intensity * attenuation;
-    
-    vec3 F0 = mix(vec3(0.16 * reflectance * reflectance), albedo, metallic);
-    
-    float NDF = distributionGGX(N, H, roughness);
-    float G = geometrySmith(NdotV, NdotL, roughness);
-    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-    
-    vec3 kD = vec3(1.0) - F;
-    kD *= 1.0 - metallic;
-    vec3 specular = (NDF * G * F) / (4.0 * NdotV * NdotL + 0.0001);
-    
-    return vec3((kD * albedo / 3.14159265358979 + specular) * radiance * NdotL);
+
+    return evaluateBrdf(L, V, N, albedo, metallic, roughness, reflectance) * radiance * NdotL;
 }
 
 #endif // VOB_AOEGL_CORE_LIGHT_UTILS_GLSL

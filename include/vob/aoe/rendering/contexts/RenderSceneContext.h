@@ -148,7 +148,6 @@ namespace vob::aoegl
 		GraphicId debugGeometryVbo;
 		GraphicId debugGeometryEbo;
 		GraphicId postProcessVao;
-		GraphicId environmentCubeMap;
 
 	};
 }
