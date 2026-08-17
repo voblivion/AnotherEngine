@@ -1,0 +1,10 @@
+#ifndef VOB_AOEGL_CORE_BINDINGS_OPAQUE_COMPOSITION_GLSL
+#define VOB_AOEGL_CORE_BINDINGS_OPAQUE_COMPOSITION_GLSL
+
+#include "core/bindings.glsl"
+
+layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_DIRECT_OPAQUE_COLOR) uniform sampler2D uOpaqueComposition_DirectOpaqueColor;
+layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE) uniform sampler2D uOpaqueComposition_OpaqueSurface;
+layout(binding = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR) uniform sampler2D uOpaqueComposition_SsrColor;
+
+#endif // #ifndef VOB_AOEGL_CORE_BINDINGS_OPAQUE_COMPOSITION_GLSL

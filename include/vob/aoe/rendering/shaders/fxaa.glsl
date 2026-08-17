@@ -24,7 +24,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
+#include "core/bindings_anti_aliasing.glsl"
 #include "core/math_utils.glsl"
 
 

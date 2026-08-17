@@ -1,6 +1,7 @@
 #ifndef VOB_AOEGL_SHADING_UTILS_GLSL
 #define VOB_AOEGL_SHADING_UTILS_GLSL
 
+#include "core/bindings_shading.glsl"
 #include "core/light_utils.glsl"
 #include "core/shading_outputs.glsl"
 

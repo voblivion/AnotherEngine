@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
+#include "core/bindings_ssao.glsl"
 #include "core/math_utils.glsl"
 
 in vec2 vUv;

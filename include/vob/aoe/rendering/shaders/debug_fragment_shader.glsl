@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
+#include "core/bindings_debug.glsl"
 #include "core/light_utils.glsl"
 #include "core/math_utils.glsl"
 
