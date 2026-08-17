@@ -40,6 +40,7 @@ namespace vob::aoegl
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram;
-		std::filesystem::path skyBoxSourcePath;
+		GraphicId skyIrradianceProgram;
+		std::filesystem::path skyPartialSourcePath;
 	};
 }

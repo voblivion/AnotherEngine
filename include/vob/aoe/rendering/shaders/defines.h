@@ -2,9 +2,11 @@
 #define VOB_AOEGL_CORE_DEFINES_GLSL
 
 #define SUN_CASCADING_SHADOW_MAPS_CAPACITY 4
-#define SPOT_LIGHT_SHADOW_MAPS_CAPACITY 4
+#define SPOT_LIGHT_SHADOW_MAPS_CAPACITY 14
 #define RIG_BONES_CAPACITY 100
-#define MATERIAL_TEXTURES_CAPACITY 16
+#define MATERIAL_TEXTURES_CAPACITY 12
+#define SKY_IRRADIANCE_COEFFICIENT_COUNT 9
+#define SKY_IRRADIANCE_SAMPLE_COUNT 64
 // Note: max int16
 #define MAX_LIGHTS_CAPACITY 32767
 // Note: max int8
@@ -29,6 +31,7 @@
 #define BINDING_SSBO_LIGHTS 0
 #define BINDING_SSBO_LIGHT_CLUSTER_SIZES 1
 #define BINDING_SSBO_LIGHT_CLUSTER_INDICES 2
+#define BINDING_SSBO_SKY_IRRADIANCE 3
 
 #define BINDING_TEXTURE_SSAO_OPAQUE_DEPTH 0
 #define BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL 1
@@ -133,7 +136,7 @@ struct ALIGN_16 UniformTargetParams
 
 struct ALIGN_16 UniformLightingParams
 {
-    ubo_vec3 ambientColor;
+    float ambientIntensity;
     int lightCount;
     ubo_ivec2 lightClusterResolution;
     ubo_ivec2 lightClusterTileSize;
@@ -250,6 +253,8 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr int32_t k_spotLightShadowMapsCapacity = SPOT_LIGHT_SHADOW_MAPS_CAPACITY;
 	static constexpr int32_t k_rigBonesCapacity = RIG_BONES_CAPACITY;
 	static constexpr int32_t k_materialTexturesCapacity = MATERIAL_TEXTURES_CAPACITY;
+	static constexpr int32_t k_skyIrradianceCoefficientCount = SKY_IRRADIANCE_COEFFICIENT_COUNT;
+	static constexpr int32_t k_skyIrradianceSampleCount = SKY_IRRADIANCE_SAMPLE_COUNT;
 	static constexpr int32_t k_maxLightsCapacity = MAX_LIGHTS_CAPACITY;
 	static constexpr int32_t k_maxLightClusterCapacity = MAX_LIGHT_CLUSTER_CAPACITY;
 
@@ -271,6 +276,7 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingSsboLights = BINDING_SSBO_LIGHTS;
 	static constexpr uint32_t k_bindingSsboLightClusterSizes = BINDING_SSBO_LIGHT_CLUSTER_SIZES;
 	static constexpr uint32_t k_bindingSsboLightClusterIndices = BINDING_SSBO_LIGHT_CLUSTER_INDICES;
+	static constexpr uint32_t k_bindingSsboSkyIrradiance = BINDING_SSBO_SKY_IRRADIANCE;
 
     static constexpr uint32_t k_bindingTextureSsaoOpaqueDepth = BINDING_TEXTURE_SSAO_OPAQUE_DEPTH;
     static constexpr uint32_t k_bindingTextureSsaoOpaqueGeometricNormal = BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL;
@@ -316,6 +322,8 @@ struct ALIGN_16 UniformDebugParams
 #undef SPOT_LIGHT_SHADOW_MAPS_CAPACITY
 #undef RIG_BONES_CAPACITY
 #undef MATERIAL_TEXTURES_CAPACITY
+#undef SKY_IRRADIANCE_COEFFICIENT_COUNT
+#undef SKY_IRRADIANCE_SAMPLE_COUNT
 #undef MAX_LIGHTS_CAPACITY
 #undef MAX_LIGHT_CLUSTER_CAPACITY
 
@@ -338,6 +346,7 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_SSBO_LIGHTS
 #undef BINDING_SSBO_LIGHT_CLUSTER_SIZES
 #undef BINDING_SSBO_LIGHT_CLUSTER_INDICES
+#undef BINDING_SSBO_SKY_IRRADIANCE
 
 #undef BINDING_TEXTURE_SSAO_OPAQUE_DEPTH
 #undef BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL

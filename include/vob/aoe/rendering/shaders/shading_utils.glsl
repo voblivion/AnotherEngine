@@ -2,6 +2,7 @@
 #define VOB_AOEGL_SHADING_UTILS_GLSL
 
 #include "core/light_utils.glsl"
+#include "core/shading_outputs.glsl"
 
 int uComputeLightClusterIndex()
 {
@@ -109,6 +110,35 @@ float uEvaluateAmbientOcclusion(vec4 coord)
     return texture(uShading_AmbientOcclusion, coord.xy * uTarget.invResolution).r;
 }
 
+// Geometric specular antialiasing: a normal that swings within one pixel cannot produce a mirror
+// thin highlight, so widen roughness by how fast it varies on screen.
+float uFilterSpecularRoughness(vec3 normal, float roughness)
+{
+    const float k_variance = 0.15;
+    const float k_threshold = 0.25;
+
+    vec3 dndx = dFdx(normal);
+    vec3 dndy = dFdy(normal);
+    float variance = k_variance * (dot(dndx, dndx) + dot(dndy, dndy));
+    float kernelRoughness = min(2.0 * variance, k_threshold);
+
+    float alpha = roughness * roughness;
+    return sqrt(sqrt(clamp(alpha * alpha + kernelRoughness, 0.0, 1.0)));
+}
+
+vec3 uEvaluateSkyIrradiance(vec3 normal)
+{
+    return uSkyIrradiance[0].rgb * 0.282095
+        + uSkyIrradiance[1].rgb * 0.488603 * normal.y
+        + uSkyIrradiance[2].rgb * 0.488603 * normal.z
+        + uSkyIrradiance[3].rgb * 0.488603 * normal.x
+        + uSkyIrradiance[4].rgb * 1.092548 * normal.x * normal.y
+        + uSkyIrradiance[5].rgb * 1.092548 * normal.y * normal.z
+        + uSkyIrradiance[6].rgb * 0.315392 * (3.0 * normal.z * normal.z - 1.0)
+        + uSkyIrradiance[7].rgb * 1.092548 * normal.x * normal.z
+        + uSkyIrradiance[8].rgb * 0.546274 * (normal.x * normal.x - normal.y * normal.y);
+}
+
 vec3 uEvaluateLights(
     vec4 coord,
     vec3 position,
@@ -120,7 +150,7 @@ vec3 uEvaluateLights(
     float occlusion)
 {
     vec3 color = vec3(0.0);
-    
+
     int lightClusterIndex = uComputeLightClusterIndex();
     int lightClusterSize = uLightClusterSizes[lightClusterIndex];
     for (int i = 0; i < lightClusterSize; ++i)
@@ -138,7 +168,8 @@ vec3 uEvaluateLights(
     color += sunBrdf * sunNdotL * (1.0 - sunShadow) * uLighting.sunColor * uLighting.sunIntensity;
 
     float ambientOcclusion = uEvaluateAmbientOcclusion(coord) * occlusion;
-    color += albedo * uLighting.ambientColor * ambientOcclusion;
+    vec3 irradiance = max(uEvaluateSkyIrradiance(normal), vec3(0.0));
+    color += (1.0 - metallic) * albedo / 3.14159265358979 * irradiance * uLighting.ambientIntensity * ambientOcclusion;
 
     return color;
 }
@@ -153,6 +184,28 @@ vec3 uEvaluateLights(
     float reflectance)
 {
     return uEvaluateLights(coord, position, normal, albedo, metallic, roughness, reflectance, 1.0);
+}
+
+// The conventional way to fill OpaqueOutputs. A material free to shade itself differently simply
+// does not call this.
+OpaqueOutputs uShadeStandardOpaqueSurface(
+    vec4 coord,
+    vec3 position,
+    vec3 normal,
+    vec3 albedo,
+    float metallic,
+    float inRoughness,
+    float reflectance,
+    float occlusion)
+{
+    float roughness = uFilterSpecularRoughness(normal, inRoughness);
+
+    OpaqueOutputs outputs;
+    outputs.color = uEvaluateLights(coord, position, normal, albedo, metallic, roughness, reflectance, occlusion);
+    outputs.normal = normal;
+    outputs.surface = vec4(mix(vec3(0.16 * reflectance * reflectance), albedo, metallic), roughness);
+
+    return outputs;
 }
 
 #endif // #ifndef VOB_AOEGL_SHADING_UTILS_GLSL

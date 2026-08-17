@@ -30,6 +30,10 @@ out mat3 vTBN;
 out vec3 vNormal;
 #endif
 
+// The depth pre-pass and the shading pass compile this file with different defines, so without this
+// the compiler may optimise gl_Position differently between them and the pass' GL_EQUAL test fails.
+invariant gl_Position;
+
 void main()
 {
 #if USE_RIG

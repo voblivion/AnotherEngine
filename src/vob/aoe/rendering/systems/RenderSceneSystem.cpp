@@ -132,7 +132,7 @@ namespace vob::aoegl
 			}
 			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
 			auto const lightingParams = UniformLightingParams{
-				.ambientColor = glm::vec3{ 0.5f },
+				.ambientIntensity = 1.0f,
 				.lightCount = std::min(mistd::isize(culledLights), a_lightsCapacity),
 				.lightClusterResolution = a_lightClusterResolution,
 				.lightClusterTileSize = a_lightClusterTileSize,
@@ -479,7 +479,7 @@ namespace vob::aoegl
 			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			static float k_ssrMaxRange = 500.0f;
 			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrInitialBiasRatio = 0.01f;
+			static float k_ssrInitialBiasRatio = 0.1f;
 			ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			static float k_ssrMaxThickness = 10.0f;
 			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 50.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
@@ -556,16 +556,45 @@ namespace vob::aoegl
 				createSsaoProgram(debugProgramCtx.ssaoProgram);
 			}
 
-			if (ImGui::Button("Recompile Sky Programs"))
+			if (ImGui::Button("Recompile Opaque Composition Program"))
 			{
 				tryExportCoreShaders();
-				auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
-					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyBoxSourcePath));
-				if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
+				createOpaqueCompositionProgram(debugProgramCtx.opaqueCompositionProgram);
+			}
+
+			auto const recompileWithSkyPartial = [&](auto a_recompile)
 				{
-					createSkyProgram(*skyPartialSource, debugProgramCtx.skyBoxProgram);
-					createSsrProgram(*skyPartialSource, debugProgramCtx.ssrProgram);
-				}
+					tryExportCoreShaders();
+					auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
+						debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyPartialSourcePath));
+					if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
+					{
+						a_recompile(*skyPartialSource);
+					}
+				};
+
+			if (ImGui::Button("Recompile Sky Box Program"))
+			{
+				recompileWithSkyPartial([&](std::string_view a_source)
+					{
+						createSkyProgram(a_source, debugProgramCtx.skyBoxProgram);
+					});
+			}
+
+			if (ImGui::Button("Recompile Ssr Program"))
+			{
+				recompileWithSkyPartial([&](std::string_view a_source)
+					{
+						createSsrProgram(a_source, debugProgramCtx.ssrProgram);
+					});
+			}
+
+			if (ImGui::Button("Recompile Sky Irradiance Program"))
+			{
+				recompileWithSkyPartial([&](std::string_view a_source)
+					{
+						createSkyIrradianceProgram(a_source, debugProgramCtx.skyIrradianceProgram);
+					});
 			}
 
 			auto const activeShaderStr = toSmallStr(debugProgramCtx.shaders[k_activeShaderIndex].shaderDefinition->name);
@@ -679,6 +708,17 @@ namespace vob::aoegl
 			auto const lightClusterCount = lightClusterXYCount.x * lightClusterXYCount.y * lightingParams.lightClusterZCount;
 			auto const workGroupCount = (lightClusterCount + renderSceneCtx.lightClusteringWorkGroupSize - 1) / renderSceneCtx.lightClusteringWorkGroupSize;
 			glDispatchCompute(static_cast<uint32_t>(workGroupCount), 1, 1);
+		}
+
+		// III bis - Project Sky Irradiance
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sky Irradiance");
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.skyIrradianceProgram);
+			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
+			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboLighting, renderSceneCtx.lightingParamsUbo);
+			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboSkyIrradiance, renderSceneCtx.skyIrradianceSsbo);
+
+			glDispatchCompute(1, 1, 1);
 		}
 
 		// IV - Prepare Meshes
@@ -1311,6 +1351,7 @@ namespace vob::aoegl
 			{
 				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
 				glClear(GL_COLOR_BUFFER_BIT);
+				glGenerateTextureMipmap(renderSceneCtx.ssrColorTexture);
 			}
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrColorTexture, DebugType::ColorTexture);

@@ -153,6 +153,10 @@ void main()
     // rays travelling back toward the camera need information the screen does not hold
     confidence *= smoothstep(0.25, 0.0, reflDir.z);
 
+    // one mirror ray only represents a narrow lobe; the wider it gets, the less a single
+    // sample says about it, so lean on the sky's prefiltered version instead
+    confidence *= 1.0 - smoothstep(0.45, 0.85, roughness);
+
     float skyLod = clamp(roughness * 2.0, 0.0, 1.0);
     vec3 reflDirWorld = normalize(mat3(uView.viewToWorld) * reflDir);
     vec3 radiance = mix(getSkyColor(reflDirWorld, skyLod), hitColor, confidence);

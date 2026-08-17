@@ -78,6 +78,11 @@ layout(std430, binding = BINDING_SSBO_LIGHT_CLUSTER_INDICES) buffer ShaderStorag
     int16_t uLightClusterIndices[];
 };
 
+layout(std430, binding = BINDING_SSBO_SKY_IRRADIANCE) buffer ShaderStorageSkyIrradiance
+{
+    vec4 uSkyIrradiance[SKY_IRRADIANCE_COEFFICIENT_COUNT];
+};
+
 layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL) uniform sampler2D uSsao_OpaqueGeometricNormal;
 layout(binding = BINDING_TEXTURE_SSAO_OPAQUE_DEPTH) uniform sampler2D uSsao_OpaqueDepth;
 

@@ -368,6 +368,15 @@ namespace vob::aoegl
 		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
 	}
 
+	GraphicId createSkyIrradianceProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId)
+	{
+		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/sky_irradiance_shader.glsl");
+		computeShaderSource += '\n';
+		computeShaderSource += a_skyPartialSource;
+		processIncludes(computeShaderSource);
+		return createComputeProgram(computeShaderSource, a_optionalProgramId);
+	}
+
 	GraphicId createSsrProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId)
 	{
 		auto fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssr_fragment_shader.glsl");

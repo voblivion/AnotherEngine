@@ -13,13 +13,7 @@ layout(std140, binding = BINDING_UBO_MATERIAL) uniform BasicOpaqueParams
 OpaqueOutputs getOpaqueOutputs()
 {
     vec3 normal = normalize(vTBN * vec3(0.0, 0.0, 1.0));
-    float reflectance = 0.5;
 
-    OpaqueOutputs outputs;
-    outputs.color = uEvaluateLights(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, reflectance);
-    outputs.normal = normal;
-    outputs.surface = vec4(mix(vec3(0.16 * reflectance * reflectance), uAlbedo.xyz, uMetallic), uRoughness);
-
-    return outputs;
+    return uShadeStandardOpaqueSurface(gl_FragCoord, vPosition, normal, uAlbedo.xyz, uMetallic, uRoughness, 0.5, 1.0);
 }
 #endif

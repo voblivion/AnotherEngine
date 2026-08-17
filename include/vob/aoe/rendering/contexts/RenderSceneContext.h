@@ -63,6 +63,8 @@ namespace vob::aoegl
 		GraphicId lightsSsbo;
 		GraphicId lightClusterSizesSsbo;
 		GraphicId lightClusterIndicesSsbo;
+		GraphicId skyIrradianceSsbo;
+		GraphicId skyIrradianceProgram;
 
 		// Framebuffers
 		GraphicId depthFramebuffer;

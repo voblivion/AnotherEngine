@@ -46,6 +46,8 @@ namespace vob::aoegl
 
 	GraphicId createSkyProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
 
+	GraphicId createSkyIrradianceProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
+
 	GraphicId createOpaqueCompositionProgram(GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createDebugProgram(GraphicId a_optionalProgramId = k_invalidId);
