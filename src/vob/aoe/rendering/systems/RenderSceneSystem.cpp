@@ -5,6 +5,7 @@
 #include "vob/aoe/rendering/components/ModelComponent.h"
 #include "vob/aoe/rendering/components/ModelTransformComponent.h"
 #include "vob/aoe/rendering/GpuState.h"
+#include "vob/aoe/rendering/MaterialUtils.h"
 #include "vob/aoe/rendering/ProgramUtils.h"
 
 #include "vob/aoe/debug/Check.h"
@@ -34,6 +35,7 @@ namespace vob::aoegl
 		m_renderProfilingCtx.init(a_wdar);
 		m_gpuResourceRegistriesContext.init(a_wdar);
 		m_debugProgramContext.init(a_wdar);
+		m_debugMaterialContext.init(a_wdar);
 		m_debugMeshContext.init(a_wdar);
 		m_debugRenderInspectorCtx.init(a_wdar);
 		m_windowContext.init(a_wdar);
@@ -388,9 +390,10 @@ namespace vob::aoegl
 		auto& renderSceneCtx = m_renderSceneCtx.get(a_wdap);
 		auto& renderProfilingCtx = m_renderProfilingCtx.get(a_wdap);
 		auto& debugRenderInspectorCtx = m_debugRenderInspectorCtx.get(a_wdap);
-		auto const& debugProgramCtx = m_debugProgramContext.get(a_wdap);
+		auto& debugProgramCtx = m_debugProgramContext.get(a_wdap);
 		auto const& gpuResourceRegistriesCtx = m_gpuResourceRegistriesContext.get(a_wdap);
 		auto const& materialRegistry = *gpuResourceRegistriesCtx.materialRegistry;
+		auto const& shaderRegistry = *gpuResourceRegistriesCtx.shaderRegistry;
 		auto const& window = m_windowContext.get(a_wdap).window.get();
 		auto const& cameraDirectorCtx = m_cameraDirectorContext.get(a_wdap);
 		auto staticModelEntities = m_staticModelEntities.get(a_wdap);
@@ -536,7 +539,7 @@ namespace vob::aoegl
 			glNamedBufferSubData(renderSceneCtx.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
 
 			ImGui::SeparatorText("Shaders");
-			static int32_t k_activeShaderIndex = 0;
+			auto& activeShaderIndex = debugProgramCtx.activeShaderIndex;
 			auto const toSmallStr = [](std::string_view a_stringView)
 				{
 					constexpr size_t k_maxSize = 16;
@@ -547,7 +550,7 @@ namespace vob::aoegl
 					return smallStr;
 				};
 
-			k_activeShaderIndex = std::min(k_activeShaderIndex, mistd::isize(debugProgramCtx.shaders) - 1);
+			activeShaderIndex = std::min(activeShaderIndex, mistd::isize(debugProgramCtx.shaders) - 1);
 
 
 			if (ImGui::Button("Recompile Ssao Program"))
@@ -597,18 +600,18 @@ namespace vob::aoegl
 					});
 			}
 
-			auto const activeShaderStr = toSmallStr(debugProgramCtx.shaders[k_activeShaderIndex].shaderDefinition->name);
+			auto const activeShaderStr = toSmallStr(debugProgramCtx.shaders[activeShaderIndex].shaderDefinition->name);
 			if (ImGui::BeginCombo("Shader", activeShaderStr.data()))
 			{
 				for (int32_t i = 0; i < mistd::isize(debugProgramCtx.shaders); ++i)
 				{
 					auto const shaderStr = toSmallStr(debugProgramCtx.shaders[i].shaderDefinition->name);
-					if (ImGui::Selectable(shaderStr.data(), i == k_activeShaderIndex))
+					if (ImGui::Selectable(shaderStr.data(), i == activeShaderIndex))
 					{
-						k_activeShaderIndex = i;
+						activeShaderIndex = i;
 					}
 
-					if (i == k_activeShaderIndex)
+					if (i == activeShaderIndex)
 					{
 						ImGui::SetItemDefaultFocus();
 					}
@@ -618,7 +621,7 @@ namespace vob::aoegl
 			if (ImGui::Button("Recompile Shader"))
 			{
 				tryExportCoreShaders();
-				auto const& shader = debugProgramCtx.shaders[k_activeShaderIndex];
+				auto const& shader = debugProgramCtx.shaders[activeShaderIndex];
 				auto const& shaderDefinition = *shader.shaderDefinition;
 				auto const& sourcePath = shaderDefinition.partialSourcePath;
 				auto const source = debugProgramCtx.stringDatabase.find(
@@ -643,6 +646,99 @@ namespace vob::aoegl
 				}
 			}
 
+			auto& debugMaterialCtx = m_debugMaterialContext.get(a_wdap);
+			if (!debugMaterialCtx.materials.empty())
+			{
+				ImGui::SeparatorText("Materials");
+				auto& activeMaterialIndex = debugMaterialCtx.activeMaterialIndex;
+				activeMaterialIndex =
+					std::clamp(activeMaterialIndex, 0, mistd::isize(debugMaterialCtx.materials) - 1);
+
+				auto const activeShaderName = debugMaterialCtx.materials[activeMaterialIndex].shaderName;
+				if (ImGui::BeginCombo("Material shader", activeShaderName.c_str()))
+				{
+					for (int32_t i = 0; i < mistd::isize(debugMaterialCtx.materials); ++i)
+					{
+						auto const& shaderName = debugMaterialCtx.materials[i].shaderName;
+						auto isFirstOfShader = true;
+						for (int32_t j = 0; j < i && isFirstOfShader; ++j)
+						{
+							isFirstOfShader = debugMaterialCtx.materials[j].shaderName != shaderName;
+						}
+
+						if (!isFirstOfShader)
+						{
+							continue;
+						}
+
+						if (ImGui::Selectable(shaderName.c_str(), shaderName == activeShaderName))
+						{
+							activeMaterialIndex = i;
+						}
+
+						if (shaderName == activeShaderName)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				if (ImGui::BeginCombo("Material", debugMaterialCtx.materials[activeMaterialIndex].name.c_str()))
+				{
+					for (int32_t i = 0; i < mistd::isize(debugMaterialCtx.materials); ++i)
+					{
+						if (debugMaterialCtx.materials[i].shaderName != activeShaderName)
+						{
+							continue;
+						}
+
+						if (ImGui::Selectable(
+							debugMaterialCtx.materials[i].name.c_str(), i == activeMaterialIndex))
+						{
+							activeMaterialIndex = i;
+						}
+
+						if (i == activeMaterialIndex)
+						{
+							ImGui::SetItemDefaultFocus();
+						}
+					}
+					ImGui::EndCombo();
+				}
+
+				auto const& material =
+					materialRegistry.get(debugMaterialCtx.materials[activeMaterialIndex].material);
+				for (auto const& [name, slot] : shaderRegistry.get(material.shader).paramsLayout.slots)
+				{
+					auto value = readMaterialParam(material.paramsUbo, slot);
+					auto const nameStr = std::string{ name.view() };
+					auto changed = false;
+					switch (slot.variantIndex)
+					{
+					case 0:
+						changed = ImGui::DragInt(nameStr.c_str(), &std::get<int32_t>(value));
+						break;
+					case 1:
+						changed = ImGui::DragFloat(nameStr.c_str(), &std::get<float>(value), 0.01f);
+						break;
+					case 2:
+						changed = ImGui::DragFloat2(nameStr.c_str(), &std::get<glm::vec2>(value).x, 0.01f);
+						break;
+					case 3:
+						changed = ImGui::DragFloat3(nameStr.c_str(), &std::get<glm::vec3>(value).x, 0.01f);
+						break;
+					case 4:
+						changed = ImGui::DragFloat4(nameStr.c_str(), &std::get<glm::vec4>(value).x, 0.01f);
+						break;
+					}
+
+					if (changed)
+					{
+						writeMaterialParam(material.paramsUbo, slot, value);
+					}
+				}
+			}
 		}
 		ImGui::End();
 

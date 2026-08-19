@@ -37,4 +37,16 @@ namespace vob::aoegl
 	{
 		return detail::k_uniformGlslTypes[a_variantIndex];
 	}
+
+	inline UniformValue makeUniformValue(size_t a_variantIndex)
+	{
+		switch (a_variantIndex)
+		{
+		case 1: return float{};
+		case 2: return glm::vec2{};
+		case 3: return glm::vec3{};
+		case 4: return glm::vec4{};
+		default: return int32_t{};
+		}
+	}
 }

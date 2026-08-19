@@ -36,6 +36,7 @@ namespace vob::aoegl
 		aoedt::filesystem_indexer filesystemIndexer;
 		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
 		std::vector<Shader> shaders;
+		int32_t activeShaderIndex = 0;
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
 		GraphicId opaqueCompositionProgram;

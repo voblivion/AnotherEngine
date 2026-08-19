@@ -6,6 +6,7 @@
 #include "vob/aoe/rendering/components/ModelComponent.h"
 #include "vob/aoe/rendering/components/ModelTransformComponent.h"
 #include "vob/aoe/rendering/contexts/CameraDirectorContext.h"
+#include "vob/aoe/rendering/contexts/DebugMaterialContext.h"
 #include "vob/aoe/rendering/contexts/DebugMeshContext.h"
 #include "vob/aoe/rendering/contexts/DebugProgramContext.h"
 #include "vob/aoe/rendering/contexts/DebugRenderInspectorContext.h"
@@ -34,7 +35,8 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<RenderSceneContext> m_renderSceneCtx;
 		aoeng::EcsWorldContextRef<RenderProfilingContext> m_renderProfilingCtx;
 		aoeng::EcsWorldContextRef<GpuResourceRegistriesContext> m_gpuResourceRegistriesContext;
-		aoeng::EcsWorldContextRef<DebugProgramContext const> m_debugProgramContext;
+		aoeng::EcsWorldContextRef<DebugProgramContext> m_debugProgramContext;
+		aoeng::EcsWorldContextRef<DebugMaterialContext> m_debugMaterialContext;
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
 		aoeng::EcsWorldContextRef<DebugRenderInspectorContext> m_debugRenderInspectorCtx;
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
