@@ -625,11 +625,13 @@ namespace vob::aoegl
 					debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
 				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string()))
 				{
+					auto const paramsLayout = computeMaterialParamsLayout(shaderDefinition.uniformDefaults);
 					auto const recompile = [&](ModelType a_modelType, GraphicId a_programId)
 						{
 							createShadingProgram(
 								*source
 								, shaderDefinition.defines
+								, paramsLayout
 								, shaderDefinition.shadingPass
 								, a_modelType
 								, a_programId);

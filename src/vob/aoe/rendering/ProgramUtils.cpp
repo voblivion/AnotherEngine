@@ -1,6 +1,7 @@
 #include <vob/aoe/rendering/ProgramUtils.h>
 
 #include <vob/aoe/debug/Check.h>
+#include <vob/aoe/rendering/MaterialParamsLayout.h>
 
 #include <vob/misc/std/ignorable_assert.h>
 
@@ -146,6 +147,7 @@ namespace vob::aoegl
 			auto const programId = a_optionalProgramId != k_invalidId ? a_optionalProgramId : glCreateProgram();
 			glAttachShader(programId, computeShaderId);
 			glLinkProgram(programId);
+			glDetachShader(programId, computeShaderId);
 			glDeleteShader(computeShaderId);
 
 			GraphicInt linkStatus;
@@ -307,6 +309,7 @@ namespace vob::aoegl
 	GraphicId createShadingProgram(
 		std::string_view a_partialSource
 		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
 		, ShadingPass a_shadingPass
 		, ModelType a_modelType
 		, GraphicId a_optionalProgramId)
@@ -324,6 +327,8 @@ namespace vob::aoegl
 			}();
 
 		auto fragmentShaderSource = readFile(shellPath);
+		fragmentShaderSource += '\n';
+		fragmentShaderSource += generateMaterialParamsBlockSource(a_paramsLayout);
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_partialSource;
 		return createGeometryProgram(

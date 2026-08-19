@@ -3,6 +3,7 @@
 #include <vob/aoe/api.h>
 
 #include <vob/aoe/rendering/GraphicTypes.h>
+#include <vob/aoe/rendering/MaterialParamsLayout.h>
 #include <vob/aoe/rendering/ShadingPass.h>
 
 #include <span>
@@ -30,6 +31,7 @@ namespace vob::aoegl
 	GraphicId createShadingProgram(
 		std::string_view a_partialSource
 		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
 		, ShadingPass a_shadingPass
 		, ModelType a_modelType
 		, GraphicId a_optionalProgramId = k_invalidId);

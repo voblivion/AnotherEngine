@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/MaterialParamsLayout.h"
 #include "vob/aoe/rendering/ShadingPass.h"
 
 
@@ -12,5 +13,6 @@ namespace vob::aoegl
 		GraphicId staticProgram;
 		GraphicId riggedProgram;
 		GraphicId instancedProgram;
+		MaterialParamsLayout paramsLayout;
 	};
 }

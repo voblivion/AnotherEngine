@@ -25,7 +25,6 @@ namespace vob::aoegl
 
 		mistd::bounded_vector<TextureEntry, k_materialTexturesCapacity> textures;
 
-		// TODO: per-shader parameter block, codegen'd from parameters declared in
-		// ShaderDefinition. All material variation is texture-driven for now.
+		UniformValueMap uniformValues;
 	};
 }
