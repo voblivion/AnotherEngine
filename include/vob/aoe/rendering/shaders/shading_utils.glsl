@@ -127,19 +127,6 @@ float uFilterSpecularRoughness(vec3 normal, float roughness)
     return sqrt(sqrt(clamp(alpha * alpha + kernelRoughness, 0.0, 1.0)));
 }
 
-vec3 uEvaluateSkyIrradiance(vec3 normal)
-{
-    return uSkyIrradiance[0].rgb * 0.282095
-        + uSkyIrradiance[1].rgb * 0.488603 * normal.y
-        + uSkyIrradiance[2].rgb * 0.488603 * normal.z
-        + uSkyIrradiance[3].rgb * 0.488603 * normal.x
-        + uSkyIrradiance[4].rgb * 1.092548 * normal.x * normal.y
-        + uSkyIrradiance[5].rgb * 1.092548 * normal.y * normal.z
-        + uSkyIrradiance[6].rgb * 0.315392 * (3.0 * normal.z * normal.z - 1.0)
-        + uSkyIrradiance[7].rgb * 1.092548 * normal.x * normal.z
-        + uSkyIrradiance[8].rgb * 0.546274 * (normal.x * normal.x - normal.y * normal.y);
-}
-
 vec3 uEvaluateLights(
     vec4 coord,
     vec3 position,

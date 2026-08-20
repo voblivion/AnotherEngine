@@ -3,6 +3,28 @@
 
 #include "core/math_utils.glsl"
 
+vec3 uEvaluateSkyIrradiance(vec3 normal)
+{
+    return uSkyIrradiance[0].rgb * 0.282095
+        + uSkyIrradiance[1].rgb * 0.488603 * normal.y
+        + uSkyIrradiance[2].rgb * 0.488603 * normal.z
+        + uSkyIrradiance[3].rgb * 0.488603 * normal.x
+        + uSkyIrradiance[4].rgb * 1.092548 * normal.x * normal.y
+        + uSkyIrradiance[5].rgb * 1.092548 * normal.y * normal.z
+        + uSkyIrradiance[6].rgb * 0.315392 * (3.0 * normal.z * normal.z - 1.0)
+        + uSkyIrradiance[7].rgb * 1.092548 * normal.x * normal.z
+        + uSkyIrradiance[8].rgb * 0.546274 * (normal.x * normal.x - normal.y * normal.y);
+}
+
+vec2 envBrdfApprox(float NdotV, float roughness)
+{
+    const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
+    const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
+    vec4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    return vec2(-1.04, 1.04) * a004 + r.zw;
+}
+
 struct LightClusterBounds
 {
     vec3 minView;

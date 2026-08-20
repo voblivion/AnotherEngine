@@ -46,9 +46,14 @@
 #define BINDING_TEXTURE_SSR_OPAQUE_NORMAL 2
 #define BINDING_TEXTURE_SSR_OPAQUE_DEPTH 3
 
+#define BINDING_TEXTURE_SSR_FILTER_SOURCE 0
+#define BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH 1
+#define BINDING_TEXTURE_SSR_FILTER_OPAQUE_NORMAL 2
+
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_DIRECT_OPAQUE_COLOR 0
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE 1
 #define BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR 2
+#define BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_NORMAL 3
 
 #define BINDING_TEXTURE_BLOOM_SOURCE 0
 
@@ -213,6 +218,9 @@ struct ALIGN_16 UniformSsrParams
     float maxRange;
     float initialBiasRatio;
     float maxThickness;
+    float minSeparationRatio;
+    float blockedBlackThickness;
+    float blockedSkyThickness;
 };
 
 struct ALIGN_16 UniformSsaoParams
@@ -291,9 +299,14 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTextureSsrOpaqueNormal = BINDING_TEXTURE_SSR_OPAQUE_NORMAL;
 	static constexpr uint32_t k_bindingTextureSsrOpaqueDepth = BINDING_TEXTURE_SSR_OPAQUE_DEPTH;
 
+	static constexpr uint32_t k_bindingTextureSsrFilterSource = BINDING_TEXTURE_SSR_FILTER_SOURCE;
+	static constexpr uint32_t k_bindingTextureSsrFilterOpaqueDepth = BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH;
+	static constexpr uint32_t k_bindingTextureSsrFilterOpaqueNormal = BINDING_TEXTURE_SSR_FILTER_OPAQUE_NORMAL;
+
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionDirectOpaqueColor = BINDING_TEXTURE_OPAQUE_COMPOSITION_DIRECT_OPAQUE_COLOR;
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionOpaqueSurface = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE;
 	static constexpr uint32_t k_bindingTextureOpaqueCompositionSsrColor = BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR;
+	static constexpr uint32_t k_bindingTextureOpaqueCompositionOpaqueNormal = BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_NORMAL;
 
 	static constexpr uint32_t k_bindingTextureBloomSource = BINDING_TEXTURE_BLOOM_SOURCE;
 
@@ -360,10 +373,14 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_TEXTURE_SSR_OPAQUE_SURFACE
 #undef BINDING_TEXTURE_SSR_OPAQUE_NORMAL
 #undef BINDING_TEXTURE_SSR_OPAQUE_DEPTH
+#undef BINDING_TEXTURE_SSR_FILTER_SOURCE
+#undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH
+#undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_NORMAL
 
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_DIRECT_OPAQUE_COLOR
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_SURFACE
 #undef BINDING_TEXTURE_OPAQUE_COMPOSITION_SSR_COLOR
+#undef BINDING_TEXTURE_OPAQUE_COMPOSITION_OPAQUE_NORMAL
 
 #undef BINDING_TEXTURE_BLOOM_SOURCE
 #undef BINDING_TEXTURE_BLOOM_COMBINE_SCENE

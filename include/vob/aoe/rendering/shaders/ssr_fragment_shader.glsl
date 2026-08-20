@@ -3,6 +3,7 @@
 #extension GL_NV_gpu_shader5 : enable
 
 #include "core/bindings_ssr.glsl"
+#include "core/light_utils.glsl"
 
 in vec2 vUv;
 out vec4 oSsrColor;
@@ -30,27 +31,23 @@ float LinearizeDepth(float depth)
     return uView.nearClip * uView.farClip / (uView.farClip - depth * (uView.farClip - uView.nearClip));
 }
 
-// Lazarov's analytic fit of the split-sum environment BRDF, so no LUT is needed
-vec2 envBrdfApprox(float NdotV, float roughness)
+// irradiance is a cosine-weighted integral, so it needs dividing by PI to read as radiance
+vec3 skyIrradianceRadiance(vec3 direction)
 {
-    const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
-    const vec4 c1 = vec4(1.0, 0.0425, 1.04, -0.04);
-    vec4 r = roughness * c0 + c1;
-    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
-    return vec2(-1.04, 1.04) * a004 + r.zw;
+    return max(uEvaluateSkyIrradiance(direction), vec3(0.0)) / 3.14159265358979;
 }
 
 void main()
 {
     // --- skip background ---
-    float depth = texture(uSsr_OpaqueDepth, vUv).r;
+    float depth = textureLod(uSsr_OpaqueDepth, vUv, 0.0).r;
     if (1.0 - depth <= 0.0001)
     {
         oSsrColor = vec4(0.0);
         return;
     }
 
-    vec3 surface = texture(uSsr_OpaqueSurface, vUv).rgb;
+    vec4 surface = textureLod(uSsr_OpaqueSurface, vUv, 0.0);
     if (surface.r == 0.0)
     {
         oSsrColor = vec4(0.0);
@@ -59,22 +56,45 @@ void main()
 
     // --- reconstruct view-space position and normal ---
     vec3 viewPos = ReconstructViewPos2(vUv, depth);
-    vec3 normal  = normalize(mat3(uView.worldToView) * texture(uSsr_OpaqueNormal, vUv).xyz);
+    vec3 normal  = normalize(mat3(uView.worldToView) * textureLod(uSsr_OpaqueNormal, vUv, 0.0).xyz);
 
     // --- reflection ray in view space ---
     vec3 incident = normalize(viewPos - vec3(0.0)); // view-space: camera is at origin
     vec3 reflDir  = reflect(incident, normal);
 
-    float roughness = texture(uSsr_OpaqueSurface, vUv).a;
+    float roughness = surface.a;
     float NdotV = max(dot(normal, -incident), 0.0);
     vec2 envBrdf = envBrdfApprox(NdotV, roughness);
-    vec3 specularWeight = surface * envBrdf.x + envBrdf.y;
+    vec3 specularWeight = surface.rgb * envBrdf.x + envBrdf.y;
 
     const float k_minSpecularWeight = 0.005;
     if (max(max(specularWeight.r, specularWeight.g), specularWeight.b) < k_minSpecularWeight)
     {
         oSsrColor = vec4(0.0);
         return;
+    }
+
+    // rays travelling back toward the camera need information the screen does not hold, and one
+    // mirror ray only represents a narrow lobe - the wider it gets, the less a single sample says
+    // about it, so lean on the sky's prefiltered version instead
+    float screenTrust = smoothstep(0.25, 0.0, reflDir.z) * (1.0 - smoothstep(0.45, 0.85, roughness));
+
+    vec3 reflDirWorld = normalize(mat3(uView.viewToWorld) * reflDir);
+
+    // both factors are known before marching, so nothing the march finds could change the answer
+    if (screenTrust <= 0.0)
+    {
+        oSsrColor = vec4(skyIrradianceRadiance(reflDirWorld), 1.0);
+        return;
+    }
+
+    // at the roughest end the lobe is wide enough that the SH hemisphere stands in for the sky, at
+    // nine madds instead of a procedural sky evaluation
+    float skyBlend = smoothstep(0.45, 0.85, roughness);
+    vec3 skyColor = getSkyColor(reflDirWorld, clamp(roughness * 2.0, 0.0, 1.0));
+    if (skyBlend > 0.0)
+    {
+        skyColor = mix(skyColor, skyIrradianceRadiance(reflDirWorld), skyBlend);
     }
 
     // --- project a far point along reflDir to get NDC ray direction ---
@@ -85,7 +105,8 @@ void main()
     vec3 reflEndNDC  = reflEndClip.xyz / reflEndClip.w;
 
     // avoid self hits?
-    float bias = LinearizeDepth(depth) * uSsr.initialBiasRatio;
+    float originLinear = LinearizeDepth(depth);
+    float bias = originLinear * uSsr.initialBiasRatio;
     vec3 biasedViewPos = viewPos + normal * bias;
 
     vec4 startClip = uView.viewToClip * vec4(biasedViewPos, 1.0);
@@ -97,6 +118,12 @@ void main()
     
     vec3 hitColor = vec3(0.0);
     float confidence = 0.0;
+
+    // ambiguous blockers accumulate front to back: each one absorbs part of the ray, and whatever
+    // transmittance survives is what still reaches a real hit or the sky
+    vec3 blockedColor = vec3(0.0);
+    float transmittance = 1.0;
+
     vec3 sampleNDC = startNDC + rayStepNDC; // start one step ahead to avoid self-hit
 
     float prevRay = LinearizeDepth(startNDC.z * 0.5 + 0.5);
@@ -109,56 +136,74 @@ void main()
         // out of screen
         if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) break;
 
-        float sceneDepth = texture(uSsr_OpaqueDepth, uv).r;
+        float sceneDepth = textureLod(uSsr_OpaqueDepth, uv, 0.0).r;
         float linearScene = LinearizeDepth(sceneDepth);
         float linearRay   = LinearizeDepth(sampleNDC.z * 0.5 + 0.5);
 
         float diff = linearRay - linearScene;
         float advance = max(linearRay - prevRay, 0.0);
-        float thickness = max(advance, min(linearScene * uSsr.thicknessRatio, uSsr.maxThickness));
 
         bool crossed = prevDiff <= 0.0 && diff > 0.0;
         prevRay = linearRay;
         prevDiff = diff;
 
-        if (crossed && diff < thickness)
+        // while the ray still hugs the surface it left, a crossing is its own geometry
+        bool separated = (linearRay - originLinear) > uSsr.minSeparationRatio * originLinear;
+        float thickness = max(advance, min(linearScene * uSsr.thicknessRatio, uSsr.maxThickness));
+        float blockedness = diff / max(thickness, 0.0001);
+        if (!crossed || !separated || blockedness >= uSsr.blockedSkyThickness)
         {
-            vec3 bisectStep = rayStepNDC * 0.5;
-            sampleNDC -= rayStepNDC; // go back to last known miss
-            
-            int subStep = 1 << uSsr.log2SubStep;
-            for (int j = 0; j < subStep; ++j)
-            {
-                sampleNDC += bisectStep;
-                vec2 uvMid = sampleNDC.xy * 0.5 + 0.5;
+            continue;
+        }
 
-                float midDepth = texture(uSsr_OpaqueDepth, uvMid).r;
-                float midLinear = LinearizeDepth(midDepth);
-                float midRayLinear = LinearizeDepth(sampleNDC.z * 0.5 + 0.5);
+        vec3 crossingNDC = sampleNDC - rayStepNDC; // last known miss
+        vec3 bisectStep = rayStepNDC * 0.5;
 
-                bisectStep *= 0.5;
-                if (midRayLinear - midLinear > 0.0)
-                    sampleNDC -= bisectStep; // behind surface, step back
-            }
-            vec2 hitUv = sampleNDC.xy * 0.5 + 0.5;
-            hitColor = texture(uSsr_DirectOpaqueColor, hitUv).rgb;
+        int subStep = 1 << uSsr.log2SubStep;
+        for (int j = 0; j < subStep; ++j)
+        {
+            crossingNDC += bisectStep;
+            vec2 uvMid = crossingNDC.xy * 0.5 + 0.5;
+
+            float midDepth = textureLod(uSsr_OpaqueDepth, uvMid, 0.0).r;
+            float midLinear = LinearizeDepth(midDepth);
+            float midRayLinear = LinearizeDepth(crossingNDC.z * 0.5 + 0.5);
+
+            bisectStep *= 0.5;
+            if (midRayLinear - midLinear > 0.0)
+                crossingNDC -= bisectStep; // behind surface, step back
+        }
+
+        vec2 hitUv = crossingNDC.xy * 0.5 + 0.5;
+        float hitScene = LinearizeDepth(textureLod(uSsr_OpaqueDepth, hitUv, 0.0).r);
+        float hitDiff = LinearizeDepth(crossingNDC.z * 0.5 + 0.5) - hitScene;
+        float hitThickness = max(advance, min(hitScene * uSsr.thicknessRatio, uSsr.maxThickness));
+        vec3 candidateColor = textureLod(uSsr_DirectOpaqueColor, hitUv, 0.0).rgb;
+
+        if (hitDiff < hitThickness)
+        {
+            hitColor = candidateColor;
 
             vec2 borderDist = min(hitUv, 1.0 - hitUv);
             confidence = smoothstep(0.0, 0.1, min(borderDist.x, borderDist.y));
             break;
         }
+
+        // how far the ray plunged past this thing is a coarse-sample question; the refined
+        // crossing sits at diff ~ 0 by construction and says nothing about it
+        float ratio = smoothstep(uSsr.blockedBlackThickness, uSsr.blockedSkyThickness, blockedness);
+        blockedColor += transmittance * (1.0 - ratio) * candidateColor;
+        transmittance *= ratio;
+
+        if (transmittance < 0.1)
+        {
+            break;
+        }
     }
 
-    // rays travelling back toward the camera need information the screen does not hold
-    confidence *= smoothstep(0.25, 0.0, reflDir.z);
+    // everything the march produced - blockers included - is screen-space, so all of it answers to
+    // the same trust; without this, blocked colour reaches rough surfaces the fade excludes
+    vec3 screenColor = blockedColor + transmittance * mix(skyColor, hitColor, confidence);
 
-    // one mirror ray only represents a narrow lobe; the wider it gets, the less a single
-    // sample says about it, so lean on the sky's prefiltered version instead
-    confidence *= 1.0 - smoothstep(0.45, 0.85, roughness);
-
-    float skyLod = clamp(roughness * 2.0, 0.0, 1.0);
-    vec3 reflDirWorld = normalize(mat3(uView.viewToWorld) * reflDir);
-    vec3 radiance = mix(getSkyColor(reflDirWorld, skyLod), hitColor, confidence);
-
-    oSsrColor = vec4(radiance * specularWeight, 1.0);
+    oSsrColor = vec4(mix(skyColor, screenColor, screenTrust), 1.0);
 }

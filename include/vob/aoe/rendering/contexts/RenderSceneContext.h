@@ -37,6 +37,7 @@ namespace vob::aoegl
 	};
 
 	constexpr int32_t k_bloomMipsCapacity = 12;
+	constexpr int32_t k_ssrMipsCapacity = 12;
 
 	struct RenderSceneContext
 	{
@@ -96,8 +97,10 @@ namespace vob::aoegl
 
 		glm::ivec2 ssrResolution;
 		int32_t ssrMipLevels;
-		GraphicId ssrFramebuffer;
 		GraphicId ssrColorTexture;
+		GraphicId ssrRawColorTexture;
+		GraphicId ssrRawFramebuffer;
+		mistd::bounded_vector<GraphicId, k_ssrMipsCapacity> ssrMipFramebuffers;
 
 		GraphicId finalFramebuffer;
 		GraphicId finalColorTexture;
@@ -130,6 +133,8 @@ namespace vob::aoegl
 		GraphicId instancedDepthProgram;
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
+		GraphicId ssrPrefilterProgram;
+		GraphicId ssrDownsampleProgram;
 		GraphicId opaqueCompositionProgram;
 		GraphicId skyBoxProgram = k_invalidId;
 		GraphicId bloomDownsampleProgram;

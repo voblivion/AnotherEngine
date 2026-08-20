@@ -476,16 +476,22 @@ namespace vob::aoegl
 			ImGui::Checkbox("Enable##ssr", &k_ssrEnabled);
 			static int k_ssrLog2Step = 7;
 			ImGui::InputInt("Log2 Step", &k_ssrLog2Step);
-			static int k_ssrLog2SubStep = 4;
+			static int k_ssrLog2SubStep = 3;
 			ImGui::InputInt("Log2 Sub Step", &k_ssrLog2SubStep);
-			static float k_ssrThicknessRatio = 0.125f;
+			static float k_ssrThicknessRatio = 0.01f;
 			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			static float k_ssrMaxRange = 500.0f;
 			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrInitialBiasRatio = 0.1f;
+			static float k_ssrInitialBiasRatio = 0.01f;
 			ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			static float k_ssrMaxThickness = 10.0f;
 			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 50.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrMinSeparationRatio = 0.001f;
+			ImGui::SliderFloat("Min Separation Ratio", &k_ssrMinSeparationRatio, 0.0f, 0.5f, "%.4f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrBlockedBlackThickness = 5.0f;
+			ImGui::SliderFloat("Blocked Black Thickness", &k_ssrBlockedBlackThickness, 1.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrBlockedSkyThickness = 50.0f;
+			ImGui::SliderFloat("Blocked Sky Thickness", &k_ssrBlockedSkyThickness, 1.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 
 			auto const ssrParams = UniformSsrParams{
 				.log2Step = k_ssrLog2Step,
@@ -493,7 +499,10 @@ namespace vob::aoegl
 				.thicknessRatio = k_ssrThicknessRatio,
 				.maxRange = k_ssrMaxRange,
 				.initialBiasRatio = k_ssrInitialBiasRatio,
-				.maxThickness = k_ssrMaxThickness
+				.maxThickness = k_ssrMaxThickness,
+				.minSeparationRatio = k_ssrMinSeparationRatio,
+				.blockedBlackThickness = k_ssrBlockedBlackThickness,
+				.blockedSkyThickness = k_ssrBlockedSkyThickness
 			};
 			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
 
@@ -1436,21 +1445,55 @@ namespace vob::aoegl
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 
-			beginPass(gpuState, renderSceneCtx.ssrFramebuffer, renderSceneCtx.ssrResolution, renderSceneCtx.targetParamsUbo);
+			beginPass(gpuState, renderSceneCtx.ssrRawFramebuffer, renderSceneCtx.ssrResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrProgram);
 
 			if (k_ssrEnabled)
 			{
 				glBindVertexArray(renderSceneCtx.postProcessVao);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
-				glGenerateTextureMipmap(renderSceneCtx.ssrColorTexture);
 			}
 			else
 			{
 				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
 				glClear(GL_COLOR_BUFFER_BIT);
-				glGenerateTextureMipmap(renderSceneCtx.ssrColorTexture);
 			}
+
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrPrefilterProgram);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrFilterSource, renderSceneCtx.ssrRawColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureSsrFilterOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureSsrFilterOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
+			beginPass(
+				gpuState
+				, renderSceneCtx.ssrMipFramebuffers[0]
+				, renderSceneCtx.ssrResolution
+				, renderSceneCtx.targetParamsUbo);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrDownsampleProgram);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrFilterSource, renderSceneCtx.ssrColorTexture);
+			auto mipResolution = renderSceneCtx.ssrResolution;
+			for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.ssrMipFramebuffers); ++mipIndex)
+			{
+				mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
+				glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
+				glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+				beginPass(
+					gpuState
+					, renderSceneCtx.ssrMipFramebuffers[mipIndex]
+					, mipResolution
+					, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
+			glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, 0);
+			glTextureParameteri(
+				renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.ssrMipLevels - 1);
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrColorTexture, DebugType::ColorTexture);
 		}
@@ -1462,9 +1505,10 @@ namespace vob::aoegl
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
-			gpuState.bindTexture<GpuStateChange::SurelyNo>(k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.directOpaqueColorTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.directOpaqueColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.ssrColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			beginPass(gpuState, renderSceneCtx.finalFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.opaqueCompositionProgram);
 
