@@ -99,9 +99,18 @@ void main()
 
     // --- project a far point along reflDir to get NDC ray direction ---
 
-    int steps = 1 << uSsr.log2Step;
+    int maxSteps = 1 << uSsr.log2Step;
 
-    vec4 reflEndClip = uView.viewToClip * vec4(viewPos + reflDir * uSsr.maxRange, 1.0);
+    // a ray reaching past the near plane projects through a negative w and lands nowhere useful, so
+    // cut it at the near plane first
+    vec3 endViewPos = viewPos + reflDir * uSsr.maxRange;
+    if (endViewPos.z > -uView.nearClip)
+    {
+        float nearT = (-uView.nearClip - viewPos.z) / (endViewPos.z - viewPos.z);
+        endViewPos = viewPos + (endViewPos - viewPos) * clamp(nearT, 0.0, 1.0);
+    }
+
+    vec4 reflEndClip = uView.viewToClip * vec4(endViewPos, 1.0);
     vec3 reflEndNDC  = reflEndClip.xyz / reflEndClip.w;
 
     // avoid self hits?
@@ -112,8 +121,15 @@ void main()
     vec4 startClip = uView.viewToClip * vec4(biasedViewPos, 1.0);
     vec3 startNDC  = startClip.xyz / startClip.w;
 
+    // one step per pixel of the longer screen axis: nothing samples a texel twice, and log2Step
+    // becomes a budget for long rays rather than a fixed subdivision of any ray
+    vec2 startPixel = (startNDC.xy * 0.5 + 0.5) * vec2(uTarget.resolution);
+    vec2 endPixel = (reflEndNDC.xy * 0.5 + 0.5) * vec2(uTarget.resolution);
+    vec2 pixelSpan = abs(endPixel - startPixel);
+    float stepCount = clamp(max(pixelSpan.x, pixelSpan.y), 1.0, float(maxSteps));
+
     // step in NDC space, convert to UV as we go
-    vec3 rayStepNDC = (reflEndNDC - startNDC) / float(steps);
+    vec3 rayStepNDC = (reflEndNDC - startNDC) / stepCount;
     
     
     vec3 hitColor = vec3(0.0);
@@ -129,7 +145,7 @@ void main()
     float prevRay = LinearizeDepth(startNDC.z * 0.5 + 0.5);
     float prevDiff = -1.0; // the ray starts in front of the surface it left
 
-    for (int i = 0; i < steps; ++i, sampleNDC += rayStepNDC)
+    for (int i = 0; i < int(stepCount); ++i, sampleNDC += rayStepNDC)
     {
         vec2 uv = sampleNDC.xy * 0.5 + 0.5;
 
