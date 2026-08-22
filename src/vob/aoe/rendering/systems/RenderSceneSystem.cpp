@@ -21,6 +21,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <limits>
 
@@ -916,6 +917,7 @@ namespace vob::aoegl
 				}
 			}
 		}
+
 		struct CulledRiggedMesh
 		{
 			GraphicId shadingProgram;
@@ -1004,6 +1006,22 @@ namespace vob::aoegl
 				}
 			}
 		}
+
+		auto const compareDrawOrder = [](auto const& a_lhs, auto const& a_rhs)
+			{
+				if (a_lhs.shadingProgram != a_rhs.shadingProgram)
+				{
+					return a_lhs.shadingProgram < a_rhs.shadingProgram;
+				}
+				if (a_lhs.material != a_rhs.material)
+				{
+					return a_lhs.material < a_rhs.material;
+				}
+				return a_lhs.vao < a_rhs.vao;
+			};
+		//std::sort(culledOpaqueStaticMeshes.begin(), culledOpaqueStaticMeshes.end(), compareDrawOrder);
+		//std::sort(culledOpaqueRiggedMeshes.begin(), culledOpaqueRiggedMeshes.end(), compareDrawOrder);
+		//std::sort(culledOpaqueInstancedMeshes.begin(), culledOpaqueInstancedMeshes.end(), compareDrawOrder);
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
