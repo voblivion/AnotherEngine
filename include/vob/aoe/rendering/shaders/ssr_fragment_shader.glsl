@@ -181,7 +181,6 @@ struct SsrOccluderSpan
     float entryRayDepth;      // ray depth when it went behind, in depth-buffer units
     float entrySurfaceDepth;  // the surface it went behind
     float exitRayDepth;       // ray depth when it re-emerged
-    float exitSurfaceDepth;   // the surface it came out in front of
     vec2 entryPixel;
     vec2 exitPixel;
     float entryT;
@@ -356,7 +355,6 @@ SsrWalk walkSsrRay(SsrRay a_ray, ivec2 a_probePixel)
 
             // so a stretch that never comes back out still reads as its entry penetration
             span.exitRayDepth = span.entryRayDepth;
-            span.exitSurfaceDepth = span.entrySurfaceDepth;
             span.exitPixel = span.entryPixel;
             span.exitT = span.entryT;
 
@@ -368,7 +366,6 @@ SsrWalk walkSsrRay(SsrRay a_ray, ivec2 a_probePixel)
 
         // came back out in front: the stretch is complete, so it can be judged as a whole
         span.exitRayDepth = min(entryDepth, exitDepth);
-        span.exitSurfaceDepth = cell.r;
         span.exitPixel = pixel;
         span.exitT = t;
         span.reEmerged = true;
