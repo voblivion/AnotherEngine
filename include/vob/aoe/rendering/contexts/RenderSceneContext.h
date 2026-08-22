@@ -38,6 +38,7 @@ namespace vob::aoegl
 
 	constexpr int32_t k_bloomMipsCapacity = 12;
 	constexpr int32_t k_ssrMipsCapacity = 12;
+	constexpr int32_t k_hiZMipsCapacity = 16;
 
 	struct RenderSceneContext
 	{
@@ -100,6 +101,9 @@ namespace vob::aoegl
 		GraphicId ssrColorTexture;
 		GraphicId ssrRawColorTexture;
 		GraphicId ssrRawFramebuffer;
+		int32_t hiZMipLevels;
+		GraphicId hiZDepthTexture;
+		mistd::bounded_vector<GraphicId, k_hiZMipsCapacity> hiZMipFramebuffers;
 		mistd::bounded_vector<GraphicId, k_ssrMipsCapacity> ssrMipFramebuffers;
 
 		GraphicId finalFramebuffer;
@@ -133,6 +137,7 @@ namespace vob::aoegl
 		GraphicId instancedDepthProgram;
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
+		GraphicId hiZReduceProgram;
 		GraphicId ssrPrefilterProgram;
 		GraphicId ssrDownsampleProgram;
 		GraphicId opaqueCompositionProgram;

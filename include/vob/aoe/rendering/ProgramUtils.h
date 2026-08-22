@@ -46,6 +46,8 @@ namespace vob::aoegl
 
 	GraphicId createSsrProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
 
+	GraphicId createHiZReduceProgram(GraphicId a_optionalProgramId = k_invalidId);
+
 	GraphicId createSsrPrefilterProgram(GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createSsrDownsampleProgram(GraphicId a_optionalProgramId = k_invalidId);

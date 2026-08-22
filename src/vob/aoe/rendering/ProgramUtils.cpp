@@ -390,6 +390,12 @@ namespace vob::aoegl
 		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
 	}
 
+	GraphicId createHiZReduceProgram(GraphicId a_optionalProgramId)
+	{
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/hiz_reduce.glsl");
+		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+	}
+
 	GraphicId createSsrPrefilterProgram(GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssr_prefilter.glsl");

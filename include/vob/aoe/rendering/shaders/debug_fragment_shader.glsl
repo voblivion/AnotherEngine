@@ -45,7 +45,9 @@ void main()
     }
     else if (uDebug.type == DEBUG_TYPE_DEPTH_TEXTURE)
     {
-        float linearDepth = linearizeDepth(texture(uDebug_Source, vUv).r, uDebug.depthRange.x, uDebug.depthRange.y);
+        vec2 depthPair = texture(uDebug_Source, vUv).rg;
+        float linearDepth = linearizeDepth(
+            uDebug.channel == 0 ? depthPair.r : depthPair.g, uDebug.depthRange.x, uDebug.depthRange.y);
         float normalizedLinearDepth = (linearDepth - uDebug.depthRange.x) / (uDebug.depthRange.y - uDebug.depthRange.x);
         float k = 10.0;
         c = heat7Colors(log(normalizedLinearDepth * k + 1.0) / log(k + 1.0));

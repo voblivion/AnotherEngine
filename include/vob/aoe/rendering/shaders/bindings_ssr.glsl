@@ -7,5 +7,6 @@ layout(binding = BINDING_TEXTURE_SSR_DIRECT_OPAQUE_COLOR) uniform sampler2D uSsr
 layout(binding = BINDING_TEXTURE_SSR_OPAQUE_SURFACE) uniform sampler2D uSsr_OpaqueSurface;
 layout(binding = BINDING_TEXTURE_SSR_OPAQUE_NORMAL) uniform sampler2D uSsr_OpaqueNormal;
 layout(binding = BINDING_TEXTURE_SSR_OPAQUE_DEPTH) uniform sampler2D uSsr_OpaqueDepth;
+layout(binding = BINDING_TEXTURE_SSR_HIZ_DEPTH) uniform sampler2D uSsr_HiZDepth;
 
 #endif // #ifndef VOB_AOEGL_CORE_BINDINGS_SSR_GLSL

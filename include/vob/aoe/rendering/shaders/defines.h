@@ -45,6 +45,7 @@
 #define BINDING_TEXTURE_SSR_OPAQUE_SURFACE 1
 #define BINDING_TEXTURE_SSR_OPAQUE_NORMAL 2
 #define BINDING_TEXTURE_SSR_OPAQUE_DEPTH 3
+#define BINDING_TEXTURE_SSR_HIZ_DEPTH 4
 
 #define BINDING_TEXTURE_SSR_FILTER_SOURCE 0
 #define BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH 1
@@ -212,15 +213,14 @@ struct ALIGN_16 GpuLight
 
 struct ALIGN_16 UniformSsrParams
 {
-    int log2Step;
-    int log2SubStep;
-    float thicknessRatio;
+    int stepCount;
+    int debugExitReason;
     float maxRange;
-    float initialBiasRatio;
-    float maxThickness;
-    float minSeparationRatio;
-    float blockedBlackThickness;
-    float blockedSkyThickness;
+    int debugRay;
+    ubo_ivec2 debugRayPixel;
+    float penetrationBlockedRatio;
+    float penetrationThroughRatio;
+    int debugPenetration;
 };
 
 struct ALIGN_16 UniformSsaoParams
@@ -253,6 +253,7 @@ struct ALIGN_16 UniformDebugParams
 {
     ubo_vec2 depthRange;
     float exposure;
+    int channel;
     int8_t type;
 };
 
@@ -298,6 +299,7 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTextureSsrOpaqueSurface = BINDING_TEXTURE_SSR_OPAQUE_SURFACE;
 	static constexpr uint32_t k_bindingTextureSsrOpaqueNormal = BINDING_TEXTURE_SSR_OPAQUE_NORMAL;
 	static constexpr uint32_t k_bindingTextureSsrOpaqueDepth = BINDING_TEXTURE_SSR_OPAQUE_DEPTH;
+	static constexpr uint32_t k_bindingTextureSsrHiZDepth = BINDING_TEXTURE_SSR_HIZ_DEPTH;
 
 	static constexpr uint32_t k_bindingTextureSsrFilterSource = BINDING_TEXTURE_SSR_FILTER_SOURCE;
 	static constexpr uint32_t k_bindingTextureSsrFilterOpaqueDepth = BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH;
@@ -373,6 +375,7 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_TEXTURE_SSR_OPAQUE_SURFACE
 #undef BINDING_TEXTURE_SSR_OPAQUE_NORMAL
 #undef BINDING_TEXTURE_SSR_OPAQUE_DEPTH
+#undef BINDING_TEXTURE_SSR_HIZ_DEPTH
 #undef BINDING_TEXTURE_SSR_FILTER_SOURCE
 #undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH
 #undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_NORMAL

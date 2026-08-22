@@ -24,5 +24,6 @@ namespace vob::aoegl
 		GraphicEnum capturedInternalFormat = 0;
 		DebugType capturedType = DebugType::ColorTexture;
 		glm::vec2 capturedDepthRange{ 0.0f };
+		int32_t capturedChannel = 0;
 	};
 }

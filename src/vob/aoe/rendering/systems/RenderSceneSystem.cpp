@@ -274,14 +274,15 @@ namespace vob::aoegl
 			, GraphicId a_texture
 			, GraphicEnum a_sourceTarget
 			, int32_t a_sourceLayer
+			, int32_t a_sourceLevel
 			, DebugType a_type
 			, glm::vec2 a_depthRange)
 		{
 			auto resolution = glm::ivec2{};
 			auto internalFormat = GraphicInt{};
-			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_WIDTH, &resolution.x);
-			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_HEIGHT, &resolution.y);
-			glGetTextureLevelParameteriv(a_texture, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+			glGetTextureLevelParameteriv(a_texture, a_sourceLevel, GL_TEXTURE_WIDTH, &resolution.x);
+			glGetTextureLevelParameteriv(a_texture, a_sourceLevel, GL_TEXTURE_HEIGHT, &resolution.y);
+			glGetTextureLevelParameteriv(a_texture, a_sourceLevel, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
 
 			if (a_inspectorCtx.capturedTexture == k_invalidId
 				|| a_inspectorCtx.capturedResolution != resolution
@@ -300,12 +301,31 @@ namespace vob::aoegl
 			}
 
 			glCopyImageSubData(
-				a_texture, a_sourceTarget, 0, 0, 0, a_sourceLayer
+				a_texture, a_sourceTarget, a_sourceLevel, 0, 0, a_sourceLayer
 				, a_inspectorCtx.capturedTexture, GL_TEXTURE_2D, 0, 0, 0, 0
 				, resolution.x, resolution.y, 1);
 
 			a_inspectorCtx.capturedType = a_type;
 			a_inspectorCtx.capturedDepthRange = a_depthRange;
+		}
+
+		void debugInspectRenderOutputMipChannel(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, std::string_view a_name
+			, GraphicId a_texture
+			, int32_t a_level
+			, int32_t a_channel
+			, DebugType a_type
+			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+		{
+			a_inspectorCtx.names.push_back(a_name);
+			if (a_name != a_inspectorCtx.selectedName)
+			{
+				return;
+			}
+
+			captureDebugRenderOutput(a_inspectorCtx, a_texture, GL_TEXTURE_2D, 0, a_level, a_type, a_depthRange);
+			a_inspectorCtx.capturedChannel = a_channel;
 		}
 
 		int32_t debugInspectIndex(
@@ -335,7 +355,25 @@ namespace vob::aoegl
 				return;
 			}
 
-			captureDebugRenderOutput(a_inspectorCtx, a_texture, GL_TEXTURE_2D, 0, a_type, a_depthRange);
+			captureDebugRenderOutput(a_inspectorCtx, a_texture, GL_TEXTURE_2D, 0, 0, a_type, a_depthRange);
+			a_inspectorCtx.capturedChannel = 0;
+		}
+
+		void debugInspectRenderOutputMip(
+			DebugRenderInspectorContext& a_inspectorCtx
+			, std::string_view a_name
+			, GraphicId a_texture
+			, int32_t a_level
+			, DebugType a_type
+			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+		{
+			a_inspectorCtx.names.push_back(a_name);
+			if (a_name != a_inspectorCtx.selectedName)
+			{
+				return;
+			}
+
+			captureDebugRenderOutput(a_inspectorCtx, a_texture, GL_TEXTURE_2D, 0, a_level, a_type, a_depthRange);
 		}
 
 		void debugInspectRenderOutputLayer(
@@ -352,7 +390,8 @@ namespace vob::aoegl
 				return;
 			}
 
-			captureDebugRenderOutput(a_inspectorCtx, a_textureArray, GL_TEXTURE_2D_ARRAY, a_layer, a_type, a_depthRange);
+			captureDebugRenderOutput(
+				a_inspectorCtx, a_textureArray, GL_TEXTURE_2D_ARRAY, a_layer, 0, a_type, a_depthRange);
 		}
 
 		void debugDrawInspectedRenderOutput(
@@ -365,6 +404,7 @@ namespace vob::aoegl
 			auto const debugParams = UniformDebugParams{
 				.depthRange = a_inspectorCtx.capturedDepthRange,
 				.exposure = a_inspectorCtx.exposure,
+				.channel = a_inspectorCtx.capturedChannel,
 				.type = static_cast<int8_t>(a_inspectorCtx.capturedType)
 			};
 			glNamedBufferSubData(a_renderSceneCtx.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
@@ -474,35 +514,43 @@ namespace vob::aoegl
 
 			ImGui::SeparatorText("SSR");
 			ImGui::Checkbox("Enable##ssr", &k_ssrEnabled);
-			static int k_ssrLog2Step = 7;
-			ImGui::InputInt("Log2 Step", &k_ssrLog2Step);
-			static int k_ssrLog2SubStep = 3;
-			ImGui::InputInt("Log2 Sub Step", &k_ssrLog2SubStep);
-			static float k_ssrThicknessRatio = 0.01f;
-			ImGui::SliderFloat("Thickness Ratio", &k_ssrThicknessRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			static int k_ssrStepCount = 64;
+			ImGui::SliderInt("Step Count", &k_ssrStepCount, 4, 256);
 			static float k_ssrMaxRange = 500.0f;
 			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrInitialBiasRatio = 0.01f;
-			ImGui::SliderFloat("Initial Bias Ratio", &k_ssrInitialBiasRatio, 0.001f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMaxThickness = 10.0f;
-			ImGui::SliderFloat("Max Thickness", &k_ssrMaxThickness, 0.01f, 50.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrMinSeparationRatio = 0.001f;
-			ImGui::SliderFloat("Min Separation Ratio", &k_ssrMinSeparationRatio, 0.0f, 0.5f, "%.4f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrBlockedBlackThickness = 5.0f;
-			ImGui::SliderFloat("Blocked Black Thickness", &k_ssrBlockedBlackThickness, 1.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrBlockedSkyThickness = 50.0f;
-			ImGui::SliderFloat("Blocked Sky Thickness", &k_ssrBlockedSkyThickness, 1.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+
+			static bool k_ssrDebugExitReason = false;
+			ImGui::Checkbox("Debug Exit Reason##ssr", &k_ssrDebugExitReason);
+
+			static bool k_ssrDebugPenetration = false;
+			ImGui::Checkbox("Debug Penetration##ssr", &k_ssrDebugPenetration);
+
+			static bool k_ssrDebugRay = false;
+			static glm::ivec2 k_ssrDebugRayPixel = renderSceneCtx.shadingResolution / 2;
+			ImGui::Checkbox("Debug Ray##ssr", &k_ssrDebugRay);
+			if (k_ssrDebugRay)
+			{
+				ImGui::SliderInt("Ray Pixel X", &k_ssrDebugRayPixel.x, 0, renderSceneCtx.shadingResolution.x - 1);
+				ImGui::SliderInt("Ray Pixel Y", &k_ssrDebugRayPixel.y, 0, renderSceneCtx.shadingResolution.y - 1);
+			}
+
+			static float k_ssrPenetrationBlockedRatio = 0.003f;
+			ImGui::SliderFloat(
+				"Penetration Blocked Below", &k_ssrPenetrationBlockedRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssrPenetrationThroughRatio = 0.3f;
+			ImGui::SliderFloat(
+				"Penetration Through Above", &k_ssrPenetrationThroughRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+
 
 			auto const ssrParams = UniformSsrParams{
-				.log2Step = k_ssrLog2Step,
-				.log2SubStep = k_ssrLog2SubStep,
-				.thicknessRatio = k_ssrThicknessRatio,
+				.stepCount = k_ssrStepCount,
+				.debugExitReason = k_ssrDebugExitReason ? 1 : 0,
 				.maxRange = k_ssrMaxRange,
-				.initialBiasRatio = k_ssrInitialBiasRatio,
-				.maxThickness = k_ssrMaxThickness,
-				.minSeparationRatio = k_ssrMinSeparationRatio,
-				.blockedBlackThickness = k_ssrBlockedBlackThickness,
-				.blockedSkyThickness = k_ssrBlockedSkyThickness
+				.debugRay = k_ssrDebugRay ? 1 : 0,
+				.debugRayPixel = k_ssrDebugRayPixel,
+				.penetrationBlockedRatio = k_ssrPenetrationBlockedRatio,
+				.penetrationThroughRatio = k_ssrPenetrationThroughRatio,
+				.debugPenetration = k_ssrDebugPenetration ? 1 : 0
 			};
 			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
 
@@ -1430,9 +1478,72 @@ namespace vob::aoegl
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Surface", renderSceneCtx.opaqueSurfaceTexture, DebugType::ColorTexture);
 		}
 
+		// VIII bis - Hi-Z depth pyramid
+		{
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Hi-Z");
+			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
+			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
+			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
+			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hiZReduceProgram);
+			glBindVertexArray(renderSceneCtx.postProcessVao);
+
+			auto mipResolution = renderSceneCtx.shadingResolution;
+			for (int32_t mipIndex = 0; mipIndex < mistd::isize(renderSceneCtx.hiZMipFramebuffers); ++mipIndex)
+			{
+				if (mipIndex == 0)
+				{
+					gpuState.bindTexture<GpuStateChange::LikelyYes>(
+						k_bindingTextureSsrFilterSource, renderSceneCtx.opaqueDepthTexture);
+				}
+				else
+				{
+					mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
+					glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
+					glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+					gpuState.bindTexture<GpuStateChange::SurelyYes>(
+						k_bindingTextureSsrFilterSource, renderSceneCtx.hiZDepthTexture);
+				}
+
+				beginPass(
+					gpuState
+					, renderSceneCtx.hiZMipFramebuffers[mipIndex]
+					, mipResolution
+					, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
+			glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, 0);
+			glTextureParameteri(
+				renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.hiZMipLevels - 1);
+
+			auto const inspectedHiZNearLevel = debugInspectIndex(
+				debugRenderInspectorCtx, "Hi-Z Near", renderSceneCtx.hiZMipLevels);
+			debugInspectRenderOutputMipChannel(
+				debugRenderInspectorCtx
+				, "Hi-Z Near"
+				, renderSceneCtx.hiZDepthTexture
+				, inspectedHiZNearLevel
+				, 0
+				, DebugType::DepthTexture
+				, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+
+			auto const inspectedHiZFarLevel = debugInspectIndex(
+				debugRenderInspectorCtx, "Hi-Z Far", renderSceneCtx.hiZMipLevels);
+			debugInspectRenderOutputMipChannel(
+				debugRenderInspectorCtx
+				, "Hi-Z Far"
+				, renderSceneCtx.hiZDepthTexture
+				, inspectedHiZFarLevel
+				, 1
+				, DebugType::DepthTexture
+				, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+		}
+
 		// IX - SSR
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSR");
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureSsrHiZDepth, renderSceneCtx.hiZDepthTexture);
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1458,6 +1569,9 @@ namespace vob::aoegl
 				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
+
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx, "Ssr Raw", renderSceneCtx.ssrRawColorTexture, DebugType::ColorTexture);
 
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrPrefilterProgram);
@@ -1495,7 +1609,14 @@ namespace vob::aoegl
 			glTextureParameteri(
 				renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.ssrMipLevels - 1);
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrColorTexture, DebugType::ColorTexture);
+			auto const inspectedSsrLevel = debugInspectIndex(
+				debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrMipLevels);
+			debugInspectRenderOutputMip(
+				debugRenderInspectorCtx
+				, "Ssr Color"
+				, renderSceneCtx.ssrColorTexture
+				, inspectedSsrLevel
+				, DebugType::ColorTexture);
 		}
 
 		// X - Opaque Composition
