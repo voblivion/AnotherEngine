@@ -6,8 +6,11 @@
 
 #include "vob/misc/std/bounded_vector.h"
 
+#include <glm/glm.hpp>
+
 #include <memory>
 #include <string>
+#include <variant>
 
 
 namespace vob::aoegl
@@ -17,7 +20,7 @@ namespace vob::aoegl
 		struct TextureEntry
 		{
 			std::string slotName;
-			std::shared_ptr<TextureDefinition const> texture;
+			std::variant<std::shared_ptr<TextureDefinition const>, glm::vec4> source;
 		};
 
 		std::string name;

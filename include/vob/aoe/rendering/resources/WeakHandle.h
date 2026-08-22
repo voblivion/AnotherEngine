@@ -2,6 +2,8 @@
 
 #include "vob/aoe/rendering/resources/Handle.h"
 
+#include <compare>
+
 
 namespace vob::aoegl
 {
@@ -35,10 +37,7 @@ namespace vob::aoegl
 			return *this;
 		}
 
-		friend bool operator==(WeakHandle<T> const& a_lhs, WeakHandle<T> const& a_rhs)
-		{
-			return (a_lhs.m_index == a_rhs.m_index) && (a_lhs.m_version == a_rhs.m_version);
-		}
+		friend auto operator<=>(WeakHandle const&, WeakHandle const&) = default;
 
 		bool isValid() const
 		{

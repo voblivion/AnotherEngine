@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 
 
 namespace vob::aoegl
@@ -123,6 +124,27 @@ namespace vob::aoegl
 		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_G, static_cast<GraphicInt>(a_settings.swizzle[1]));
 		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_B, static_cast<GraphicInt>(a_settings.swizzle[2]));
 		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_A, static_cast<GraphicInt>(a_settings.swizzle[3]));
+
+		return texture;
+	}
+
+	GpuTexture createSolidColorTexture(glm::vec4 const& a_color)
+	{
+		auto const toUnorm8 = [](float a_value)
+			{
+				return static_cast<uint8_t>(std::lround(std::clamp(a_value, 0.0f, 1.0f) * 255.0f));
+			};
+		auto const pixel = std::array{
+			toUnorm8(a_color.r), toUnorm8(a_color.g), toUnorm8(a_color.b), toUnorm8(a_color.a) };
+
+		auto texture = GpuTexture{ k_invalidId, GL_TEXTURE_2D };
+		glCreateTextures(texture.target, 1, &texture.id);
+
+		glTextureStorage2D(texture.id, 1, GL_RGBA8, 1, 1);
+		glTextureSubImage2D(texture.id, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+
+		glTextureParameteri(texture.id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTextureParameteri(texture.id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 		return texture;
 	}
