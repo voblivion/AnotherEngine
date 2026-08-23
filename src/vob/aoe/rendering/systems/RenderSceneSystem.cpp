@@ -98,6 +98,23 @@ namespace vob::aoegl
 			}, worldOriginPosition);
 		}
 
+		template <typename TMesh, typename TGetProgram>
+		void sortCulledMeshes(std::vector<TMesh>& a_meshes, TGetProgram a_getProgram)
+		{
+			std::sort(a_meshes.begin(), a_meshes.end(), [a_getProgram](TMesh const& a_lhs, TMesh const& a_rhs)
+				{
+					if (a_getProgram(a_lhs) != a_getProgram(a_rhs))
+					{
+						return a_getProgram(a_lhs) < a_getProgram(a_rhs);
+					}
+					if (a_lhs.material != a_rhs.material)
+					{
+						return a_lhs.material < a_rhs.material;
+					}
+					return a_lhs.vao < a_rhs.vao;
+				});
+		}
+
 		static float texelSize = 1.0;
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
@@ -892,17 +909,7 @@ namespace vob::aoegl
 
 		struct CulledStaticMesh
 		{
-			GraphicId program;
-			GraphicId depthProgram;
-			WeakHandle<GpuMaterial> material;
-			GraphicId modelParamsUbo;
-			GraphicId vao;
-			int32_t indexCount;
-		};
-
-		struct CulledShadowStaticMesh
-		{
-			GraphicId program;
+			ResolvedShader shader;
 			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId vao;
@@ -918,18 +925,7 @@ namespace vob::aoegl
 
 		struct CulledRiggedMesh
 		{
-			GraphicId program;
-			GraphicId depthProgram;
-			WeakHandle<GpuMaterial> material;
-			GraphicId modelParamsUbo;
-			GraphicId rigParamsUbo;
-			GraphicId vao;
-			int32_t indexCount;
-		};
-		
-		struct CulledShadowRiggedMesh
-		{
-			GraphicId program;
+			ResolvedShader shader;
 			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId rigParamsUbo;
@@ -947,19 +943,7 @@ namespace vob::aoegl
 
 		struct CulledInstancedMesh
 		{
-			GraphicId program;
-			GraphicId depthProgram;
-			WeakHandle<GpuMaterial> material;
-			GraphicId modelParamsUbo;
-			GraphicId instanceTransformsVbo;
-			int32_t instanceCount;
-			GraphicId vao;
-			int32_t indexCount;
-		};
-		
-		struct CulledShadowInstancedMesh
-		{
-			GraphicId program;
+			ResolvedShader shader;
 			WeakHandle<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId instanceTransformsVbo;
@@ -987,17 +971,25 @@ namespace vob::aoegl
 				instancedTranslucentMeshes.clear();
 			}
 
+			void sort()
+			{
+				auto const getProgram = [](auto const& a_mesh) { return a_mesh.shader.depthProgram; };
+				sortCulledMeshes(staticOpaqueMeshes, getProgram);
+				sortCulledMeshes(riggedOpaqueMeshes, getProgram);
+				sortCulledMeshes(instancedOpaqueMeshes, getProgram);
+			}
+
 			void addStaticMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				case ShadingPass::Translucent:
 					staticTranslucentMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1010,11 +1002,11 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				case ShadingPass::Translucent:
 					riggedTranslucentMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1027,11 +1019,11 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
 					break;
 				case ShadingPass::Translucent:
 					instancedTranslucentMeshes.emplace_back(
-						a_mesh.program, a_mesh.depthProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1041,9 +1033,9 @@ namespace vob::aoegl
 		
 		struct CulledShadowMeshes
 		{
-			std::vector<CulledShadowStaticMesh> staticOpaqueMeshes;
-			std::vector<CulledShadowRiggedMesh> riggedOpaqueMeshes;
-			std::vector<CulledShadowInstancedMesh> instancedOpaqueMeshes;
+			std::vector<CulledStaticMesh> staticOpaqueMeshes;
+			std::vector<CulledRiggedMesh> riggedOpaqueMeshes;
+			std::vector<CulledInstancedMesh> instancedOpaqueMeshes;
 
 			void clear()
 			{
@@ -1052,13 +1044,21 @@ namespace vob::aoegl
 				instancedOpaqueMeshes.clear();
 			}
 
+			void sort()
+			{
+				auto const getProgram = [](auto const& a_mesh) { return a_mesh.shader.shadowMapProgram; };
+				sortCulledMeshes(staticOpaqueMeshes, getProgram);
+				sortCulledMeshes(riggedOpaqueMeshes, getProgram);
+				sortCulledMeshes(instancedOpaqueMeshes, getProgram);
+			}
+
 			void addStaticMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.shadowMapProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1071,7 +1071,7 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.shadowMapProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1084,7 +1084,7 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.shadowMapProgram, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
 					break;
 				default:
 					break;
@@ -1102,22 +1102,6 @@ namespace vob::aoegl
 					0 /* offset */,
 					sizeof(glm::mat4));
 				glDrawElementsInstanced(GL_TRIANGLES, instancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, instancedMesh.instanceCount);
-			};
-
-		auto const sortCulledOpaqueMeshes = [](auto& culledOpaqueMeshes)
-			{
-				std::sort(culledOpaqueMeshes.begin(), culledOpaqueMeshes.end(), [](auto const& a_lhs, auto const& a_rhs)
-					{
-						if (a_lhs.program != a_rhs.program)
-						{
-							return a_lhs.program < a_rhs.program;
-						}
-						if (a_lhs.material != a_rhs.material)
-						{
-							return a_lhs.material < a_rhs.material;
-						}
-						return a_lhs.vao < a_rhs.vao;
-					});
 			};
 
 		auto const cullView = [&](auto const& a_viewFrustumPlanes, auto& a_culledMeshes)
@@ -1161,9 +1145,7 @@ namespace vob::aoegl
 					}
 				}
 
-				sortCulledOpaqueMeshes(a_culledMeshes.staticOpaqueMeshes);
-				sortCulledOpaqueMeshes(a_culledMeshes.riggedOpaqueMeshes);
-				sortCulledOpaqueMeshes(a_culledMeshes.instancedOpaqueMeshes);
+				a_culledMeshes.sort();
 			};
 
 		auto const drawOpaqueMeshes = [&](auto const& a_culledMeshes, auto a_applyMeshState)
@@ -1199,7 +1181,7 @@ namespace vob::aoegl
 				// TODO: need to do the material state cache thing
 				drawOpaqueMeshes(culledShadowMeshes, [&](auto const& a_mesh)
 					{
-						gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.program);
+						gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.shader.shadowMapProgram);
 					});
 			};
 
@@ -1384,7 +1366,7 @@ namespace vob::aoegl
 
 			drawOpaqueMeshes(culledMeshes, [&](auto const& a_mesh)
 				{
-					gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.depthProgram);
+					gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.shader.depthProgram);
 				});
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Geometric Normal", renderSceneCtx.opaqueGeometricNormalTexture, DebugType::DirectionTexture);
@@ -1441,15 +1423,10 @@ namespace vob::aoegl
 			}
 			beginPass(gpuState, renderSceneCtx.directOpaqueFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			glClear(GL_COLOR_BUFFER_BIT);
-			GraphicId currentShadingProgram;
 			WeakHandle<GpuMaterial> currentMaterial;
 			auto const applyMeshShadingParams = [&](auto const& mesh)
 				{
-					if (currentShadingProgram != mesh.program)
-					{
-						gpuState.useProgram<GpuStateChange::LikelyYes>(mesh.program);
-						currentShadingProgram = mesh.program;
-					}
+					gpuState.useProgram<GpuStateChange::LikelyNo>(mesh.shader.program);
 					if (currentMaterial != mesh.material && mesh.material.isValid())
 					{
 						auto const& material = materialRegistry.get(mesh.material);
