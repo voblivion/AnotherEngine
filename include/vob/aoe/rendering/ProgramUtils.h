@@ -34,11 +34,26 @@ namespace vob::aoegl
 		, MaterialParamsLayout const& a_paramsLayout
 		, ShadingPass a_shadingPass
 		, ModelType a_modelType
+		, bool a_isAlphaMasked
 		, GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
-	
+
+	GraphicId createAlphaMaskedDepthProgram(
+		std::string_view a_partialSource
+		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
+		, ModelType a_modelType
+		, GraphicId a_optionalProgramId = k_invalidId);
+
 	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createAlphaMaskedShadowMapProgram(
+		std::string_view a_partialSource
+		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
+		, ModelType a_modelType
+		, GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId = k_invalidId);
 

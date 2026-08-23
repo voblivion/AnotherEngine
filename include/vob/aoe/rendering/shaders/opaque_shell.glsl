@@ -15,8 +15,20 @@ layout(location = 2) out vec4 oSurface;
 
 OpaqueOutputs getOpaqueOutputs();
 
+#if USE_ALPHA_MASK
+float getOpacity();
+float getAlphaCutoff();
+#endif
+
 void main()
 {
+#if USE_ALPHA_MASK
+    if (getOpacity() < getAlphaCutoff())
+    {
+        discard;
+    }
+#endif
+
     OpaqueOutputs outputs = getOpaqueOutputs();
 
     oColor = outputs.color;

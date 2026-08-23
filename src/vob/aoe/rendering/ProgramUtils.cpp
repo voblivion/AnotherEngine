@@ -271,6 +271,7 @@ namespace vob::aoegl
 		std::string_view a_fragmentShaderSource
 		, ModelType a_modelType
 		, bool a_useShading
+		, bool a_useUv
 		, bool a_useNormal
 		, std::span<std::string const> a_extraDefines
 		, GraphicId a_optionalProgramId)
@@ -290,6 +291,10 @@ namespace vob::aoegl
 		if (a_useShading)
 		{
 			defines.emplace_back("USE_SHADING 1");
+		}
+		if (a_useUv)
+		{
+			defines.emplace_back("USE_UV 1");
 		}
 		if (a_useNormal)
 		{
@@ -312,6 +317,7 @@ namespace vob::aoegl
 		, MaterialParamsLayout const& a_paramsLayout
 		, ShadingPass a_shadingPass
 		, ModelType a_modelType
+		, bool a_isAlphaMasked
 		, GraphicId a_optionalProgramId)
 	{
 		auto const shellPath = [a_shadingPass]
@@ -331,22 +337,112 @@ namespace vob::aoegl
 		fragmentShaderSource += generateMaterialParamsBlockSource(a_paramsLayout);
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_partialSource;
+
+		auto defines = std::vector<std::string>{ a_defines.begin(), a_defines.end() };
+		if (a_isAlphaMasked)
+		{
+			defines.emplace_back("USE_ALPHA_MASK 1");
+		}
+
 		return createGeometryProgram(
-			fragmentShaderSource, a_modelType, true /* use shading */, false /* use normal */, a_defines, a_optionalProgramId);
+			fragmentShaderSource
+			, a_modelType
+			, true /* use shading */
+			, true /* use uv */
+			, false /* use normal */
+			, defines
+			, a_optionalProgramId);
+	}
+
+	namespace
+	{
+		GraphicId createAlphaMaskedGeometryProgram(
+			char const* a_shellPath
+			, std::string_view a_partialSource
+			, std::span<std::string const> a_defines
+			, MaterialParamsLayout const& a_paramsLayout
+			, ModelType a_modelType
+			, bool a_useNormal
+			, GraphicId a_optionalProgramId)
+		{
+			auto fragmentShaderSource = readFile(a_shellPath);
+			fragmentShaderSource += '\n';
+			fragmentShaderSource += generateMaterialParamsBlockSource(a_paramsLayout);
+			fragmentShaderSource += '\n';
+			fragmentShaderSource += a_partialSource;
+
+			auto defines = std::vector<std::string>{ a_defines.begin(), a_defines.end() };
+			defines.emplace_back("USE_ALPHA_MASK 1");
+
+			return createGeometryProgram(
+				fragmentShaderSource
+				, a_modelType
+				, false /* use shading */
+				, true /* use uv */
+				, a_useNormal
+				, defines
+				, a_optionalProgramId);
+		}
 	}
 
 	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_fragment_shader.glsl");
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource, a_modelType, false /* use shading */, true /* use normal */, {} /* extra defines */, a_optionalProgramId);
+			fragmentShaderSource
+			, a_modelType
+			, false /* use shading */
+			, false /* use uv */
+			, true /* use normal */
+			, {} /* extra defines */
+			, a_optionalProgramId);
+	}
+
+	GraphicId createAlphaMaskedDepthProgram(
+		std::string_view a_partialSource
+		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
+		, ModelType a_modelType
+		, GraphicId a_optionalProgramId)
+	{
+		return createAlphaMaskedGeometryProgram(
+			VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl"
+			, a_partialSource
+			, a_defines
+			, a_paramsLayout
+			, a_modelType
+			, true /* use normal */
+			, a_optionalProgramId);
 	}
 
 	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_fragment_shader.glsl");
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource, a_modelType, false /* use shading */, false /* use normal */, {} /* extra defines */, a_optionalProgramId);
+			fragmentShaderSource
+			, a_modelType
+			, false /* use shading */
+			, false /* use uv */
+			, false /* use normal */
+			, {} /* extra defines */
+			, a_optionalProgramId);
+	}
+
+	GraphicId createAlphaMaskedShadowMapProgram(
+		std::string_view a_partialSource
+		, std::span<std::string const> a_defines
+		, MaterialParamsLayout const& a_paramsLayout
+		, ModelType a_modelType
+		, GraphicId a_optionalProgramId)
+	{
+		return createAlphaMaskedGeometryProgram(
+			VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl"
+			, a_partialSource
+			, a_defines
+			, a_paramsLayout
+			, a_modelType
+			, false /* use normal */
+			, a_optionalProgramId);
 	}
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)

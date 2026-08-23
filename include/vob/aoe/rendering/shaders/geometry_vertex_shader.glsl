@@ -7,8 +7,10 @@ layout(location = 0) in vec3 aPosition;
 #if USE_SHADING || USE_NORMAL
 layout(location = 1) in vec3 aNormal;
 #endif
-#if USE_SHADING
+#if USE_UV
 layout(location = 2) in vec2 aUv;
+#endif
+#if USE_SHADING
 layout(location = 3) in vec3 aTangent;
 #endif
 #if USE_RIG
@@ -21,9 +23,11 @@ layout(location = 6) in vec4 aInstanceRow2;
 layout(location = 7) in vec4 aInstanceRow3;
 #endif
 
+#if USE_UV
+out vec2 vUv;
+#endif
 #if USE_SHADING
 out vec3 vPosition;
-out vec2 vUv;
 out mat3 vTBN;
 #endif
 #if USE_NORMAL
@@ -61,11 +65,13 @@ void main()
 #endif
 #endif
 
+#if USE_UV
+    vUv = aUv;
+#endif
 #if USE_SHADING
     vec3 N = normalize(normalMatrix * aNormal);
     vec3 T = normalize(normalMatrix * aTangent);
     vPosition = position.xyz;
-    vUv = aUv;
     T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N, T);
     vTBN = mat3(T, B, N);

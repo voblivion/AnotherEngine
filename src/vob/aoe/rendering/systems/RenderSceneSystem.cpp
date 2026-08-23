@@ -714,6 +714,7 @@ namespace vob::aoegl
 								, paramsLayout
 								, shaderDefinition.shadingPass
 								, a_modelType
+								, shaderDefinition.isAlphaMasked
 								, a_programId);
 						};
 
@@ -1167,6 +1168,25 @@ namespace vob::aoegl
 				}
 			};
 
+		// Only alpha-masked shaders sample the material outside the shading pass, and then only the slots
+		// their opacity test reads.
+		auto const applyMeshAlphaMaskParams = [&](auto const& a_mesh, WeakHandle<GpuMaterial>& a_currentMaterial)
+			{
+				if (!a_mesh.shader.isAlphaMasked || a_currentMaterial == a_mesh.material || !a_mesh.material.isValid())
+				{
+					return;
+				}
+
+				auto const& material = materialRegistry.get(a_mesh.material);
+				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
+				for (auto const slotIndex : material.depthOnlyTextureSlotIndices)
+				{
+					gpuState.bindTexture<GpuStateChange::LikelyYes>(
+						k_bindingTextureShadingMaterialBegin + slotIndex, material.textures[slotIndex].id);
+				}
+				a_currentMaterial = a_mesh.material;
+			};
+
 		static CulledMeshes culledMeshes;
 		cullView(viewFrustumPlanes, culledMeshes);
 
@@ -1178,13 +1198,13 @@ namespace vob::aoegl
 				glNamedBufferSubData(renderSceneCtx.lightViewParamsUbo, 0, sizeof(a_viewParams), &a_viewParams);
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				// TODO: need to do the material state cache thing
+				auto currentMaterial = WeakHandle<GpuMaterial>{};
 				drawOpaqueMeshes(culledShadowMeshes, [&](auto const& a_mesh)
 					{
-						gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.shader.shadowMapProgram);
+						gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.shadowMapProgram);
+						applyMeshAlphaMaskParams(a_mesh, currentMaterial);
 					});
 			};
-
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -1364,9 +1384,11 @@ namespace vob::aoegl
 			beginPass(gpuState, renderSceneCtx.depthFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+			auto currentDepthMaterial = WeakHandle<GpuMaterial>{};
 			drawOpaqueMeshes(culledMeshes, [&](auto const& a_mesh)
 				{
-					gpuState.useProgram<GpuStateChange::LikelyYes>(a_mesh.shader.depthProgram);
+					gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.depthProgram);
+					applyMeshAlphaMaskParams(a_mesh, currentDepthMaterial);
 				});
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Geometric Normal", renderSceneCtx.opaqueGeometricNormalTexture, DebugType::DirectionTexture);
