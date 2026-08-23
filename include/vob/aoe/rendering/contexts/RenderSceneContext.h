@@ -129,12 +129,6 @@ namespace vob::aoegl
 
 		// Programs
 		GraphicId lightClusteringProgram;
-		GraphicId staticShadowMapProgram;
-		GraphicId riggedShadowMapProgram;
-		GraphicId instancedShadowMapProgram;
-		GraphicId staticDepthProgram;
-		GraphicId riggedDepthProgram;
-		GraphicId instancedDepthProgram;
 		GraphicId ssaoProgram;
 		GraphicId ssrProgram;
 		GraphicId hiZReduceProgram;

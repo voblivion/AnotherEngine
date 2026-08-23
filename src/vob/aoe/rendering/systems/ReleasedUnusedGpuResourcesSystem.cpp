@@ -39,12 +39,14 @@ namespace vob::aoegl
 				glDeleteBuffers(1, &gpuMesh.ebo);
 			});
 
+		// Shaders hold program handles, so their programs are released through the program registry below.
 		auto& shaderRegistry = *gpuResourceRegistriesCtx.shaderRegistry;
-		shaderRegistry.processUnusedResources([](GpuShader gpuShader)
+		shaderRegistry.processUnusedResources([](GpuShader) {});
+
+		auto& programRegistry = *gpuResourceRegistriesCtx.programRegistry;
+		programRegistry.processUnusedResources([](GpuProgram gpuProgram)
 			{
-				glDeleteProgram(gpuShader.staticProgram);
-				glDeleteProgram(gpuShader.riggedProgram);
-				glDeleteProgram(gpuShader.instancedProgram);
+				glDeleteProgram(gpuProgram.id);
 			});
 
 		auto& textureRegistry = *gpuResourceRegistriesCtx.textureRegistry;

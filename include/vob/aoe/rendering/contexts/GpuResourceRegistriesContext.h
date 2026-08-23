@@ -3,6 +3,7 @@
 #include "vob/aoe/rendering/resources/GpuBuffer.h"
 #include "vob/aoe/rendering/resources/GpuMaterial.h"
 #include "vob/aoe/rendering/resources/GpuMesh.h"
+#include "vob/aoe/rendering/resources/GpuProgram.h"
 #include "vob/aoe/rendering/resources/GpuShader.h"
 #include "vob/aoe/rendering/resources/GpuTexture.h"
 #include "vob/aoe/rendering/resources/Registry.h"
@@ -15,6 +16,7 @@ namespace vob::aoegl
 		std::shared_ptr<Registry<GpuBuffer>> bufferRegistry;
 		std::shared_ptr<Registry<GpuMaterial>> materialRegistry;
 		std::shared_ptr<Registry<GpuMesh>> meshRegistry;
+		std::shared_ptr<Registry<GpuProgram>> programRegistry;
 		std::shared_ptr<Registry<GpuShader>> shaderRegistry;
 		std::shared_ptr<Registry<GpuTexture>> textureRegistry;
 	};

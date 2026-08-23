@@ -3,6 +3,8 @@
 #include "vob/aoe/rendering/GraphicTypes.h"
 #include "vob/aoe/rendering/MaterialParamsLayout.h"
 #include "vob/aoe/rendering/ResolvedShader.h"
+#include "vob/aoe/rendering/resources/GpuProgram.h"
+#include "vob/aoe/rendering/resources/Handle.h"
 #include "vob/aoe/rendering/ShadingPass.h"
 
 
@@ -10,35 +12,38 @@ namespace vob::aoegl
 {
 	struct GpuShader
 	{
+		struct OwnedProgram
+		{
+			Handle<GpuProgram> handle;
+			GraphicId id = k_invalidId;
+		};
+
 		ShadingPass shadingPass;
-		GraphicId staticProgram;
-		GraphicId riggedProgram;
-		GraphicId instancedProgram;
-		// TODO: shaders that need no variant of their own alias the core depth/shadow programs, so those
-		// ids are NOT owned and must not be deleted with the shader. Promote to a shared GpuProgram
-		// resource once shader definitions can be created and destroyed at runtime.
-		GraphicId staticDepthProgram;
-		GraphicId riggedDepthProgram;
-		GraphicId instancedDepthProgram;
-		GraphicId staticShadowMapProgram;
-		GraphicId riggedShadowMapProgram;
-		GraphicId instancedShadowMapProgram;
+		OwnedProgram staticProgram;
+		OwnedProgram riggedProgram;
+		OwnedProgram instancedProgram;
+		OwnedProgram staticDepthProgram;
+		OwnedProgram riggedDepthProgram;
+		OwnedProgram instancedDepthProgram;
+		OwnedProgram staticShadowMapProgram;
+		OwnedProgram riggedShadowMapProgram;
+		OwnedProgram instancedShadowMapProgram;
 		bool isAlphaMasked;
 		MaterialParamsLayout paramsLayout;
 
 		ResolvedShader getResolvedStaticShader() const
 		{
-			return { staticProgram, staticDepthProgram, staticShadowMapProgram, isAlphaMasked };
+			return { staticProgram.id, staticDepthProgram.id, staticShadowMapProgram.id, isAlphaMasked };
 		}
 
 		ResolvedShader getResolvedRiggedShader() const
 		{
-			return { riggedProgram, riggedDepthProgram, riggedShadowMapProgram, isAlphaMasked };
+			return { riggedProgram.id, riggedDepthProgram.id, riggedShadowMapProgram.id, isAlphaMasked };
 		}
 
 		ResolvedShader getResolvedInstancedShader() const
 		{
-			return { instancedProgram, instancedDepthProgram, instancedShadowMapProgram, isAlphaMasked };
+			return { instancedProgram.id, instancedDepthProgram.id, instancedShadowMapProgram.id, isAlphaMasked };
 		}
 	};
 }
