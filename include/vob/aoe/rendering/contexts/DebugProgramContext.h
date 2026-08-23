@@ -1,6 +1,8 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/resources/GpuShader.h"
+#include "vob/aoe/rendering/resources/WeakHandle.h"
 #include "vob/aoe/rendering/ShaderDefinition.h"
 
 #include <vob/aoe/data/filesystem_database.h>
@@ -20,9 +22,7 @@ namespace vob::aoegl
 	{
 		struct Shader
 		{
-			GraphicId staticProgram;
-			GraphicId riggedProgram;
-			GraphicId instancedProgram;
+			WeakHandle<GpuShader> shader;
 			std::shared_ptr<ShaderDefinition const> shaderDefinition;
 		};
 

@@ -706,7 +706,9 @@ namespace vob::aoegl
 				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string()))
 				{
 					auto const paramsLayout = computeMaterialParamsLayout(shaderDefinition.uniformDefaults);
-					auto const recompile = [&](ModelType a_modelType, GraphicId a_programId)
+					auto const& gpuShader = shaderRegistry.get(shader.shader);
+
+					auto const recompileShading = [&](ModelType a_modelType, GraphicId a_programId)
 						{
 							createShadingProgram(
 								*source
@@ -718,9 +720,32 @@ namespace vob::aoegl
 								, a_programId);
 						};
 
-					recompile(ModelType::Static, shader.staticProgram);
-					recompile(ModelType::Rigged, shader.riggedProgram);
-					recompile(ModelType::Instanced, shader.instancedProgram);
+					recompileShading(ModelType::Static, gpuShader.staticProgram.id);
+					recompileShading(ModelType::Rigged, gpuShader.riggedProgram.id);
+					recompileShading(ModelType::Instanced, gpuShader.instancedProgram.id);
+
+					// Unmasked shaders alias the core depth/shadow programs, which no partial contributes to.
+					if (shaderDefinition.isAlphaMasked)
+					{
+						auto const recompileDepth = [&](ModelType a_modelType, GraphicId a_programId)
+							{
+								createAlphaMaskedDepthProgram(
+									*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+							};
+						auto const recompileShadowMap = [&](ModelType a_modelType, GraphicId a_programId)
+							{
+								createAlphaMaskedShadowMapProgram(
+									*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+							};
+
+						recompileDepth(ModelType::Static, gpuShader.staticDepthProgram.id);
+						recompileDepth(ModelType::Rigged, gpuShader.riggedDepthProgram.id);
+						recompileDepth(ModelType::Instanced, gpuShader.instancedDepthProgram.id);
+
+						recompileShadowMap(ModelType::Static, gpuShader.staticShadowMapProgram.id);
+						recompileShadowMap(ModelType::Rigged, gpuShader.riggedShadowMapProgram.id);
+						recompileShadowMap(ModelType::Instanced, gpuShader.instancedShadowMapProgram.id);
+					}
 				}
 			}
 
