@@ -14,6 +14,8 @@ namespace vob::aoegl
 	{
 		ShadingPass shadingPass = ShadingPass::Opaque;
 		GraphicId program;
+		GraphicId depthProgram;
+		GraphicId shadowMapProgram;
 		WeakHandle<GpuMaterial> material;
 		GraphicId vao;
 		int32_t indexCount = 0;

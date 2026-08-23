@@ -43,9 +43,10 @@ namespace vob::aoegl
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const> m_focusEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, StaticModelComponent const, ModelTransformComponent> m_staticModelEntities;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, RiggedModelComponent const, ModelTransformComponent> m_riggedModelEntities;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, InstancedModelsComponent const, ModelTransformComponent> m_instancedModelsEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, ModelTransformComponent> m_modelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, ModelTransformComponent const, StaticModelComponent const> m_staticModelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, ModelTransformComponent const, RiggedModelComponent const> m_riggedModelEntities;
+		aoeng::EcsWorldViewRef<aoest::PositionComponent const, ModelTransformComponent const, InstancedModelsComponent const> m_instancedModelsEntities;
 
 		// TODO: move out of system
 		GraphicId m_debugProgram = k_invalidId;
