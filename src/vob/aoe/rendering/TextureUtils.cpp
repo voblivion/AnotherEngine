@@ -24,6 +24,8 @@ namespace vob::aoegl
 			ImageFormatInfo{ GL_RG8, 0, GL_RG },
 			ImageFormatInfo{ GL_RGB8, GL_SRGB8, GL_RGB },
 			ImageFormatInfo{ GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA },
+			ImageFormatInfo{ GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GL_COMPRESSED_SRGB_S3TC_DXT1_EXT, 0 },
+			ImageFormatInfo{ GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT, 0 },
 			ImageFormatInfo{ GL_COMPRESSED_RED_RGTC1, 0, 0 },
 			ImageFormatInfo{ GL_COMPRESSED_RG_RGTC2, 0, 0 },
 			ImageFormatInfo{ GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT, 0, 0 },
@@ -53,7 +55,12 @@ namespace vob::aoegl
 		}
 
 		auto const& formatInfo = k_imageFormatInfos[static_cast<size_t>(a_image.format)];
-		auto const useSrgb = a_settings.colorSpace == TextureSettings::ColorSpace::Srgb;
+
+		VOB_AOE_CHECK_LOG(
+			!a_image.colorSpace.has_value() || *a_image.colorSpace == a_settings.colorSpace
+			, "Image color space disagrees with texture settings, using the image's.");
+		auto const colorSpace = a_image.colorSpace.value_or(a_settings.colorSpace);
+		auto const useSrgb = colorSpace == TextureSettings::ColorSpace::Srgb;
 		if (!VOB_AOE_CHECK_LOG(!useSrgb || formatInfo.srgbFormat != 0, "Image format has no srgb variant."))
 		{
 			return invalidTexture;
