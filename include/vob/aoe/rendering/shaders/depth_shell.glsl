@@ -26,5 +26,5 @@ void main()
     }
 #endif
 
-    oGeometricNormal = normalize(vNormal);
+    oGeometricNormal = normalize(gl_FrontFacing ? vNormal : -vNormal);
 }

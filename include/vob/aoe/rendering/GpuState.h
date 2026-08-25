@@ -16,6 +16,12 @@ namespace vob::aoegl
 		Equal = GL_EQUAL
 	};
 
+	enum class GpuCullFace : GraphicEnum
+	{
+		Back = GL_BACK,
+		Front = GL_FRONT
+	};
+
 	enum class GpuStateChange
 	{
 		// A change must happen, else we are wasting gpu calls
@@ -93,6 +99,26 @@ namespace vob::aoegl
 		void disableBlend()
 		{
 			changeState<t_expectedChange>(m_blend, TernaryState::False, [](auto) { glDisable(GL_BLEND); });
+		}
+
+		template<GpuStateChange t_expectedChange>
+		void enableFaceCulling()
+		{
+			changeState<t_expectedChange>(m_faceCulling, TernaryState::True, [](auto) { glEnable(GL_CULL_FACE); });
+		}
+
+		template<GpuStateChange t_expectedChange>
+		void disableFaceCulling()
+		{
+			changeState<t_expectedChange>(
+				m_faceCulling, TernaryState::False, [](auto) { glDisable(GL_CULL_FACE); });
+		}
+
+		template<GpuStateChange t_expectedChange>
+		void setCullFace(GpuCullFace a_cullFace)
+		{
+			changeState<t_expectedChange>(
+				m_cullFace, std::to_underlying(a_cullFace), [](auto cullFace) { glCullFace(cullFace); });
 		}
 
 		template<GpuStateChange t_expectedChange>
@@ -220,7 +246,9 @@ namespace vob::aoegl
 		TernaryState m_blend = TernaryState::Unknown;
 		TernaryState m_depthWrite = TernaryState::Unknown;
 		TernaryState m_colorWrite = TernaryState::Unknown;
+		TernaryState m_faceCulling = TernaryState::Unknown;
 		GraphicEnum m_depthFunc = GL_NEVER;
+		GraphicEnum m_cullFace = GL_NONE;
 		GraphicId m_framebuffer = k_invalidId;
 		GraphicId m_program = k_invalidId;
 		glm::ivec4 m_viewport = glm::ivec4{ -1 };

@@ -26,5 +26,6 @@ namespace vob::aoegl
 		GraphicId paramsUbo;
 		mistd::bounded_vector<TextureSlot, k_materialTexturesCapacity> textures;
 		mistd::bounded_vector<int32_t, k_materialTexturesCapacity> depthOnlyTextureSlotIndices;
+		bool isTwoSided;
 	};
 }

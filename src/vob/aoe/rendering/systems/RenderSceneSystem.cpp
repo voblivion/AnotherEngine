@@ -1193,23 +1193,46 @@ namespace vob::aoegl
 				}
 			};
 
-		// Only alpha-masked shaders sample the material outside the shading pass, and then only the slots
-		// their opacity test reads.
-		auto const applyMeshAlphaMaskParams = [&](auto const& a_mesh, WeakHandle<GpuMaterial>& a_currentMaterial)
+		auto const applyFaceCulling = [&](bool a_isTwoSided)
 			{
-				if (!a_mesh.shader.isAlphaMasked || a_currentMaterial == a_mesh.material || !a_mesh.material.isValid())
+				if (a_isTwoSided)
 				{
+					gpuState.disableFaceCulling<GpuStateChange::LikelyNo>();
+				}
+				else
+				{
+					gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
+				}
+			};
+
+		auto const applyDepthOnlyMaterialParams = [&](auto const& a_mesh, WeakHandle<GpuMaterial>& a_currentMaterial)
+			{
+				if (a_currentMaterial == a_mesh.material)
+				{
+					return;
+				}
+				a_currentMaterial = a_mesh.material;
+
+				if (!a_mesh.material.isValid())
+				{
+					applyFaceCulling(false);
 					return;
 				}
 
 				auto const& material = materialRegistry.get(a_mesh.material);
+				applyFaceCulling(material.isTwoSided);
+
+				if (!a_mesh.shader.isAlphaMasked)
+				{
+					return;
+				}
+
 				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
 				for (auto const slotIndex : material.depthOnlyTextureSlotIndices)
 				{
 					gpuState.bindTexture<GpuStateChange::LikelyYes>(
 						k_bindingTextureShadingMaterialBegin + slotIndex, material.textures[slotIndex].id);
 				}
-				a_currentMaterial = a_mesh.material;
 			};
 
 		static CulledMeshes culledMeshes;
@@ -1227,7 +1250,7 @@ namespace vob::aoegl
 				drawOpaqueMeshes(culledShadowMeshes, [&](auto const& a_mesh)
 					{
 						gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.shadowMapProgram);
-						applyMeshAlphaMaskParams(a_mesh, currentMaterial);
+						applyDepthOnlyMaterialParams(a_mesh, currentMaterial);
 					});
 			};
 
@@ -1269,6 +1292,8 @@ namespace vob::aoegl
 			gpuState.setClearDepth<GpuStateChange::SurelyYes>(1.0);
 			gpuState.disableColorWrite<GpuStateChange::SurelyYes>();
 			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			gpuState.enableFaceCulling<GpuStateChange::LikelyYes>();
+			gpuState.setCullFace<GpuStateChange::LikelyYes>(GpuCullFace::Front);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.lightViewParamsUbo);
 
 			// A - Sun CSM
@@ -1403,6 +1428,8 @@ namespace vob::aoegl
 			gpuState.enableColorWrite<GpuStateChange::SurelyYes>();
 			gpuState.setClearColor<GpuStateChange::SurelyYes>(glm::vec4{ 0.0f, 0.0f, 0.0f, 0.0f });
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
+			gpuState.setCullFace<GpuStateChange::LikelyYes>(GpuCullFace::Back);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
 
@@ -1413,7 +1440,7 @@ namespace vob::aoegl
 			drawOpaqueMeshes(culledMeshes, [&](auto const& a_mesh)
 				{
 					gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.depthProgram);
-					applyMeshAlphaMaskParams(a_mesh, currentDepthMaterial);
+					applyDepthOnlyMaterialParams(a_mesh, currentDepthMaterial);
 				});
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Geometric Normal", renderSceneCtx.opaqueGeometricNormalTexture, DebugType::DirectionTexture);
@@ -1427,6 +1454,7 @@ namespace vob::aoegl
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyYes>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.disableFaceCulling<GpuStateChange::LikelyYes>();
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboSsao, renderSceneCtx.ssaoParamsUbo);
@@ -1459,6 +1487,8 @@ namespace vob::aoegl
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
+			gpuState.setCullFace<GpuStateChange::LikelyNo>(GpuCullFace::Back);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureShadingAmbientOcclusion, renderSceneCtx.ambientOcclusionTexture);
@@ -1477,6 +1507,7 @@ namespace vob::aoegl
 					if (currentMaterial != mesh.material && mesh.material.isValid())
 					{
 						auto const& material = materialRegistry.get(mesh.material);
+						applyFaceCulling(material.isTwoSided);
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
 						for (int32_t i = 0; i < mistd::isize(material.textures); ++i)
 						{
@@ -1499,6 +1530,7 @@ namespace vob::aoegl
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.disableFaceCulling<GpuStateChange::LikelyYes>();
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hiZReduceProgram);
 			glBindVertexArray(renderSceneCtx.postProcessVao);
 

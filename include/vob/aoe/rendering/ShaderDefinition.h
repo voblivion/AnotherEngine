@@ -37,6 +37,5 @@ namespace vob::aoegl
 		UniformValueMap uniformDefaults;
 
 		bool isAlphaMasked = false;
-		bool isTwoSided = false;
 	};
 }

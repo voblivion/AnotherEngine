@@ -29,5 +29,7 @@ namespace vob::aoegl
 		mistd::bounded_vector<TextureEntry, k_materialTexturesCapacity> textures;
 
 		UniformValueMap uniformValues;
+
+		bool isTwoSided = false;
 	};
 }

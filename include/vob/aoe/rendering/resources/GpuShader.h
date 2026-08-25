@@ -43,7 +43,12 @@ namespace vob::aoegl
 
 		ResolvedShader getResolvedInstancedShader() const
 		{
-			return { instancedProgram.id, instancedDepthProgram.id, instancedShadowMapProgram.id, isAlphaMasked };
+			return {
+				instancedProgram.id
+				, instancedDepthProgram.id
+				, instancedShadowMapProgram.id
+				, isAlphaMasked
+			};
 		}
 	};
 }
