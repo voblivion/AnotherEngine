@@ -108,7 +108,37 @@ float uEvaluateSunShadow(vec3 position)
 
 float uEvaluateAmbientOcclusion(vec4 coord)
 {
-    return texture(uShading_AmbientOcclusion, coord.xy * uTarget.invResolution).r;
+    if (uLighting.isAmbientOcclusionEnabled == 0)
+    {
+        return 1.0;
+    }
+
+    vec2 occlusionSize = vec2(textureSize(uShading_AmbientOcclusion, 0));
+    vec2 occlusionCoord = coord.xy * uTarget.invResolution * occlusionSize - 0.5;
+    vec2 baseCoord = floor(occlusionCoord);
+    vec2 fraction = occlusionCoord - baseCoord;
+
+    float depth = 1.0 / coord.w;
+
+    float occlusionSum = 0.0;
+    float weightSum = 0.0;
+    for (int tap = 0; tap < 4; ++tap)
+    {
+        vec2 tapOffset = vec2(float(tap & 1), float(tap >> 1));
+        vec2 tapUv = (baseCoord + tapOffset + 0.5) / occlusionSize;
+
+        vec2 bilinear = mix(1.0 - fraction, fraction, tapOffset);
+        float tapDepth = texture(uShading_SsaoLinearDepth, tapUv).r;
+        float weight = bilinear.x * bilinear.y
+            * max(1.0 - abs(tapDepth - depth) / max(depth * uLighting.ambientOcclusionDepthTolerance, 1e-6), 0.0);
+
+        occlusionSum += texture(uShading_AmbientOcclusion, tapUv).r * weight;
+        weightSum += weight;
+    }
+
+    return weightSum > 1e-6
+        ? occlusionSum / weightSum
+        : texture(uShading_AmbientOcclusion, coord.xy * uTarget.invResolution).r;
 }
 
 // Geometric specular antialiasing: a normal that swings within one pixel cannot produce a mirror

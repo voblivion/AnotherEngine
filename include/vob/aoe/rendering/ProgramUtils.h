@@ -57,7 +57,11 @@ namespace vob::aoegl
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId = k_invalidId);
 
+	GraphicId createSsaoDepthProgram(GraphicId a_optionalProgramId = k_invalidId);
+
 	GraphicId createSsaoProgram(GraphicId a_optionalProgramId = k_invalidId);
+
+	GraphicId createSsaoBlurProgram(GraphicId a_optionalProgramId = k_invalidId);
 
 	GraphicId createSsrProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId = k_invalidId);
 

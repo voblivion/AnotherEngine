@@ -16,7 +16,7 @@ void main()
     float roughness = surface.a;
 
     vec3 reflection = vec3(0.0);
-    if (f0 != vec3(0.0))
+    if (uSsr.isEnabled != 0 && f0 != vec3(0.0))
     {
         float maxLod = max(float(textureQueryLevels(uOpaqueComposition_SsrColor) - 1) - 2.0, 0.0);
         vec3 radiance = textureLod(uOpaqueComposition_SsrColor, vUv, roughness * maxLod).rgb;

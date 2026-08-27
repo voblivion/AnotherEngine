@@ -455,9 +455,21 @@ namespace vob::aoegl
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
+	GraphicId createSsaoDepthProgram(GraphicId a_optionalProgramId)
+	{
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_depth_fragment_shader.glsl");
+		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+	}
+
 	GraphicId createSsaoProgram(GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_fragment_shader.glsl");
+		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+	}
+
+	GraphicId createSsaoBlurProgram(GraphicId a_optionalProgramId)
+	{
+		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_blur_fragment_shader.glsl");
 		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
 	}
 

@@ -17,6 +17,22 @@ namespace vob::aoegl
 			return isAvailable == GL_TRUE;
 		}
 
+		// A scope that did not run still has to advance its averaging window, otherwise it keeps
+		// displaying whatever it last measured.
+		void decayTimerResultsRec(GpuTimer& a_timer, std::optional<int32_t> a_accumulationCount)
+		{
+			if (a_accumulationCount.has_value())
+			{
+				a_timer.lastDurationNs = a_timer.runningAccumulationNs / *a_accumulationCount;
+				a_timer.runningAccumulationNs = 0;
+			}
+
+			for (auto& childTimer : a_timer.children)
+			{
+				decayTimerResultsRec(childTimer, a_accumulationCount);
+			}
+		}
+
 		void accumulateTimerResultsRec(GpuTimer& a_timer, int32_t a_slotIndex, std::optional<int32_t> a_accumulationCount)
 		{
 			uint64_t startTimeNs;
@@ -34,12 +50,14 @@ namespace vob::aoegl
 
 			for (auto& childTimer : a_timer.children)
 			{
-				if (!childTimer.startedInSlot[a_slotIndex])
+				if (childTimer.startedInSlot[a_slotIndex])
 				{
-					continue;
+					accumulateTimerResultsRec(childTimer, a_slotIndex, a_accumulationCount);
 				}
-
-				accumulateTimerResultsRec(childTimer, a_slotIndex, a_accumulationCount);
+				else
+				{
+					decayTimerResultsRec(childTimer, a_accumulationCount);
+				}
 			}
 		}
 

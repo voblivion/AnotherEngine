@@ -9,131 +9,110 @@ in vec2 vUv;
 layout(location = 0) out float oAmbientOcclusion;
 
 
-// void main (void)
-// {
-    // vec4 rndTable [8] = vec4 [8]
-    // (
-        // vec4 ( -0.5, -0.5, -0.5, 0.0 ),
-        // vec4 ( 0.5, -0.5, -0.5, 0.0 ),
-        // vec4 ( -0.5, 0.5, -0.5, 0.0 ),
-        // vec4 ( 0.5, 0.5, -0.5, 0.0 ),
-        // vec4 ( -0.5, -0.5, 0.5, 0.0 ),
-        // vec4 ( 0.5, -0.5, 0.5, 0.0 ),
-        // vec4 ( -0.5, 0.5, 0.5, 0.0 ),
-        // vec4 ( 0.5, 0.5, 0.5, 0.0 )
-    // );
-    // vec3 normal = normalize(texture(uSsao_OpaqueNormal, vUv).rgb); // assuming stored in world space
-    // vec3 normalView = normalize(mat3(uView.worldToView) * normal);
-    // float depth = texture2D (uSsao_OpaqueDepth, vUv).r;
-    // float z = uView.farClip * uView.nearClip / (depth * (uView.farClip - uView.nearClip) - uView.farClip);
-    // float attenuation = 0.0;
-
-    // for (int i = 0; i < 8; i++)
-    // {
-        // vec3 samp = reflect(rndTable[i].xyz, normalView);
-        // float sampDepth = texture2D (uSsao_OpaqueDepth, vUv + uSsao.radius * samp.xy / z ).r;
-        // float sampZ = uView.farClip * uView.nearClip / (sampDepth * (uView.farClip - uView.nearClip) - uView.farClip);
-
-        // if (sampZ - z > 0.1)
-            // continue;
-
-        // float dz = max(sampZ - z, 0.0) * 33.0;
-
-        // attenuation += 1.0 / (1.0 + dz * dz);
-    // }
-
-    // attenuation = clamp((attenuation / 8.0 + uSsao.attenuationBias) * uSsao.attenuationScale, 0.0, 1.0);
-    
-    // oColor = vec4(texture(uSsao_DirectOpaqueColor, vUv).rgb * attenuation, 1.0);
-// }
-float noise(vec2 uv)
+// Every aligned 4x4 block holds each of the 16 directions once, so a denoiser covering the block
+// sums a complete set and the directional bias cancels instead of merely blurring.
+float sliceRotationNoise(ivec2 a_pixel)
 {
-    return fract(52.9829189 * fract(dot(uv, vec2(0.06711056, 0.00583715))));
+    return (1.0 / 16.0) * float((((a_pixel.x + a_pixel.y) & 3) << 2) + (a_pixel.x & 3));
+}
+
+float stepOffsetNoise(ivec2 a_pixel)
+{
+    return 0.25 * float((a_pixel.y - a_pixel.x) & 3);
+}
+
+vec3 viewPositionAt(vec2 uv)
+{
+    vec2 ndc = uv * 2.0 - 1.0;
+    vec3 viewRay = vec3(ndc.x / uView.viewToClip[0][0], ndc.y / uView.viewToClip[1][1], -1.0);
+    return viewRay * texture(uSsao_LinearDepth, uv).r;
+}
+
+// Searches one side of a slice for the highest horizon, expressed as cos(angle to the view vector).
+float findHorizonCosine(
+    vec2 a_uv
+    , vec3 a_position
+    , vec3 a_viewDir
+    , vec2 a_direction
+    , float a_radiusPixels
+    , float a_radiusWorld
+    , vec2 a_resolution
+    , float a_noise)
+{
+    float horizonCosine = -1.0;
+    for (int step = 0; step < uSsao.stepCount; ++step)
+    {
+        float t = (float(step) + a_noise) / float(uSsao.stepCount);
+        float distancePixels = mix(1.0, max(a_radiusPixels, 1.0), t * t);
+        vec3 delta = viewPositionAt(a_uv + a_direction * distancePixels / a_resolution) - a_position;
+
+        float distance = length(delta);
+        float sampleCosine = dot(delta / max(distance, 1e-6), a_viewDir);
+
+        float fadeBegin = a_radiusWorld * uSsao.falloffStart;
+        float falloff = clamp((distance - fadeBegin) / max(a_radiusWorld - fadeBegin, 1e-6), 0.0, 1.0);
+        horizonCosine = max(horizonCosine, mix(sampleCosine, horizonCosine, falloff));
+    }
+    return horizonCosine;
+}
+
+// Cosine-weighted visibility of the arc between two horizons, around the projected normal.
+float integrateArc(float a_horizon0, float a_horizon1, float a_normalAngle, float a_normalLength)
+{
+    float h0 = a_normalAngle + max(-acos(a_horizon0) - a_normalAngle, -k_halfPi);
+    float h1 = a_normalAngle + min(acos(a_horizon1) - a_normalAngle, k_halfPi);
+
+    float cosNormalAngle = cos(a_normalAngle);
+    float sinNormalAngle = sin(a_normalAngle);
+
+    return 0.25 * a_normalLength * (
+        (-cos(2.0 * h0 - a_normalAngle) + cosNormalAngle + 2.0 * h0 * sinNormalAngle)
+        + (-cos(2.0 * h1 - a_normalAngle) + cosNormalAngle + 2.0 * h1 * sinNormalAngle));
 }
 
 void main()
 {
-    vec3 normalWorld = texture(uSsao_OpaqueGeometricNormal, vUv).rgb;
-    vec3 N = normalize(mat3(uView.worldToView) * normalWorld);
-    float depth = texture(uSsao_OpaqueDepth, vUv).r;
-    float z = uView.farClip * uView.nearClip / (depth * (uView.farClip - uView.nearClip) - uView.farClip);
-    vec2 ndc = vUv * 2.0 - 1.0;
-    vec4 viewDirH = uView.clipToView * vec4(ndc, depth * 2.0 - 1.0, 1.0);
-    vec3 viewDir = normalize(viewDirH.xyz / viewDirH.w);
-    vec3 dir = reflect(viewDir, N);
-    vec3 left = cross(N, dir);
-    vec2 texelSize = 1.0 / textureSize(uSsao_OpaqueDepth, 0);
-    
-    float attenuation = 0.0;
-    int sampleLayerCount = uSsao.sampleCount >> 1;
-    for (int i = 0; i < sampleLayerCount; ++i)
+    vec3 position = viewPositionAt(vUv);
+    vec3 normal = normalize(mat3(uView.worldToView) * texture(uSsao_OpaqueGeometricNormal, vUv).rgb);
+    vec3 viewDir = normalize(-position);
+
+    vec2 resolution = vec2(textureSize(uSsao_LinearDepth, 0));
+    float pixelsPerWorldUnit = 0.5 * uView.viewToClip[0][0] * resolution.x / max(-position.z, 1e-4);
+    float radiusPixels = min(uSsao.radius * pixelsPerWorldUnit, uSsao.maxRadiusPixels);
+    float radiusWorld = radiusPixels / max(pixelsPerWorldUnit, 1e-6);
+
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    float sliceNoise = sliceRotationNoise(pixel);
+    float stepNoise = stepOffsetNoise(pixel);
+
+    float visibility = 0.0;
+    for (int slice = 0; slice < uSsao.sliceCount; ++slice)
     {
-        for (int j = -i; j <= i; ++j)
+        float sliceAngle = (float(slice) + sliceNoise) * k_pi / float(uSsao.sliceCount);
+        vec2 sliceDir = vec2(cos(sliceAngle), sin(sliceAngle));
+
+        vec3 sliceDirView = vec3(sliceDir, 0.0);
+        vec3 sliceAxis = normalize(cross(sliceDirView, viewDir));
+        vec3 projectedNormal = normal - sliceAxis * dot(normal, sliceAxis);
+
+        float projectedNormalLength = length(projectedNormal);
+        if (projectedNormalLength < 1e-4)
         {
-            vec3 sampDir = i == 0 ? dir : (cos(float(j) / i) * dir + sin(float(j) / i) * left);
-            float sampDepth = texture(uSsao_OpaqueDepth, vUv + sampDir.xy * texelSize * uSsao.radius * float(i) / sampleLayerCount).r;
-            float sampZ = uView.farClip * uView.nearClip / (sampDepth * (uView.farClip - uView.nearClip) - uView.farClip);
-            
-            if (sampZ - z > uSsao.threshold || sampZ - z < 0.0)
-            {
-                float dz = max(sampZ - z, 0.0) * 33.0;
-                attenuation += 1.0;
-            }
-            
+            continue;
         }
+
+        vec3 sliceTangent = normalize(sliceDirView - viewDir * dot(sliceDirView, viewDir));
+        float normalAngle = atan(
+            dot(projectedNormal, sliceTangent), dot(projectedNormal, viewDir));
+
+        float horizon0 = findHorizonCosine(
+            vUv, position, viewDir, -sliceDir, radiusPixels, radiusWorld, resolution, stepNoise);
+        float horizon1 = findHorizonCosine(
+            vUv, position, viewDir, sliceDir, radiusPixels, radiusWorld, resolution, stepNoise);
+
+        visibility += integrateArc(horizon0, horizon1, normalAngle, projectedNormalLength);
     }
-    
-    attenuation = clamp((attenuation / float(uSsao.sampleCount * uSsao.sampleCount) + uSsao.attenuationBias) * uSsao.attenuationScale, 0.0, 1.0);
-    oAmbientOcclusion = attenuation;
+
+    visibility = clamp(visibility / float(uSsao.sliceCount), 0.0, 1.0);
+    oAmbientOcclusion = pow(visibility, uSsao.intensity);
 }
-
-// void main()
-// {
-    // vec3 normalWorld = normalize(texture(uSsao_OpaqueGeometricNormal, vUv).rgb);
-    // vec3 N = normalize(mat3(uView.worldToView) * normalWorld);
-
-    // float depth = texture(uSsao_OpaqueDepth, vUv).r;
-    // float z = uView.farClip * uView.nearClip / (depth * (uView.farClip - uView.nearClip) - uView.farClip);
-
-    // // Build TBN to orient hemisphere around normal
-    // vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    // vec3 T = normalize(cross(up, N));
-    // vec3 B = cross(N, T);
-
-    // // Per-pixel random rotation angle
-    // float angle = noise(gl_FragCoord.xy) * 6.28318;
-    // float cosA = cos(angle);
-    // float sinA = sin(angle);
-
-    // float attenuation = 0.0;
-
-    // for (int i = 0; i < uSsao.sampleCount; i++)
-    // {
-        // // Fibonacci hemisphere distribution
-        // float fi = float(i) + 0.5;
-        // float phi = acos(1.0 - fi / float(uSsao.sampleCount));
-        // float theta = 2.39996 * fi; // golden angle
-
-        // // Sample direction in hemisphere around N
-        // vec3 samp = sin(phi) * (cos(theta) * T + sin(theta) * B) + cos(phi) * N;
-
-        // // Rotate by per-pixel noise
-        // vec2 rotatedXY = vec2(
-            // cosA * samp.x - sinA * samp.y,
-            // sinA * samp.x + cosA * samp.y
-        // );
-        // samp.xy = rotatedXY;
-
-        // float sampDepth = texture(uSsao_OpaqueDepth, vUv + uSsao.radius * samp.xy / z).r;
-        // float sampZ = uView.farClip * uView.nearClip / (sampDepth * (uView.farClip - uView.nearClip) - uView.farClip);
-
-        // if (sampZ - z > 0.1)
-            // continue;
-
-        // float dz = max(sampZ - z, 0.0) * 33.0;
-        // attenuation += 1.0 / (1.0 + dz * dz);
-    // }
-
-    // attenuation = clamp((attenuation / float(uSsao.sampleCount) + uSsao.attenuationBias) * uSsao.attenuationScale, 0.0, 1.0);
-    // oColor = vec4(texture(uSsao_DirectOpaqueColor, vUv).rgb * attenuation, 1.0);
-// }

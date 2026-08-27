@@ -25,6 +25,12 @@ vec2 envBrdfApprox(float NdotV, float roughness)
     return vec2(-1.04, 1.04) * a004 + r.zw;
 }
 
+float specularOcclusion(float NdotV, float ambientOcclusion, float roughness)
+{
+    return clamp(
+        pow(NdotV + ambientOcclusion, exp2(-16.0 * roughness - 1.0)) - 1.0 + ambientOcclusion, 0.0, 1.0);
+}
+
 struct LightClusterBounds
 {
     vec3 minView;

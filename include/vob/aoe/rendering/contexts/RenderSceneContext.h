@@ -72,6 +72,10 @@ namespace vob::aoegl
 		GraphicId depthFramebuffer;
 
 		glm::ivec2 ssaoResolution;
+		GraphicId ssaoDepthFramebuffer;
+		GraphicId ssaoLinearDepthTexture;
+		GraphicId ssaoRawFramebuffer;
+		GraphicId ssaoRawOcclusionTexture;
 		GraphicId ssaoFramebuffer;
 		GraphicId ambientOcclusionTexture;
 
@@ -129,7 +133,9 @@ namespace vob::aoegl
 
 		// Programs
 		GraphicId lightClusteringProgram;
+		GraphicId ssaoDepthProgram;
 		GraphicId ssaoProgram;
+		GraphicId ssaoBlurProgram;
 		GraphicId ssrProgram;
 		GraphicId hiZReduceProgram;
 		GraphicId ssrPrefilterProgram;

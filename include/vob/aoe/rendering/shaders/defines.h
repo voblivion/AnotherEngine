@@ -35,10 +35,13 @@
 
 #define BINDING_TEXTURE_SSAO_OPAQUE_DEPTH 0
 #define BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL 1
+#define BINDING_TEXTURE_SSAO_LINEAR_DEPTH 2
+#define BINDING_TEXTURE_SSAO_RAW_OCCLUSION 3
 
 #define BINDING_TEXTURE_SHADING_AMBIENT_OCCLUSION 0
-#define BINDING_TEXTURE_SHADING_SUN_SHADOW_MAP 1
-#define BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN 2
+#define BINDING_TEXTURE_SHADING_SSAO_LINEAR_DEPTH 1
+#define BINDING_TEXTURE_SHADING_SUN_SHADOW_MAP 2
+#define BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN 3
 #define BINDING_TEXTURE_SHADING_MATERIAL_BEGIN BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN + SPOT_LIGHT_SHADOW_MAPS_CAPACITY
 
 #define BINDING_TEXTURE_SSR_DIRECT_OPAQUE_COLOR 0
@@ -46,6 +49,7 @@
 #define BINDING_TEXTURE_SSR_OPAQUE_NORMAL 2
 #define BINDING_TEXTURE_SSR_OPAQUE_DEPTH 3
 #define BINDING_TEXTURE_SSR_HIZ_DEPTH 4
+#define BINDING_TEXTURE_SSR_AMBIENT_OCCLUSION 5
 
 #define BINDING_TEXTURE_SSR_FILTER_SOURCE 0
 #define BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH 1
@@ -151,6 +155,8 @@ struct ALIGN_16 UniformLightingParams
     ubo_vec3 sunColor;
     float sunIntensity;
     ubo_vec3 sunDir;
+    int isAmbientOcclusionEnabled;
+    float ambientOcclusionDepthTolerance;
 };
 
 struct ALIGN_16 GpuSunCascadingShadow
@@ -221,15 +227,19 @@ struct ALIGN_16 UniformSsrParams
     float penetrationBlockedRatio;
     float penetrationThroughRatio;
     int debugPenetration;
+    int isEnabled;
+    int isAmbientOcclusionEnabled;
 };
 
 struct ALIGN_16 UniformSsaoParams
 {
-    int sampleCount;
+    int sliceCount;
+    int stepCount;
     float radius;
-    float attenuationBias;
-    float attenuationScale;
-    float threshold;
+    float falloffStart;
+    float intensity;
+    float maxRadiusPixels;
+    float depthTolerance;
 };
 
 struct ALIGN_16 UniformBloomParams
@@ -289,8 +299,11 @@ struct ALIGN_16 UniformDebugParams
 
     static constexpr uint32_t k_bindingTextureSsaoOpaqueDepth = BINDING_TEXTURE_SSAO_OPAQUE_DEPTH;
     static constexpr uint32_t k_bindingTextureSsaoOpaqueGeometricNormal = BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL;
+	static constexpr uint32_t k_bindingTextureSsaoLinearDepth = BINDING_TEXTURE_SSAO_LINEAR_DEPTH;
+	static constexpr uint32_t k_bindingTextureSsaoRawOcclusion = BINDING_TEXTURE_SSAO_RAW_OCCLUSION;
 
 	static constexpr uint32_t k_bindingTextureShadingAmbientOcclusion = BINDING_TEXTURE_SHADING_AMBIENT_OCCLUSION;
+	static constexpr uint32_t k_bindingTextureShadingSsaoLinearDepth = BINDING_TEXTURE_SHADING_SSAO_LINEAR_DEPTH;
 	static constexpr uint32_t k_bindingTextureShadingSunShadowMap = BINDING_TEXTURE_SHADING_SUN_SHADOW_MAP;
 	static constexpr uint32_t k_bindingTextureShadingSpotLightShadowMapsBegin = BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN;
 	static constexpr uint32_t k_bindingTextureShadingMaterialBegin = BINDING_TEXTURE_SHADING_MATERIAL_BEGIN;
@@ -300,6 +313,7 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr uint32_t k_bindingTextureSsrOpaqueNormal = BINDING_TEXTURE_SSR_OPAQUE_NORMAL;
 	static constexpr uint32_t k_bindingTextureSsrOpaqueDepth = BINDING_TEXTURE_SSR_OPAQUE_DEPTH;
 	static constexpr uint32_t k_bindingTextureSsrHiZDepth = BINDING_TEXTURE_SSR_HIZ_DEPTH;
+	static constexpr uint32_t k_bindingTextureSsrAmbientOcclusion = BINDING_TEXTURE_SSR_AMBIENT_OCCLUSION;
 
 	static constexpr uint32_t k_bindingTextureSsrFilterSource = BINDING_TEXTURE_SSR_FILTER_SOURCE;
 	static constexpr uint32_t k_bindingTextureSsrFilterOpaqueDepth = BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH;
@@ -365,8 +379,11 @@ struct ALIGN_16 UniformDebugParams
 
 #undef BINDING_TEXTURE_SSAO_OPAQUE_DEPTH
 #undef BINDING_TEXTURE_SSAO_OPAQUE_GEOMETRIC_NORMAL
+#undef BINDING_TEXTURE_SSAO_LINEAR_DEPTH
+#undef BINDING_TEXTURE_SSAO_RAW_OCCLUSION
 
 #undef BINDING_TEXTURE_SHADING_AMBIENT_OCCLUSION
+#undef BINDING_TEXTURE_SHADING_SSAO_LINEAR_DEPTH
 #undef BINDING_TEXTURE_SHADING_SUN_SHADOW_MAP
 #undef BINDING_TEXTURE_SHADING_SPOT_LIGHT_SHADOW_MAPS_BEGIN
 #undef BINDING_TEXTURE_SHADING_MATERIAL_BEGIN
@@ -376,6 +393,7 @@ struct ALIGN_16 UniformDebugParams
 #undef BINDING_TEXTURE_SSR_OPAQUE_NORMAL
 #undef BINDING_TEXTURE_SSR_OPAQUE_DEPTH
 #undef BINDING_TEXTURE_SSR_HIZ_DEPTH
+#undef BINDING_TEXTURE_SSR_AMBIENT_OCCLUSION
 #undef BINDING_TEXTURE_SSR_FILTER_SOURCE
 #undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_DEPTH
 #undef BINDING_TEXTURE_SSR_FILTER_OPAQUE_NORMAL

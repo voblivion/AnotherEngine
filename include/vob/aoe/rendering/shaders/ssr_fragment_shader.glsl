@@ -107,6 +107,11 @@ SsrRay setupSsrRay(vec2 a_uv)
     vec2 envBrdf = envBrdfApprox(NdotV, roughness);
     vec3 specularWeight = surface.rgb * envBrdf.x + envBrdf.y;
 
+    float ambientOcclusion = uLighting.isAmbientOcclusionEnabled != 0 && uSsr.isAmbientOcclusionEnabled != 0
+        ? texture(uSsr_AmbientOcclusion, a_uv).r
+        : 1.0;
+    float skyOcclusion = specularOcclusion(NdotV, ambientOcclusion, roughness);
+
     const float k_minSpecularWeight = 0.005;
     if (max(max(specularWeight.r, specularWeight.g), specularWeight.b) < k_minSpecularWeight)
     {
@@ -124,7 +129,7 @@ SsrRay setupSsrRay(vec2 a_uv)
     // both factors are known before marching, so nothing the march finds could change the answer
     if (ray.screenTrust <= 0.0)
     {
-        ray.fallbackRadiance = skyIrradianceRadiance(reflDirWorld);
+        ray.fallbackRadiance = skyIrradianceRadiance(reflDirWorld) * skyOcclusion;
         ray.fallbackReason = vec3(1.0, 0.0, 1.0);
         return ray;
     }
@@ -137,6 +142,7 @@ SsrRay setupSsrRay(vec2 a_uv)
     {
         ray.skyColor = mix(ray.skyColor, skyIrradianceRadiance(reflDirWorld), skyBlend);
     }
+    ray.skyColor *= skyOcclusion;
 
     // a ray reaching past the near plane projects through a negative w and lands nowhere useful, so
     // cut it at the near plane first

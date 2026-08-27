@@ -132,6 +132,8 @@ namespace vob::aoegl
 			float a_farClip,
 			glm::vec3 const& a_sunDir,
 			mistd::bounded_vector<float, k_sunCascadingShadowMapsCapacity> const& a_sunFarClips,
+			bool a_isAmbientOcclusionEnabled,
+			float a_ambientOcclusionDepthTolerance,
 			std::vector<GpuLight>& o_gpuLights)
 		{
 			// TODO: remove magic
@@ -161,7 +163,9 @@ namespace vob::aoegl
 				.lightClusterCapacity = a_lightClusterCapacity,
 				.sunColor = glm::vec3{ 1.0f, 0.5f, 0.4f },
 				.sunIntensity = 3.0f,
-				.sunDir = a_sunDir
+				.sunDir = a_sunDir,
+				.isAmbientOcclusionEnabled = a_isAmbientOcclusionEnabled ? 1 : 0,
+				.ambientOcclusionDepthTolerance = a_ambientOcclusionDepthTolerance
 			};
 
 			auto shadowParams = UniformShadowParams{};
@@ -481,6 +485,7 @@ namespace vob::aoegl
 		// 0 - Prepare Debug
 		static bool k_debugCameraFrustum = false;
 		static bool k_ssaoEnabled = true;
+		static float k_ssaoDepthTolerance = 0.05f;
 		static bool k_ssrEnabled = true;
 		static bool k_bloomEnabled = true;
 		if (ImGui::Begin("Render Debug"))
@@ -512,23 +517,31 @@ namespace vob::aoegl
 
 			ImGui::SeparatorText("SSAO");
 			ImGui::Checkbox("Enable##ssao", &k_ssaoEnabled);
-			static int k_ssaoSampleCount = 8;
-			ImGui::InputInt("Sample Count", &k_ssaoSampleCount);
-			static float k_ssaoRadius = 25.0f;
-			ImGui::SliderFloat("Radius", &k_ssaoRadius, 0.0f, 100.0f);
-			static float k_ssaoAttenuationBias = 0.4f;
-			ImGui::SliderFloat("Attenuation Bias", &k_ssaoAttenuationBias, 0.0f, 1.0f);
-			static float k_ssaoAttenuationScale = 1.6f;
-			ImGui::SliderFloat("Attenuation Scale", &k_ssaoAttenuationScale, 0.0f, 3.0f);
-			static float k_ssaoThreshold = 0.25f;
-			ImGui::SliderFloat("Threshold", &k_ssaoThreshold, 0.0f, 1.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			static int k_ssaoSliceCount = 3;
+			ImGui::SliderInt("Slice Count##ssao", &k_ssaoSliceCount, 1, 8);
+			static int k_ssaoStepCount = 8;
+			ImGui::SliderInt("Step Count##ssao", &k_ssaoStepCount, 1, 16);
+			static float k_ssaoRadius = 1.0f;
+			ImGui::SliderFloat("Radius##ssao", &k_ssaoRadius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			static float k_ssaoFalloffStart = 0.7f;
+			ImGui::SliderFloat("Falloff Start##ssao", &k_ssaoFalloffStart, 0.0f, 1.0f);
+			static float k_ssaoIntensity = 1.0f;
+			ImGui::SliderFloat("Intensity##ssao", &k_ssaoIntensity, 0.0f, 4.0f);
+			static float k_ssaoMaxRadiusScreenFraction = 0.2f;
+			ImGui::SliderFloat(
+				"Max Radius (screen)##ssao", &k_ssaoMaxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
+			ImGui::SliderFloat(
+				"Depth Tolerance##ssao", &k_ssaoDepthTolerance, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
 
 			auto const ssaoParams = UniformSsaoParams{
-				.sampleCount = k_ssaoSampleCount,
+				.sliceCount = k_ssaoSliceCount,
+				.stepCount = k_ssaoStepCount,
 				.radius = k_ssaoRadius,
-				.attenuationBias = k_ssaoAttenuationBias,
-				.attenuationScale = k_ssaoAttenuationScale,
-				.threshold = k_ssaoThreshold
+				.falloffStart = k_ssaoFalloffStart,
+				.intensity = k_ssaoIntensity,
+				.maxRadiusPixels =
+					k_ssaoMaxRadiusScreenFraction * float(renderSceneCtx.ssaoResolution.y),
+				.depthTolerance = k_ssaoDepthTolerance
 			};
 			glNamedBufferSubData(renderSceneCtx.ssaoParamsUbo, 0, sizeof(ssaoParams), &ssaoParams);
 
@@ -538,6 +551,9 @@ namespace vob::aoegl
 			ImGui::SliderInt("Step Count", &k_ssrStepCount, 4, 256);
 			static float k_ssrMaxRange = 500.0f;
 			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+
+			static bool k_ssrAmbientOcclusionEnabled = true;
+			ImGui::Checkbox("Ambient Occlusion##ssr", &k_ssrAmbientOcclusionEnabled);
 
 			static bool k_ssrDebugExitReason = false;
 			ImGui::Checkbox("Debug Exit Reason##ssr", &k_ssrDebugExitReason);
@@ -570,7 +586,9 @@ namespace vob::aoegl
 				.debugRayPixel = k_ssrDebugRayPixel,
 				.penetrationBlockedRatio = k_ssrPenetrationBlockedRatio,
 				.penetrationThroughRatio = k_ssrPenetrationThroughRatio,
-				.debugPenetration = k_ssrDebugPenetration ? 1 : 0
+				.debugPenetration = k_ssrDebugPenetration ? 1 : 0,
+				.isEnabled = k_ssrEnabled ? 1 : 0,
+				.isAmbientOcclusionEnabled = k_ssrAmbientOcclusionEnabled ? 1 : 0
 			};
 			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
 
@@ -883,6 +901,8 @@ namespace vob::aoegl
 			debugViewParams.farClip,
 			renderSceneCtx.sunDir,
 			renderSceneCtx.sunShadowMapFrustumFarClips,
+			k_ssaoEnabled,
+			k_ssaoDepthTolerance,
 			gpuLights);
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Update Buffers");
@@ -1449,6 +1469,7 @@ namespace vob::aoegl
 		}
 
 		// VII - SSAO
+		if (k_ssaoEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSAO");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
@@ -1460,19 +1481,46 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboSsao, renderSceneCtx.ssaoParamsUbo);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueGeometricNormal, renderSceneCtx.opaqueGeometricNormalTexture);
-			beginPass(gpuState, renderSceneCtx.ssaoFramebuffer, renderSceneCtx.ssaoResolution, renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoProgram);
 
-			if (k_ssaoEnabled)
 			{
-				// glBindVertexArray(renderSceneCtx.postProcessVao);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Linear Depth");
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoDepthProgram);
+				beginPass(
+					gpuState
+					, renderSceneCtx.ssaoDepthFramebuffer
+					, renderSceneCtx.ssaoResolution
+					, renderSceneCtx.targetParamsUbo);
+				glBindVertexArray(renderSceneCtx.postProcessVao);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
-			else
+
 			{
-				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 1.0 });
-				glClear(GL_COLOR_BUFFER_BIT);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Horizon Search");
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureSsaoLinearDepth, renderSceneCtx.ssaoLinearDepthTexture);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoProgram);
+				beginPass(
+					gpuState
+					, renderSceneCtx.ssaoRawFramebuffer
+					, renderSceneCtx.ssaoResolution
+					, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
+
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Blur");
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureSsaoRawOcclusion, renderSceneCtx.ssaoRawOcclusionTexture);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssaoBlurProgram);
+				beginPass(
+					gpuState
+					, renderSceneCtx.ssaoFramebuffer
+					, renderSceneCtx.ssaoResolution
+					, renderSceneCtx.targetParamsUbo);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+
+			debugInspectRenderOutput(debugRenderInspectorCtx, "Ambient Occlusion Raw", renderSceneCtx.ssaoRawOcclusionTexture, DebugType::ShadesTexture);
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Ambient Occlusion", renderSceneCtx.ambientOcclusionTexture, DebugType::ShadesTexture);
 		}
@@ -1480,19 +1528,20 @@ namespace vob::aoegl
 		// VIII - Direct Opaque Lighting
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Direct Opaque");
-			gpuState.enableDepthTest<GpuStateChange::SurelyYes>();
-			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
+			gpuState.enableDepthTest<GpuStateChange::LikelyYes>();
+			gpuState.disableDepthWrite<GpuStateChange::LikelyNo>();
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
 			gpuState.setClearDepth<GpuStateChange::SurelyNo>(1.0);
-			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
+			gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
 			gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
-			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.disableBlend<GpuStateChange::LikelyNo>();
 			gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
 			gpuState.setCullFace<GpuStateChange::LikelyNo>(GpuCullFace::Back);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureShadingAmbientOcclusion, renderSceneCtx.ambientOcclusionTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureShadingSunShadowMap, renderSceneCtx.sunShadowMapDepthTextureArray);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingAmbientOcclusion, renderSceneCtx.ambientOcclusionTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingSsaoLinearDepth, renderSceneCtx.ssaoLinearDepthTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingSunShadowMap, renderSceneCtx.sunShadowMapDepthTextureArray);
 			for (int32_t i = 0; i < spotLightShadowMapCount; ++i)
 			{
 				gpuState.bindTexture<GpuStateChange::SurelyYes>(
@@ -1523,72 +1572,73 @@ namespace vob::aoegl
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Surface", renderSceneCtx.opaqueSurfaceTexture, DebugType::ColorTexture);
 		}
 
-		// VIII bis - Hi-Z depth pyramid
-		{
-			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Hi-Z");
-			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
-			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
-			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
-			gpuState.disableBlend<GpuStateChange::SurelyNo>();
-			gpuState.disableFaceCulling<GpuStateChange::LikelyYes>();
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hiZReduceProgram);
-			glBindVertexArray(renderSceneCtx.postProcessVao);
-
-			auto mipResolution = renderSceneCtx.shadingResolution;
-			for (int32_t mipIndex = 0; mipIndex < mistd::isize(renderSceneCtx.hiZMipFramebuffers); ++mipIndex)
-			{
-				if (mipIndex == 0)
-				{
-					gpuState.bindTexture<GpuStateChange::LikelyYes>(
-						k_bindingTextureSsrFilterSource, renderSceneCtx.opaqueDepthTexture);
-				}
-				else
-				{
-					mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
-					glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
-					glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
-					gpuState.bindTexture<GpuStateChange::SurelyYes>(
-						k_bindingTextureSsrFilterSource, renderSceneCtx.hiZDepthTexture);
-				}
-
-				beginPass(
-					gpuState
-					, renderSceneCtx.hiZMipFramebuffers[mipIndex]
-					, mipResolution
-					, renderSceneCtx.targetParamsUbo);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
-			}
-
-			glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, 0);
-			glTextureParameteri(
-				renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.hiZMipLevels - 1);
-
-			auto const inspectedHiZNearLevel = debugInspectIndex(
-				debugRenderInspectorCtx, "Hi-Z Near", renderSceneCtx.hiZMipLevels);
-			debugInspectRenderOutputMipChannel(
-				debugRenderInspectorCtx
-				, "Hi-Z Near"
-				, renderSceneCtx.hiZDepthTexture
-				, inspectedHiZNearLevel
-				, 0
-				, DebugType::DepthTexture
-				, glm::vec2{ viewParams.nearClip, viewParams.farClip });
-
-			auto const inspectedHiZFarLevel = debugInspectIndex(
-				debugRenderInspectorCtx, "Hi-Z Far", renderSceneCtx.hiZMipLevels);
-			debugInspectRenderOutputMipChannel(
-				debugRenderInspectorCtx
-				, "Hi-Z Far"
-				, renderSceneCtx.hiZDepthTexture
-				, inspectedHiZFarLevel
-				, 1
-				, DebugType::DepthTexture
-				, glm::vec2{ viewParams.nearClip, viewParams.farClip });
-		}
-
 		// IX - SSR
+		if (k_ssrEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSR");
+
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Hi-Z");
+				gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
+				gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
+				gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
+				gpuState.disableBlend<GpuStateChange::SurelyNo>();
+				gpuState.disableFaceCulling<GpuStateChange::LikelyYes>();
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.hiZReduceProgram);
+				glBindVertexArray(renderSceneCtx.postProcessVao);
+
+				auto mipResolution = renderSceneCtx.shadingResolution;
+				for (int32_t mipIndex = 0; mipIndex < mistd::isize(renderSceneCtx.hiZMipFramebuffers); ++mipIndex)
+				{
+					if (mipIndex == 0)
+					{
+						gpuState.bindTexture<GpuStateChange::LikelyYes>(
+							k_bindingTextureSsrFilterSource, renderSceneCtx.opaqueDepthTexture);
+					}
+					else
+					{
+						mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
+						glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
+						glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+						gpuState.bindTexture<GpuStateChange::SurelyYes>(
+							k_bindingTextureSsrFilterSource, renderSceneCtx.hiZDepthTexture);
+					}
+
+					beginPass(
+						gpuState
+						, renderSceneCtx.hiZMipFramebuffers[mipIndex]
+						, mipResolution
+						, renderSceneCtx.targetParamsUbo);
+					glDrawArrays(GL_TRIANGLES, 0, 3);
+				}
+
+				glTextureParameteri(renderSceneCtx.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, 0);
+				glTextureParameteri(
+					renderSceneCtx.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.hiZMipLevels - 1);
+
+				auto const inspectedHiZNearLevel = debugInspectIndex(
+					debugRenderInspectorCtx, "Hi-Z Near", renderSceneCtx.hiZMipLevels);
+				debugInspectRenderOutputMipChannel(
+					debugRenderInspectorCtx
+					, "Hi-Z Near"
+					, renderSceneCtx.hiZDepthTexture
+					, inspectedHiZNearLevel
+					, 0
+					, DebugType::DepthTexture
+					, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+
+				auto const inspectedHiZFarLevel = debugInspectIndex(
+					debugRenderInspectorCtx, "Hi-Z Far", renderSceneCtx.hiZMipLevels);
+				debugInspectRenderOutputMipChannel(
+					debugRenderInspectorCtx
+					, "Hi-Z Far"
+					, renderSceneCtx.hiZDepthTexture
+					, inspectedHiZFarLevel
+					, 1
+					, DebugType::DepthTexture
+					, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+			}
+
 			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureSsrHiZDepth, renderSceneCtx.hiZDepthTexture);
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
@@ -1596,64 +1646,63 @@ namespace vob::aoegl
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.viewParamsUbo);
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboLighting, renderSceneCtx.lightingParamsUbo);
 			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboSsr, renderSceneCtx.ssrParamsUbo);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureSsrAmbientOcclusion, renderSceneCtx.ambientOcclusionTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrDirectOpaqueColor, renderSceneCtx.directOpaqueColorTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
 
-			beginPass(gpuState, renderSceneCtx.ssrRawFramebuffer, renderSceneCtx.ssrResolution, renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrProgram);
-
-			if (k_ssrEnabled)
 			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Trace");
+				beginPass(gpuState, renderSceneCtx.ssrRawFramebuffer, renderSceneCtx.ssrResolution, renderSceneCtx.targetParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrProgram);
 				glBindVertexArray(renderSceneCtx.postProcessVao);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
-			}
-			else
-			{
-				gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
-				glClear(GL_COLOR_BUFFER_BIT);
 			}
 
 			debugInspectRenderOutput(
 				debugRenderInspectorCtx, "Ssr Raw", renderSceneCtx.ssrRawColorTexture, DebugType::ColorTexture);
 
-			glBindVertexArray(renderSceneCtx.postProcessVao);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrPrefilterProgram);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(
-				k_bindingTextureSsrFilterSource, renderSceneCtx.ssrRawColorTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(
-				k_bindingTextureSsrFilterOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(
-				k_bindingTextureSsrFilterOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
-			beginPass(
-				gpuState
-				, renderSceneCtx.ssrMipFramebuffers[0]
-				, renderSceneCtx.ssrResolution
-				, renderSceneCtx.targetParamsUbo);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrDownsampleProgram);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(
-				k_bindingTextureSsrFilterSource, renderSceneCtx.ssrColorTexture);
-			auto mipResolution = renderSceneCtx.ssrResolution;
-			for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.ssrMipFramebuffers); ++mipIndex)
 			{
-				mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
-				glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
-				glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Filter");
+				glBindVertexArray(renderSceneCtx.postProcessVao);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrPrefilterProgram);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureSsrFilterSource, renderSceneCtx.ssrRawColorTexture);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(
+					k_bindingTextureSsrFilterOpaqueDepth, renderSceneCtx.opaqueDepthTexture);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(
+					k_bindingTextureSsrFilterOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 				beginPass(
 					gpuState
-					, renderSceneCtx.ssrMipFramebuffers[mipIndex]
-					, mipResolution
+					, renderSceneCtx.ssrMipFramebuffers[0]
+					, renderSceneCtx.ssrResolution
 					, renderSceneCtx.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
-			}
 
-			glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, 0);
-			glTextureParameteri(
-				renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.ssrMipLevels - 1);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.ssrDownsampleProgram);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureSsrFilterSource, renderSceneCtx.ssrColorTexture);
+				auto mipResolution = renderSceneCtx.ssrResolution;
+				for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.ssrMipFramebuffers); ++mipIndex)
+				{
+					mipResolution = glm::max(mipResolution / 2, glm::ivec2{ 1 });
+					glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
+					glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+					beginPass(
+						gpuState
+						, renderSceneCtx.ssrMipFramebuffers[mipIndex]
+						, mipResolution
+						, renderSceneCtx.targetParamsUbo);
+					glDrawArrays(GL_TRIANGLES, 0, 3);
+				}
+
+				glTextureParameteri(renderSceneCtx.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, 0);
+				glTextureParameteri(
+					renderSceneCtx.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, renderSceneCtx.ssrMipLevels - 1);
+			}
 
 			auto const inspectedSsrLevel = debugInspectIndex(
 				debugRenderInspectorCtx, "Ssr Color", renderSceneCtx.ssrMipLevels);
@@ -1668,18 +1717,20 @@ namespace vob::aoegl
 		// X - Opaque Composition
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Opaque Composition");
-			gpuState.disableDepthTest<GpuStateChange::SurelyNo>();
-			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
-			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
-			gpuState.disableBlend<GpuStateChange::SurelyNo>();
+			gpuState.disableDepthTest<GpuStateChange::LikelyNo>();
+			gpuState.disableDepthWrite<GpuStateChange::LikelyNo>();
+			gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
+			gpuState.disableBlend<GpuStateChange::LikelyNo>();
+			gpuState.disableFaceCulling<GpuStateChange::LikelyNo>();
 			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.directOpaqueColorTexture);
 			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.opaqueSurfaceTexture);
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboSsr, renderSceneCtx.ssrParamsUbo);
 			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.ssrColorTexture);
 			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueNormal, renderSceneCtx.opaqueNormalTexture);
 			beginPass(gpuState, renderSceneCtx.finalFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.opaqueCompositionProgram);
 
-			// glBindVertexArray(renderSceneCtx.postProcessVao);
+			glBindVertexArray(renderSceneCtx.postProcessVao);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Composition", renderSceneCtx.finalColorTexture, DebugType::ColorTexture);
@@ -1712,88 +1763,88 @@ namespace vob::aoegl
 
 		auto const bloomEnabled = k_bloomEnabled && !renderSceneCtx.bloomMips.empty();
 
-		// XII-bis - Bloom Downsample
+		// XII-bis - Bloom
 		if (bloomEnabled)
 		{
-			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Downsample");
-			gpuState.disableBlend<GpuStateChange::SurelyYes>();
-			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomDownsampleProgram);
-			glBindVertexArray(renderSceneCtx.postProcessVao);
+			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom");
 
-			auto const& firstMip = renderSceneCtx.bloomMips[0];
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureBloomSource, renderSceneCtx.finalColorTexture);
-			beginPass(gpuState, firstMip.framebuffer, firstMip.resolution, renderSceneCtx.targetParamsUbo);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-
-			auto const karisOff = 0;
-			glNamedBufferSubData(
-				renderSceneCtx.bloomParamsUbo, offsetof(UniformBloomParams, useKarisAverage), sizeof(karisOff), &karisOff);
-
-			for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.bloomMips); ++mipIndex)
 			{
-				auto const& mip = renderSceneCtx.bloomMips[mipIndex];
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(
-					k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex - 1].colorTexture);
-				beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Downsample");
+				gpuState.disableBlend<GpuStateChange::SurelyYes>();
+				gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomDownsampleProgram);
+				glBindVertexArray(renderSceneCtx.postProcessVao);
+
+				auto const& firstMip = renderSceneCtx.bloomMips[0];
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureBloomSource, renderSceneCtx.finalColorTexture);
+				beginPass(gpuState, firstMip.framebuffer, firstMip.resolution, renderSceneCtx.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
+
+				auto const karisOff = 0;
+				glNamedBufferSubData(
+					renderSceneCtx.bloomParamsUbo, offsetof(UniformBloomParams, useKarisAverage), sizeof(karisOff), &karisOff);
+
+				for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.bloomMips); ++mipIndex)
+				{
+					auto const& mip = renderSceneCtx.bloomMips[mipIndex];
+					gpuState.bindTexture<GpuStateChange::SurelyYes>(
+						k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex - 1].colorTexture);
+					beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
+					glDrawArrays(GL_TRIANGLES, 0, 3);
+				}
+
+				auto const inspectedMipIndex = debugInspectIndex(
+					debugRenderInspectorCtx, "Bloom Downsample", mistd::isize(renderSceneCtx.bloomMips));
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx
+					, "Bloom Downsample"
+					, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
+					, DebugType::ColorTexture);
 			}
 
-			auto const inspectedMipIndex = debugInspectIndex(
-				debugRenderInspectorCtx, "Bloom Downsample", mistd::isize(renderSceneCtx.bloomMips));
-			debugInspectRenderOutput(
-				debugRenderInspectorCtx
-				, "Bloom Downsample"
-				, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
-				, DebugType::ColorTexture);
-		}
-
-		// XII-ter - Bloom Upsample
-		if (bloomEnabled)
-		{
-			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Upsample");
-			gpuState.enableBlend<GpuStateChange::SurelyYes>();
-			glBlendFunc(GL_ONE, GL_ONE);
-			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomUpsampleProgram);
-			glBindVertexArray(renderSceneCtx.postProcessVao);
-
-			for (int32_t mipIndex = mistd::isize(renderSceneCtx.bloomMips) - 2; mipIndex >= 0; --mipIndex)
 			{
-				auto const& mip = renderSceneCtx.bloomMips[mipIndex];
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(
-					k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex + 1].colorTexture);
-				beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
-				glDrawArrays(GL_TRIANGLES, 0, 3);
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Upsample");
+				gpuState.enableBlend<GpuStateChange::SurelyYes>();
+				glBlendFunc(GL_ONE, GL_ONE);
+				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomUpsampleProgram);
+				glBindVertexArray(renderSceneCtx.postProcessVao);
+
+				for (int32_t mipIndex = mistd::isize(renderSceneCtx.bloomMips) - 2; mipIndex >= 0; --mipIndex)
+				{
+					auto const& mip = renderSceneCtx.bloomMips[mipIndex];
+					gpuState.bindTexture<GpuStateChange::SurelyYes>(
+						k_bindingTextureBloomSource, renderSceneCtx.bloomMips[mipIndex + 1].colorTexture);
+					beginPass(gpuState, mip.framebuffer, mip.resolution, renderSceneCtx.targetParamsUbo);
+					glDrawArrays(GL_TRIANGLES, 0, 3);
+				}
+
+				gpuState.disableBlend<GpuStateChange::SurelyYes>();
+
+				auto const inspectedMipIndex = debugInspectIndex(
+					debugRenderInspectorCtx, "Bloom Upsample", mistd::isize(renderSceneCtx.bloomMips));
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx
+					, "Bloom Upsample"
+					, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
+					, DebugType::ColorTexture);
 			}
 
-			gpuState.disableBlend<GpuStateChange::SurelyYes>();
+			{
+				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Combine");
+				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineScene, renderSceneCtx.finalColorTexture);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineBloom, renderSceneCtx.bloomMips[0].colorTexture);
+				beginPass(gpuState, renderSceneCtx.bloomCombinedFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
+				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomCombineProgram);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
 
-			auto const inspectedMipIndex = debugInspectIndex(
-				debugRenderInspectorCtx, "Bloom Upsample", mistd::isize(renderSceneCtx.bloomMips));
-			debugInspectRenderOutput(
-				debugRenderInspectorCtx
-				, "Bloom Upsample"
-				, renderSceneCtx.bloomMips[inspectedMipIndex].colorTexture
-				, DebugType::ColorTexture);
-		}
-
-		// XII-quater - Bloom Combine
-		if (bloomEnabled)
-		{
-			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Bloom Combine");
-			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.bloomParamsUbo);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineScene, renderSceneCtx.finalColorTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineBloom, renderSceneCtx.bloomMips[0].colorTexture);
-			beginPass(gpuState, renderSceneCtx.bloomCombinedFramebuffer, renderSceneCtx.shadingResolution, renderSceneCtx.targetParamsUbo);
-			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.bloomCombineProgram);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-
-			debugInspectRenderOutput(
-				debugRenderInspectorCtx
-				, "Bloom Combine"
-				, renderSceneCtx.bloomCombinedColorTexture
-				, DebugType::ColorTexture);
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx
+					, "Bloom Combine"
+					, renderSceneCtx.bloomCombinedColorTexture
+					, DebugType::ColorTexture);
+			}
 		}
 
 		// XIII - Post Processes
