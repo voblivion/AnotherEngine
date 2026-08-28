@@ -78,7 +78,7 @@ void main()
 
     vec2 resolution = vec2(textureSize(uSsao_LinearDepth, 0));
     float pixelsPerWorldUnit = 0.5 * uView.viewToClip[0][0] * resolution.x / max(-position.z, 1e-4);
-    float radiusPixels = min(uSsao.radius * pixelsPerWorldUnit, uSsao.maxRadiusPixels);
+    float radiusPixels = min(uSsao.radius * pixelsPerWorldUnit, uSsao.maxRadiusScreenFraction * resolution.y);
     float radiusWorld = radiusPixels / max(pixelsPerWorldUnit, 1e-6);
 
     ivec2 pixel = ivec2(gl_FragCoord.xy);

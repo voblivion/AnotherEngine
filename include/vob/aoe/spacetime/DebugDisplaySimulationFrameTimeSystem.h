@@ -2,6 +2,8 @@
 
 #include <vob/aoe/spacetime/DebugSimulationFrameTimeHistoryContext.h>
 
+#include "vob/aoe/debug/DebugUiContext.h"
+
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
 
 
@@ -16,5 +18,6 @@ namespace vob::aoest
 
 	private:
 		aoeng::EcsWorldContextRef<DebugSimulationFrameTimeHistoryContext> m_debugSimulationFrameTimeHistoryContext;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 	};
 }

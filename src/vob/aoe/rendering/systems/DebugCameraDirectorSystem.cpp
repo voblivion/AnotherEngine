@@ -16,6 +16,7 @@ namespace vob::aoegl
 		m_debugCameraDirectorCtx.init(a_wdar);
 		m_debugNameEntities.init(a_wdar);
 		m_cameraEntities.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugCameraDirectorSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -58,12 +59,15 @@ namespace vob::aoegl
 			}
 		}
 
-		if (ImGui::Begin("Camera Director"))
+		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
-			auto debugNameEntities = m_debugNameEntities.get(a_wdap);
-			aoedb::ImGuiEntityCombo("Camera", &cameraDirectorCtx.activeCameraEntity, cameraEntities, debugNameEntities);
-			aoedb::ImGuiEntityCombo("Debug Camera", &cameraDirectorCtx.debugCameraEntity, cameraEntities, debugNameEntities);
+			if (ImGui::Begin("Camera Director"))
+			{
+				auto debugNameEntities = m_debugNameEntities.get(a_wdap);
+				aoedb::ImGuiEntityCombo("Camera", &cameraDirectorCtx.activeCameraEntity, cameraEntities, debugNameEntities);
+				aoedb::ImGuiEntityCombo("Debug Camera", &cameraDirectorCtx.debugCameraEntity, cameraEntities, debugNameEntities);
+			}
+			ImGui::End();
 		}
-		ImGui::End();
 	}
 }

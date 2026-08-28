@@ -40,6 +40,7 @@ namespace vob::aoegl
 		m_debugMeshContext.init(a_wdar);
 		m_debugRenderInspectorCtx.init(a_wdar);
 		m_windowContext.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 		m_focusEntities.init(a_wdar);
 		m_cameraEntities.init(a_wdar);
 		m_lightEntities.init(a_wdar);
@@ -194,9 +195,8 @@ namespace vob::aoegl
 				{
 					for (auto y : {-1.0f, 1.0f})
 					{
-						auto const clampZ = [](auto const& v) { return v; return  glm::vec3{ v.x, std::clamp(v.y, -1.0f, 9.0f), v.z }; };
-						auto const nearPoint = aoest::transformPositionSkewed(a_clipToWorld, clampZ(glm::vec3{ x, y, nearZ }));
-						auto const farPoint = aoest::transformPositionSkewed(a_clipToWorld, clampZ(glm::vec3{ x, y, farZ }));
+						auto const nearPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{ x, y, nearZ });
+						auto const farPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{ x, y, farZ });
 						for (auto const& point : { nearPoint, farPoint })
 						{
 							minX = std::min(minX, glm::dot(point, sunX));
@@ -488,7 +488,9 @@ namespace vob::aoegl
 		static float k_ssaoDepthTolerance = 0.05f;
 		static bool k_ssrEnabled = true;
 		static bool k_bloomEnabled = true;
-		if (ImGui::Begin("Render Debug"))
+
+		auto const isDebugUiDisplayed = m_debugUiCtx.get(a_wdap).isDisplayed;
+		if (isDebugUiDisplayed && ImGui::Begin("Render Debug"))
 		{
 			auto& inspectedName = debugRenderInspectorCtx.selectedName;
 			if (ImGui::BeginCombo("Inspect", inspectedName.empty() ? "None" : inspectedName.data()))
@@ -539,8 +541,7 @@ namespace vob::aoegl
 				.radius = k_ssaoRadius,
 				.falloffStart = k_ssaoFalloffStart,
 				.intensity = k_ssaoIntensity,
-				.maxRadiusPixels =
-					k_ssaoMaxRadiusScreenFraction * float(renderSceneCtx.ssaoResolution.y),
+				.maxRadiusScreenFraction = k_ssaoMaxRadiusScreenFraction,
 				.depthTolerance = k_ssaoDepthTolerance
 			};
 			glNamedBufferSubData(renderSceneCtx.ssaoParamsUbo, 0, sizeof(ssaoParams), &ssaoParams);
@@ -861,7 +862,10 @@ namespace vob::aoegl
 				}
 			}
 		}
-		ImGui::End();
+		if (isDebugUiDisplayed)
+		{
+			ImGui::End();
+		}
 
 		debugRenderInspectorCtx.names.clear();
 		debugRenderInspectorCtx.selectedIndexCount = 0;

@@ -238,7 +238,7 @@ struct ALIGN_16 UniformSsaoParams
     float radius;
     float falloffStart;
     float intensity;
-    float maxRadiusPixels;
+    float maxRadiusScreenFraction;
     float depthTolerance;
 };
 

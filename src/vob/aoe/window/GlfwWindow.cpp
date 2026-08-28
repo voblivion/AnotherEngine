@@ -583,9 +583,9 @@ namespace vob::aoewi
 		, GLenum a_type
 		, GLuint a_id
 		, GLenum a_severity
-		, GLsizei a_length
+		, [[maybe_unused]] GLsizei a_length
 		, GLchar const* a_message
-		, void const* a_userParam)
+		, [[maybe_unused]] void const* a_userParam)
 	{
 		// ignore non-significant messages
 		if (a_type == GL_DEBUG_TYPE_OTHER)

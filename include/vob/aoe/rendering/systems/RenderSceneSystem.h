@@ -14,6 +14,7 @@
 #include "vob/aoe/rendering/contexts/RenderProfilingContext.h"
 #include "vob/aoe/rendering/contexts/RenderSceneContext.h"
 
+#include "vob/aoe/debug/DebugUiContext.h"
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
 #include "vob/aoe/spacetime/PositionComponent.h"
 #include "vob/aoe/spacetime/RotationComponent.h"
@@ -40,6 +41,7 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<DebugMeshContext> m_debugMeshContext;
 		aoeng::EcsWorldContextRef<DebugRenderInspectorContext> m_debugRenderInspectorCtx;
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const> m_focusEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;

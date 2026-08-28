@@ -12,10 +12,16 @@ namespace vob::aoest
 	void DebugTimeSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_timeContext.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugTimeSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
+		if (!m_debugUiCtx.get(a_wdap).isDisplayed)
+		{
+			return;
+		}
+
 		static std::array<float, 100> k_frameDurations;
 		static int32_t k_nextIndex = 0;
 

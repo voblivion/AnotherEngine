@@ -9,16 +9,21 @@ namespace vob::aoegl
 	{
 		m_debugMeshContext.init(a_wdar);
 		m_lightEntities.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugRenderLightsSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
 		static bool k_lights = false;
-		if (ImGui::Begin("Debug Mesh"))
+		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
-			ImGui::Checkbox("Lights", &k_lights);
+			if (ImGui::Begin("Debug Mesh"))
+			{
+				ImGui::Checkbox("Lights", &k_lights);
+			}
+			ImGui::End();
 		}
-		ImGui::End();
+
 		if (!k_lights)
 		{
 			return;

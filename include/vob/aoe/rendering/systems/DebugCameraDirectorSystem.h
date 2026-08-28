@@ -6,6 +6,8 @@
 #include "vob/aoe/rendering/contexts/CameraDirectorContext.h"
 #include "vob/aoe/rendering/contexts/DebugCameraDirectorContext.h"
 
+#include "vob/aoe/debug/DebugUiContext.h"
+
 #include <vob/aoe/debug/DebugNameComponent.h>
 #include <vob/aoe/engine/EcsWorldDataAccess.h>
 #include <vob/aoe/input/GameInputContext.h>
@@ -24,6 +26,7 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<CameraDirectorContext> m_cameraDirectorCtx;
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 		aoeng::EcsWorldContextRef<DebugCameraDirectorContext const> m_debugCameraDirectorCtx;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 
 		aoeng::EcsWorldViewRef<aoedb::DebugNameComponent const> m_debugNameEntities;
 		aoeng::EcsWorldViewRef<CameraComponent const> m_cameraEntities;

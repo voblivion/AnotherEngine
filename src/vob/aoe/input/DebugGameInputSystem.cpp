@@ -21,6 +21,7 @@ namespace vob::aoein
 	{
 		m_gameInputContext.init(a_wdar);
 		m_debugGameInputContext.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugGameInputSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -60,72 +61,75 @@ namespace vob::aoein
 		}
 
 		auto nextHistoryLength = debugGameInputCtx.historyLength;
-		if (ImGui::Begin("Inputs"))
+		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
-			ImGui::InputInt("History Length", &nextHistoryLength, 1, 64);
-			if (ImGui::BeginTable("ValueTable", 3, ImGuiTableFlags_SizingStretchProp))
+			if (ImGui::Begin("Inputs"))
 			{
-				ImGui::TableSetupColumn("Name", 0 /* flags */, 50.0f /* weight */);
-				ImGui::TableSetupColumn("Value", 0 /* flags */, 20.0f /* weight */);
-				ImGui::TableSetupColumn("History", 0 /* flags */, 150.0f /* weight */);
-				ImGui::TableHeadersRow();
-
-				for (auto const& debugValue : debugGameInputCtx.values)
+				ImGui::InputInt("History Length", &nextHistoryLength, 1, 64);
+				if (ImGui::BeginTable("ValueTable", 3, ImGuiTableFlags_SizingStretchProp))
 				{
-					ImGui::TableNextRow();
-					
-					ImGui::TableNextColumn();
-					ImGui::Text(debugValue.name);
-					
-					ImGui::TableNextColumn();
-					ImGui::Text("%.4f", debugValue.values[debugGameInputCtx.nextIndex]);
+					ImGui::TableSetupColumn("Name", 0 /* flags */, 50.0f /* weight */);
+					ImGui::TableSetupColumn("Value", 0 /* flags */, 20.0f /* weight */);
+					ImGui::TableSetupColumn("History", 0 /* flags */, 150.0f /* weight */);
+					ImGui::TableHeadersRow();
 
-					ImGui::TableNextColumn();
-					ImGui::PushItemWidth(-1);
-					ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
-					if (ImPlot::BeginPlot("##HistoryPlot", ImVec2(-1, 30)))
+					for (auto const& debugValue : debugGameInputCtx.values)
 					{
-						ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-						if (debugValue.range.first < debugValue.range.second)
+						ImGui::TableNextRow();
+
+						ImGui::TableNextColumn();
+						ImGui::Text(debugValue.name);
+
+						ImGui::TableNextColumn();
+						ImGui::Text("%.4f", debugValue.values[debugGameInputCtx.nextIndex]);
+
+						ImGui::TableNextColumn();
+						ImGui::PushItemWidth(-1);
+						ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
+						if (ImPlot::BeginPlot("##HistoryPlot", ImVec2(-1, 30)))
 						{
-							ImPlot::SetupAxesLimits(
-								0, debugGameInputCtx.historyLength, debugValue.range.first, debugValue.range.second, ImPlotCond_Always);
-							ImPlotSpec spec;
-							spec.Offset = debugGameInputCtx.nextIndex;
-							spec.Flags = ImPlotLineFlags_None;
-							ImPlot::PlotLine("##Values", debugValue.values.data(), debugGameInputCtx.historyLength, 1.0 /* xscale */, 0.0 /* xstart */, spec);
+							ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
+							if (debugValue.range.first < debugValue.range.second)
+							{
+								ImPlot::SetupAxesLimits(
+									0, debugGameInputCtx.historyLength, debugValue.range.first, debugValue.range.second, ImPlotCond_Always);
+								ImPlotSpec spec;
+								spec.Offset = debugGameInputCtx.nextIndex;
+								spec.Flags = ImPlotLineFlags_None;
+								ImPlot::PlotLine("##Values", debugValue.values.data(), debugGameInputCtx.historyLength, 1.0 /* xscale */, 0.0 /* xstart */, spec);
+							}
+							ImPlot::EndPlot();
 						}
-						ImPlot::EndPlot();
+						ImPlot::PopStyleVar();
+						ImGui::PopItemWidth();
 					}
-					ImPlot::PopStyleVar();
-					ImGui::PopItemWidth();
+
+					for (auto const& debugEvent : debugGameInputCtx.events)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableNextColumn();
+						ImGui::Text(debugEvent.name);
+
+						ImGui::TableNextColumn();
+						ImGui::Text("%d", debugEvent.events[debugGameInputCtx.nextIndex]);
+
+						ImGui::TableNextColumn();
+						ImGui::PushItemWidth(-1);
+						ImGui::PlotHistogram(
+							"##HistoryPlot",
+							&getEventCount,
+							const_cast<int32_t*>(debugEvent.events.data()),
+							debugGameInputCtx.historyLength,
+							debugGameInputCtx.nextIndex);
+						ImGui::PopItemWidth();
+					}
+
+					ImGui::EndTable();
 				}
-
-				for (auto const& debugEvent : debugGameInputCtx.events)
-				{
-					ImGui::TableNextRow();
-
-					ImGui::TableNextColumn();
-					ImGui::Text(debugEvent.name);
-
-					ImGui::TableNextColumn();
-					ImGui::Text("%d", debugEvent.events[debugGameInputCtx.nextIndex]);
-
-					ImGui::TableNextColumn();
-					ImGui::PushItemWidth(-1);
-					ImGui::PlotHistogram(
-						"##HistoryPlot",
-						&getEventCount,
-						const_cast<int32_t*>(debugEvent.events.data()),
-						debugGameInputCtx.historyLength,
-						debugGameInputCtx.nextIndex);
-					ImGui::PopItemWidth();
-				}
-
-				ImGui::EndTable();
 			}
+			ImGui::End();
 		}
-		ImGui::End();
 
 		debugGameInputCtx.historyLength = nextHistoryLength;
 		debugGameInputCtx.nextIndex = (debugGameInputCtx.nextIndex + 1) % debugGameInputCtx.historyLength;

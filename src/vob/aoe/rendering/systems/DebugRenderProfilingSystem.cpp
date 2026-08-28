@@ -92,6 +92,7 @@ namespace vob::aoegl
 	void DebugRenderProfilingSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_renderProfilingCtx.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugRenderProfilingSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -135,23 +136,26 @@ namespace vob::aoegl
 
 		glQueryCounter(scopeTimerStack.back()->queries[gpuProfiler.writeTimerSlotIndex][0], GL_TIMESTAMP);
 
-		if (ImGui::Begin("Render Performance"))
+		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
-			ImGui::BeginDisabled();
-			ImGui::InputInt("Light Count", &renderProfilingCtx.lightCount);
-			ImGui::InputInt("Static Mesh Count", &renderProfilingCtx.staticOpaqueMeshCount);
-			ImGui::InputInt("Rigged Mesh Count", &renderProfilingCtx.riggedOpaqueMeshCount);
-
-			if (ImGui::BeginTable("Gpu Timers", 2, ImGuiTableFlags_BordersInnerH))
+			if (ImGui::Begin("Render Performance"))
 			{
-				displayTimersRec(gpuProfiler.frameTimer);
-				ImGui::EndTable();
+				ImGui::BeginDisabled();
+				ImGui::InputInt("Light Count", &renderProfilingCtx.lightCount);
+				ImGui::InputInt("Static Mesh Count", &renderProfilingCtx.staticOpaqueMeshCount);
+				ImGui::InputInt("Rigged Mesh Count", &renderProfilingCtx.riggedOpaqueMeshCount);
+
+				if (ImGui::BeginTable("Gpu Timers", 2, ImGuiTableFlags_BordersInnerH))
+				{
+					displayTimersRec(gpuProfiler.frameTimer);
+					ImGui::EndTable();
+				}
+
+				ImGui::InputInt("Dropped Frames", &gpuProfiler.lastDroppedFrameCount);
+
+				ImGui::EndDisabled();
 			}
-
-			ImGui::InputInt("Dropped Frames", &gpuProfiler.lastDroppedFrameCount);
-
-			ImGui::EndDisabled();
+			ImGui::End();
 		}
-		ImGui::End();
 	}
 }

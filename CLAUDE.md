@@ -17,7 +17,7 @@ C++23 game engine: EnTT ECS, OpenGL 4.6 renderer. Namespaces `vob::aoe*`.
 - `ecs/` — component-set/archetype scaffolding for data-driven entity spawning.
 - `data/` — filesystem-backed database/loader system (json, string, multi-database).
 - `window/` — window/context abstraction (GLFW-backed).
-- `debug/` — assert/check macros, debug naming, ghost/replay controller.
+- `debug/` — assert/check macros, debug naming, ghost (free-fly) controller, `DebugUiContext`/`DebugUiSystem` (visibility flag debug systems check before submitting ImGui panels).
 - `editor/` — in-viewport gizmos (translate/rotate).
 - `common/` — low-level input device types (mouse/keyboard/gamepad).
 - `hack/` — scratch/temporary gameplay hooks.

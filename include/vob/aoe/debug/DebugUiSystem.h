@@ -1,14 +1,14 @@
 #pragma once
 
-#include "vob/aoe/spacetime/TimeContext.h"
-
 #include "vob/aoe/debug/DebugUiContext.h"
+
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
+#include "vob/aoe/input/GameInputContext.h"
 
 
-namespace vob::aoest
+namespace vob::aoedb
 {
-	class DebugTimeSystem
+	class DebugUiSystem
 	{
 	public:
 		void init(aoeng::EcsWorldDataAccessRegistrar& a_wdar);
@@ -16,7 +16,7 @@ namespace vob::aoest
 		void execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const;
 
 	private:
-		aoeng::EcsWorldContextRef<TimeContext> m_timeContext;
-		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
+		aoeng::EcsWorldContextRef<DebugUiContext> m_debugUiCtx;
+		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputCtx;
 	};
 }

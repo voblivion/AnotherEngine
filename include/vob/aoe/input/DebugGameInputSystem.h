@@ -2,6 +2,7 @@
 
 #include "vob/aoe/api.h"
 
+#include "vob/aoe/debug/DebugUiContext.h"
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
 
 
@@ -20,5 +21,6 @@ namespace vob::aoein
 	private:
 		aoeng::EcsWorldContextRef<aoein::GameInputContext const> m_gameInputContext;
 		aoeng::EcsWorldContextRef<aoein::DebugGameInputContext> m_debugGameInputContext;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 	};
 }

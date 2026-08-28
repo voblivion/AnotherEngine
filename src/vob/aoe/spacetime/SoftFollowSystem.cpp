@@ -23,6 +23,7 @@ namespace vob::aoest
 		m_debugMeshContext.init(a_wdar);
 		m_softFollowableEntities.init(a_wdar);
 		m_softFollowingEntities.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void SoftFollowSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -37,16 +38,19 @@ namespace vob::aoest
 		static float k_maxRotationChangeRate = 0.02f;
 
 		static bool k_debugSoftFollow = false;
-		auto const isImGuiOpen = ImGui::Begin("Soft Follow");
-		if (isImGuiOpen)
+		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
-			ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
-			ImGui::InputFloat("Min Speed Threshold", &k_minSpeedThreshold);
-			ImGui::InputFloat("Max Speed Threshold", &k_maxSpeedThreshold);
-			ImGui::InputFloat("Min Position Change Rate", &k_minPositionChangeRate);
-			ImGui::InputFloat("Max Position Change Rate", &k_maxPositionChangeRate);
-			ImGui::InputFloat("Min Rotation Change Rate", &k_minRotationChangeRate);
-			ImGui::InputFloat("Max Rotation Change Rate", &k_maxRotationChangeRate);
+			if (ImGui::Begin("Soft Follow"))
+			{
+				ImGui::Checkbox("Display Debug", &k_debugSoftFollow);
+				ImGui::InputFloat("Min Speed Threshold", &k_minSpeedThreshold);
+				ImGui::InputFloat("Max Speed Threshold", &k_maxSpeedThreshold);
+				ImGui::InputFloat("Min Position Change Rate", &k_minPositionChangeRate);
+				ImGui::InputFloat("Max Position Change Rate", &k_maxPositionChangeRate);
+				ImGui::InputFloat("Min Rotation Change Rate", &k_minRotationChangeRate);
+				ImGui::InputFloat("Max Rotation Change Rate", &k_maxRotationChangeRate);
+			}
+			ImGui::End();
 		}
 
 		for (auto [entity, positionCmp, rotationCmp, softFollowCmp] : m_softFollowingEntities.get(a_wdap).each())
@@ -109,7 +113,5 @@ namespace vob::aoest
 			auto const desiredRotation = glm::quat{ glm::quatLookAt(toDesiredAimPoint, glm::dvec3{ referenceUp }) };
 			rotationCmp.value = glm::slerp(rotationCmp.value, desiredRotation, rotationChangeRate);
 		}
-
-		ImGui::End();
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "vob/aoe/rendering/contexts/RenderProfilingContext.h"
 
+#include "vob/aoe/debug/DebugUiContext.h"
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
 
 
@@ -16,5 +17,6 @@ namespace vob::aoegl
 
 	private:
 		aoeng::EcsWorldContextRef<RenderProfilingContext> m_renderProfilingCtx;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 	};
 }

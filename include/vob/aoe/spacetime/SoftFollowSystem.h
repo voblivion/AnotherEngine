@@ -2,6 +2,7 @@
 
 #include <vob/aoe/api.h>
 
+#include "vob/aoe/debug/DebugUiContext.h"
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
 #include "vob/aoe/rendering/contexts/DebugMeshContext.h"
 #include "vob/aoe/spacetime/TimeContext.h"
@@ -23,6 +24,7 @@ namespace vob::aoest
 	private:
 		aoeng::EcsWorldContextRef<aoest::TimeContext> m_timeContext;
 		aoeng::EcsWorldContextRef<aoegl::DebugMeshContext> m_debugMeshContext;
+		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
 
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, aoest::LinearVelocityComponent const> m_softFollowableEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent, aoest::RotationComponent, SoftFollowComponent> m_softFollowingEntities;

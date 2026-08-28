@@ -9,23 +9,23 @@ namespace vob::aoest
 	void DebugDisplaySimulationFrameTimeSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_debugSimulationFrameTimeHistoryContext.init(a_wdar);
+		m_debugUiCtx.init(a_wdar);
 	}
 
 	void DebugDisplaySimulationFrameTimeSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
 	{
+		if (!m_debugUiCtx.get(a_wdap).isDisplayed)
+		{
+			return;
+		}
+
 		auto& debugSimulationFrameTimeHistoryContext = m_debugSimulationFrameTimeHistoryContext.get(a_wdap);
 		if (ImGui::Begin("Debug Simulation Tick Time"))
 		{
 			ImGui::InputInt("History Length", &debugSimulationFrameTimeHistoryContext.historyLength);
-			if (debugSimulationFrameTimeHistoryContext.durationsInMs.size() != debugSimulationFrameTimeHistoryContext.historyLength)
-			{
-				debugSimulationFrameTimeHistoryContext.durationsInMs.resize(debugSimulationFrameTimeHistoryContext.historyLength, 0.0f);
-				if (debugSimulationFrameTimeHistoryContext.nextIndex >= debugSimulationFrameTimeHistoryContext.historyLength)
-				{
-					debugSimulationFrameTimeHistoryContext.nextIndex = 0;
-				}
-			}
-			if (ImPlot::BeginPlot("Tick Durations", ImVec2(-1, 150)))
+			debugSimulationFrameTimeHistoryContext.historyLength = std::max(1, debugSimulationFrameTimeHistoryContext.historyLength);
+			if (!debugSimulationFrameTimeHistoryContext.durationsInMs.empty()
+				&& ImPlot::BeginPlot("Tick Durations", ImVec2(-1, 150)))
 			{
 				ImPlot::SetupAxes(nullptr, "ms", ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 				auto const maxTickDuration = std::max(10.0f, *std::max_element(

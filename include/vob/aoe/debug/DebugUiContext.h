@@ -3,9 +3,9 @@
 #include "vob/aoe/input/GameInput.h"
 
 
-namespace vob::aoegl
+namespace vob::aoedb
 {
-	struct ImGuiContext
+	struct DebugUiContext
 	{
 		bool isDisplayed = false;
 		aoein::GameInputEventId toggleDisplayEventId = {};
