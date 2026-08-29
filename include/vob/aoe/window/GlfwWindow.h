@@ -29,6 +29,7 @@ namespace vob::aoewi
 		explicit GlfwWindow(
 			glm::ivec2 a_size
 			, char const* const a_title
+			, bool const a_isDecorated = false
 			, GLFWmonitor* const a_monitor = nullptr
 			, GLFWwindow* const a_share = nullptr);
 

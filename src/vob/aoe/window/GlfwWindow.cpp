@@ -23,10 +23,11 @@ namespace vob::aoewi
 	GlfwWindow::GlfwWindow(
 		glm::ivec2 a_size
 		, char const* const a_title
+		, bool const a_isDecorated
 		, GLFWmonitor* const a_monitor
 		, GLFWwindow* const a_share)
 	{
-		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+		glfwWindowHint(GLFW_DECORATED, a_isDecorated ? GLFW_TRUE : GLFW_FALSE);
 		if (a_monitor != nullptr)
 		{
 			GLFWvidmode const* mode = glfwGetVideoMode(a_monitor);
