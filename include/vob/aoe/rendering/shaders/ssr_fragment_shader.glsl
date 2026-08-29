@@ -107,7 +107,7 @@ SsrRay setupSsrRay(vec2 a_uv)
     vec2 envBrdf = envBrdfApprox(NdotV, roughness);
     vec3 specularWeight = surface.rgb * envBrdf.x + envBrdf.y;
 
-    float ambientOcclusion = uLighting.isAmbientOcclusionEnabled != 0 && uSsr.isAmbientOcclusionEnabled != 0
+    float ambientOcclusion = uLighting.isAmbientOcclusionEnabled != 0
         ? texture(uSsr_AmbientOcclusion, a_uv).r
         : 1.0;
     float skyOcclusion = specularOcclusion(NdotV, ambientOcclusion, roughness);

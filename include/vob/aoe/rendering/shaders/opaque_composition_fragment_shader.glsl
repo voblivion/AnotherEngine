@@ -18,8 +18,10 @@ void main()
     vec3 reflection = vec3(0.0);
     if (uSsr.isEnabled != 0 && f0 != vec3(0.0))
     {
-        float maxLod = max(float(textureQueryLevels(uOpaqueComposition_SsrColor) - 1) - 2.0, 0.0);
-        vec3 radiance = textureLod(uOpaqueComposition_SsrColor, vUv, roughness * maxLod).rgb;
+        float pixelsPerRadian = 0.5 * uView.viewToClip[0][0]
+            * float(textureSize(uOpaqueComposition_SsrColor, 0).x);
+        float lod = log2(max(roughness * roughness * pixelsPerRadian, 1.0));
+        vec3 radiance = textureLod(uOpaqueComposition_SsrColor, vUv, lod).rgb;
 
         vec4 viewH = uView.clipToView * vec4(vUv * 2.0 - 1.0, 1.0, 1.0);
         vec3 viewDir = normalize(viewH.xyz / viewH.w);

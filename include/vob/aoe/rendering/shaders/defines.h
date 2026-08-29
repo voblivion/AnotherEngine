@@ -228,7 +228,6 @@ struct ALIGN_16 UniformSsrParams
     float penetrationThroughRatio;
     int debugPenetration;
     int isEnabled;
-    int isAmbientOcclusionEnabled;
 };
 
 struct ALIGN_16 UniformSsaoParams

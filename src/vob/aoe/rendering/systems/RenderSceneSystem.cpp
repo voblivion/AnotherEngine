@@ -1,5 +1,7 @@
 #include "vob/aoe/rendering/systems/RenderSceneSystem.h"
 
+#include "vob/aoe/rendering/RenderSceneConfigUtils.h"
+
 #include "vob/aoe/rendering/CameraUtils.h"
 #include "vob/aoe/rendering/components/InstancedModelsComponent.h"
 #include "vob/aoe/rendering/components/ModelComponent.h"
@@ -484,11 +486,8 @@ namespace vob::aoegl
 
 		// 0 - Prepare Debug
 		static bool k_debugCameraFrustum = false;
-		static bool k_ssaoEnabled = true;
-		static float k_ssaoDepthTolerance = 0.05f;
-		static bool k_ssrEnabled = true;
-		static bool k_bloomEnabled = true;
 
+		auto& config = renderSceneCtx.config.get();
 		auto const isDebugUiDisplayed = m_debugUiCtx.get(a_wdap).isDisplayed;
 		if (isDebugUiDisplayed && ImGui::Begin("Render Debug"))
 		{
@@ -518,121 +517,79 @@ namespace vob::aoegl
 			ImGui::Checkbox("Frustum", &k_debugCameraFrustum);
 
 			ImGui::SeparatorText("SSAO");
-			ImGui::Checkbox("Enable##ssao", &k_ssaoEnabled);
-			static int k_ssaoSliceCount = 3;
-			ImGui::SliderInt("Slice Count##ssao", &k_ssaoSliceCount, 1, 8);
-			static int k_ssaoStepCount = 8;
-			ImGui::SliderInt("Step Count##ssao", &k_ssaoStepCount, 1, 16);
-			static float k_ssaoRadius = 1.0f;
-			ImGui::SliderFloat("Radius##ssao", &k_ssaoRadius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssaoFalloffStart = 0.7f;
-			ImGui::SliderFloat("Falloff Start##ssao", &k_ssaoFalloffStart, 0.0f, 1.0f);
-			static float k_ssaoIntensity = 1.0f;
-			ImGui::SliderFloat("Intensity##ssao", &k_ssaoIntensity, 0.0f, 4.0f);
-			static float k_ssaoMaxRadiusScreenFraction = 0.2f;
-			ImGui::SliderFloat(
-				"Max Radius (screen)##ssao", &k_ssaoMaxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
-			ImGui::SliderFloat(
-				"Depth Tolerance##ssao", &k_ssaoDepthTolerance, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			auto ssaoChanged = false;
+			ImGui::Checkbox("Enable##ssao", &config.ssao.isEnabled);
+			ssaoChanged |= ImGui::SliderInt("Slice Count##ssao", &config.ssao.sliceCount, 1, 8);
+			ssaoChanged |= ImGui::SliderInt("Step Count##ssao", &config.ssao.stepCount, 1, 16);
+			ssaoChanged |= ImGui::SliderFloat("Radius##ssao", &config.ssao.radius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			ssaoChanged |= ImGui::SliderFloat("Falloff Start##ssao", &config.ssao.falloffStart, 0.0f, 1.0f);
+			ssaoChanged |= ImGui::SliderFloat("Intensity##ssao", &config.ssao.intensity, 0.0f, 4.0f);
+			ssaoChanged |= ImGui::SliderFloat(
+				"Max Radius (screen)##ssao", &config.ssao.maxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
+			ssaoChanged |= ImGui::SliderFloat(
+				"Depth Tolerance##ssao", &config.ssao.depthTolerance, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
 
-			auto const ssaoParams = UniformSsaoParams{
-				.sliceCount = k_ssaoSliceCount,
-				.stepCount = k_ssaoStepCount,
-				.radius = k_ssaoRadius,
-				.falloffStart = k_ssaoFalloffStart,
-				.intensity = k_ssaoIntensity,
-				.maxRadiusScreenFraction = k_ssaoMaxRadiusScreenFraction,
-				.depthTolerance = k_ssaoDepthTolerance
-			};
-			glNamedBufferSubData(renderSceneCtx.ssaoParamsUbo, 0, sizeof(ssaoParams), &ssaoParams);
-
-			ImGui::SeparatorText("SSR");
-			ImGui::Checkbox("Enable##ssr", &k_ssrEnabled);
-			static int k_ssrStepCount = 64;
-			ImGui::SliderInt("Step Count", &k_ssrStepCount, 4, 256);
-			static float k_ssrMaxRange = 500.0f;
-			ImGui::SliderFloat("Max Range", &k_ssrMaxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-
-			static bool k_ssrAmbientOcclusionEnabled = true;
-			ImGui::Checkbox("Ambient Occlusion##ssr", &k_ssrAmbientOcclusionEnabled);
-
-			static bool k_ssrDebugExitReason = false;
-			ImGui::Checkbox("Debug Exit Reason##ssr", &k_ssrDebugExitReason);
-
-			static bool k_ssrDebugPenetration = false;
-			ImGui::Checkbox("Debug Penetration##ssr", &k_ssrDebugPenetration);
-
-			static bool k_ssrDebugRay = false;
-			static glm::ivec2 k_ssrDebugRayPixel = renderSceneCtx.shadingResolution / 2;
-			ImGui::Checkbox("Debug Ray##ssr", &k_ssrDebugRay);
-			if (k_ssrDebugRay)
+			if (ssaoChanged)
 			{
-				ImGui::SliderInt("Ray Pixel X", &k_ssrDebugRayPixel.x, 0, renderSceneCtx.shadingResolution.x - 1);
-				ImGui::SliderInt("Ray Pixel Y", &k_ssrDebugRayPixel.y, 0, renderSceneCtx.shadingResolution.y - 1);
+				auto const ssaoParams = createUniformSsaoParams(config.ssao);
+				glNamedBufferSubData(renderSceneCtx.ssaoParamsUbo, 0, sizeof(ssaoParams), &ssaoParams);
 			}
 
-			static float k_ssrPenetrationBlockedRatio = 0.003f;
-			ImGui::SliderFloat(
-				"Penetration Blocked Below", &k_ssrPenetrationBlockedRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-			static float k_ssrPenetrationThroughRatio = 0.3f;
-			ImGui::SliderFloat(
-				"Penetration Through Above", &k_ssrPenetrationThroughRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+			ImGui::SeparatorText("SSR");
+			auto ssrChanged = false;
+			ssrChanged |= ImGui::Checkbox("Enable##ssr", &config.ssr.isEnabled);
+			ssrChanged |= ImGui::SliderInt("Step Count", &config.ssr.stepCount, 4, 256);
+			ssrChanged |= ImGui::SliderFloat("Max Range", &config.ssr.maxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
 
+			ssrChanged |= ImGui::Checkbox("Debug Exit Reason##ssr", &config.ssr.debugExitReason);
 
-			auto const ssrParams = UniformSsrParams{
-				.stepCount = k_ssrStepCount,
-				.debugExitReason = k_ssrDebugExitReason ? 1 : 0,
-				.maxRange = k_ssrMaxRange,
-				.debugRay = k_ssrDebugRay ? 1 : 0,
-				.debugRayPixel = k_ssrDebugRayPixel,
-				.penetrationBlockedRatio = k_ssrPenetrationBlockedRatio,
-				.penetrationThroughRatio = k_ssrPenetrationThroughRatio,
-				.debugPenetration = k_ssrDebugPenetration ? 1 : 0,
-				.isEnabled = k_ssrEnabled ? 1 : 0,
-				.isAmbientOcclusionEnabled = k_ssrAmbientOcclusionEnabled ? 1 : 0
-			};
-			glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
+			ssrChanged |= ImGui::Checkbox("Debug Penetration##ssr", &config.ssr.debugPenetration);
+
+			ssrChanged |= ImGui::Checkbox("Debug Ray##ssr", &config.ssr.debugRay);
+			if (config.ssr.debugRay)
+			{
+				ssrChanged |= ImGui::SliderInt("Ray Pixel X", &config.ssr.debugRayPixel.x, 0, renderSceneCtx.shadingResolution.x - 1);
+				ssrChanged |= ImGui::SliderInt("Ray Pixel Y", &config.ssr.debugRayPixel.y, 0, renderSceneCtx.shadingResolution.y - 1);
+			}
+
+			ssrChanged |= ImGui::SliderFloat(
+				"Penetration Blocked Below", &config.ssr.penetrationBlockedRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+			ssrChanged |= ImGui::SliderFloat(
+				"Penetration Through Above", &config.ssr.penetrationThroughRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+
+			if (ssrChanged)
+			{
+				auto const ssrParams = createUniformSsrParams(config.ssr);
+				glNamedBufferSubData(renderSceneCtx.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
+			}
 
 			ImGui::SeparatorText("Bloom");
-			ImGui::Checkbox("Enable##bloom", &k_bloomEnabled);
-			static float k_bloomScatter = 0.5f;
-			ImGui::SliderFloat("Scatter", &k_bloomScatter, 0.0f, 3.0f);
-			static float k_bloomStrength = 0.05f;
-			ImGui::SliderFloat("Strength", &k_bloomStrength, 0.0f, 1.0f);
-			static float k_bloomFilterRadius = 1.0f;
-			ImGui::SliderFloat("Filter Radius", &k_bloomFilterRadius, 0.5f, 3.0f);
-			static bool k_bloomKarisAverage = true;
-			ImGui::Checkbox("Karis Average", &k_bloomKarisAverage);
+			auto bloomChanged = false;
+			ImGui::Checkbox("Enable##bloom", &config.bloom.isEnabled);
+			bloomChanged |= ImGui::SliderFloat("Scatter", &config.bloom.scatter, 0.0f, 3.0f);
+			bloomChanged |= ImGui::SliderFloat("Strength", &config.bloom.strength, 0.0f, 1.0f);
+			bloomChanged |= ImGui::SliderFloat("Filter Radius", &config.bloom.filterRadius, 0.5f, 3.0f);
+			bloomChanged |= ImGui::Checkbox("Karis Average", &config.bloom.useKarisAverage);
 
-			auto const bloomLevelCount = static_cast<float>(mistd::isize(renderSceneCtx.bloomMips));
-			auto const bloomParams = UniformBloomParams{
-				.filterRadius = k_bloomFilterRadius,
-				.scatter = k_bloomScatter,
-				.strength = k_bloomStrength,
-				.useKarisAverage = k_bloomKarisAverage ? 1 : 0,
-				.totalWeight = std::abs(1.0f - k_bloomScatter) < 1e-4f
-					? bloomLevelCount
-					: (1.0f - std::pow(k_bloomScatter, bloomLevelCount)) / (1.0f - k_bloomScatter)
-			};
-			glNamedBufferSubData(renderSceneCtx.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
+			if (bloomChanged)
+			{
+				auto const bloomParams = createUniformBloomParams(
+					config.bloom, mistd::isize(renderSceneCtx.bloomMips));
+				glNamedBufferSubData(renderSceneCtx.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
+			}
 
 			ImGui::SeparatorText("Tonemap");
-			static float k_tonemapExposure = 1.0f;
-			ImGui::SliderFloat("Exposure", &k_tonemapExposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			static glm::vec3 k_tonemapColorFilter{ 1.0f };
-			ImGui::ColorEdit3("Color Filter", &k_tonemapColorFilter.x);
-			static float k_tonemapContrast = 1.0f;
-			ImGui::SliderFloat("Contrast", &k_tonemapContrast, 0.0f, 2.0f);
-			static float k_tonemapSaturation = 1.0f;
-			ImGui::SliderFloat("Saturation", &k_tonemapSaturation, 0.0f, 2.0f);
+			auto tonemapChanged = false;
+			tonemapChanged |= ImGui::SliderFloat("Exposure", &config.tonemap.exposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			tonemapChanged |= ImGui::ColorEdit3("Color Filter", &config.tonemap.colorFilter.x);
+			tonemapChanged |= ImGui::SliderFloat("Contrast", &config.tonemap.contrast, 0.0f, 2.0f);
+			tonemapChanged |= ImGui::SliderFloat("Saturation", &config.tonemap.saturation, 0.0f, 2.0f);
 
-			auto const tonemapParams = UniformTonemapParams{
-				.colorFilter = k_tonemapColorFilter,
-				.exposure = k_tonemapExposure,
-				.contrast = k_tonemapContrast,
-				.saturation = k_tonemapSaturation
-			};
-			glNamedBufferSubData(renderSceneCtx.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
+			if (tonemapChanged)
+			{
+				auto const tonemapParams = createUniformTonemapParams(config.tonemap);
+				glNamedBufferSubData(renderSceneCtx.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
+			}
 
 			ImGui::SeparatorText("Shaders");
 			auto& activeShaderIndex = debugProgramCtx.activeShaderIndex;
@@ -904,9 +861,9 @@ namespace vob::aoegl
 			debugViewParams.nearClip,
 			debugViewParams.farClip,
 			renderSceneCtx.sunDir,
-			renderSceneCtx.sunShadowMapFrustumFarClips,
-			k_ssaoEnabled,
-			k_ssaoDepthTolerance,
+			renderSceneCtx.config.get().shadow.sunCascadeFarClips,
+			config.ssao.isEnabled,
+			config.ssao.depthTolerance,
 			gpuLights);
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Update Buffers");
@@ -1322,11 +1279,11 @@ namespace vob::aoegl
 
 			// A - Sun CSM
 			{
-				beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.sunShadowMapResolution, renderSceneCtx.targetParamsUbo);
+				beginPass(gpuState, renderSceneCtx.sunShadowMapFramebuffer, renderSceneCtx.config.get().shadow.sunResolution, renderSceneCtx.targetParamsUbo);
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sun CSM");
 				auto const debugSunCsmIndex = std::clamp(
-					debugRenderInspectorCtx.selectedIndex, 0, mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips) - 1);
-				for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips); ++csmIndex)
+					debugRenderInspectorCtx.selectedIndex, 0, mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips) - 1);
+				for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips); ++csmIndex)
 				{
 					auto const& sunShadowParams = shadowParams.sun[csmIndex];
 					if (csmIndex == debugSunCsmIndex)
@@ -1395,7 +1352,7 @@ namespace vob::aoegl
 				}
 			}
 			auto const sunCsmIndex = debugInspectIndex(
-				debugRenderInspectorCtx, "Sun Shadow Map", mistd::isize(renderSceneCtx.sunShadowMapFrustumFarClips));
+				debugRenderInspectorCtx, "Sun Shadow Map", mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips));
 			debugInspectRenderOutputLayer(
 				debugRenderInspectorCtx
 				, "Sun Shadow Map"
@@ -1473,7 +1430,7 @@ namespace vob::aoegl
 		}
 
 		// VII - SSAO
-		if (k_ssaoEnabled)
+		if (config.ssao.isEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSAO");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
@@ -1577,7 +1534,7 @@ namespace vob::aoegl
 		}
 
 		// IX - SSR
-		if (k_ssrEnabled)
+		if (config.ssr.isEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSR");
 
@@ -1765,7 +1722,7 @@ namespace vob::aoegl
 			debugInspectRenderOutput(debugRenderInspectorCtx, "Sky Box", renderSceneCtx.finalColorTexture, DebugType::ColorTexture);
 		}
 
-		auto const bloomEnabled = k_bloomEnabled && !renderSceneCtx.bloomMips.empty();
+		auto const bloomEnabled = config.bloom.isEnabled && !renderSceneCtx.bloomMips.empty();
 
 		// XII-bis - Bloom
 		if (bloomEnabled)

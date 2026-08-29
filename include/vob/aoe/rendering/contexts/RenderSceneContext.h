@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/RenderSceneConfig.h"
 #include "vob/aoe/rendering/shaders/defines.h"
 
 #include <vob/misc/std/enum_traits.h>
@@ -10,6 +11,7 @@
 #include <glm/glm.hpp>
 
 #include <chrono>
+#include <functional>
 
 
 namespace vob::aoegl
@@ -37,11 +39,12 @@ namespace vob::aoegl
 	};
 
 	constexpr int32_t k_bloomMipsCapacity = 12;
-	constexpr int32_t k_ssrMipsCapacity = 12;
+	constexpr int32_t k_ssrMipsCapacity = 16;
 	constexpr int32_t k_hiZMipsCapacity = 16;
 
 	struct RenderSceneContext
 	{
+		std::reference_wrapper<RenderSceneConfig> config;
 
 		// Parameters
 		int32_t lightsCapacity = 2048;
@@ -80,10 +83,8 @@ namespace vob::aoegl
 		GraphicId ambientOcclusionTexture;
 
 		glm::vec3 sunDir = glm::normalize(glm::vec3{ 0.7f, 0.15f, -1.0f });
-		glm::ivec2 sunShadowMapResolution;
 		GraphicId sunShadowMapFramebuffer;
 		GraphicId sunShadowMapDepthTextureArray;
-		mistd::bounded_vector<float, k_sunCascadingShadowMapsCapacity> sunShadowMapFrustumFarClips = { 10.0f, 40.0f, 200.0f, 1000.0f };
 		struct SpotLightShadowMapTarget
 		{
 			glm::ivec2 resolution;
