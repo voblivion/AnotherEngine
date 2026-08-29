@@ -47,10 +47,6 @@ namespace vob::aoegl
 		std::reference_wrapper<RenderSceneConfig> config;
 
 		// Parameters
-		int32_t lightsCapacity = 2048;
-		glm::ivec2 lightClusterTileSize = glm::ivec2{ 16 };
-		int32_t lightClusterZCount = 24;
-		int32_t lightClusterCapacity = 64;
 		int32_t lightClusteringWorkGroupSize = 128;
 
 		// Uniform Buffer Objects

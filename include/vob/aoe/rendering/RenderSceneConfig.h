@@ -13,6 +13,14 @@ namespace vob::aoegl
 {
 	struct RenderSceneConfig
 	{
+		struct Lighting
+		{
+			int32_t maxLightCount = 2048;
+			glm::ivec2 clusterTileSize = glm::ivec2{ 16 };
+			int32_t clusterZCount = 24;
+			int32_t clusterCapacity = 64;
+		};
+
 		struct Shadow
 		{
 			bool isSunEnabled = true;
@@ -74,6 +82,7 @@ namespace vob::aoegl
 		};
 
 		float renderScale = 1.0f;
+		Lighting lighting;
 		Shadow shadow;
 		Ssao ssao;
 		Ssr ssr;
