@@ -43,7 +43,6 @@ namespace vob::aoegl
 		m_debugRenderInspectorCtx.init(a_wdar);
 		m_windowContext.init(a_wdar);
 		m_debugUiCtx.init(a_wdar);
-		m_focusEntities.init(a_wdar);
 		m_cameraEntities.init(a_wdar);
 		m_lightEntities.init(a_wdar);
 		m_modelEntities.init(a_wdar);
@@ -121,13 +120,14 @@ namespace vob::aoegl
 		static float texelSize = 1.0;
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
-			glm::dvec3 const& a_lightFocusPosition,
+			glm::vec3 const& a_cameraPosition,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
 			int32_t a_lightsCapacity,
 			glm::ivec2 const& a_lightClusterResolution,
 			glm::ivec2 const& a_lightClusterTileSize,
 			int32_t a_lightClusterZCount,
 			int32_t a_lightClusterCapacity,
+			int32_t a_spotShadowMapCount,
 			glm::dvec3 const& a_worldOriginPosition,
 			glm::mat4 a_clipToWorld,
 			glm::mat4 a_viewToWorld,
@@ -144,17 +144,23 @@ namespace vob::aoegl
 			culledLights.clear();
 			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
-				if (!testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value - a_worldOriginPosition, lightCmp.radius))
+				auto const position = glm::vec3{ positionCmp.value - a_worldOriginPosition };
+				if (!testViewFrustumPlanes(a_viewFrustumPlanes, position, lightCmp.radius))
 				{
 					continue;
 				}
 
-				auto const distanceImportance = 1.0f - static_cast<float>(glm::length(positionCmp.value - a_lightFocusPosition)) / lightCmp.radius;
-				auto const colorImportance = glm::dot(lightCmp.color, glm::vec3{ 0.299, 0.587, 0.114f });
-				auto const intensityImportance = lightCmp.intensity;
-				auto const importance = distanceImportance * colorImportance * intensityImportance;
+				auto const toCamera = position - a_cameraPosition;
+				auto const distanceSquared = std::max(glm::dot(toCamera, toCamera), 1e-4f);
+				auto const projectedSizeSquared = lightCmp.radius * lightCmp.radius / distanceSquared;
+				auto const luminance =
+					glm::dot(lightCmp.color, glm::vec3{ 0.299f, 0.587f, 0.114f }) * lightCmp.intensity;
+				auto const coneFraction = lightCmp.type == LightType::Spot
+					? 0.5f * (1.0f - std::cos(lightCmp.outerAngle))
+					: 1.0f;
+				auto const importance = luminance * projectedSizeSquared * coneFraction;
 
-				culledLights.emplace_back(importance, positionCmp.value - a_worldOriginPosition, rotationCmp.value, &lightCmp);
+				culledLights.emplace_back(importance, position, rotationCmp.value, &lightCmp);
 			}
 			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
 			auto const lightingParams = UniformLightingParams{
@@ -253,7 +259,9 @@ namespace vob::aoegl
 					spotInnerAngleCos,
 					-1 /* spot shadow map index */);
 
-				if (culledLight.lightComponent->castsShadow && spotLightShadowMapCount < k_spotLightShadowMapsCapacity)
+				if (culledLight.lightComponent->castsShadow
+					&& !isPointLight
+					&& spotLightShadowMapCount < a_spotShadowMapCount)
 				{
 					auto const& lightCmp = *culledLight.lightComponent;
 					auto const lightViewToClip = glm::perspective(2.0f * lightCmp.outerAngle, 1.0f, lightCmp.nearClip, lightCmp.radius);
@@ -842,19 +850,20 @@ namespace vob::aoegl
 		auto const viewFrustumPlanes = computeViewFrustumPlanes(debugViewParams.worldToClip);
 
 		// II - Prepare Lights & Shadows
-		auto const lightFocusPosition = getFocusPosition(m_focusEntities.get(a_wdap), cameraDirectorCtx.focusEntity);
 		// TODO: remove magic
 		static std::vector<GpuLight> gpuLights;
 		gpuLights.clear();
 		auto const [lightingParams, shadowParams, spotLightShadowMapCount] = createLightingAndShadowParams(
 			viewFrustumPlanes,
-			lightFocusPosition,
+			glm::vec3{ debugViewParams.viewToWorld[3] }
+				+ glm::vec3{ debugWorldOriginPosition - worldOriginPosition },
 			m_lightEntities.get(a_wdap),
 			config.lighting.maxLightCount,
 			renderSceneCtx.shadingResolution,
 			config.lighting.clusterTileSize,
 			config.lighting.clusterZCount,
 			config.lighting.clusterCapacity,
+			computeSpotShadowMapCount(config.shadow),
 			worldOriginPosition,
 			glm::inverse(debugViewParams.worldToClip),
 			debugViewParams.viewToWorld,

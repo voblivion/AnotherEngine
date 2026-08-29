@@ -42,7 +42,6 @@ namespace vob::aoegl
 		aoeng::EcsWorldContextRef<DebugRenderInspectorContext> m_debugRenderInspectorCtx;
 		aoeng::EcsWorldContextRef<aoewi::WindowContext> m_windowContext;
 		aoeng::EcsWorldContextRef<aoedb::DebugUiContext const> m_debugUiCtx;
-		aoeng::EcsWorldViewRef<aoest::PositionComponent const> m_focusEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const> m_cameraEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const> m_lightEntities;
 		aoeng::EcsWorldViewRef<aoest::PositionComponent const, aoest::RotationComponent const, ModelTransformComponent> m_modelEntities;

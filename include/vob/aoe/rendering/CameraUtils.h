@@ -50,18 +50,6 @@ namespace vob::aoegl
 		};
 	}
 
-	inline glm::dvec3 getFocusPosition(
-		entt::view<entt::get_t<aoest::PositionComponent const>> a_focusEntities, entt::entity a_focusEntity)
-	{
-		if (!a_focusEntities.contains(a_focusEntity))
-		{
-			return glm::vec3{ 0.0f };
-		}
-
-		auto const [positionCmp] = a_focusEntities.get(a_focusEntity);
-		return positionCmp.value;
-	}
-
 	using ViewFrustumPlanes = std::array<glm::vec4, 6>;
 
 	inline ViewFrustumPlanes computeViewFrustumPlanes(glm::mat4 a_worldToClip)
