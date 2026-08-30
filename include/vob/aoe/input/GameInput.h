@@ -10,7 +10,7 @@ namespace vob::aoein
 	{
 		int32_t id = -1;
 
-		static friend bool operator==(GameInputValueId const& a_lhs, GameInputValueId const& a_rhs)
+		friend bool operator==(GameInputValueId const& a_lhs, GameInputValueId const& a_rhs)
 		{
 			return a_lhs.id == a_rhs.id;
 		}
@@ -21,7 +21,7 @@ namespace vob::aoein
 	{
 		int32_t id = -1;
 
-		static friend bool operator==(GameInputEventId const& a_lhs, GameInputEventId const& a_rhs)
+		friend bool operator==(GameInputEventId const& a_lhs, GameInputEventId const& a_rhs)
 		{
 			return a_lhs.id == a_rhs.id;
 		}
