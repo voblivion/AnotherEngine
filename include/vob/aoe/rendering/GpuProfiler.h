@@ -31,7 +31,7 @@ namespace vob::aoegl
 
 	struct GpuProfiler
 	{
-		GpuTimer frameTimer{ .name = "Frame" };
+		std::vector<GpuTimer> rootTimers;
 		std::vector<GpuTimer*> scopeTimerStack;
 
 		int32_t nextReadTimerSlotIndex = 0;
@@ -43,26 +43,40 @@ namespace vob::aoegl
 		int32_t lastDroppedFrameCount = 0;
 	};
 
+	inline void pushGpuTimerScope(GpuProfiler& a_profiler, std::string_view a_name)
+	{
+		auto& timers = a_profiler.scopeTimerStack.empty()
+			? a_profiler.rootTimers
+			: a_profiler.scopeTimerStack.back()->children;
+
+		auto timerIt = std::ranges::find(timers, a_name, &GpuTimer::name);
+		if (timerIt == timers.end())
+		{
+			timerIt = timers.emplace(timers.end(), GpuTimer{ .name = a_name });
+			for (auto& slotQueries : timerIt->queries)
+			{
+				glGenQueries(2, slotQueries.data());
+			}
+		}
+
+		a_profiler.scopeTimerStack.push_back(&*timerIt);
+		timerIt->startedInSlot[a_profiler.writeTimerSlotIndex] = true;
+		glQueryCounter(timerIt->queries[a_profiler.writeTimerSlotIndex][0], GL_TIMESTAMP);
+	}
+
+	inline void popGpuTimerScope(GpuProfiler& a_profiler)
+	{
+		glQueryCounter(
+			a_profiler.scopeTimerStack.back()->queries[a_profiler.writeTimerSlotIndex][1], GL_TIMESTAMP);
+		a_profiler.scopeTimerStack.pop_back();
+	}
+
 	struct [[nodiscard]] GpuTimerGuard
 	{
 		GpuTimerGuard(GpuProfiler& a_profiler, std::string_view a_name)
-			: m_stack{ a_profiler.scopeTimerStack }
-			, m_slotIndex{ a_profiler.writeTimerSlotIndex }
+			: m_profiler{ a_profiler }
 		{
-			auto& timers = m_stack.back()->children;
-			auto timerIt = std::ranges::find(timers, a_name, &GpuTimer::name);
-			if (timerIt == timers.end())
-			{
-				timerIt = timers.emplace(timers.end(), GpuTimer{ .name = a_name });
-				for (auto& slotQueries : timerIt->queries)
-				{
-					glGenQueries(2, slotQueries.data());
-				}
-			}
-
-			m_stack.push_back(&*timerIt);
-			timerIt->startedInSlot[m_slotIndex] = true;
-			glQueryCounter(timerIt->queries[m_slotIndex][0], GL_TIMESTAMP);
+			pushGpuTimerScope(a_profiler, a_name);
 		}
 
 		GpuTimerGuard(GpuTimerGuard const&) = delete;
@@ -70,13 +84,11 @@ namespace vob::aoegl
 
 		~GpuTimerGuard()
 		{
-			glQueryCounter(m_stack.back()->queries[m_slotIndex][1], GL_TIMESTAMP);
-			m_stack.pop_back();
+			popGpuTimerScope(m_profiler);
 		}
 
 	private:
-		std::vector<GpuTimer*>& m_stack;
-		int32_t m_slotIndex;
+		GpuProfiler& m_profiler;
 	};
 }
 

@@ -10,82 +10,78 @@ namespace vob::aoegl
 {
 	namespace
 	{
-		bool isTimerResultReady(GpuTimer const& a_timer, int32_t a_slotIndex)
+		bool areTimerResultsReady(std::vector<GpuTimer> const& a_timers, int32_t a_slotIndex)
 		{
-			GraphicInt isAvailable = 0;
-			glGetQueryObjectiv(a_timer.queries[a_slotIndex][1], GL_QUERY_RESULT_AVAILABLE, &isAvailable);
-			return isAvailable == GL_TRUE;
-		}
-
-		// A scope that did not run still has to advance its averaging window, otherwise it keeps
-		// displaying whatever it last measured.
-		void decayTimerResultsRec(GpuTimer& a_timer, std::optional<int32_t> a_accumulationCount)
-		{
-			if (a_accumulationCount.has_value())
+			auto hasStartedTimer = false;
+			for (auto const& timer : a_timers)
 			{
-				a_timer.lastDurationNs = a_timer.runningAccumulationNs / *a_accumulationCount;
-				a_timer.runningAccumulationNs = 0;
-			}
-
-			for (auto& childTimer : a_timer.children)
-			{
-				decayTimerResultsRec(childTimer, a_accumulationCount);
-			}
-		}
-
-		void accumulateTimerResultsRec(GpuTimer& a_timer, int32_t a_slotIndex, std::optional<int32_t> a_accumulationCount)
-		{
-			uint64_t startTimeNs;
-			glGetQueryObjectui64v(a_timer.queries[a_slotIndex][0], GL_QUERY_RESULT, &startTimeNs);
-			uint64_t stopTimeNs;
-			glGetQueryObjectui64v(a_timer.queries[a_slotIndex][1], GL_QUERY_RESULT, &stopTimeNs);
-			a_timer.runningAccumulationNs += stopTimeNs - startTimeNs;
-			a_timer.startedInSlot[a_slotIndex] = false;
-
-			if (a_accumulationCount.has_value())
-			{
-				a_timer.lastDurationNs = a_timer.runningAccumulationNs / *a_accumulationCount;
-				a_timer.runningAccumulationNs = 0;
-			}
-
-			for (auto& childTimer : a_timer.children)
-			{
-				if (childTimer.startedInSlot[a_slotIndex])
+				if (!timer.startedInSlot[a_slotIndex])
 				{
-					accumulateTimerResultsRec(childTimer, a_slotIndex, a_accumulationCount);
+					continue;
 				}
-				else
+				hasStartedTimer = true;
+
+				GraphicInt isAvailable = 0;
+				glGetQueryObjectiv(timer.queries[a_slotIndex][1], GL_QUERY_RESULT_AVAILABLE, &isAvailable);
+				if (isAvailable != GL_TRUE)
 				{
-					decayTimerResultsRec(childTimer, a_accumulationCount);
+					return false;
 				}
 			}
+			return hasStartedTimer;
 		}
 
-		void resetTimerStartedInSlotsRec(GpuTimer& a_timer, int32_t a_slotIndex)
+		void accumulateTimerResults(
+			std::vector<GpuTimer>& a_timers, int32_t a_slotIndex, std::optional<int32_t> a_accumulationCount)
 		{
-			a_timer.startedInSlot[a_slotIndex] = false;
-
-			for (auto& childTimer : a_timer.children)
+			for (auto& timer : a_timers)
 			{
-				resetTimerStartedInSlotsRec(childTimer, a_slotIndex);
+				if (timer.startedInSlot[a_slotIndex])
+				{
+					uint64_t startTimeNs;
+					glGetQueryObjectui64v(timer.queries[a_slotIndex][0], GL_QUERY_RESULT, &startTimeNs);
+					uint64_t stopTimeNs;
+					glGetQueryObjectui64v(timer.queries[a_slotIndex][1], GL_QUERY_RESULT, &stopTimeNs);
+					timer.runningAccumulationNs += stopTimeNs - startTimeNs;
+					timer.startedInSlot[a_slotIndex] = false;
+				}
+
+				// A scope that did not run still has to advance its averaging window, otherwise it
+				// keeps displaying whatever it last measured.
+				if (a_accumulationCount.has_value())
+				{
+					timer.lastDurationNs = timer.runningAccumulationNs / *a_accumulationCount;
+					timer.runningAccumulationNs = 0;
+				}
+
+				accumulateTimerResults(timer.children, a_slotIndex, a_accumulationCount);
 			}
 		}
 
-		void displayTimersRec(GpuTimer const& a_timer)
+		void resetTimerStartedInSlots(std::vector<GpuTimer>& a_timers, int32_t a_slotIndex)
 		{
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::TextUnformatted(a_timer.name.data(), a_timer.name.data() + a_timer.name.size());
-
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%.3f ms", static_cast<double>(a_timer.lastDurationNs) / 1'000'000.0);
-
-			ImGui::Indent();
-			for (auto const& childTimer : a_timer.children)
+			for (auto& timer : a_timers)
 			{
-				displayTimersRec(childTimer);
+				timer.startedInSlot[a_slotIndex] = false;
+				resetTimerStartedInSlots(timer.children, a_slotIndex);
 			}
-			ImGui::Unindent();
+		}
+
+		void displayTimers(std::vector<GpuTimer> const& a_timers)
+		{
+			for (auto const& timer : a_timers)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextUnformatted(timer.name.data(), timer.name.data() + timer.name.size());
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%.3f ms", static_cast<double>(timer.lastDurationNs) / 1'000'000.0);
+
+				ImGui::Indent();
+				displayTimers(timer.children);
+				ImGui::Unindent();
+			}
 		}
 	}
 
@@ -101,13 +97,10 @@ namespace vob::aoegl
 
 		auto& gpuProfiler = renderProfilingCtx.gpuProfiler;
 
-		auto& scopeTimerStack = gpuProfiler.scopeTimerStack;
 		VOB_AOE_CHECK_TERMINATE(
-			scopeTimerStack.size() == 1 && scopeTimerStack[0] == &gpuProfiler.frameTimer, "Invalid scoped GPU timer stack.");
+			gpuProfiler.scopeTimerStack.empty(), "Gpu timer scope still open.");
 
-		glQueryCounter(scopeTimerStack.back()->queries[gpuProfiler.writeTimerSlotIndex][1], GL_TIMESTAMP);
-
-		while (isTimerResultReady(gpuProfiler.frameTimer, gpuProfiler.nextReadTimerSlotIndex))
+		while (areTimerResultsReady(gpuProfiler.rootTimers, gpuProfiler.nextReadTimerSlotIndex))
 		{
 			std::optional<int32_t> accumulationCount = std::nullopt;
 			if (++gpuProfiler.accumulationIndex == gpuProfiler.accumulationCount)
@@ -117,8 +110,9 @@ namespace vob::aoegl
 				gpuProfiler.runningDroppedFrameCount = 0;
 				gpuProfiler.accumulationIndex = 0;
 			}
-			
-			accumulateTimerResultsRec(gpuProfiler.frameTimer, gpuProfiler.nextReadTimerSlotIndex, accumulationCount);
+
+			accumulateTimerResults(
+				gpuProfiler.rootTimers, gpuProfiler.nextReadTimerSlotIndex, accumulationCount);
 
 			gpuProfiler.nextReadTimerSlotIndex = nextGpuTimerSlot(gpuProfiler.nextReadTimerSlotIndex);
 		}
@@ -132,9 +126,7 @@ namespace vob::aoegl
 			++gpuProfiler.runningDroppedFrameCount;
 		}
 
-		resetTimerStartedInSlotsRec(gpuProfiler.frameTimer, gpuProfiler.writeTimerSlotIndex);
-
-		glQueryCounter(scopeTimerStack.back()->queries[gpuProfiler.writeTimerSlotIndex][0], GL_TIMESTAMP);
+		resetTimerStartedInSlots(gpuProfiler.rootTimers, gpuProfiler.writeTimerSlotIndex);
 
 		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
@@ -147,7 +139,7 @@ namespace vob::aoegl
 
 				if (ImGui::BeginTable("Gpu Timers", 2, ImGuiTableFlags_BordersInnerH))
 				{
-					displayTimersRec(gpuProfiler.frameTimer);
+					displayTimers(gpuProfiler.rootTimers);
 					ImGui::EndTable();
 				}
 
