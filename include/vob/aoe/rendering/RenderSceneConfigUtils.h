@@ -9,6 +9,12 @@
 
 namespace vob::aoegl
 {
+	inline int32_t computeFullMipChainLength(glm::ivec2 a_resolution)
+	{
+		return 1 + static_cast<int32_t>(std::floor(std::log2(
+			static_cast<float>(std::max(a_resolution.x, a_resolution.y)))));
+	}
+
 	inline int32_t computeBloomMinMipWidth(RenderSceneConfig::Bloom const& a_config)
 	{
 		return static_cast<int32_t>(std::round(1.0f / std::max(a_config.spreadScreenFraction, 1e-4f)));
