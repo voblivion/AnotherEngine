@@ -58,6 +58,18 @@ namespace vob::aoegl
 			}
 		}
 
+		bool isAnyTimerStarted(std::vector<GpuTimer> const& a_timers, int32_t a_slotIndex)
+		{
+			for (auto const& timer : a_timers)
+			{
+				if (timer.startedInSlot[a_slotIndex])
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		void resetTimerStartedInSlots(std::vector<GpuTimer>& a_timers, int32_t a_slotIndex)
 		{
 			for (auto& timer : a_timers)
@@ -117,16 +129,19 @@ namespace vob::aoegl
 			gpuProfiler.nextReadTimerSlotIndex = nextGpuTimerSlot(gpuProfiler.nextReadTimerSlotIndex);
 		}
 
-		if (nextGpuTimerSlot(gpuProfiler.writeTimerSlotIndex) != gpuProfiler.nextReadTimerSlotIndex)
+		if (isAnyTimerStarted(gpuProfiler.rootTimers, gpuProfiler.writeTimerSlotIndex))
 		{
-			gpuProfiler.writeTimerSlotIndex = nextGpuTimerSlot(gpuProfiler.writeTimerSlotIndex);
-		}
-		else
-		{
-			++gpuProfiler.runningDroppedFrameCount;
-		}
+			if (nextGpuTimerSlot(gpuProfiler.writeTimerSlotIndex) != gpuProfiler.nextReadTimerSlotIndex)
+			{
+				gpuProfiler.writeTimerSlotIndex = nextGpuTimerSlot(gpuProfiler.writeTimerSlotIndex);
+			}
+			else
+			{
+				++gpuProfiler.runningDroppedFrameCount;
+			}
 
-		resetTimerStartedInSlots(gpuProfiler.rootTimers, gpuProfiler.writeTimerSlotIndex);
+			resetTimerStartedInSlots(gpuProfiler.rootTimers, gpuProfiler.writeTimerSlotIndex);
+		}
 
 		if (m_debugUiCtx.get(a_wdap).isDisplayed)
 		{
