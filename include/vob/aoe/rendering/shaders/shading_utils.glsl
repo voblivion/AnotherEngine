@@ -75,7 +75,7 @@ float uEvaluateShadow(int lightIndex, vec3 position, vec3 normal)
     int kernelSize = 2 * kernelHalfSize + 1;
     shadow /= kernelSize * kernelSize;
     // shadow = smoothstep(0.0, 1.0, shadow);
-    return shadow;
+    return shadow * uShadow.spotLights[spotLightShadowMapIndex].shadowFade;
 }
 
 vec3 uEvaluateLight(int lightIndex, vec3 position, vec3 normal, vec3 albedo, float metallic, float roughness, float reflectance)

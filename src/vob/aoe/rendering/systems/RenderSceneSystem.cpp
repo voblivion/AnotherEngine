@@ -2,6 +2,8 @@
 
 #include "vob/aoe/rendering/RenderSceneConfigUtils.h"
 
+#include <numbers>
+
 #include "vob/aoe/rendering/CameraUtils.h"
 #include "vob/aoe/rendering/components/InstancedModelsComponent.h"
 #include "vob/aoe/rendering/components/ModelComponent.h"
@@ -27,7 +29,7 @@
 #include <array>
 #include <limits>
 
-
+#pragma optimize("", off)
 namespace vob::aoegl
 {
 	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
@@ -58,6 +60,7 @@ namespace vob::aoegl
 			float importance;
 			glm::vec3 position;
 			glm::quat rotation;
+			entt::entity entity;
 			LightComponent const* lightComponent;
 		};
 
@@ -121,13 +124,14 @@ namespace vob::aoegl
 		std::tuple<UniformLightingParams, UniformShadowParams, int32_t> createLightingAndShadowParams(
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
 			glm::vec3 const& a_cameraPosition,
+			glm::vec3 const& a_cameraForward,
 			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
 			int32_t a_lightsCapacity,
 			glm::ivec2 const& a_lightClusterResolution,
 			glm::ivec2 const& a_lightClusterTileSize,
 			int32_t a_lightClusterZCount,
 			int32_t a_lightClusterCapacity,
-			int32_t a_spotShadowMapCount,
+			int32_t a_spotShadowMapCapacity,
 			glm::dvec3 const& a_worldOriginPosition,
 			glm::mat4 a_clipToWorld,
 			glm::mat4 a_viewToWorld,
@@ -137,30 +141,67 @@ namespace vob::aoegl
 			mistd::bounded_vector<float, k_sunCascadingShadowMapsCapacity> const& a_sunFarClips,
 			bool a_isAmbientOcclusionEnabled,
 			float a_ambientOcclusionDepthTolerance,
+			[[maybe_unused]] float a_elapsedTime,
+			mistd::bounded_vector<RenderSceneContext::SpotLightShadowFade, k_spotLightShadowMapsCapacity>& o_spotLightShadowFades,
 			std::vector<GpuLight>& o_gpuLights)
 		{
 			// TODO: remove magic
 			static std::vector<CulledLight> culledLights;
+			static std::vector<CulledLight> shadowCasterLights;
 			culledLights.clear();
+			shadowCasterLights.clear();
 			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
 				auto const position = glm::vec3{ positionCmp.value - a_worldOriginPosition };
-				if (!testViewFrustumPlanes(a_viewFrustumPlanes, position, lightCmp.radius))
+				auto const isSpot = lightCmp.type == LightType::Spot;
+				auto const halfAngle = std::min(lightCmp.outerAngle, 0.5f * std::numbers::pi_v<float> - 1e-3f);
+
+				// bounding sphere of the lit volume: the whole sphere for a point light,
+				// the cone's bounding sphere for a spot
+				auto litCenter = position;
+				auto litRadius = lightCmp.radius;
+				if (isSpot)
+				{
+					auto const baseRadius = lightCmp.radius * std::tan(halfAngle);
+					auto const direction = rotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f };
+					if (baseRadius >= lightCmp.radius)
+					{
+						litCenter = position + direction * lightCmp.radius;
+						litRadius = baseRadius;
+					}
+					else
+					{
+						auto const cosHalfAngle = std::cos(halfAngle);
+						litRadius = lightCmp.radius / (2.0f * cosHalfAngle * cosHalfAngle);
+						litCenter = position + direction * litRadius;
+					}
+				}
+
+				if (!testViewFrustumPlanes(a_viewFrustumPlanes, litCenter, litRadius))
 				{
 					continue;
 				}
 
-				auto const toCamera = position - a_cameraPosition;
-				auto const distanceSquared = std::max(glm::dot(toCamera, toCamera), 1e-4f);
-				auto const projectedSizeSquared = lightCmp.radius * lightCmp.radius / distanceSquared;
+				auto const toLit = litCenter - a_cameraPosition;
+				auto const distanceSquared = std::max(glm::dot(toLit, toLit), 1e-4f);
+				auto const projectedSizeSquared = litRadius * litRadius / distanceSquared;
 				auto const luminance =
 					glm::dot(lightCmp.color, glm::vec3{ 0.299f, 0.587f, 0.114f }) * lightCmp.intensity;
-				auto const coneFraction = lightCmp.type == LightType::Spot
-					? 0.5f * (1.0f - std::cos(lightCmp.outerAngle))
+				// how much of that sphere the cone actually fills, by silhouette area
+				auto const thinness = isSpot
+					? glm::clamp(4.0f * std::tan(halfAngle) / std::numbers::pi_v<float>, 0.0f, 1.0f)
 					: 1.0f;
-				auto const importance = luminance * projectedSizeSquared * coneFraction;
+				auto const forwardDistance = glm::dot(toLit, a_cameraForward);
+				auto const visibleFraction = glm::clamp(
+					(forwardDistance + litRadius) / (2.0f * litRadius), 0.0f, 1.0f);
+				auto const importance = luminance * projectedSizeSquared * thinness * visibleFraction;
 
-				culledLights.emplace_back(importance, position, rotationCmp.value, &lightCmp);
+				culledLights.emplace_back(importance, position, rotationCmp.value, entity, &lightCmp);
+
+				if (isSpot && lightCmp.castsShadow)
+				{
+					shadowCasterLights.emplace_back(importance, position, rotationCmp.value, entity, &lightCmp);
+				}
 			}
 			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
 			auto const lightingParams = UniformLightingParams{
@@ -239,6 +280,106 @@ namespace vob::aoegl
 			shadowParams.sunReferenceViewToWorld = a_viewToWorld;
 			shadowParams.sunCascadingShadowMapCount = mistd::isize(a_sunFarClips);
 
+			// TODO: see how many of those statics to expose to config
+			static float k_tk = 1.0f;
+			static float k_fok = 2.0f;
+			static float k_fomi = 0.5f;
+			static float k_foma = 2.0f;
+			static float k_fik = 2.0f;
+			static float k_fimi = 0.5f;
+			static float k_fima = 2.0f;
+
+			std::sort(shadowCasterLights.begin(), shadowCasterLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
+			auto const desiredCutImportance = mistd::isize(shadowCasterLights) <= a_spotShadowMapCapacity ? 0.0f : shadowCasterLights[a_spotShadowMapCapacity].importance;
+			auto highestPendingImportance = -1.0f;
+			// A. resident casters move towards their fade target
+			// this makes casters close to being replaced be slightly faded
+			for (int32_t i = 0; i < std::min(mistd::isize(shadowCasterLights), a_spotShadowMapCapacity); ++i)
+			{
+				auto const entity = shadowCasterLights[i].entity;
+				auto it = std::find_if(
+					o_spotLightShadowFades.begin(),
+					o_spotLightShadowFades.end(),
+					[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+				if (it != o_spotLightShadowFades.end())
+				{
+					auto const r = desiredCutImportance > 0.0f ? std::log2(shadowCasterLights[i].importance / desiredCutImportance) : std::max(k_tk, k_fik);
+					auto const t = glm::smoothstep(0.0f, k_tk, r);
+					auto const v = k_fimi + (k_fima - k_fimi) * glm::smoothstep(0.0f, k_fik, r);
+					if (it->fade < t)
+					{
+						it->fade = std::min(it->fade + a_elapsedTime * v, t);
+					}
+					else
+					{
+						it->fade = std::max(t, it->fade - a_elapsedTime * v);
+					}
+				}
+				else if (highestPendingImportance == -1.0f)
+				{
+					highestPendingImportance = shadowCasterLights[i].importance;
+				}
+			}
+			// B. demoting casters move towards 0 fade
+			// instantly if not in frustum, smoothly otherwise
+			// this makes caster not pop-out as they are being replaced
+			for (int32_t i = mistd::isize(o_spotLightShadowFades) - 1; i >= 0; --i)
+			{
+				auto const entity = o_spotLightShadowFades[i].entity;
+				auto it = std::find_if(
+					shadowCasterLights.begin(),
+					shadowCasterLights.end(),
+					[entity](auto const& shadowCasterLight) { return shadowCasterLight.entity == entity; });
+				if (it == shadowCasterLights.end())
+				{
+					o_spotLightShadowFades[i] =
+						o_spotLightShadowFades[mistd::isize(o_spotLightShadowFades) - 1];
+					o_spotLightShadowFades.pop_back();
+				}
+			}
+			for (int32_t i = a_spotShadowMapCapacity; i < mistd::isize(shadowCasterLights); ++i)
+			{
+				auto const entity = shadowCasterLights[i].entity;
+				auto it = std::find_if(
+					o_spotLightShadowFades.begin(),
+					o_spotLightShadowFades.end(),
+					[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+				if (it != o_spotLightShadowFades.end())
+				{
+					auto const r = std::log2(highestPendingImportance / shadowCasterLights[i].importance);
+					auto const v = k_fomi + (k_foma - k_fomi) * glm::smoothstep(0.0f, k_fok, r);
+					it->fade -= a_elapsedTime * v;
+					if (it->fade <= 0.0f)
+					{
+						*it = o_spotLightShadowFades[mistd::isize(o_spotLightShadowFades) - 1];
+						o_spotLightShadowFades.pop_back();
+					}
+				}
+			}
+			// C.
+			if (mistd::isize(o_spotLightShadowFades) < a_spotShadowMapCapacity)
+			{
+				for (int32_t i = 0; i < std::min(mistd::isize(shadowCasterLights), a_spotShadowMapCapacity); ++i)
+				{
+					auto const entity = shadowCasterLights[i].entity;
+					auto it = std::find_if(
+						o_spotLightShadowFades.begin(),
+						o_spotLightShadowFades.end(),
+						[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+					if (it != o_spotLightShadowFades.end())
+					{
+						continue;
+					}
+
+					o_spotLightShadowFades.emplace_back(entity, 0.0f);
+
+					if (mistd::isize(o_spotLightShadowFades) == a_spotShadowMapCapacity)
+					{
+						break;
+					}
+				}
+			}
+
 			o_gpuLights.reserve(lightingParams.lightCount);
 			int32_t spotLightShadowMapCount = 0;
 			for (auto i = 0; i < lightingParams.lightCount; ++i)
@@ -259,27 +400,34 @@ namespace vob::aoegl
 					spotInnerAngleCos,
 					-1 /* spot shadow map index */);
 
-				if (culledLight.lightComponent->castsShadow
-					&& !isPointLight
-					&& spotLightShadowMapCount < a_spotShadowMapCount)
+				if (culledLight.lightComponent->castsShadow && !isPointLight)
 				{
-					auto const& lightCmp = *culledLight.lightComponent;
-					auto const lightViewToClip = glm::perspective(2.0f * lightCmp.outerAngle, 1.0f, lightCmp.nearClip, lightCmp.radius);
-					auto const lightForward = culledLight.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
-					auto const lightUp = culledLight.rotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
-					auto const worldToLightView = glm::lookAt(culledLight.position, culledLight.position + lightForward, lightUp);
-					auto const lightViewToWorld = glm::inverse(worldToLightView);
+					auto const it = std::find_if(
+						o_spotLightShadowFades.begin(),
+						o_spotLightShadowFades.end(),
+						[&culledLight](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == culledLight.entity; });
+					if (it != o_spotLightShadowFades.end())
+					{
+						auto const spotLightShadowMapIndex = spotLightShadowMapCount++;
+						o_gpuLights.back().shadowMapIndex = spotLightShadowMapIndex;
 
-					auto const spotLightShadowMapIndex = spotLightShadowMapCount++;
-					o_gpuLights.back().shadowMapIndex = spotLightShadowMapIndex;
-					shadowParams.spotLights[spotLightShadowMapIndex] = GpuSpotLightShadow{
-						.worldToClip = lightViewToClip * worldToLightView,
-						.nearClip = lightCmp.nearClip,
-						.farClip = lightCmp.radius,
-						.size = lightCmp.size,
-						.fov = 2.0f * lightCmp.outerAngle,
-						.viewToWorld = lightViewToWorld
-					};
+						auto const& lightCmp = *culledLight.lightComponent;
+						auto const lightViewToClip = glm::perspective(2.0f * lightCmp.outerAngle, 1.0f, lightCmp.nearClip, lightCmp.radius);
+						auto const lightForward = culledLight.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
+						auto const lightUp = culledLight.rotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
+						auto const worldToLightView = glm::lookAt(culledLight.position, culledLight.position + lightForward, lightUp);
+						auto const lightViewToWorld = glm::inverse(worldToLightView);
+
+						shadowParams.spotLights[spotLightShadowMapIndex] = GpuSpotLightShadow{
+							.worldToClip = lightViewToClip * worldToLightView,
+							.nearClip = lightCmp.nearClip,
+							.farClip = lightCmp.radius,
+							.size = lightCmp.size,
+							.fov = 2.0f * lightCmp.outerAngle,
+							.shadowFade = it->fade,
+							.viewToWorld = lightViewToWorld
+						};
+					}
 				}
 			}
 
@@ -857,6 +1005,7 @@ namespace vob::aoegl
 			viewFrustumPlanes,
 			glm::vec3{ debugViewParams.viewToWorld[3] }
 				+ glm::vec3{ debugWorldOriginPosition - worldOriginPosition },
+			-glm::vec3{ debugViewParams.viewToWorld[2] },
 			m_lightEntities.get(a_wdap),
 			config.lighting.maxLightCount,
 			renderSceneCtx.shadingResolution,
@@ -873,6 +1022,8 @@ namespace vob::aoegl
 			renderSceneCtx.config.get().shadow.sunCascadeFarClips,
 			config.ssao.isEnabled,
 			config.ssao.depthTolerance,
+			std::chrono::duration<float>{ m_timeContext.get(a_wdap).elapsedTime }.count(),
+			renderSceneCtx.spotLightShadowFades,
 			gpuLights);
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Update Buffers");

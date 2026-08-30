@@ -8,6 +8,8 @@
 #include <vob/misc/std/bounded_vector.h>
 #include <vob/misc/std/enum_map.h>
 
+#include <entt/entity/entity.hpp>
+
 #include <glm/glm.hpp>
 
 #include <chrono>
@@ -16,28 +18,6 @@
 
 namespace vob::aoegl
 {
-	struct alignas(16) GlobalRenderSceneConfig
-	{
-		glm::mat4 view;
-		glm::mat4 projection;
-		glm::mat4 viewProjection;
-		glm::mat4 invProjection;
-		glm::vec3 cameraPosition; float _cameraPositionPad;
-		glm::ivec2 resolution;
-		float nearClip;
-		float farClip;
-
-		glm::ivec2 lightClusterSizes;
-		int32_t lightClusterCountZ;
-		int32_t maxLightCountPerCluster;
-		int32_t totalLightCount;
-	};
-
-	struct alignas(16) MeshRenderSceneConfig
-	{
-		glm::mat4 model;
-	};
-
 	constexpr int32_t k_bloomMipsCapacity = 12;
 	constexpr int32_t k_ssrMipsCapacity = 16;
 	constexpr int32_t k_hiZMipsCapacity = 16;
@@ -87,7 +67,13 @@ namespace vob::aoegl
 			GraphicId framebuffer;
 			GraphicId depthTexture;
 		};
-		std::array<SpotLightShadowMapTarget, k_spotLightShadowMapsCapacity> spotLightShadowMapTargets;
+		mistd::bounded_vector<SpotLightShadowMapTarget, k_spotLightShadowMapsCapacity> spotLightShadowMapTargets;
+		struct SpotLightShadowFade
+		{
+			entt::entity entity = entt::null;
+			float fade = 0.0f;
+		};
+		mistd::bounded_vector<SpotLightShadowFade, k_spotLightShadowMapsCapacity> spotLightShadowFades;
 
 		glm::ivec2 shadingResolution;
 		GraphicId directOpaqueFramebuffer;

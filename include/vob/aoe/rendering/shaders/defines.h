@@ -175,6 +175,7 @@ struct ALIGN_16 GpuSpotLightShadow
     float size;
     // Not really needed for glsl, but handy + there is room
     float fov;
+    float shadowFade;
     // Not really needed for glsls and increases needed bandwith
     ubo_mat4 viewToWorld;
 };
