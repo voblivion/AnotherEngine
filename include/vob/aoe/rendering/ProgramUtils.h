@@ -18,7 +18,7 @@ namespace vob::aoegl
 	GraphicId createProgram(
 		std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId optionalProgramId = k_invalidId);
 
-	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId = k_invalidId);
+	GraphicId createLightClusteringProgram(GraphicId a_optionalProgramId = k_invalidId);
 
 	enum class ModelType
 	{

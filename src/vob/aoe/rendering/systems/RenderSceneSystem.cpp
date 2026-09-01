@@ -1037,7 +1037,7 @@ namespace vob::aoegl
 
 			auto const lightClusterXYCount = (lightingParams.lightClusterResolution + lightingParams.lightClusterTileSize - 1) / lightingParams.lightClusterTileSize;
 			auto const lightClusterCount = lightClusterXYCount.x * lightClusterXYCount.y * lightingParams.lightClusterZCount;
-			auto const workGroupCount = (lightClusterCount + renderSceneCtx.lightClusteringWorkGroupSize - 1) / renderSceneCtx.lightClusteringWorkGroupSize;
+			auto const workGroupCount = (lightClusterCount + k_lightClusteringWorkGroupSize - 1) / k_lightClusteringWorkGroupSize;
 			glDispatchCompute(static_cast<uint32_t>(workGroupCount), 1, 1);
 		}
 

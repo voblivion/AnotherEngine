@@ -1,7 +1,9 @@
 #version 450 core
 #extension GL_NV_gpu_shader5 : enable
 
-layout(local_size_x = WORK_GROUP_SIZE) in;
+#include "core/defines.glsl"
+
+layout(local_size_x = LIGHT_CLUSTERING_WORK_GROUP_SIZE) in;
 
 #include "core/bindings.glsl"
 #include "core/light_utils.glsl"

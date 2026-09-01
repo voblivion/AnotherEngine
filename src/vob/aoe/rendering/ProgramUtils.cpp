@@ -256,13 +256,9 @@ namespace vob::aoegl
 		}
 	}
 
-	GraphicId createLightClusteringProgram(int32_t a_workGroupSize, GraphicId a_optionalProgramId)
+	GraphicId createLightClusteringProgram(GraphicId a_optionalProgramId)
 	{
-		std::vector<std::string> defines;
-		defines.emplace_back("WORK_GROUP_SIZE " + std::to_string(a_workGroupSize));
-
 		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/light_clustering_shader.glsl");
-		setDefines(computeShaderSource, defines);
 		processIncludes(computeShaderSource);
 		return createComputeProgram(computeShaderSource, a_optionalProgramId);
 	}

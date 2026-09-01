@@ -26,9 +26,6 @@ namespace vob::aoegl
 	{
 		std::reference_wrapper<RenderSceneConfig> config;
 
-		// Parameters
-		int32_t lightClusteringWorkGroupSize = 128;
-
 		// Uniform Buffer Objects
 		GraphicId globalParamsUbo;
 		GraphicId viewParamsUbo;

@@ -12,6 +12,8 @@
 // Note: max int8
 #define MAX_LIGHT_CLUSTER_CAPACITY 127
 
+#define LIGHT_CLUSTERING_WORK_GROUP_SIZE 128
+
 #define BINDING_UBO_GLOBAL 0
 #define BINDING_UBO_VIEW 1
 #define BINDING_UBO_TARGET 2
@@ -276,6 +278,7 @@ struct ALIGN_16 UniformDebugParams
 	static constexpr int32_t k_skyIrradianceSampleCount = SKY_IRRADIANCE_SAMPLE_COUNT;
 	static constexpr int32_t k_maxLightsCapacity = MAX_LIGHTS_CAPACITY;
 	static constexpr int32_t k_maxLightClusterCapacity = MAX_LIGHT_CLUSTER_CAPACITY;
+	static constexpr int32_t k_lightClusteringWorkGroupSize = LIGHT_CLUSTERING_WORK_GROUP_SIZE;
 
 	static constexpr uint32_t k_bindingUboGlobal = BINDING_UBO_GLOBAL;
 	static constexpr uint32_t k_bindingUboView = BINDING_UBO_VIEW;
