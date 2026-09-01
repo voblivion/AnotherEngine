@@ -29,7 +29,6 @@
 #include <array>
 #include <limits>
 
-#pragma optimize("", off)
 namespace vob::aoegl
 {
 	void RenderSceneSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
@@ -641,8 +640,6 @@ namespace vob::aoegl
 		}
 
 		// 0 - Prepare Debug
-		static bool k_debugCameraFrustum = false;
-
 		auto& config = renderSceneCtx.config.get();
 		auto const isDebugUiDisplayed = m_debugUiCtx.get(a_wdap).isDisplayed;
 		if (isDebugUiDisplayed && ImGui::Begin("Render Debug"))
@@ -670,8 +667,6 @@ namespace vob::aoegl
 				debugRenderInspectorCtx.selectedIndex = std::clamp(
 					debugRenderInspectorCtx.selectedIndex, 0, debugRenderInspectorCtx.selectedIndexCount - 1);
 			}
-			ImGui::Checkbox("Frustum", &k_debugCameraFrustum);
-
 			ImGui::SeparatorText("SSAO");
 			auto ssaoChanged = false;
 			ImGui::Checkbox("Enable##ssao", &config.ssao.isEnabled);
@@ -990,12 +985,7 @@ namespace vob::aoegl
 
 		auto [viewParams, worldOriginPosition] = createViewParams(
 			m_windowContext.get(a_wdap), cameraDirectorCtx.activeCameraEntity, m_cameraEntities.get(a_wdap));
-		auto const [debugViewParams, debugWorldOriginPosition] = createViewParams(
-			m_windowContext.get(a_wdap),
-			cameraDirectorCtx.debugCameraEntity != entt::null ? cameraDirectorCtx.debugCameraEntity : cameraDirectorCtx.activeCameraEntity,
-			m_cameraEntities.get(a_wdap));
-
-		auto const viewFrustumPlanes = computeViewFrustumPlanes(debugViewParams.worldToClip);
+		auto const viewFrustumPlanes = computeViewFrustumPlanes(viewParams.worldToClip);
 
 		// II - Prepare Lights & Shadows
 		// TODO: remove magic
@@ -1003,9 +993,8 @@ namespace vob::aoegl
 		gpuLights.clear();
 		auto const [lightingParams, shadowParams, spotLightShadowMapCount] = createLightingAndShadowParams(
 			viewFrustumPlanes,
-			glm::vec3{ debugViewParams.viewToWorld[3] }
-				+ glm::vec3{ debugWorldOriginPosition - worldOriginPosition },
-			-glm::vec3{ debugViewParams.viewToWorld[2] },
+			glm::vec3{ viewParams.viewToWorld[3] },
+			-glm::vec3{ viewParams.viewToWorld[2] },
 			m_lightEntities.get(a_wdap),
 			config.lighting.maxLightCount,
 			renderSceneCtx.shadingResolution,
@@ -1014,10 +1003,10 @@ namespace vob::aoegl
 			config.lighting.clusterCapacity,
 			computeSpotShadowMapCount(config.shadow),
 			worldOriginPosition,
-			glm::inverse(debugViewParams.worldToClip),
-			debugViewParams.viewToWorld,
-			debugViewParams.nearClip,
-			debugViewParams.farClip,
+			glm::inverse(viewParams.worldToClip),
+			viewParams.viewToWorld,
+			viewParams.nearClip,
+			viewParams.farClip,
 			renderSceneCtx.sunDir,
 			renderSceneCtx.config.get().shadow.sunCascadeFarClips,
 			config.ssao.isEnabled,
@@ -1400,30 +1389,6 @@ namespace vob::aoegl
 		// V - Compute Shadow Maps
 		float debugSunNear = 0.0f;
 		float debugSunFar = 0.0f;
-		if (k_debugCameraFrustum)
-		{
-			auto const clipToWorld = glm::inverse(debugViewParams.worldToClip);
-			auto p0 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
-			auto p1 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
-			auto p2 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
-			auto p3 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
-			auto p4 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
-			auto p5 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
-			auto p6 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
-			auto p7 = glm::dvec3{ aoest::transformPositionSkewed(clipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
-			debugMeshCtx.addLine(p0, p1, aoegl::k_orange);
-			debugMeshCtx.addLine(p0, p2, aoegl::k_orange);
-			debugMeshCtx.addLine(p0, p4, aoegl::k_orange);
-			debugMeshCtx.addLine(p1, p3, aoegl::k_orange);
-			debugMeshCtx.addLine(p1, p5, aoegl::k_orange);
-			debugMeshCtx.addLine(p2, p3, aoegl::k_orange);
-			debugMeshCtx.addLine(p2, p6, aoegl::k_orange);
-			debugMeshCtx.addLine(p3, p7, aoegl::k_orange);
-			debugMeshCtx.addLine(p4, p5, aoegl::k_orange);
-			debugMeshCtx.addLine(p4, p6, aoegl::k_orange);
-			debugMeshCtx.addLine(p5, p7, aoegl::k_orange);
-			debugMeshCtx.addLine(p6, p7, aoegl::k_orange);
-		}
 
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Shadow Maps");
@@ -1451,47 +1416,6 @@ namespace vob::aoegl
 						debugSunNear = sunShadowParams.nearClip;
 						debugSunFar = sunShadowParams.farClip;
 					}
-					if (k_debugCameraFrustum)
-					{
-						auto const viewClipToWorld = glm::inverse(debugViewParams.worldToClip);
-						auto const viewNearClip = debugViewParams.nearClip;
-						auto const viewFarClip = debugViewParams.farClip;
-						auto const clipZ = [viewNearClip, viewFarClip](auto const a_clip)
-							{
-								return (viewNearClip + viewFarClip - 2.0f * viewNearClip * viewFarClip / a_clip) / (viewFarClip - viewNearClip);
-							};
-						auto s0 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-						auto s1 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ -1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-						auto s2 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, -1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-						auto s3 = glm::dvec3{ aoest::transformPositionSkewed(viewClipToWorld, glm::vec3{ 1.0f, 1.0f, clipZ(sunShadowParams.maxViewDepth) }) };
-						debugMeshCtx.addLine(s0, s1, aoegl::k_yellow);
-						debugMeshCtx.addLine(s0, s2, aoegl::k_yellow);
-						debugMeshCtx.addLine(s1, s3, aoegl::k_yellow);
-						debugMeshCtx.addLine(s2, s3, aoegl::k_yellow);
-
-						auto const sunClipToWorld = glm::inverse(sunShadowParams.worldToClip);
-						auto p0 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, -1.0f }) };
-						auto p1 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, -1.0f, 1.0f }) };
-						auto p2 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, -1.0f }) };
-						auto p3 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ -1.0f, 1.0f, 1.0f }) };
-						auto p4 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, -1.0f }) };
-						auto p5 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, -1.0f, 1.0f }) };
-						auto p6 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, -1.0f }) };
-						auto p7 = glm::dvec3{ aoest::transformPositionSkewed(sunClipToWorld, glm::vec3{ 1.0f, 1.0f, 1.0f }) };
-						debugMeshCtx.addLine(p0, p1, aoegl::k_gray);
-						debugMeshCtx.addLine(p0, p2, aoegl::k_gray);
-						debugMeshCtx.addLine(p0, p4, aoegl::k_gray);
-						debugMeshCtx.addLine(p1, p3, aoegl::k_gray);
-						debugMeshCtx.addLine(p1, p5, aoegl::k_gray);
-						debugMeshCtx.addLine(p2, p3, aoegl::k_gray);
-						debugMeshCtx.addLine(p2, p6, aoegl::k_gray);
-						debugMeshCtx.addLine(p3, p7, aoegl::k_gray);
-						debugMeshCtx.addLine(p4, p5, aoegl::k_gray);
-						debugMeshCtx.addLine(p4, p6, aoegl::k_gray);
-						debugMeshCtx.addLine(p5, p7, aoegl::k_gray);
-						debugMeshCtx.addLine(p6, p7, aoegl::k_gray);
-					}
-
 					auto const sunViewFrustumPlanes = computeViewFrustumPlanes(sunShadowParams.worldToClip);
 					glNamedFramebufferTextureLayer(
 						renderSceneCtx.sunShadowMapFramebuffer,

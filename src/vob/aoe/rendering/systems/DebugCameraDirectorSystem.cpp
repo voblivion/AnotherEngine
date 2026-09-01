@@ -65,7 +65,6 @@ namespace vob::aoegl
 			{
 				auto debugNameEntities = m_debugNameEntities.get(a_wdap);
 				aoedb::ImGuiEntityCombo("Camera", &cameraDirectorCtx.activeCameraEntity, cameraEntities, debugNameEntities);
-				aoedb::ImGuiEntityCombo("Debug Camera", &cameraDirectorCtx.debugCameraEntity, cameraEntities, debugNameEntities);
 			}
 			ImGui::End();
 		}
