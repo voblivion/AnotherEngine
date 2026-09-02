@@ -10,6 +10,7 @@ namespace vob::aoegl
 	void ReleaseUnusedGpuResourcesSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
 		m_gpuResourceRegistriesContext.init(a_wdar);
+		m_glDeleteQueueContext.init(a_wdar);
 	}
 
 	void ReleaseUnusedGpuResourcesSystem::execute(aoeng::EcsWorldDataAccessProvider const& a_wdap) const
@@ -54,5 +55,7 @@ namespace vob::aoegl
 			{
 				glDeleteTextures(1, &gpuTexture.id);
 			});
+
+		m_glDeleteQueueContext.get(a_wdap).deleteQueue.get().drain();
 	}
 }
