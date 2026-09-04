@@ -17,12 +17,21 @@ namespace vob::aoegl
 		struct has_rig_data<T, std::void_t<decltype(T::boneIndices)>, std::void_t<decltype(T::boneWeights)>> : std::true_type {};
 
 		template <typename TMeshData>
-		Mesh createMesh(TMeshData const& a_meshData, float& a_boundingRadius)
+		std::shared_ptr<GpuMesh> createMesh(
+			GpuDeleteQueue& a_deleteQueue, TMeshData const& a_meshData, float& a_boundingRadius)
 		{
-			Mesh mesh;
-			glCreateVertexArrays(1, &mesh.vao);
-			glCreateBuffers(1, &mesh.vbo);
-			glCreateBuffers(1, &mesh.ebo);
+			GraphicId vao;
+			GraphicId vbo;
+			GraphicId ebo;
+			glCreateVertexArrays(1, &vao);
+			glCreateBuffers(1, &vbo);
+			glCreateBuffers(1, &ebo);
+
+			auto const mesh = std::make_shared<GpuMesh>(
+				GpuVertexArray{ a_deleteQueue, vao },
+				GpuBuffer{ a_deleteQueue, vbo },
+				GpuBuffer{ a_deleteQueue, ebo },
+				0 /* index count */);
 
 			auto const& vertices = a_meshData.vertices;
 			auto const& indices = a_meshData.indices;
@@ -31,77 +40,77 @@ namespace vob::aoegl
 			using IndexType = std::remove_cvref_t<decltype(indices.front())>;
 
 			glNamedBufferStorage(
-				mesh.vbo, vertices.size() * sizeof(VertexType), vertices.data(), 0 /* flags */);
+				mesh->vbo, vertices.size() * sizeof(VertexType), vertices.data(), 0 /* flags */);
 			glVertexArrayVertexBuffer(
-				mesh.vao, 0 /* binding index */, mesh.vbo, 0 /* offset */, sizeof(VertexType));
+				mesh->vao, 0 /* binding index */, mesh->vbo, 0 /* offset */, sizeof(VertexType));
 
 			glNamedBufferStorage(
-				mesh.ebo, indices.size() * sizeof(IndexType), indices.data(), 0 /* flags */);
-			glVertexArrayElementBuffer(mesh.vao, mesh.ebo);
+				mesh->ebo, indices.size() * sizeof(IndexType), indices.data(), 0 /* flags */);
+			glVertexArrayElementBuffer(mesh->vao, mesh->ebo);
 
-			glEnableVertexArrayAttrib(mesh.vao, k_vertexPositionLocation);
+			glEnableVertexArrayAttrib(mesh->vao, k_vertexPositionLocation);
 			glVertexArrayAttribFormat(
-				mesh.vao,
+				mesh->vao,
 				k_vertexPositionLocation,
 				3 /* size */,
 				GL_FLOAT,
 				GL_FALSE /* normalized */,
 				offsetof(VertexType, position));
-			glVertexArrayAttribBinding(mesh.vao, k_vertexPositionLocation, 0 /* binding index */);
+			glVertexArrayAttribBinding(mesh->vao, k_vertexPositionLocation, 0 /* binding index */);
 
-			glEnableVertexArrayAttrib(mesh.vao, k_vertexNormalLocation);
+			glEnableVertexArrayAttrib(mesh->vao, k_vertexNormalLocation);
 			glVertexArrayAttribFormat(
-				mesh.vao,
+				mesh->vao,
 				k_vertexNormalLocation,
 				3 /* size */,
 				GL_FLOAT,
 				GL_FALSE /* normalized */,
 				offsetof(VertexType, normal));
-			glVertexArrayAttribBinding(mesh.vao, k_vertexNormalLocation, 0 /* binding index */);
+			glVertexArrayAttribBinding(mesh->vao, k_vertexNormalLocation, 0 /* binding index */);
 
-			glEnableVertexArrayAttrib(mesh.vao, k_vertexUVLocation);
+			glEnableVertexArrayAttrib(mesh->vao, k_vertexUVLocation);
 			glVertexArrayAttribFormat(
-				mesh.vao,
+				mesh->vao,
 				k_vertexUVLocation,
 				2 /* size */,
 				GL_FLOAT,
 				GL_FALSE /* normalized */,
 				offsetof(VertexType, uv));
-			glVertexArrayAttribBinding(mesh.vao, k_vertexUVLocation, 0 /* binding index */);
+			glVertexArrayAttribBinding(mesh->vao, k_vertexUVLocation, 0 /* binding index */);
 
-			glEnableVertexArrayAttrib(mesh.vao, k_vertexTangentLocation);
+			glEnableVertexArrayAttrib(mesh->vao, k_vertexTangentLocation);
 			glVertexArrayAttribFormat(
-				mesh.vao,
+				mesh->vao,
 				k_vertexTangentLocation,
 				3 /* size */,
 				GL_FLOAT,
 				GL_FALSE /* normalized */,
 				offsetof(VertexType, tangent));
-			glVertexArrayAttribBinding(mesh.vao, k_vertexTangentLocation, 0 /* binding index */);
+			glVertexArrayAttribBinding(mesh->vao, k_vertexTangentLocation, 0 /* binding index */);
 
 			if constexpr (has_rig_data<VertexType>::value)
 			{
-				glEnableVertexArrayAttrib(mesh.vao, k_vertexBoneIndicesLocation);
+				glEnableVertexArrayAttrib(mesh->vao, k_vertexBoneIndicesLocation);
 				glVertexArrayAttribIFormat(
-					mesh.vao,
+					mesh->vao,
 					k_vertexBoneIndicesLocation,
 					4 /* size */,
 					GL_INT,
 					offsetof(VertexType, boneIndices));
-				glVertexArrayAttribBinding(mesh.vao, k_vertexBoneIndicesLocation, 0 /* binding index */);
+				glVertexArrayAttribBinding(mesh->vao, k_vertexBoneIndicesLocation, 0 /* binding index */);
 
-				glEnableVertexArrayAttrib(mesh.vao, k_vertexBoneWeightsLocation);
+				glEnableVertexArrayAttrib(mesh->vao, k_vertexBoneWeightsLocation);
 				glVertexArrayAttribFormat(
-					mesh.vao,
+					mesh->vao,
 					k_vertexBoneWeightsLocation,
 					4 /* size */,
 					GL_FLOAT,
 					GL_FALSE /* normalized */,
 					offsetof(VertexType, boneWeights));
-				glVertexArrayAttribBinding(mesh.vao, k_vertexBoneWeightsLocation, 0 /* binding index */);
+				glVertexArrayAttribBinding(mesh->vao, k_vertexBoneWeightsLocation, 0 /* binding index */);
 			}
 
-			mesh.indexCount = mistd::isize(indices);
+			mesh->indexCount = mistd::isize(indices);
 
 			for (auto const& vertex : vertices)
 			{
@@ -116,59 +125,61 @@ namespace vob::aoegl
 		}
 
 		template<typename TModelData>
-		Model createModel(TModelData const& a_modelData)
+		Model createModel(GpuDeleteQueue& a_deleteQueue, TModelData const& a_modelData)
 		{
 			Model model;
 			for (auto const& meshData : a_modelData.meshes)
 			{
-				model.meshes.push_back(createMesh(meshData, model.boundingRadius));
+				model.meshes.push_back(createMesh(a_deleteQueue, meshData, model.boundingRadius));
 			}
 
 			return model;
 		}
 	}
 
-	Mesh createStaticMesh(StaticMeshData const& a_staticMeshData, float& a_boundingRadius)
+	std::shared_ptr<GpuMesh> createStaticMesh(
+		GpuDeleteQueue& a_deleteQueue, StaticMeshData const& a_staticMeshData, float& a_boundingRadius)
 	{
-		return createMesh(a_staticMeshData, a_boundingRadius);
+		return createMesh(a_deleteQueue, a_staticMeshData, a_boundingRadius);
 	}
 
-	Mesh createRiggedMesh(RiggedMeshData const& a_riggedMeshData, float& a_boundingRadius)
+	std::shared_ptr<GpuMesh> createRiggedMesh(
+		GpuDeleteQueue& a_deleteQueue, RiggedMeshData const& a_riggedMeshData, float& a_boundingRadius)
 	{
-		return createMesh(a_riggedMeshData, a_boundingRadius);
+		return createMesh(a_deleteQueue, a_riggedMeshData, a_boundingRadius);
 	}
 
-	Model createStaticModel(StaticModelData const& a_staticModelData)
+	Model createStaticModel(GpuDeleteQueue& a_deleteQueue, StaticModelData const& a_staticModelData)
 	{
-		return createModel(a_staticModelData);
+		return createModel(a_deleteQueue, a_staticModelData);
 	}
 
-	Model createRiggedModel(RiggedModelData const& a_riggedModelData)
+	Model createRiggedModel(GpuDeleteQueue& a_deleteQueue, RiggedModelData const& a_riggedModelData)
 	{
-		return createModel(a_riggedModelData);
+		return createModel(a_deleteQueue, a_riggedModelData);
 	}
 
-	Model createInstancedModel(StaticModelData const& a_staticModelData)
+	Model createInstancedModel(GpuDeleteQueue& a_deleteQueue, StaticModelData const& a_staticModelData)
 	{
-		auto const model = createModel(a_staticModelData);
+		auto model = createModel(a_deleteQueue, a_staticModelData);
 
 		for (auto const& mesh : model.meshes)
 		{
 			static constexpr auto k_perInstanceDivisor = 1;
-			glVertexArrayBindingDivisor(mesh.vao, 1 /* binding index */, k_perInstanceDivisor);
+			glVertexArrayBindingDivisor(mesh->vao, 1 /* binding index */, k_perInstanceDivisor);
 
 			for (auto i = 0; i < 4; ++i)
 			{
 				auto const location = k_instanceRow0Location + i;
-				glEnableVertexArrayAttrib(mesh.vao, location);
+				glEnableVertexArrayAttrib(mesh->vao, location);
 				glVertexArrayAttribFormat(
-					mesh.vao,
+					mesh->vao,
 					location,
 					4 /* size */,
 					GL_FLOAT,
 					GL_FALSE,
 					i * sizeof(glm::vec4) /* offset */);
-				glVertexArrayAttribBinding(mesh.vao, location, 1 /* binding index */);
+				glVertexArrayAttribBinding(mesh->vao, location, 1 /* binding index */);
 			}
 		}
 

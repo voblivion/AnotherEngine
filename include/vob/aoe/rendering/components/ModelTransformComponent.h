@@ -2,8 +2,7 @@
 
 #include <vob/aoe/rendering/GraphicTypes.h>
 
-#include "vob/aoe/rendering/resources/GpuBuffer.h"
-#include "vob/aoe/rendering/resources/Handle.h"
+#include "vob/aoe/rendering/resources/GpuResource.h"
 #include "vob/aoe/rendering/shaders/defines.h"
 
 #include <cstdint>
@@ -15,8 +14,7 @@ namespace vob::aoegl
 	struct ModelTransformComponent
 	{
 		UniformModelParams prevModelParams;
-		GraphicId modelParamsUbo = k_invalidId;
-		Handle<GpuBuffer> modelParams;
+		GpuBuffer modelParamsUbo;
 		float boundingRadius = 0.0f;
 	};
 }

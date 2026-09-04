@@ -33,25 +33,27 @@ namespace vob::aoegl
 		};
 	}
 
-	GpuTexture createTexture(ImageData const& a_image, TextureSettings const& a_settings, float a_maxAnisotropy)
+	GpuTexture createTexture(
+		GpuDeleteQueue& a_deleteQueue
+		, ImageData const& a_image
+		, TextureSettings const& a_settings
+		, float a_maxAnisotropy)
 	{
-		auto const invalidTexture = GpuTexture{ k_invalidId, GL_TEXTURE_2D };
-
 		if (!VOB_AOE_CHECK_LOG(
 			a_settings.samplerType == TextureSettings::SamplerType::Simple, "Only simple textures are supported for now."))
 		{
-			return invalidTexture;
+			return {};
 		}
 
 		if (!VOB_AOE_CHECK_LOG(!a_image.levels.empty(), "Image has no level."))
 		{
-			return invalidTexture;
+			return {};
 		}
 
 		auto const& baseLevel = a_image.levels.front();
 		if (!VOB_AOE_CHECK_LOG(baseLevel.size.x > 0 && baseLevel.size.y > 0, "Empty image."))
 		{
-			return invalidTexture;
+			return {};
 		}
 
 		auto const& formatInfo = k_imageFormatInfos[static_cast<size_t>(a_image.format)];
@@ -63,7 +65,7 @@ namespace vob::aoegl
 		auto const useSrgb = colorSpace == TextureSettings::ColorSpace::Srgb;
 		if (!VOB_AOE_CHECK_LOG(!useSrgb || formatInfo.srgbFormat != 0, "Image format has no srgb variant."))
 		{
-			return invalidTexture;
+			return {};
 		}
 
 		auto const width = static_cast<int32_t>(baseLevel.size.x);
@@ -77,10 +79,10 @@ namespace vob::aoegl
 			? static_cast<int32_t>(std::floor(std::log2(std::max(width, height)))) + 1
 			: imageLevelCount;
 
-		auto texture = GpuTexture{ k_invalidId, GL_TEXTURE_2D };
-		glCreateTextures(texture.target, 1, &texture.id);
+		GraphicId id;
+		glCreateTextures(GL_TEXTURE_2D, 1, &id);
 
-		glTextureStorage2D(texture.id, mipLevels, internalFormat, width, height);
+		glTextureStorage2D(id, mipLevels, internalFormat, width, height);
 		for (auto i = 0; i < imageLevelCount; ++i)
 		{
 			auto const& level = a_image.levels[i];
@@ -90,7 +92,7 @@ namespace vob::aoegl
 			if (isCompressed)
 			{
 				glCompressedTextureSubImage2D(
-					texture.id
+					id
 					, i /* level */
 					, 0 /* x offset */
 					, 0 /* y offset */
@@ -103,7 +105,7 @@ namespace vob::aoegl
 			else
 			{
 				glTextureSubImage2D(
-					texture.id
+					id
 					, i /* level */
 					, 0 /* x offset */
 					, 0 /* y offset */
@@ -117,25 +119,25 @@ namespace vob::aoegl
 
 		if (generateMips)
 		{
-			glGenerateTextureMipmap(texture.id);
+			glGenerateTextureMipmap(id);
 		}
 
-		glTextureParameteri(texture.id, GL_TEXTURE_MIN_FILTER, mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-		glTextureParameteri(texture.id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, mipLevels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		if (mipLevels > 1)
 		{
-			glTextureParameterf(texture.id, GL_TEXTURE_MAX_ANISOTROPY, a_maxAnisotropy);
+			glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY, a_maxAnisotropy);
 		}
 
-		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_R, static_cast<GraphicInt>(a_settings.swizzle[0]));
-		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_G, static_cast<GraphicInt>(a_settings.swizzle[1]));
-		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_B, static_cast<GraphicInt>(a_settings.swizzle[2]));
-		glTextureParameteri(texture.id, GL_TEXTURE_SWIZZLE_A, static_cast<GraphicInt>(a_settings.swizzle[3]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_R, static_cast<GraphicInt>(a_settings.swizzle[0]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_G, static_cast<GraphicInt>(a_settings.swizzle[1]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_B, static_cast<GraphicInt>(a_settings.swizzle[2]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_A, static_cast<GraphicInt>(a_settings.swizzle[3]));
 
-		return texture;
+		return GpuTexture{ a_deleteQueue, id };
 	}
 
-	GpuTexture createSolidColorTexture(glm::vec4 const& a_color)
+	GpuTexture createSolidColorTexture(GpuDeleteQueue& a_deleteQueue, glm::vec4 const& a_color)
 	{
 		auto const toUnorm8 = [](float a_value)
 			{
@@ -144,15 +146,15 @@ namespace vob::aoegl
 		auto const pixel = std::array{
 			toUnorm8(a_color.r), toUnorm8(a_color.g), toUnorm8(a_color.b), toUnorm8(a_color.a) };
 
-		auto texture = GpuTexture{ k_invalidId, GL_TEXTURE_2D };
-		glCreateTextures(texture.target, 1, &texture.id);
+		GraphicId id;
+		glCreateTextures(GL_TEXTURE_2D, 1, &id);
 
-		glTextureStorage2D(texture.id, 1, GL_RGBA8, 1, 1);
-		glTextureSubImage2D(texture.id, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+		glTextureStorage2D(id, 1, GL_RGBA8, 1, 1);
+		glTextureSubImage2D(id, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
 
-		glTextureParameteri(texture.id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTextureParameteri(texture.id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-		return texture;
+		return GpuTexture{ a_deleteQueue, id };
 	}
 }

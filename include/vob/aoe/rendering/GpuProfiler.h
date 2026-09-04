@@ -1,10 +1,12 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/resources/GpuResource.h"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 #include <vector>
 
@@ -21,7 +23,7 @@ namespace vob::aoegl
 	struct GpuTimer
 	{
 		std::string_view name;
-		std::array<std::array<GraphicId, 2>, k_gpuTimerSlotCount> queries{};
+		std::array<std::array<GpuQuery, 2>, k_gpuTimerSlotCount> queries;
 		std::array<bool, k_gpuTimerSlotCount> startedInSlot{};
 		uint64_t runningAccumulationNs = 0;
 		uint64_t lastDurationNs = 0;
@@ -31,6 +33,17 @@ namespace vob::aoegl
 
 	struct GpuProfiler
 	{
+		explicit GpuProfiler(GpuDeleteQueue& a_deleteQueue)
+			: deleteQueue{ a_deleteQueue }
+		{}
+
+		GpuProfiler(GpuProfiler const&) = delete;
+		GpuProfiler& operator=(GpuProfiler const&) = delete;
+		GpuProfiler(GpuProfiler&&) = default;
+		GpuProfiler& operator=(GpuProfiler&&) = default;
+
+		std::reference_wrapper<GpuDeleteQueue> deleteQueue;
+
 		std::vector<GpuTimer> rootTimers;
 		std::vector<GpuTimer*> scopeTimerStack;
 
@@ -55,7 +68,10 @@ namespace vob::aoegl
 			timerIt = timers.emplace(timers.end(), GpuTimer{ .name = a_name });
 			for (auto& slotQueries : timerIt->queries)
 			{
-				glGenQueries(2, slotQueries.data());
+				std::array<GraphicId, 2> ids;
+				glGenQueries(2, ids.data());
+				slotQueries[0] = GpuQuery{ a_profiler.deleteQueue, ids[0] };
+				slotQueries[1] = GpuQuery{ a_profiler.deleteQueue, ids[1] };
 			}
 		}
 

@@ -3,20 +3,20 @@
 #include "vob/aoe/rendering/GraphicTypes.h"
 #include "vob/aoe/rendering/ResolvedShader.h"
 #include "vob/aoe/rendering/ShadingPass.h"
-#include "vob/aoe/rendering/resources/WeakHandle.h"
+#include "vob/aoe/rendering/resources/GpuMesh.h"
+
+#include <memory>
 
 
 namespace vob::aoegl
 {
 	struct GpuMaterial;
-	struct GpuProgram;
 
 	struct ShadedMesh
 	{
 		ShadingPass shadingPass = ShadingPass::Opaque;
 		ResolvedShader shader;
-		WeakHandle<GpuMaterial> material;
-		GraphicId vao;
-		int32_t indexCount = 0;
+		std::shared_ptr<GpuMaterial> material;
+		std::shared_ptr<GpuMesh> mesh;
 	};
 }

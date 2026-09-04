@@ -1,15 +1,15 @@
 #pragma once
 
-#include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/resources/GpuResource.h"
 
 
 namespace vob::aoegl
 {
 	struct GpuMesh
 	{
-		GraphicId vao;
-		GraphicId vbo;
-		GraphicId ebo;
+		GpuVertexArray vao;
+		GpuBuffer vbo;
+		GpuBuffer ebo;
 		int32_t indexCount;
 	};
 }

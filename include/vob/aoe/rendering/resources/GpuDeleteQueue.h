@@ -8,7 +8,7 @@
 
 namespace vob::aoegl
 {
-	class GlDeleteQueue
+	class GpuDeleteQueue
 	{
 	public:
 		void pushBuffer(GraphicId const a_id);
@@ -16,6 +16,7 @@ namespace vob::aoegl
 		void pushFramebuffer(GraphicId const a_id);
 		void pushVertexArray(GraphicId const a_id);
 		void pushProgram(GraphicId const a_id);
+		void pushQuery(GraphicId const a_id);
 
 		void drain();
 
@@ -26,5 +27,6 @@ namespace vob::aoegl
 		std::vector<GraphicId> m_framebuffers;
 		std::vector<GraphicId> m_vertexArrays;
 		std::vector<GraphicId> m_programs;
+		std::vector<GraphicId> m_queries;
 	};
 }

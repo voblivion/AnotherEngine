@@ -37,7 +37,6 @@ namespace vob::aoegl
 		m_cameraDirectorContext.init(a_wdar);
 		m_renderSceneCtx.init(a_wdar);
 		m_renderProfilingCtx.init(a_wdar);
-		m_gpuResourceRegistriesContext.init(a_wdar);
 		m_debugProgramContext.init(a_wdar);
 		m_debugMaterialContext.init(a_wdar);
 		m_debugMeshContext.init(a_wdar);
@@ -468,14 +467,12 @@ namespace vob::aoegl
 				|| a_inspectorCtx.capturedResolution != resolution
 				|| a_inspectorCtx.capturedInternalFormat != static_cast<GraphicEnum>(internalFormat))
 			{
-				if (a_inspectorCtx.capturedTexture != k_invalidId)
-				{
-					glDeleteTextures(1, &a_inspectorCtx.capturedTexture);
-				}
-				glCreateTextures(GL_TEXTURE_2D, 1, &a_inspectorCtx.capturedTexture);
-				glTextureStorage2D(a_inspectorCtx.capturedTexture, 1, internalFormat, resolution.x, resolution.y);
-				glTextureParameteri(a_inspectorCtx.capturedTexture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glTextureParameteri(a_inspectorCtx.capturedTexture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				GraphicId id;
+				glCreateTextures(GL_TEXTURE_2D, 1, &id);
+				glTextureStorage2D(id, 1, internalFormat, resolution.x, resolution.y);
+				glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				a_inspectorCtx.capturedTexture = GpuTexture{ a_inspectorCtx.deleteQueue, id };
 				a_inspectorCtx.capturedResolution = resolution;
 				a_inspectorCtx.capturedInternalFormat = static_cast<GraphicEnum>(internalFormat);
 			}
@@ -611,9 +608,6 @@ namespace vob::aoegl
 		auto& renderProfilingCtx = m_renderProfilingCtx.get(a_wdap);
 		auto& debugRenderInspectorCtx = m_debugRenderInspectorCtx.get(a_wdap);
 		auto& debugProgramCtx = m_debugProgramContext.get(a_wdap);
-		auto const& gpuResourceRegistriesCtx = m_gpuResourceRegistriesContext.get(a_wdap);
-		auto const& materialRegistry = *gpuResourceRegistriesCtx.materialRegistry;
-		auto const& shaderRegistry = *gpuResourceRegistriesCtx.shaderRegistry;
 		auto const& window = m_windowContext.get(a_wdap).window.get();
 		auto const& cameraDirectorCtx = m_cameraDirectorContext.get(a_wdap);
 		auto modelEntities = m_modelEntities.get(a_wdap);
@@ -830,10 +824,12 @@ namespace vob::aoegl
 				auto const& sourcePath = shaderDefinition.partialSourcePath;
 				auto const source = debugProgramCtx.stringDatabase.find(
 					debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
-				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string()))
+				auto const gpuShaderPtr = shader.shader.lock();
+				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string())
+					&& gpuShaderPtr != nullptr)
 				{
 					auto const paramsLayout = computeMaterialParamsLayout(shaderDefinition.uniformDefaults);
-					auto const& gpuShader = shaderRegistry.get(shader.shader);
+					auto const& gpuShader = *gpuShaderPtr;
 
 					auto const recompileShading = [&](ModelType a_modelType, GraphicId a_programId)
 						{
@@ -847,9 +843,9 @@ namespace vob::aoegl
 								, a_programId);
 						};
 
-					recompileShading(ModelType::Static, gpuShader.staticProgram.id);
-					recompileShading(ModelType::Rigged, gpuShader.riggedProgram.id);
-					recompileShading(ModelType::Instanced, gpuShader.instancedProgram.id);
+					recompileShading(ModelType::Static, gpuShader.staticProgram);
+					recompileShading(ModelType::Rigged, gpuShader.riggedProgram);
+					recompileShading(ModelType::Instanced, gpuShader.instancedProgram);
 
 					// Unmasked shaders alias the core depth/shadow programs, which no partial contributes to.
 					if (shaderDefinition.isAlphaMasked)
@@ -865,13 +861,13 @@ namespace vob::aoegl
 									*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
 							};
 
-						recompileDepth(ModelType::Static, gpuShader.staticDepthProgram.id);
-						recompileDepth(ModelType::Rigged, gpuShader.riggedDepthProgram.id);
-						recompileDepth(ModelType::Instanced, gpuShader.instancedDepthProgram.id);
+						recompileDepth(ModelType::Static, *gpuShader.staticDepthProgram);
+						recompileDepth(ModelType::Rigged, *gpuShader.riggedDepthProgram);
+						recompileDepth(ModelType::Instanced, *gpuShader.instancedDepthProgram);
 
-						recompileShadowMap(ModelType::Static, gpuShader.staticShadowMapProgram.id);
-						recompileShadowMap(ModelType::Rigged, gpuShader.riggedShadowMapProgram.id);
-						recompileShadowMap(ModelType::Instanced, gpuShader.instancedShadowMapProgram.id);
+						recompileShadowMap(ModelType::Static, *gpuShader.staticShadowMapProgram);
+						recompileShadowMap(ModelType::Rigged, *gpuShader.riggedShadowMapProgram);
+						recompileShadowMap(ModelType::Instanced, *gpuShader.instancedShadowMapProgram);
 					}
 				}
 			}
@@ -937,35 +933,36 @@ namespace vob::aoegl
 					ImGui::EndCombo();
 				}
 
-				auto const& material =
-					materialRegistry.get(debugMaterialCtx.materials[activeMaterialIndex].material);
-				for (auto const& [name, slot] : shaderRegistry.get(material.shader).paramsLayout.slots)
+				if (auto const material = debugMaterialCtx.materials[activeMaterialIndex].material.lock())
 				{
-					auto value = readMaterialParam(material.paramsUbo, slot);
-					auto const nameStr = std::string{ name.view() };
-					auto changed = false;
-					switch (slot.variantIndex)
+					for (auto const& [name, slot] : material->shader->paramsLayout.slots)
 					{
-					case 0:
-						changed = ImGui::DragInt(nameStr.c_str(), &std::get<int32_t>(value));
-						break;
-					case 1:
-						changed = ImGui::DragFloat(nameStr.c_str(), &std::get<float>(value), 0.01f);
-						break;
-					case 2:
-						changed = ImGui::DragFloat2(nameStr.c_str(), &std::get<glm::vec2>(value).x, 0.01f);
-						break;
-					case 3:
-						changed = ImGui::DragFloat3(nameStr.c_str(), &std::get<glm::vec3>(value).x, 0.01f);
-						break;
-					case 4:
-						changed = ImGui::DragFloat4(nameStr.c_str(), &std::get<glm::vec4>(value).x, 0.01f);
-						break;
-					}
+						auto value = readMaterialParam(material->paramsUbo, slot);
+						auto const nameStr = std::string{ name.view() };
+						auto changed = false;
+						switch (slot.variantIndex)
+						{
+						case 0:
+							changed = ImGui::DragInt(nameStr.c_str(), &std::get<int32_t>(value));
+							break;
+						case 1:
+							changed = ImGui::DragFloat(nameStr.c_str(), &std::get<float>(value), 0.01f);
+							break;
+						case 2:
+							changed = ImGui::DragFloat2(nameStr.c_str(), &std::get<glm::vec2>(value).x, 0.01f);
+							break;
+						case 3:
+							changed = ImGui::DragFloat3(nameStr.c_str(), &std::get<glm::vec3>(value).x, 0.01f);
+							break;
+						case 4:
+							changed = ImGui::DragFloat4(nameStr.c_str(), &std::get<glm::vec4>(value).x, 0.01f);
+							break;
+						}
 
-					if (changed)
-					{
-						writeMaterialParam(material.paramsUbo, slot, value);
+						if (changed)
+						{
+							writeMaterialParam(material->paramsUbo, slot, value);
+						}
 					}
 				}
 			}
@@ -1066,7 +1063,7 @@ namespace vob::aoegl
 		struct CulledStaticMesh
 		{
 			ResolvedShader shader;
-			WeakHandle<GpuMaterial> material;
+			std::shared_ptr<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId vao;
 			int32_t indexCount;
@@ -1082,7 +1079,7 @@ namespace vob::aoegl
 		struct CulledRiggedMesh
 		{
 			ResolvedShader shader;
-			WeakHandle<GpuMaterial> material;
+			std::shared_ptr<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId rigParamsUbo;
 			GraphicId vao;
@@ -1100,7 +1097,7 @@ namespace vob::aoegl
 		struct CulledInstancedMesh
 		{
 			ResolvedShader shader;
-			WeakHandle<GpuMaterial> material;
+			std::shared_ptr<GpuMaterial> material;
 			GraphicId modelParamsUbo;
 			GraphicId instanceTransformsVbo;
 			int32_t instanceCount;
@@ -1141,11 +1138,11 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					staticTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1158,11 +1155,11 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					riggedTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1175,11 +1172,11 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					instancedTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1214,7 +1211,7 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1227,7 +1224,7 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1240,7 +1237,7 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.vao, a_mesh.indexCount);
+						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1335,21 +1332,21 @@ namespace vob::aoegl
 				}
 			};
 
-		auto const applyDepthOnlyMaterialParams = [&](auto const& a_mesh, WeakHandle<GpuMaterial>& a_currentMaterial)
+		auto const applyDepthOnlyMaterialParams = [&](auto const& a_mesh, GpuMaterial const*& a_currentMaterial)
 			{
-				if (a_currentMaterial == a_mesh.material)
+				if (a_currentMaterial == a_mesh.material.get())
 				{
 					return;
 				}
-				a_currentMaterial = a_mesh.material;
+				a_currentMaterial = a_mesh.material.get();
 
-				if (!a_mesh.material.isValid())
+				if (a_mesh.material == nullptr)
 				{
 					applyFaceCulling(false);
 					return;
 				}
 
-				auto const& material = materialRegistry.get(a_mesh.material);
+				auto const& material = *a_mesh.material;
 				applyFaceCulling(material.isTwoSided);
 
 				if (!a_mesh.shader.isAlphaMasked)
@@ -1361,7 +1358,7 @@ namespace vob::aoegl
 				for (auto const slotIndex : material.depthOnlyTextureSlotIndices)
 				{
 					gpuState.bindTexture<GpuStateChange::LikelyYes>(
-						k_bindingTextureShadingMaterialBegin + slotIndex, material.textures[slotIndex].id);
+						k_bindingTextureShadingMaterialBegin + slotIndex, *material.textures[slotIndex].texture);
 				}
 			};
 
@@ -1376,7 +1373,7 @@ namespace vob::aoegl
 				glNamedBufferSubData(renderSceneCtx.targets.lightViewParamsUbo, 0, sizeof(a_viewParams), &a_viewParams);
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				auto currentMaterial = WeakHandle<GpuMaterial>{};
+				GpuMaterial const* currentMaterial = nullptr;
 				drawOpaqueMeshes(culledShadowMeshes, [&](auto const& a_mesh)
 					{
 						gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.shadowMapProgram);
@@ -1501,7 +1498,7 @@ namespace vob::aoegl
 			beginPass(gpuState, renderSceneCtx.targets.depthTarget.framebuffer, renderSceneCtx.targets.depthTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
 			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-			auto currentDepthMaterial = WeakHandle<GpuMaterial>{};
+			GpuMaterial const* currentDepthMaterial = nullptr;
 			drawOpaqueMeshes(culledMeshes, [&](auto const& a_mesh)
 				{
 					gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.depthProgram);
@@ -1594,20 +1591,20 @@ namespace vob::aoegl
 			}
 			beginPass(gpuState, renderSceneCtx.targets.directOpaqueTarget.framebuffer, renderSceneCtx.targets.directOpaqueTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
 			glClear(GL_COLOR_BUFFER_BIT);
-			WeakHandle<GpuMaterial> currentMaterial;
+			GpuMaterial const* currentMaterial = nullptr;
 			auto const applyMeshShadingParams = [&](auto const& mesh)
 				{
 					gpuState.useProgram<GpuStateChange::LikelyNo>(mesh.shader.program);
-					if (currentMaterial != mesh.material && mesh.material.isValid())
+					if (currentMaterial != mesh.material.get() && mesh.material != nullptr)
 					{
-						auto const& material = materialRegistry.get(mesh.material);
+						auto const& material = *mesh.material;
 						applyFaceCulling(material.isTwoSided);
 						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
 						for (int32_t i = 0; i < mistd::isize(material.textures); ++i)
 						{
-							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingMaterialBegin + i, material.textures[i].id);
+							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingMaterialBegin + i, *material.textures[i].texture);
 						}
-						currentMaterial = mesh.material;
+						currentMaterial = mesh.material.get();
 					}
 				};
 			drawOpaqueMeshes(culledMeshes, applyMeshShadingParams);

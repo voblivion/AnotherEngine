@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vob/aoe/rendering/GraphicTypes.h"
+#include "vob/aoe/rendering/resources/GpuResource.h"
 #include "vob/aoe/rendering/ShadedMesh.h"
 
 #include "vob/aoe/rendering/shaders/defines.h"
@@ -19,6 +20,6 @@ namespace vob::aoegl
 	struct RiggedModelComponent
 	{
 		std::pmr::vector<ShadedMesh> meshes;
-		GraphicId rigParamsUbo = k_invalidId;
+		GpuBuffer rigParamsUbo;
 	};
 }

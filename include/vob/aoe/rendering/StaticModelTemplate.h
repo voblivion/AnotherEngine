@@ -2,11 +2,12 @@
 
 #include "vob/aoe/rendering/resources/GpuMaterial.h"
 #include "vob/aoe/rendering/resources/GpuMesh.h"
-#include "vob/aoe/rendering/resources/Handle.h"
 #include "vob/aoe/rendering/ShadingPass.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
+
+#include <memory>
 
 
 namespace vob::aoegl
@@ -15,8 +16,8 @@ namespace vob::aoegl
 	{
 		struct Mesh
 		{
-			Handle<GpuMesh> mesh;
-			Handle<GpuMaterial> material;
+			std::shared_ptr<GpuMesh> mesh;
+			std::shared_ptr<GpuMaterial> material;
 		};
 
 		struct Light

@@ -3,50 +3,45 @@
 #include "vob/aoe/rendering/GraphicTypes.h"
 #include "vob/aoe/rendering/MaterialParamsLayout.h"
 #include "vob/aoe/rendering/ResolvedShader.h"
-#include "vob/aoe/rendering/resources/GpuProgram.h"
-#include "vob/aoe/rendering/resources/Handle.h"
+#include "vob/aoe/rendering/resources/GpuResource.h"
 #include "vob/aoe/rendering/ShadingPass.h"
+
+#include <memory>
 
 
 namespace vob::aoegl
 {
 	struct GpuShader
 	{
-		struct OwnedProgram
-		{
-			Handle<GpuProgram> handle;
-			GraphicId id = k_invalidId;
-		};
-
 		ShadingPass shadingPass;
-		OwnedProgram staticProgram;
-		OwnedProgram riggedProgram;
-		OwnedProgram instancedProgram;
-		OwnedProgram staticDepthProgram;
-		OwnedProgram riggedDepthProgram;
-		OwnedProgram instancedDepthProgram;
-		OwnedProgram staticShadowMapProgram;
-		OwnedProgram riggedShadowMapProgram;
-		OwnedProgram instancedShadowMapProgram;
+		GpuProgram staticProgram;
+		GpuProgram riggedProgram;
+		GpuProgram instancedProgram;
+		std::shared_ptr<GpuProgram> staticDepthProgram;
+		std::shared_ptr<GpuProgram> riggedDepthProgram;
+		std::shared_ptr<GpuProgram> instancedDepthProgram;
+		std::shared_ptr<GpuProgram> staticShadowMapProgram;
+		std::shared_ptr<GpuProgram> riggedShadowMapProgram;
+		std::shared_ptr<GpuProgram> instancedShadowMapProgram;
 		bool isAlphaMasked;
 		MaterialParamsLayout paramsLayout;
 
 		ResolvedShader getResolvedStaticShader() const
 		{
-			return { staticProgram.id, staticDepthProgram.id, staticShadowMapProgram.id, isAlphaMasked };
+			return { staticProgram, *staticDepthProgram, *staticShadowMapProgram, isAlphaMasked };
 		}
 
 		ResolvedShader getResolvedRiggedShader() const
 		{
-			return { riggedProgram.id, riggedDepthProgram.id, riggedShadowMapProgram.id, isAlphaMasked };
+			return { riggedProgram, *riggedDepthProgram, *riggedShadowMapProgram, isAlphaMasked };
 		}
 
 		ResolvedShader getResolvedInstancedShader() const
 		{
 			return {
-				instancedProgram.id
-				, instancedDepthProgram.id
-				, instancedShadowMapProgram.id
+				instancedProgram
+				, *instancedDepthProgram
+				, *instancedShadowMapProgram
 				, isAlphaMasked
 			};
 		}

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "vob/aoe/rendering/resources/GpuMaterial.h"
-#include "vob/aoe/rendering/resources/Handle.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,7 +15,7 @@ namespace vob::aoegl
 		{
 			std::string shaderName;
 			std::string name;
-			Handle<GpuMaterial> material;
+			std::weak_ptr<GpuMaterial> material;
 		};
 
 		std::vector<Material> materials;

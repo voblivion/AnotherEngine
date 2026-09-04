@@ -2,23 +2,15 @@
 
 #include "vob/aoe/rendering/resources/GpuMesh.h"
 
-#include <cstdint>
+#include <memory>
 #include <vector>
 
 
 namespace vob::aoegl
 {
-	struct Mesh
-	{
-		GraphicId vao = k_invalidId;
-		GraphicId vbo = k_invalidId;
-		GraphicId ebo = k_invalidId;
-		int32_t indexCount = 0;
-	};
-
 	struct Model
 	{
-		std::vector<Mesh> meshes;
+		std::vector<std::shared_ptr<GpuMesh>> meshes;
 		float boundingRadius = 0.0f;
 	};
 }

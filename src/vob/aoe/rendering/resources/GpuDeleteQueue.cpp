@@ -1,41 +1,47 @@
-#include "vob/aoe/rendering/resources/GlDeleteQueue.h"
+#include "vob/aoe/rendering/resources/GpuDeleteQueue.h"
 
 #include "vob/misc/std/container_util.h"
 
 
 namespace vob::aoegl
 {
-	void GlDeleteQueue::pushBuffer(GraphicId const a_id)
+	void GpuDeleteQueue::pushBuffer(GraphicId const a_id)
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 		m_buffers.push_back(a_id);
 	}
 
-	void GlDeleteQueue::pushTexture(GraphicId const a_id)
+	void GpuDeleteQueue::pushTexture(GraphicId const a_id)
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 		m_textures.push_back(a_id);
 	}
 
-	void GlDeleteQueue::pushFramebuffer(GraphicId const a_id)
+	void GpuDeleteQueue::pushFramebuffer(GraphicId const a_id)
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 		m_framebuffers.push_back(a_id);
 	}
 
-	void GlDeleteQueue::pushVertexArray(GraphicId const a_id)
+	void GpuDeleteQueue::pushVertexArray(GraphicId const a_id)
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 		m_vertexArrays.push_back(a_id);
 	}
 
-	void GlDeleteQueue::pushProgram(GraphicId const a_id)
+	void GpuDeleteQueue::pushProgram(GraphicId const a_id)
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 		m_programs.push_back(a_id);
 	}
 
-	void GlDeleteQueue::drain()
+	void GpuDeleteQueue::pushQuery(GraphicId const a_id)
+	{
+		auto const lock = std::lock_guard{ m_mutex };
+		m_queries.push_back(a_id);
+	}
+
+	void GpuDeleteQueue::drain()
 	{
 		auto const lock = std::lock_guard{ m_mutex };
 
@@ -50,6 +56,9 @@ namespace vob::aoegl
 
 		glDeleteVertexArrays(mistd::isize(m_vertexArrays), m_vertexArrays.data());
 		m_vertexArrays.clear();
+
+		glDeleteQueries(mistd::isize(m_queries), m_queries.data());
+		m_queries.clear();
 
 		for (auto const id : m_programs)
 		{

@@ -15,9 +15,11 @@ namespace vob::aoegl
 	constexpr static GraphicInt k_vertexBoneWeightsLocation = 5;
 	constexpr static GraphicInt k_instanceRow0Location = 4;
 
-	Mesh createStaticMesh(StaticMeshData const& a_staticMeshData, float& a_boundingRadius);
-	Mesh createRiggedMesh(RiggedMeshData const& a_riggedMeshData, float& a_boundingRadius);
-	Model createStaticModel(StaticModelData const& a_staticModelData);
-	Model createRiggedModel(RiggedModelData const& a_riggedModelData);
-	Model createInstancedModel(StaticModelData const& a_staticModelData);
+	std::shared_ptr<GpuMesh> createStaticMesh(
+		GpuDeleteQueue& a_deleteQueue, StaticMeshData const& a_staticMeshData, float& a_boundingRadius);
+	std::shared_ptr<GpuMesh> createRiggedMesh(
+		GpuDeleteQueue& a_deleteQueue, RiggedMeshData const& a_riggedMeshData, float& a_boundingRadius);
+	Model createStaticModel(GpuDeleteQueue& a_deleteQueue, StaticModelData const& a_staticModelData);
+	Model createRiggedModel(GpuDeleteQueue& a_deleteQueue, RiggedModelData const& a_riggedModelData);
+	Model createInstancedModel(GpuDeleteQueue& a_deleteQueue, StaticModelData const& a_staticModelData);
 }
