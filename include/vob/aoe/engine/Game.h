@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vob/aoe/api.h>
+#include <vob/aoe/debug/Check.h>
 
 #include <functional>
 #include <memory>
@@ -43,6 +44,7 @@ namespace vob::aoeng
 					a_world->stop();
 					a_world.reset();
 					a_world = worldProvider(a_application);
+					VOB_AOE_CHECK_TERMINATE(a_world != nullptr, "World provider returned no world.");
 					a_world->start(gameController);
 				}
 
