@@ -41,6 +41,7 @@ namespace vob::aoeng
 				if (worldProvider != nullptr)
 				{
 					a_world->stop();
+					a_world.reset();
 					a_world = worldProvider(a_application);
 					a_world->start(gameController);
 				}
