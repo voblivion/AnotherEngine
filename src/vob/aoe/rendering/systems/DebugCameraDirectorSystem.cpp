@@ -10,7 +10,6 @@ namespace vob::aoegl
 {
 	void DebugCameraDirectorSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
 	{
-		m_gameController.init(a_wdar);
 		m_cameraDirectorCtx.init(a_wdar);
 		m_gameInputCtx.init(a_wdar);
 		m_debugCameraDirectorCtx.init(a_wdar);
@@ -51,11 +50,6 @@ namespace vob::aoegl
 				{
 					cameraDirectorCtx.activeCameraEntity = *cameraEntities.begin();
 				}
-			}
-			// TODO: what is this doing here??
-			else if (eventId == debugCameraDirectorCtx.quitInputEventId)
-			{
-				m_gameController.get(a_wdap).requestStop();
 			}
 		}
 

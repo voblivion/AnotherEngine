@@ -15,6 +15,7 @@ namespace vob::aoegl
 		ImPlot::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 		ImGui_ImplGlfw_InitForOpenGL(a_glfwWindow.getNativeHandle(), false);
 		ImGui_ImplOpenGL3_Init();
 	}

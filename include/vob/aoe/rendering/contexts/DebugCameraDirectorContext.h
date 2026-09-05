@@ -9,7 +9,5 @@ namespace vob::aoegl
 	{
 		aoein::GameInputEventId prevCameraInputEventId = {};
 		aoein::GameInputEventId nextCameraInputEventId = {};
-		// TODO: laziness, put it here for now
-		aoein::GameInputEventId quitInputEventId = {};
 	};
 }

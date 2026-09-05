@@ -188,6 +188,34 @@ namespace vob::aoegl
 				std::visit([](auto const& a_event) { processEvent(a_event); }, polledEvent);
 			}
 		}
+
+		void feedLeftStickAsDpad(vob::aoewi::IWindow const& a_window)
+		{
+			constexpr auto k_deadZone = 0.5f;
+			constexpr auto k_gamepadIndex = int32_t{ 0 };
+
+			if (!a_window.isGamepadPresent(k_gamepadIndex))
+			{
+				return;
+			}
+
+			auto const stickX = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LX);
+			auto const stickY = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LY);
+
+			ImGuiIO& io = ImGui::GetIO();
+			auto const addDirection = [&](
+				ImGuiKey a_key, vob::aoein::Gamepad::Button a_button, bool a_isStickPushed)
+				{
+					io.AddKeyEvent(
+						a_key,
+						a_isStickPushed || a_window.isGamepadButtonPressed(k_gamepadIndex, a_button));
+				};
+
+			addDirection(ImGuiKey_GamepadDpadLeft, vob::aoein::Gamepad::Button::DpadLeft, stickX < -k_deadZone);
+			addDirection(ImGuiKey_GamepadDpadRight, vob::aoein::Gamepad::Button::DpadRight, stickX > k_deadZone);
+			addDirection(ImGuiKey_GamepadDpadUp, vob::aoein::Gamepad::Button::DpadUp, stickY < -k_deadZone);
+			addDirection(ImGuiKey_GamepadDpadDown, vob::aoein::Gamepad::Button::DpadDown, stickY > k_deadZone);
+		}
 	}
 
 	void PrepareImGuiFrameSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)
@@ -207,6 +235,7 @@ namespace vob::aoegl
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
+		feedLeftStickAsDpad(m_windowContext.get(a_wdap).window.get());
 		ImGui::NewFrame();
 	}
 
