@@ -68,11 +68,11 @@ namespace vob::aoeng
 				m_mutex.unlock();
 			}
 
-			void requestSwitchWorld(std::shared_ptr<IWorld> a_newWorld) override
+			void requestSwitchWorld(WorldProvider a_worldProvider) override
 			{
 				std::lock_guard lock(m_mutex);
 				assert(m_gameController != nullptr);
-				m_gameController->requestSwitchWorld(std::move(a_newWorld));
+				m_gameController->requestSwitchWorld(std::move(a_worldProvider));
 			}
 
 			void requestStop() override

@@ -2,16 +2,21 @@
 
 #include <vob/aoe/api.h>
 
+#include <functional>
 #include <memory>
+#include <utility>
 
 
 namespace vob::aoeng
 {
 	struct IWorld;
+	class Application;
+
+	using WorldProvider = std::function<std::shared_ptr<IWorld>(Application&)>;
 
 	struct IGameController
 	{
-		virtual void requestSwitchWorld(std::shared_ptr<IWorld> a_newWorld) = 0;
+		virtual void requestSwitchWorld(WorldProvider a_worldProvider) = 0;
 		virtual void requestStop() = 0;
 	};
 
@@ -25,18 +30,18 @@ namespace vob::aoeng
 	class Game
 	{
 	public:
-		void run(std::shared_ptr<IWorld> a_world)
+		void run(Application& a_application, std::shared_ptr<IWorld> a_world)
 		{
 			GameController gameController;
 			a_world->start(gameController);
 
 			while (!gameController.hasRequestedStop())
 			{
-				std::shared_ptr<IWorld> lastRequestedWorld = gameController.acquireLastRequestedWorld();
-				if (lastRequestedWorld != nullptr)
+				auto const worldProvider = gameController.acquireLastRequestedWorldProvider();
+				if (worldProvider != nullptr)
 				{
 					a_world->stop();
-					a_world = std::move(lastRequestedWorld);
+					a_world = worldProvider(a_application);
 					a_world->start(gameController);
 				}
 
@@ -50,9 +55,9 @@ namespace vob::aoeng
 		class GameController : public IGameController
 		{
 		public:
-			void requestSwitchWorld(std::shared_ptr<IWorld> a_newWorld) override
+			void requestSwitchWorld(WorldProvider a_worldProvider) override
 			{
-				m_lastRequestedWorld = a_newWorld;
+				m_lastRequestedWorldProvider = std::move(a_worldProvider);
 			}
 
 			void requestStop() override
@@ -60,9 +65,9 @@ namespace vob::aoeng
 				m_hasRequestedStop = true;
 			}
 
-			std::shared_ptr<IWorld> acquireLastRequestedWorld()
+			WorldProvider acquireLastRequestedWorldProvider()
 			{
-				return std::move(m_lastRequestedWorld);
+				return std::exchange(m_lastRequestedWorldProvider, nullptr);
 			}
 
 			bool hasRequestedStop() const
@@ -71,7 +76,7 @@ namespace vob::aoeng
 			}
 
 		private:
-			std::shared_ptr<IWorld> m_lastRequestedWorld;
+			WorldProvider m_lastRequestedWorldProvider;
 			bool m_hasRequestedStop = false;
 		};
 	};
