@@ -191,21 +191,49 @@ namespace vob::aoegl
 			}
 		}
 
-		void feedLeftStickAsNavDpad()
+		void processGamepad(vob::aoewi::IWindow const& a_window)
 		{
+			constexpr auto k_gamepadIndex = int32_t{ 0 };
+			constexpr auto k_navDeadZone = 0.55f;
+
+			if (!a_window.isGamepadPresent(k_gamepadIndex))
+			{
+				return;
+			}
+
 			ImGuiIO& io = ImGui::GetIO();
-			auto const addDirection = [&io](ImGuiKey a_dpadKey, ImGuiKey a_stickKey)
+			io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+
+			auto const isPressed = [&](vob::aoein::Gamepad::Button a_button)
 				{
-					if (ImGui::IsKeyPressed(a_stickKey))
-					{
-						io.AddKeyEvent(a_dpadKey, true);
-					}
+					return a_window.isGamepadButtonPressed(k_gamepadIndex, a_button);
+				};
+			auto const addButton = [&](ImGuiKey a_key, vob::aoein::Gamepad::Button a_button)
+				{
+					io.AddKeyEvent(a_key, isPressed(a_button));
 				};
 
-			addDirection(ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadLStickLeft);
-			addDirection(ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadLStickRight);
-			addDirection(ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadLStickUp);
-			addDirection(ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadLStickDown);
+			addButton(ImGuiKey_GamepadFaceDown, vob::aoein::Gamepad::Button::A);
+			addButton(ImGuiKey_GamepadFaceRight, vob::aoein::Gamepad::Button::B);
+			addButton(ImGuiKey_GamepadFaceLeft, vob::aoein::Gamepad::Button::X);
+			addButton(ImGuiKey_GamepadFaceUp, vob::aoein::Gamepad::Button::Y);
+			addButton(ImGuiKey_GamepadL1, vob::aoein::Gamepad::Button::LB);
+			addButton(ImGuiKey_GamepadR1, vob::aoein::Gamepad::Button::RB);
+			addButton(ImGuiKey_GamepadStart, vob::aoein::Gamepad::Button::Start);
+			addButton(ImGuiKey_GamepadBack, vob::aoein::Gamepad::Button::Back);
+
+			auto const stickX = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LX);
+			auto const stickY = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LY);
+			auto const addDirection = [&](
+				ImGuiKey a_key, vob::aoein::Gamepad::Button a_button, bool a_isStickPushed)
+				{
+					io.AddKeyEvent(a_key, a_isStickPushed || isPressed(a_button));
+				};
+
+			addDirection(ImGuiKey_GamepadDpadLeft, vob::aoein::Gamepad::Button::Left, stickX < -k_navDeadZone);
+			addDirection(ImGuiKey_GamepadDpadRight, vob::aoein::Gamepad::Button::Right, stickX > k_navDeadZone);
+			addDirection(ImGuiKey_GamepadDpadUp, vob::aoein::Gamepad::Button::Up, stickY < -k_navDeadZone);
+			addDirection(ImGuiKey_GamepadDpadDown, vob::aoein::Gamepad::Button::Down, stickY > k_navDeadZone);
 		}
 	}
 
@@ -225,9 +253,11 @@ namespace vob::aoegl
 		windowInputContext.shouldIgnoreMouseButtonEvents = io.WantCaptureMouse;
 
 		ImGui_ImplOpenGL3_NewFrame();
+		io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
 		ImGui_ImplGlfw_NewFrame();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		processGamepad(m_windowContext.get(a_wdap).window.get());
 		ImGui::NewFrame();
-		feedLeftStickAsNavDpad();
 	}
 
 
