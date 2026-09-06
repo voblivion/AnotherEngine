@@ -17,6 +17,12 @@ namespace vob::aoesg
 	{
 	public:
 		explicit SettingsStore(IStorage& a_storage, std::string a_name = "settings.ini");
+		SettingsStore(SettingsStore const&) = delete;
+		SettingsStore(SettingsStore&&) = delete;
+		~SettingsStore() = default;
+
+		SettingsStore& operator=(SettingsStore const&) = delete;
+		SettingsStore& operator=(SettingsStore&&) = delete;
 
 		template <typename TSettings>
 		TSettings& add(std::string a_name)
