@@ -16,12 +16,12 @@ namespace vob::aoein
 		// Process events
 		for (auto const& polledEvent : window.getPolledEvents())
 		{
-			for (auto& inputValueBinding : inputBindingCtx.values)
+			for (auto& inputValueBinding : inputBindingCtx.mapping.values)
 			{
 				inputValueBinding.second->processEvent(polledEvent);
 			}
 
-			for (auto& inputEventBinding : inputBindingCtx.events)
+			for (auto& inputEventBinding : inputBindingCtx.mapping.events)
 			{
 				if (inputEventBinding.second->processEvent(polledEvent))
 				{
@@ -31,13 +31,13 @@ namespace vob::aoein
 		}
 
 		// Process time and gamepad changes
-		for (auto& inputValueBinding : inputBindingCtx.values)
+		for (auto& inputValueBinding : inputBindingCtx.mapping.values)
 		{
 			inputValueBinding.second->update(window, dt);
 			gameInputCtx.setValue(inputValueBinding.first, inputValueBinding.second->getValue());
 		}
 
-		for (auto& inputEventBinding : inputBindingCtx.events)
+		for (auto& inputEventBinding : inputBindingCtx.mapping.events)
 		{
 			if (inputEventBinding.second->update(window, dt))
 			{
