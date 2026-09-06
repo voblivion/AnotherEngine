@@ -16,9 +16,9 @@ namespace vob::misvi
 			typename TValue,
 			glm::qualifier t_qualifier>
 		std::enable_if_t<t_component >= t_length> try_visit_component(
-			TVisitor& a_visitor
-			, glm::vec<t_length, TValue, t_qualifier>& a_vector
-			, std::string_view const a_componentName
+			[[maybe_unused]] TVisitor& a_visitor
+			, [[maybe_unused]] glm::vec<t_length, TValue, t_qualifier>& a_vector
+			, [[maybe_unused]] std::string_view const a_componentName
 		)
 		{}
 
@@ -43,9 +43,9 @@ namespace vob::misvi
 			typename TValue,
 			glm::qualifier t_qualifier>
 		std::enable_if_t<t_component >= t_length> try_visit_component(
-			TVisitor& a_visitor
-			, glm::vec<t_length, TValue, t_qualifier> const& a_vector
-			, std::string_view const a_componentName
+			[[maybe_unused]] TVisitor& a_visitor
+			, [[maybe_unused]] glm::vec<t_length, TValue, t_qualifier> const& a_vector
+			, [[maybe_unused]] std::string_view const a_componentName
 		)
 		{}
 
