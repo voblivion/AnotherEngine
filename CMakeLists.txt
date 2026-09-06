@@ -24,6 +24,12 @@ add_library(implot STATIC
 target_include_directories(implot PUBLIC external/implot)
 target_link_libraries(implot PUBLIC imgui)
 
+# PlatformFolders
+add_library(platform_folders STATIC
+    external/PlatformFolders/sago/platform_folders.cpp
+)
+target_include_directories(platform_folders PUBLIC external/PlatformFolders)
+
 # AnotherEngine
 file(GLOB_RECURSE AOE_SOURCES CONFIGURE_DEPENDS
     include/vob/aoe/*.*
@@ -53,6 +59,7 @@ target_link_libraries(AnotherEngine PUBLIC
     vob::misc
     imgui
     implot
+    platform_folders
     Tracy::TracyClient
     EnTT::EnTT
     glew_s
