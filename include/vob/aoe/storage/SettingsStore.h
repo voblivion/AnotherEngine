@@ -1,14 +1,16 @@
 #pragma once
 
+#include <vob/aoe/debug/Check.h>
 #include <vob/aoe/storage/IStorage.h>
 
+#include <vob/misc/std/vector_map.h>
 #include <vob/misc/visitor/ini_reader.h>
 #include <vob/misc/visitor/ini_writer.h>
 
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <variant>
-#include <vector>
 
 
 namespace vob::aoesg
@@ -27,10 +29,27 @@ namespace vob::aoesg
 		template <typename TSettings>
 		TSettings& add(std::string a_name)
 		{
+			auto const typeIndex = std::type_index{ typeid(TSettings) };
+			VOB_AOE_CHECK_TERMINATE(
+				m_pages.find(typeIndex) == m_pages.end(),
+				"Settings page {} is already registered.",
+				typeIndex.name());
+
 			auto page = std::make_unique<SettingsPage<TSettings>>(std::move(a_name));
 			auto& value = page->get();
-			m_pages.push_back(std::move(page));
+			m_pages.emplace(typeIndex, std::move(page));
 			return value;
+		}
+
+		template <typename TSettings>
+		TSettings& get()
+		{
+			auto const typeIndex = std::type_index{ typeid(TSettings) };
+			auto const pageIt = m_pages.find(typeIndex);
+			VOB_AOE_CHECK_TERMINATE(
+				pageIt != m_pages.end(), "Settings store is missing a {} page.", typeIndex.name());
+
+			return static_cast<SettingsPage<TSettings>*>(pageIt->second.get())->get();
 		}
 
 		bool load();
@@ -47,6 +66,7 @@ namespace vob::aoesg
 			{}
 			virtual ~ASettingsPage() = default;
 
+			virtual void reset() = 0;
 			virtual bool read(ReaderType& a_reader, mistd::ini_value const& a_iniValue) = 0;
 			virtual bool write(WriterType& a_writer, mistd::ini_value& a_iniValue) const = 0;
 
@@ -58,6 +78,11 @@ namespace vob::aoesg
 		{
 		public:
 			using ASettingsPage::ASettingsPage;
+
+			void reset() override
+			{
+				m_value = TSettings{};
+			}
 
 			bool read(ReaderType& a_reader, mistd::ini_value const& a_iniValue) override
 			{
@@ -82,6 +107,6 @@ namespace vob::aoesg
 		std::string m_name;
 		misvi::applicator<false, ReaderType> m_readApplicator;
 		misvi::applicator<true, WriterType> m_writeApplicator;
-		std::vector<std::unique_ptr<ASettingsPage>> m_pages;
+		mistd::vector_map<std::type_index, std::unique_ptr<ASettingsPage>> m_pages;
 	};
 }
