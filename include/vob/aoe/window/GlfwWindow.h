@@ -50,6 +50,7 @@ namespace vob::aoewi
 		uint32_t getDefaultFramebufferId() const override;
 		bool isHovered() const override;
 		void setCursorState(CursorState a_cursorState) override;
+		void setVSync(bool a_enabled) override;
 
 		glm::vec2 getMousePosition() const override;
 		bool isGamepadPresent(int32_t a_gamepadIndex) const override;

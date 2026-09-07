@@ -121,6 +121,7 @@ namespace vob::aoewi
 		virtual uint32_t getDefaultFramebufferId() const = 0;
 		virtual bool isHovered() const = 0;
 		virtual void setCursorState(CursorState a_cursorState) = 0;
+		virtual void setVSync(bool a_enabled) = 0;
 
 		virtual glm::vec2 getMousePosition() const = 0;
 		virtual bool isGamepadPresent(int32_t a_gamepadIndex) const = 0;

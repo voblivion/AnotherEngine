@@ -117,6 +117,11 @@ namespace vob::aoewi
 		glfwSetInputMode(m_nativeHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL + static_cast<GLenum>(a_cursorState));
 	}
 
+	void GlfwWindow::setVSync(bool const a_enabled)
+	{
+		glfwSwapInterval(a_enabled ? 1 : 0);
+	}
+
 	glm::vec2 GlfwWindow::getMousePosition() const
 	{
 		double x;
