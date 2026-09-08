@@ -183,6 +183,13 @@ namespace vob::aoegl
 			ImGuiIO& io = ImGui::GetIO();
 			io.AddFocusEvent(a_mouseHoverEvent.entered);
 		}
+
+		void processEvent([[maybe_unused]] vob::aoewi::WindowResizeEvent const& a_windowResizeEvent)
+		{}
+
+		void processEvent([[maybe_unused]] vob::aoewi::WindowMoveEvent const& a_windowMoveEvent)
+		{}
+
 		void processEvents(vob::aoewi::IWindow& a_window)
 		{
 			for (auto const& polledEvent : a_window.getPolledEvents())

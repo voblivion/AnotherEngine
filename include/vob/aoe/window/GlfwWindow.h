@@ -43,6 +43,7 @@ namespace vob::aoewi
 
 #pragma region IWindow
 		glm::ivec2 getSize() const override;
+		glm::ivec2 getPosition() const override;
 		void swapBuffers() override;
 		void pollEvents() override;
 		std::span<WindowEvent const> getPolledEvents() const override;
@@ -71,6 +72,8 @@ namespace vob::aoewi
 		static void mouseButtonEventCallback(GLFWwindow*, GLint, GLint, GLint);
 		static void mouseScrollEventCallback(GLFWwindow*, GLdouble, GLdouble);
 		static void frameBufferSizeCallback(GLFWwindow*, GLint, GLint);
+		static void windowSizeCallback(GLFWwindow*, GLint, GLint);
+		static void windowPosCallback(GLFWwindow*, GLint, GLint);
 #ifndef NDEBUG
 		static void debugMessageCallback(
 			GLenum, GLenum, GLuint, GLenum, GLsizei, GLchar const*, void const*);

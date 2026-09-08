@@ -58,6 +58,8 @@ namespace vob::aoewi
 		glfwSetScrollCallback(m_nativeHandle, mouseScrollEventCallback);
 
 		glfwSetFramebufferSizeCallback(m_nativeHandle, frameBufferSizeCallback);
+		glfwSetWindowSizeCallback(m_nativeHandle, windowSizeCallback);
+		glfwSetWindowPosCallback(m_nativeHandle, windowPosCallback);
 
 #ifndef NDEBUG
 		glEnable(GL_DEBUG_OUTPUT);
@@ -79,6 +81,13 @@ namespace vob::aoewi
 		auto size = glm::ivec2{};
 		glfwGetWindowSize(m_nativeHandle, &size.x, &size.y);
 		return size;
+	}
+
+	glm::ivec2 GlfwWindow::getPosition() const
+	{
+		auto position = glm::ivec2{};
+		glfwGetWindowPos(m_nativeHandle, &position.x, &position.y);
+		return position;
 	}
 
 	void GlfwWindow::swapBuffers()
@@ -581,6 +590,20 @@ namespace vob::aoewi
 		[[maybe_unused]] GLint a_width,
 		[[maybe_unused]] GLint a_height)
 	{
+	}
+
+	void GlfwWindow::windowSizeCallback(
+		GLFWwindow* a_nativeHandle, GLint const a_width, GLint const a_height)
+	{
+		auto const window = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(a_nativeHandle));
+		window->pushEvent(WindowResizeEvent{ { a_width, a_height } });
+	}
+
+	void GlfwWindow::windowPosCallback(
+		GLFWwindow* a_nativeHandle, GLint const a_x, GLint const a_y)
+	{
+		auto const window = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(a_nativeHandle));
+		window->pushEvent(WindowMoveEvent{ { a_x, a_y } });
 	}
 
 #ifndef NDEBUG

@@ -95,6 +95,16 @@ namespace vob::aoewi
 		glm::ivec2 move;
 	};
 
+	struct WindowResizeEvent
+	{
+		glm::ivec2 size;
+	};
+
+	struct WindowMoveEvent
+	{
+		glm::ivec2 position;
+	};
+
 	using WindowEvent = std::variant<
 		KeyEvent
 		, TextEvent
@@ -102,6 +112,8 @@ namespace vob::aoewi
 		, MouseHoverEvent
 		, MouseButtonEvent
 		, MouseScrollEvent
+		, WindowResizeEvent
+		, WindowMoveEvent
 	>;
 
 	enum class CursorState
@@ -114,6 +126,7 @@ namespace vob::aoewi
 	struct IWindow
 	{
 		virtual glm::ivec2 getSize() const = 0;
+		virtual glm::ivec2 getPosition() const = 0;
 		virtual void swapBuffers() = 0;
 		virtual void pollEvents() = 0;
 		virtual std::span<WindowEvent const> getPolledEvents() const = 0;
