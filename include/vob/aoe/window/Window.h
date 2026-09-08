@@ -11,6 +11,13 @@
 
 namespace vob::aoewi
 {
+	enum class WindowMode
+	{
+		Windowed,
+		Borderless,
+		FullScreen
+	};
+
 	enum class KeyboardModifier : uint8_t
 	{
 		Shift,

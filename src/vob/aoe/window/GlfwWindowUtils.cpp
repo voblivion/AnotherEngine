@@ -106,7 +106,7 @@ namespace vob::aoewi
 		}
 	}
 
-	GLFWmonitor* findMonitor(DisplayConfig const& a_config)
+	GLFWmonitor* findMonitor(std::string_view const a_monitorName, int32_t const a_monitorIndex)
 	{
 		auto monitorCount = 0;
 		auto** const monitors = glfwGetMonitors(&monitorCount);
@@ -116,17 +116,17 @@ namespace vob::aoewi
 		}
 
 		auto* firstNameMatch = static_cast<GLFWmonitor*>(nullptr);
-		if (!a_config.monitorName.empty())
+		if (!a_monitorName.empty())
 		{
 			for (auto i = 0; i < monitorCount; ++i)
 			{
 				auto const* const name = glfwGetMonitorName(monitors[i]);
-				if (name == nullptr || a_config.monitorName != name)
+				if (name == nullptr || a_monitorName != name)
 				{
 					continue;
 				}
 
-				if (i == a_config.monitorIndex)
+				if (i == a_monitorIndex)
 				{
 					return monitors[i];
 				}
@@ -142,9 +142,9 @@ namespace vob::aoewi
 			return firstNameMatch;
 		}
 
-		if (a_config.monitorIndex >= 0 && a_config.monitorIndex < monitorCount)
+		if (a_monitorIndex >= 0 && a_monitorIndex < monitorCount)
 		{
-			return monitors[a_config.monitorIndex];
+			return monitors[a_monitorIndex];
 		}
 
 		return glfwGetPrimaryMonitor();

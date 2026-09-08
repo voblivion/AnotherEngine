@@ -1,16 +1,18 @@
 #pragma once
 
-#include "vob/aoe/window/DisplayConfig.h"
-
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 
 namespace vob::aoewi
 {
-	GLFWmonitor* findMonitor(DisplayConfig const& a_config);
+	GLFWmonitor* findMonitor(std::string_view a_monitorName, int32_t a_monitorIndex);
 
 	int32_t getMonitorCount();
 
