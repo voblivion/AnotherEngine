@@ -12,7 +12,15 @@
 
 namespace vob::aoewi
 {
-	GLFWmonitor* findMonitor(std::string_view a_monitorName, int32_t a_monitorIndex);
+	GLFWmonitor* resolveMonitor(
+		std::string_view a_monitorName, std::string_view a_monitorId, int32_t a_monitorIndex);
+
+	int32_t findMonitorIndex(
+		std::string_view a_monitorName, std::string_view a_monitorId, int32_t a_monitorIndex);
+
+	GLFWmonitor* getMonitor(int32_t a_monitorIndex);
+
+	std::string getMonitorId(int32_t a_monitorIndex);
 
 	int32_t getMonitorCount();
 
@@ -23,6 +31,8 @@ namespace vob::aoewi
 	glm::ivec2 getMonitorResolution(int32_t a_monitorIndex);
 
 	glm::ivec2 getMonitorPosition(int32_t a_monitorIndex);
+
+	int32_t getMonitorIndexAt(glm::ivec2 a_position);
 
 	std::vector<glm::ivec2> getSupportedResolutions(int32_t a_monitorIndex);
 }
