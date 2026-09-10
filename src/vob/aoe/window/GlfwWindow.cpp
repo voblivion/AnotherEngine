@@ -1,8 +1,12 @@
 #include <vob/aoe/window/GlfwWindow.h>
 
+#include <vob/aoe/window/GlfwWindowUtils.h>
+
 #include <GL/glew.h>
 
 #include <vob/misc/std/ignorable_assert.h>
+
+#include <algorithm>
 
 #ifndef NDEBUG
 #include <iostream>
@@ -34,8 +38,12 @@ namespace vob::aoewi
 			glfwWindowHint(GLFW_RED_BITS, mode->redBits);
 			glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
 			glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-			glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+			glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
 		}
+
+		auto monitorCount = 0;
+		auto** const monitors = glfwGetMonitors(&monitorCount);
+		m_knownMonitors.assign(monitors, monitors + monitorCount);
 
 		m_nativeHandle = glfwCreateWindow(a_size.x, a_size.y, a_title, a_monitor, a_share);
 		if (m_nativeHandle == nullptr)
@@ -90,9 +98,92 @@ namespace vob::aoewi
 		return position;
 	}
 
+	int32_t GlfwWindow::getCurrentMonitorIndex() const
+	{
+		auto* const windowMonitor = glfwGetWindowMonitor(m_nativeHandle);
+		if (windowMonitor != nullptr)
+		{
+			auto monitorCount = 0;
+			auto** const monitors = glfwGetMonitors(&monitorCount);
+			for (auto monitorIndex = 0; monitorIndex < monitorCount; ++monitorIndex)
+			{
+				if (monitors[monitorIndex] == windowMonitor)
+				{
+					return monitorIndex;
+				}
+			}
+		}
+		return getMonitorIndexAt(getPosition() + getSize() / 2);
+	}
+
+	void GlfwWindow::touchNewlyConnectedMonitors()
+	{
+		// The OpenGL driver on Windows seems to not release surface when monitor is disconnected and reconnected.
+		// This function renders a single frame on any reconnected monitor then stops, releasing them to the OS.
+		// This issue only occures on monitor we presented to, but we touch any reconnected monitor for simplicity.
+		auto monitorCount = 0;
+		auto** const monitors = glfwGetMonitors(&monitorCount);
+
+		auto newMonitors = std::vector<GLFWmonitor*>{};
+		for (auto monitorIndex = 0; monitorIndex < monitorCount; ++monitorIndex)
+		{
+			if (std::ranges::find(m_knownMonitors, monitors[monitorIndex]) == m_knownMonitors.end())
+			{
+				newMonitors.push_back(monitors[monitorIndex]);
+			}
+		}
+		m_knownMonitors.assign(monitors, monitors + monitorCount);
+
+		if (newMonitors.empty())
+		{
+			return;
+		}
+
+		auto* const savedMonitor = glfwGetWindowMonitor(m_nativeHandle);
+		auto const savedSize = getSize();
+		auto const savedMonitorIndex = getCurrentMonitorIndex();
+		auto const savedOffset = getPosition() - getMonitorPosition(savedMonitorIndex);
+
+		m_isTouchingMonitor = true;
+		for (auto* const monitor : newMonitors)
+		{
+			auto const* const videoMode = glfwGetVideoMode(monitor);
+			if (videoMode == nullptr)
+			{
+				continue;
+			}
+
+			auto monitorPosition = glm::ivec2{};
+			glfwGetMonitorPos(monitor, &monitorPosition.x, &monitorPosition.y);
+			glfwSetWindowMonitor(
+				m_nativeHandle, nullptr, monitorPosition.x, monitorPosition.y,
+				videoMode->width, videoMode->height, 0);
+			glfwSwapBuffers(m_nativeHandle);
+		}
+
+		if (savedMonitor != nullptr)
+		{
+			glfwSetWindowMonitor(
+				m_nativeHandle, savedMonitor, 0, 0, savedSize.x, savedSize.y, GLFW_DONT_CARE);
+		}
+		else
+		{
+			auto const restorePosition = getMonitorPosition(savedMonitorIndex) + savedOffset;
+			glfwSetWindowPos(m_nativeHandle, restorePosition.x, restorePosition.y);
+			glfwSetWindowSize(m_nativeHandle, savedSize.x, savedSize.y);
+		}
+		m_isTouchingMonitor = false;
+	}
+
+	bool GlfwWindow::isFullScreen() const
+	{
+		return glfwGetWindowMonitor(m_nativeHandle) != nullptr;
+	}
+
 	void GlfwWindow::swapBuffers()
 	{
 		glfwSwapBuffers(m_nativeHandle);
+		touchNewlyConnectedMonitors();
 	}
 
 	void GlfwWindow::pollEvents()
@@ -129,6 +220,58 @@ namespace vob::aoewi
 	void GlfwWindow::setVSync(bool const a_enabled)
 	{
 		glfwSwapInterval(a_enabled ? 1 : 0);
+	}
+
+	void GlfwWindow::setDisplayMode(
+		WindowMode const a_mode, int32_t const a_monitorIndex, glm::ivec2 const a_size, glm::ivec2 const a_position)
+	{
+		auto* const monitor = resolveMonitor({}, {}, a_monitorIndex);
+		if (monitor == nullptr)
+		{
+			return;
+		}
+
+		auto const* const videoMode = glfwGetVideoMode(monitor);
+		auto monitorPosition = glm::ivec2{};
+		glfwGetMonitorPos(monitor, &monitorPosition.x, &monitorPosition.y);
+
+		glfwSetWindowAttrib(
+			m_nativeHandle, GLFW_DECORATED, a_mode == WindowMode::Windowed ? GLFW_TRUE : GLFW_FALSE);
+
+		switch (a_mode)
+		{
+		case WindowMode::Windowed:
+			glfwSetWindowMonitor(
+				m_nativeHandle,
+				nullptr,
+				monitorPosition.x + a_position.x,
+				monitorPosition.y + a_position.y,
+				a_size.x,
+				a_size.y,
+				GLFW_DONT_CARE);
+			break;
+		case WindowMode::Borderless:
+			glfwSetWindowMonitor(
+				m_nativeHandle,
+				nullptr,
+				monitorPosition.x,
+				monitorPosition.y,
+				videoMode->width,
+				videoMode->height,
+				GLFW_DONT_CARE);
+			break;
+		case WindowMode::FullScreen:
+			glfwSetWindowMonitor(m_nativeHandle, monitor, 0, 0, a_size.x, a_size.y, GLFW_DONT_CARE);
+			break;
+		}
+
+		if (a_mode != WindowMode::FullScreen)
+		{
+			auto const size = a_mode == WindowMode::Borderless
+				? glm::ivec2{ videoMode->width, videoMode->height }
+				: a_size;
+			glfwSetWindowSize(m_nativeHandle, size.x, size.y);
+		}
 	}
 
 	glm::vec2 GlfwWindow::getMousePosition() const
@@ -596,14 +739,20 @@ namespace vob::aoewi
 		GLFWwindow* a_nativeHandle, GLint const a_width, GLint const a_height)
 	{
 		auto const window = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(a_nativeHandle));
-		window->pushEvent(WindowResizeEvent{ { a_width, a_height } });
+		if (!window->m_isTouchingMonitor)
+		{
+			window->pushEvent(WindowResizeEvent{ { a_width, a_height } });
+		}
 	}
 
 	void GlfwWindow::windowPosCallback(
 		GLFWwindow* a_nativeHandle, GLint const a_x, GLint const a_y)
 	{
 		auto const window = static_cast<GlfwWindow*>(glfwGetWindowUserPointer(a_nativeHandle));
-		window->pushEvent(WindowMoveEvent{ { a_x, a_y } });
+		if (!window->m_isTouchingMonitor)
+		{
+			window->pushEvent(WindowMoveEvent{ { a_x, a_y } });
+		}
 	}
 
 #ifndef NDEBUG

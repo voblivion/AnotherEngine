@@ -134,6 +134,8 @@ namespace vob::aoewi
 	{
 		virtual glm::ivec2 getSize() const = 0;
 		virtual glm::ivec2 getPosition() const = 0;
+		virtual int32_t getCurrentMonitorIndex() const = 0;
+		virtual bool isFullScreen() const = 0;
 		virtual void swapBuffers() = 0;
 		virtual void pollEvents() = 0;
 		virtual std::span<WindowEvent const> getPolledEvents() const = 0;
@@ -142,6 +144,11 @@ namespace vob::aoewi
 		virtual bool isHovered() const = 0;
 		virtual void setCursorState(CursorState a_cursorState) = 0;
 		virtual void setVSync(bool a_enabled) = 0;
+		virtual void setDisplayMode(
+			WindowMode a_mode,
+			int32_t a_monitorIndex,
+			glm::ivec2 a_size,
+			glm::ivec2 a_position) = 0;
 
 		virtual glm::vec2 getMousePosition() const = 0;
 		virtual bool isGamepadPresent(int32_t a_gamepadIndex) const = 0;

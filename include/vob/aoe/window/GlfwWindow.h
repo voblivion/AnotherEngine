@@ -44,6 +44,8 @@ namespace vob::aoewi
 #pragma region IWindow
 		glm::ivec2 getSize() const override;
 		glm::ivec2 getPosition() const override;
+		int32_t getCurrentMonitorIndex() const override;
+		bool isFullScreen() const override;
 		void swapBuffers() override;
 		void pollEvents() override;
 		std::span<WindowEvent const> getPolledEvents() const override;
@@ -52,6 +54,11 @@ namespace vob::aoewi
 		bool isHovered() const override;
 		void setCursorState(CursorState a_cursorState) override;
 		void setVSync(bool a_enabled) override;
+		void setDisplayMode(
+			WindowMode a_mode,
+			int32_t a_monitorIndex,
+			glm::ivec2 a_size,
+			glm::ivec2 a_position) override;
 
 		glm::vec2 getMousePosition() const override;
 		bool isGamepadPresent(int32_t a_gamepadIndex) const override;
@@ -74,6 +81,10 @@ namespace vob::aoewi
 		static void frameBufferSizeCallback(GLFWwindow*, GLint, GLint);
 		static void windowSizeCallback(GLFWwindow*, GLint, GLint);
 		static void windowPosCallback(GLFWwindow*, GLint, GLint);
+		void touchNewlyConnectedMonitors();
+
+		std::vector<GLFWmonitor*> m_knownMonitors;
+		bool m_isTouchingMonitor = false;
 #ifndef NDEBUG
 		static void debugMessageCallback(
 			GLenum, GLenum, GLuint, GLenum, GLsizei, GLchar const*, void const*);
