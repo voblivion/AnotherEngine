@@ -175,7 +175,7 @@ namespace vob::aoegl
 		void processEvent(vob::aoewi::MouseScrollEvent const& a_mouseScrollEvent)
 		{
 			ImGuiIO& io = ImGui::GetIO();
-			io.AddMouseWheelEvent(static_cast<float>(a_mouseScrollEvent.move.x), static_cast<float>(a_mouseScrollEvent.move.y));
+			io.AddMouseWheelEvent(a_mouseScrollEvent.move.x, a_mouseScrollEvent.move.y);
 		}
 
 		void processEvent(vob::aoewi::MouseHoverEvent const& a_mouseHoverEvent)
@@ -184,10 +184,8 @@ namespace vob::aoegl
 			io.AddFocusEvent(a_mouseHoverEvent.entered);
 		}
 
-		void processEvent([[maybe_unused]] vob::aoewi::WindowResizeEvent const& a_windowResizeEvent)
-		{}
-
-		void processEvent([[maybe_unused]] vob::aoewi::WindowMoveEvent const& a_windowMoveEvent)
+		void processEvent(
+			[[maybe_unused]] vob::aoewi::DisplayModeChangedEvent const& a_displayModeChangedEvent)
 		{}
 
 		void processEvents(vob::aoewi::IWindow& a_window)

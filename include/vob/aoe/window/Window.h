@@ -1,13 +1,14 @@
 #pragma once
 
-#include <vob/aoe/input/Inputs.h>
+#include "vob/aoe/input/Inputs.h"
+#include "vob/aoe/window/Monitors.h"
 
-#include <glm/glm.hpp>
+#include "glm/glm.hpp"
 
 #include <cstdint>
 #include <span>
+#include <string>
 #include <variant>
-
 
 namespace vob::aoewi
 {
@@ -16,6 +17,16 @@ namespace vob::aoewi
 		Windowed,
 		Borderless,
 		FullScreen
+	};
+
+	struct DisplayMode
+	{
+		WindowMode mode = WindowMode::Borderless;
+		std::string monitorId;
+		glm::ivec2 size{ 0, 0 };
+		glm::ivec2 position{ 0, 0 };
+
+		bool operator==(DisplayMode const&) const = default;
 	};
 
 	enum class KeyboardModifier : uint8_t
@@ -30,7 +41,7 @@ namespace vob::aoewi
 
 	class KeyboardModifierMask
 	{
-	public:
+	  public:
 		explicit KeyboardModifierMask(uint8_t a_value)
 			: m_value{ a_value }
 		{
@@ -51,13 +62,20 @@ namespace vob::aoewi
 			return (m_value & toValue(a_modifier)) != 0;
 		}
 
-	private:
+	  private:
 		uint8_t m_value;
 
 		static uint8_t toValue(KeyboardModifier a_modifier)
 		{
 			return 1 << static_cast<uint8_t>(a_modifier);
 		}
+	};
+
+	enum class CursorState
+	{
+		Normal = 0,
+		Hidden,
+		Disabled
 	};
 
 	struct KeyEvent
@@ -99,57 +117,44 @@ namespace vob::aoewi
 
 	struct MouseScrollEvent
 	{
-		glm::ivec2 move;
+		glm::vec2 move;
 	};
 
-	struct WindowResizeEvent
+	struct DisplayModeChangedEvent
 	{
-		glm::ivec2 size;
-	};
-
-	struct WindowMoveEvent
-	{
-		glm::ivec2 position;
 	};
 
 	using WindowEvent = std::variant<
-		KeyEvent
-		, TextEvent
-		, MouseMoveEvent
-		, MouseHoverEvent
-		, MouseButtonEvent
-		, MouseScrollEvent
-		, WindowResizeEvent
-		, WindowMoveEvent
-	>;
-
-	enum class CursorState
-	{
-		Normal = 0
-		, Hidden
-		, Disabled
-	};
+		KeyEvent,
+		TextEvent,
+		MouseMoveEvent,
+		MouseHoverEvent,
+		MouseButtonEvent,
+		MouseScrollEvent,
+		DisplayModeChangedEvent>;
 
 	struct IWindow
 	{
+		virtual ~IWindow() = default;
+
+		// display mode
+		virtual IMonitors const& getMonitors() const = 0;
 		virtual glm::ivec2 getSize() const = 0;
 		virtual glm::ivec2 getPosition() const = 0;
-		virtual int32_t getCurrentMonitorIndex() const = 0;
-		virtual bool isFullScreen() const = 0;
-		virtual void swapBuffers() = 0;
+		virtual DisplayMode getActiveDisplayMode() const = 0;
+		virtual void requestDisplayModeChange(DisplayMode const& a_displayMode) = 0;
+
+		// frame
 		virtual void pollEvents() = 0;
 		virtual std::span<WindowEvent const> getPolledEvents() const = 0;
-		virtual bool shouldClose() const = 0;
 		virtual uint32_t getDefaultFramebufferId() const = 0;
+		virtual void setVSyncEnabled(bool a_enabled) = 0;
+		virtual void swapBuffers() = 0;
+		virtual bool shouldClose() const = 0;
+
+		// inputs
 		virtual bool isHovered() const = 0;
 		virtual void setCursorState(CursorState a_cursorState) = 0;
-		virtual void setVSync(bool a_enabled) = 0;
-		virtual void setDisplayMode(
-			WindowMode a_mode,
-			int32_t a_monitorIndex,
-			glm::ivec2 a_size,
-			glm::ivec2 a_position) = 0;
-
 		virtual glm::vec2 getMousePosition() const = 0;
 		virtual bool isGamepadPresent(int32_t a_gamepadIndex) const = 0;
 		virtual bool isGamepadButtonPressed(int32_t a_gamepadIndex, aoein::Gamepad::Button a_button) const = 0;

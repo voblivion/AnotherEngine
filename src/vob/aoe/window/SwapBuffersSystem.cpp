@@ -1,6 +1,5 @@
 #include <vob/aoe/window/SwapBuffersSystem.h>
 
-
 namespace vob::aoewi
 {
 	void SwapBuffersSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

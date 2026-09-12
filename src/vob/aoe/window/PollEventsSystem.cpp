@@ -1,6 +1,5 @@
 #include <vob/aoe/window/PollEventsSystem.h>
 
-
 namespace vob::aoewi
 {
 	void PollEventsSystem::init(aoeng::EcsWorldDataAccessRegistrar& a_wdar)

@@ -5,7 +5,6 @@
 #include <vob/misc/std/enum_map.h>
 
 #include <GL/glew.h>
-#define GLFW_DLL
 #include <GLFW/glfw3.h>
 
 #include <array>

@@ -3,7 +3,6 @@
 #include <vob/aoe/common/input/Keyboard.h>
 
 #include <GL/glew.h>
-#define GLFW_DLL
 #include <GLFW/glfw3.h>
 
 
