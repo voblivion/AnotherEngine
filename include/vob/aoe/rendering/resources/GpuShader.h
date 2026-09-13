@@ -28,22 +28,17 @@ namespace vob::aoegl
 
 		ResolvedShader getResolvedStaticShader() const
 		{
-			return { staticProgram, *staticDepthProgram, *staticShadowMapProgram, isAlphaMasked };
+			return {staticProgram, *staticDepthProgram, *staticShadowMapProgram, isAlphaMasked};
 		}
 
 		ResolvedShader getResolvedRiggedShader() const
 		{
-			return { riggedProgram, *riggedDepthProgram, *riggedShadowMapProgram, isAlphaMasked };
+			return {riggedProgram, *riggedDepthProgram, *riggedShadowMapProgram, isAlphaMasked};
 		}
 
 		ResolvedShader getResolvedInstancedShader() const
 		{
-			return {
-				instancedProgram
-				, *instancedDepthProgram
-				, *instancedShadowMapProgram
-				, isAlphaMasked
-			};
+			return {instancedProgram, *instancedDepthProgram, *instancedShadowMapProgram, isAlphaMasked};
 		}
 	};
 }

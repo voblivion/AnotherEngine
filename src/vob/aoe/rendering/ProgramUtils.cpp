@@ -14,9 +14,9 @@
 
 #define AOEGL_DEBUG 1
 #if !defined(NDEBUG) || defined(AOEGL_DEBUG)
-#include <vector>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 #endif
 
 #ifndef VOB_AOEGL_SHADER_DIR
@@ -43,11 +43,11 @@ namespace vob::aoegl
 	bool tryExportCoreShaders()
 	{
 #if defined(VOB_AOEGL_SHADER_EXPORTER) && defined(VOB_AOEGL_SHADER_SOURCE_DIR)
-		auto const exporter = std::filesystem::path{ VOB_AOEGL_SHADER_EXPORTER }.make_preferred();
-		auto const sourceDir = std::filesystem::path{ VOB_AOEGL_SHADER_SOURCE_DIR }.make_preferred();
-		auto const destinationDir = std::filesystem::path{ VOB_AOEGL_SHADER_DIR "core" }.make_preferred();
+		auto const exporter = std::filesystem::path{VOB_AOEGL_SHADER_EXPORTER}.make_preferred();
+		auto const sourceDir = std::filesystem::path{VOB_AOEGL_SHADER_SOURCE_DIR}.make_preferred();
+		auto const destinationDir = std::filesystem::path{VOB_AOEGL_SHADER_DIR "core"}.make_preferred();
 
-		auto command = std::string{ '"' };
+		auto command = std::string{'"'};
 		command += '"' + exporter.string() + "\" \"" + sourceDir.string() + "\" \"" + destinationDir.string() + '"';
 		command += '"';
 
@@ -76,7 +76,7 @@ namespace vob::aoegl
 			std::vector<char> rawErrorLog;
 			rawErrorLog.resize(errorLogLength);
 			glGetShaderInfoLog(shaderId, errorLogLength, &errorLogLength, rawErrorLog.data());
-			std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
+			std::string_view errorLog{rawErrorLog.data(), rawErrorLog.size()};
 			std::cerr << errorLog << std::endl;
 			debugPrintSource(a_shaderSource);
 			std::cerr << errorLog << std::endl;
@@ -89,7 +89,8 @@ namespace vob::aoegl
 		return shaderId;
 	}
 
-	GraphicId createProgram(std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
+	GraphicId createProgram(
+		std::string_view a_vertexShaderSource, std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
 	{
 		auto const vertexShaderId = createShader(GL_VERTEX_SHADER, a_vertexShaderSource);
 		if (vertexShaderId == k_invalidId)
@@ -123,7 +124,7 @@ namespace vob::aoegl
 			std::vector<char> rawErrorLog;
 			rawErrorLog.resize(errorLogLength);
 			glGetProgramInfoLog(programId, errorLogLength, &errorLogLength, rawErrorLog.data());
-			std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
+			std::string_view errorLog{rawErrorLog.data(), rawErrorLog.size()};
 			std::cerr << errorLog << std::endl;
 #endif
 			ignorable_assert(false && "Program linking failed.");
@@ -136,7 +137,8 @@ namespace vob::aoegl
 
 	namespace
 	{
-		GraphicId createComputeProgram(std::string_view a_computeShaderSource, GraphicId a_optionalProgramId = k_invalidId)
+		GraphicId createComputeProgram(
+			std::string_view a_computeShaderSource, GraphicId a_optionalProgramId = k_invalidId)
 		{
 			auto const computeShaderId = createShader(GL_COMPUTE_SHADER, a_computeShaderSource);
 			if (computeShaderId == k_invalidId)
@@ -160,7 +162,7 @@ namespace vob::aoegl
 				std::vector<char> rawErrorLog;
 				rawErrorLog.resize(errorLogLength);
 				glGetProgramInfoLog(programId, errorLogLength, &errorLogLength, rawErrorLog.data());
-				std::string_view errorLog{ rawErrorLog.data(), rawErrorLog.size() };
+				std::string_view errorLog{rawErrorLog.data(), rawErrorLog.size()};
 				std::cerr << errorLog << std::endl;
 				debugPrintSource(a_computeShaderSource);
 #endif
@@ -196,7 +198,7 @@ namespace vob::aoegl
 				return;
 			}
 
-			auto definesSourceSize = size_t{ 0 };
+			auto definesSourceSize = size_t{0};
 			for (auto const& define : a_defines)
 			{
 				definesSourceSize += std::char_traits<char>::length("#define ") + define.size() + 1;
@@ -225,7 +227,7 @@ namespace vob::aoegl
 
 			while (std::regex_search(searchStart, a_source.cend(), match, includeRegex))
 			{
-				auto const includedFileName = std::string{ VOB_AOEGL_SHADER_DIR } + match[1].str();
+				auto const includedFileName = std::string{VOB_AOEGL_SHADER_DIR} + match[1].str();
 				auto const includedFileContent = readFile(includedFileName);
 
 				auto const matchPos = match.position(0) + (searchStart - a_source.cbegin());
@@ -264,15 +266,15 @@ namespace vob::aoegl
 	}
 
 	GraphicId createGeometryProgram(
-		std::string_view a_fragmentShaderSource
-		, ModelType a_modelType
-		, bool a_useShading
-		, bool a_useUv
-		, bool a_useNormal
-		, std::span<std::string const> a_extraDefines
-		, GraphicId a_optionalProgramId)
+		std::string_view a_fragmentShaderSource,
+		ModelType a_modelType,
+		bool a_useShading,
+		bool a_useUv,
+		bool a_useNormal,
+		std::span<std::string const> a_extraDefines,
+		GraphicId a_optionalProgramId)
 	{
-		std::vector<std::string> defines{ a_extraDefines.begin(), a_extraDefines.end() };
+		std::vector<std::string> defines{a_extraDefines.begin(), a_extraDefines.end()};
 		switch (a_modelType)
 		{
 		case ModelType::Rigged:
@@ -301,32 +303,32 @@ namespace vob::aoegl
 		setDefines(vertexShaderSource, defines);
 		processIncludes(vertexShaderSource);
 
-		auto fragmentShaderSource = std::string{ a_fragmentShaderSource };
+		auto fragmentShaderSource = std::string{a_fragmentShaderSource};
 		setDefines(fragmentShaderSource, defines);
 		processIncludes(fragmentShaderSource);
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
 	GraphicId createShadingProgram(
-		std::string_view a_partialSource
-		, std::span<std::string const> a_defines
-		, MaterialParamsLayout const& a_paramsLayout
-		, ShadingPass a_shadingPass
-		, ModelType a_modelType
-		, bool a_isAlphaMasked
-		, GraphicId a_optionalProgramId)
+		std::string_view a_partialSource,
+		std::span<std::string const> a_defines,
+		MaterialParamsLayout const& a_paramsLayout,
+		ShadingPass a_shadingPass,
+		ModelType a_modelType,
+		bool a_isAlphaMasked,
+		GraphicId a_optionalProgramId)
 	{
 		auto const shellPath = [a_shadingPass]
+		{
+			switch (a_shadingPass)
 			{
-				switch (a_shadingPass)
-				{
-				case ShadingPass::Opaque:
-					return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
-				default:
-					ignorable_assert(false && "No shell for this shading pass yet.");
-					return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
-				}
-			}();
+			case ShadingPass::Opaque:
+				return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+			default:
+				ignorable_assert(false && "No shell for this shading pass yet.");
+				return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+			}
+		}();
 
 		auto fragmentShaderSource = readFile(shellPath);
 		fragmentShaderSource += '\n';
@@ -334,32 +336,32 @@ namespace vob::aoegl
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_partialSource;
 
-		auto defines = std::vector<std::string>{ a_defines.begin(), a_defines.end() };
+		auto defines = std::vector<std::string>{a_defines.begin(), a_defines.end()};
 		if (a_isAlphaMasked)
 		{
 			defines.emplace_back("USE_ALPHA_MASK 1");
 		}
 
 		return createGeometryProgram(
-			fragmentShaderSource
-			, a_modelType
-			, true /* use shading */
-			, true /* use uv */
-			, false /* use normal */
-			, defines
-			, a_optionalProgramId);
+			fragmentShaderSource,
+			a_modelType,
+			true /* use shading */,
+			true /* use uv */,
+			false /* use normal */,
+			defines,
+			a_optionalProgramId);
 	}
 
 	namespace
 	{
 		GraphicId createAlphaMaskedGeometryProgram(
-			char const* a_shellPath
-			, std::string_view a_partialSource
-			, std::span<std::string const> a_defines
-			, MaterialParamsLayout const& a_paramsLayout
-			, ModelType a_modelType
-			, bool a_useNormal
-			, GraphicId a_optionalProgramId)
+			char const* a_shellPath,
+			std::string_view a_partialSource,
+			std::span<std::string const> a_defines,
+			MaterialParamsLayout const& a_paramsLayout,
+			ModelType a_modelType,
+			bool a_useNormal,
+			GraphicId a_optionalProgramId)
 		{
 			auto fragmentShaderSource = readFile(a_shellPath);
 			fragmentShaderSource += '\n';
@@ -367,17 +369,17 @@ namespace vob::aoegl
 			fragmentShaderSource += '\n';
 			fragmentShaderSource += a_partialSource;
 
-			auto defines = std::vector<std::string>{ a_defines.begin(), a_defines.end() };
+			auto defines = std::vector<std::string>{a_defines.begin(), a_defines.end()};
 			defines.emplace_back("USE_ALPHA_MASK 1");
 
 			return createGeometryProgram(
-				fragmentShaderSource
-				, a_modelType
-				, false /* use shading */
-				, true /* use uv */
-				, a_useNormal
-				, defines
-				, a_optionalProgramId);
+				fragmentShaderSource,
+				a_modelType,
+				false /* use shading */,
+				true /* use uv */,
+				a_useNormal,
+				defines,
+				a_optionalProgramId);
 		}
 	}
 
@@ -385,67 +387,67 @@ namespace vob::aoegl
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource
-			, a_modelType
-			, false /* use shading */
-			, false /* use uv */
-			, true /* use normal */
-			, {} /* extra defines */
-			, a_optionalProgramId);
+			fragmentShaderSource,
+			a_modelType,
+			false /* use shading */,
+			false /* use uv */,
+			true /* use normal */,
+			{} /* extra defines */,
+			a_optionalProgramId);
 	}
 
 	GraphicId createAlphaMaskedDepthProgram(
-		std::string_view a_partialSource
-		, std::span<std::string const> a_defines
-		, MaterialParamsLayout const& a_paramsLayout
-		, ModelType a_modelType
-		, GraphicId a_optionalProgramId)
+		std::string_view a_partialSource,
+		std::span<std::string const> a_defines,
+		MaterialParamsLayout const& a_paramsLayout,
+		ModelType a_modelType,
+		GraphicId a_optionalProgramId)
 	{
 		return createAlphaMaskedGeometryProgram(
-			VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl"
-			, a_partialSource
-			, a_defines
-			, a_paramsLayout
-			, a_modelType
-			, true /* use normal */
-			, a_optionalProgramId);
+			VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl",
+			a_partialSource,
+			a_defines,
+			a_paramsLayout,
+			a_modelType,
+			true /* use normal */,
+			a_optionalProgramId);
 	}
 
 	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
 		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource
-			, a_modelType
-			, false /* use shading */
-			, false /* use uv */
-			, false /* use normal */
-			, {} /* extra defines */
-			, a_optionalProgramId);
+			fragmentShaderSource,
+			a_modelType,
+			false /* use shading */,
+			false /* use uv */,
+			false /* use normal */,
+			{} /* extra defines */,
+			a_optionalProgramId);
 	}
 
 	GraphicId createAlphaMaskedShadowMapProgram(
-		std::string_view a_partialSource
-		, std::span<std::string const> a_defines
-		, MaterialParamsLayout const& a_paramsLayout
-		, ModelType a_modelType
-		, GraphicId a_optionalProgramId)
+		std::string_view a_partialSource,
+		std::span<std::string const> a_defines,
+		MaterialParamsLayout const& a_paramsLayout,
+		ModelType a_modelType,
+		GraphicId a_optionalProgramId)
 	{
 		return createAlphaMaskedGeometryProgram(
-			VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl"
-			, a_partialSource
-			, a_defines
-			, a_paramsLayout
-			, a_modelType
-			, false /* use normal */
-			, a_optionalProgramId);
+			VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl",
+			a_partialSource,
+			a_defines,
+			a_paramsLayout,
+			a_modelType,
+			false /* use normal */,
+			a_optionalProgramId);
 	}
 
 	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
 	{
 		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/quad_vertex_shader.glsl");
 
-		auto fragmentShaderSource = std::string{ a_fragmentShaderSource };
+		auto fragmentShaderSource = std::string{a_fragmentShaderSource};
 		processIncludes(fragmentShaderSource);
 
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);

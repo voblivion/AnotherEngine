@@ -14,130 +14,129 @@ namespace vob::aoegl
 		ImGuiKey toImGuiKey(vob::aoein::Keyboard::Key a_key)
 		{
 			constexpr std::array<ImGuiKey, std::to_underlying(vob::aoein::Keyboard::Key::count)> k_keyToImGuiKey{
-				ImGuiKey_A
-				, ImGuiKey_B
-				, ImGuiKey_C
-				, ImGuiKey_D
-				, ImGuiKey_E
-				, ImGuiKey_F
-				, ImGuiKey_G
-				, ImGuiKey_H
-				, ImGuiKey_I
-				, ImGuiKey_J
-				, ImGuiKey_K
-				, ImGuiKey_L
-				, ImGuiKey_M
-				, ImGuiKey_N
-				, ImGuiKey_O
-				, ImGuiKey_P
-				, ImGuiKey_Q
-				, ImGuiKey_R
-				, ImGuiKey_S
-				, ImGuiKey_T
-				, ImGuiKey_U
-				, ImGuiKey_V
-				, ImGuiKey_W
-				, ImGuiKey_X
-				, ImGuiKey_Y
-				, ImGuiKey_Z
-				, ImGuiKey_0
-				, ImGuiKey_1
-				, ImGuiKey_2
-				, ImGuiKey_3
-				, ImGuiKey_4
-				, ImGuiKey_5
-				, ImGuiKey_6
-				, ImGuiKey_7
-				, ImGuiKey_8
-				, ImGuiKey_9
-				, ImGuiKey_Escape
-				, ImGuiKey_LeftCtrl
-				, ImGuiKey_LeftShift
-				, ImGuiKey_LeftAlt
-				, ImGuiKey_None // LSystem
-				, ImGuiKey_RightCtrl
-				, ImGuiKey_RightShift
-				, ImGuiKey_RightAlt
-				, ImGuiKey_None // RSystem
-				, ImGuiKey_Menu
-				, ImGuiKey_LeftBracket
-				, ImGuiKey_RightBracket
-				, ImGuiKey_GraveAccent
-				, ImGuiKey_Semicolon
-				, ImGuiKey_Comma
-				, ImGuiKey_Period
-				, ImGuiKey_Apostrophe // Quote
-				, ImGuiKey_Slash
-				, ImGuiKey_Backslash
-				, ImGuiKey_None // Tilde
-				, ImGuiKey_Equal
-				, ImGuiKey_None // Hyphen
-				, ImGuiKey_Space
-				, ImGuiKey_Enter
-				, ImGuiKey_Backspace
-				, ImGuiKey_Tab
-				, ImGuiKey_PageUp
-				, ImGuiKey_PageDown
-				, ImGuiKey_End
-				, ImGuiKey_Home
-				, ImGuiKey_Insert
-				, ImGuiKey_Delete
-				, ImGuiKey_None // Add
-				, ImGuiKey_None // Subtract
-				, ImGuiKey_None // Multiply
-				, ImGuiKey_None // Divide
-				, ImGuiKey_LeftArrow
-				, ImGuiKey_RightArrow
-				, ImGuiKey_UpArrow
-				, ImGuiKey_DownArrow
-				, ImGuiKey_None // Numpad0
-				, ImGuiKey_None // Numpad1
-				, ImGuiKey_None // Numpad2
-				, ImGuiKey_None // Numpad3
-				, ImGuiKey_None // Numpad4
-				, ImGuiKey_None // Numpad5
-				, ImGuiKey_None // Numpad6
-				, ImGuiKey_None // Numpad7
-				, ImGuiKey_None // Numpad8
-				, ImGuiKey_None // Numpad9
-				, ImGuiKey_None // NumpadDecimal
-				, ImGuiKey_None // NumpadDivide
-				, ImGuiKey_None // NumpadMultiply
-				, ImGuiKey_None // NumpadSubstract
-				, ImGuiKey_None // NumpadAdd
-				, ImGuiKey_None // NumpadEnter
-				, ImGuiKey_None // NumpadEqual
-				, ImGuiKey_F1
-				, ImGuiKey_F2
-				, ImGuiKey_F3
-				, ImGuiKey_F4
-				, ImGuiKey_F5
-				, ImGuiKey_F6
-				, ImGuiKey_F7
-				, ImGuiKey_F8
-				, ImGuiKey_F9
-				, ImGuiKey_F10
-				, ImGuiKey_F11
-				, ImGuiKey_F12
-				, ImGuiKey_F13
-				, ImGuiKey_F14
-				, ImGuiKey_F15
-				, ImGuiKey_F16
-				, ImGuiKey_F17
-				, ImGuiKey_F18
-				, ImGuiKey_F19
-				, ImGuiKey_F20
-				, ImGuiKey_F21
-				, ImGuiKey_F22
-				, ImGuiKey_F23
-				, ImGuiKey_F24
-				, ImGuiKey_None // F25
-				, ImGuiKey_Pause
-				, ImGuiKey_CapsLock
-				, ImGuiKey_ScrollLock
-				, ImGuiKey_NumLock
-				, ImGuiKey_PrintScreen
-			};
+				ImGuiKey_A,
+				ImGuiKey_B,
+				ImGuiKey_C,
+				ImGuiKey_D,
+				ImGuiKey_E,
+				ImGuiKey_F,
+				ImGuiKey_G,
+				ImGuiKey_H,
+				ImGuiKey_I,
+				ImGuiKey_J,
+				ImGuiKey_K,
+				ImGuiKey_L,
+				ImGuiKey_M,
+				ImGuiKey_N,
+				ImGuiKey_O,
+				ImGuiKey_P,
+				ImGuiKey_Q,
+				ImGuiKey_R,
+				ImGuiKey_S,
+				ImGuiKey_T,
+				ImGuiKey_U,
+				ImGuiKey_V,
+				ImGuiKey_W,
+				ImGuiKey_X,
+				ImGuiKey_Y,
+				ImGuiKey_Z,
+				ImGuiKey_0,
+				ImGuiKey_1,
+				ImGuiKey_2,
+				ImGuiKey_3,
+				ImGuiKey_4,
+				ImGuiKey_5,
+				ImGuiKey_6,
+				ImGuiKey_7,
+				ImGuiKey_8,
+				ImGuiKey_9,
+				ImGuiKey_Escape,
+				ImGuiKey_LeftCtrl,
+				ImGuiKey_LeftShift,
+				ImGuiKey_LeftAlt,
+				ImGuiKey_None, // LSystem
+				ImGuiKey_RightCtrl,
+				ImGuiKey_RightShift,
+				ImGuiKey_RightAlt,
+				ImGuiKey_None, // RSystem
+				ImGuiKey_Menu,
+				ImGuiKey_LeftBracket,
+				ImGuiKey_RightBracket,
+				ImGuiKey_GraveAccent,
+				ImGuiKey_Semicolon,
+				ImGuiKey_Comma,
+				ImGuiKey_Period,
+				ImGuiKey_Apostrophe, // Quote
+				ImGuiKey_Slash,
+				ImGuiKey_Backslash,
+				ImGuiKey_None, // Tilde
+				ImGuiKey_Equal,
+				ImGuiKey_None, // Hyphen
+				ImGuiKey_Space,
+				ImGuiKey_Enter,
+				ImGuiKey_Backspace,
+				ImGuiKey_Tab,
+				ImGuiKey_PageUp,
+				ImGuiKey_PageDown,
+				ImGuiKey_End,
+				ImGuiKey_Home,
+				ImGuiKey_Insert,
+				ImGuiKey_Delete,
+				ImGuiKey_None, // Add
+				ImGuiKey_None, // Subtract
+				ImGuiKey_None, // Multiply
+				ImGuiKey_None, // Divide
+				ImGuiKey_LeftArrow,
+				ImGuiKey_RightArrow,
+				ImGuiKey_UpArrow,
+				ImGuiKey_DownArrow,
+				ImGuiKey_None, // Numpad0
+				ImGuiKey_None, // Numpad1
+				ImGuiKey_None, // Numpad2
+				ImGuiKey_None, // Numpad3
+				ImGuiKey_None, // Numpad4
+				ImGuiKey_None, // Numpad5
+				ImGuiKey_None, // Numpad6
+				ImGuiKey_None, // Numpad7
+				ImGuiKey_None, // Numpad8
+				ImGuiKey_None, // Numpad9
+				ImGuiKey_None, // NumpadDecimal
+				ImGuiKey_None, // NumpadDivide
+				ImGuiKey_None, // NumpadMultiply
+				ImGuiKey_None, // NumpadSubstract
+				ImGuiKey_None, // NumpadAdd
+				ImGuiKey_None, // NumpadEnter
+				ImGuiKey_None, // NumpadEqual
+				ImGuiKey_F1,
+				ImGuiKey_F2,
+				ImGuiKey_F3,
+				ImGuiKey_F4,
+				ImGuiKey_F5,
+				ImGuiKey_F6,
+				ImGuiKey_F7,
+				ImGuiKey_F8,
+				ImGuiKey_F9,
+				ImGuiKey_F10,
+				ImGuiKey_F11,
+				ImGuiKey_F12,
+				ImGuiKey_F13,
+				ImGuiKey_F14,
+				ImGuiKey_F15,
+				ImGuiKey_F16,
+				ImGuiKey_F17,
+				ImGuiKey_F18,
+				ImGuiKey_F19,
+				ImGuiKey_F20,
+				ImGuiKey_F21,
+				ImGuiKey_F22,
+				ImGuiKey_F23,
+				ImGuiKey_F24,
+				ImGuiKey_None, // F25
+				ImGuiKey_Pause,
+				ImGuiKey_CapsLock,
+				ImGuiKey_ScrollLock,
+				ImGuiKey_NumLock,
+				ImGuiKey_PrintScreen};
 
 			auto const keyIndex = std::to_underlying(a_key);
 			if (keyIndex < 0 || keyIndex >= std::to_underlying(vob::aoein::Keyboard::Key::count))
@@ -163,7 +162,8 @@ namespace vob::aoegl
 		void processEvent(vob::aoewi::MouseMoveEvent const& a_mouseMoveEvent)
 		{
 			ImGuiIO& io = ImGui::GetIO();
-			io.AddMousePosEvent(static_cast<float>(a_mouseMoveEvent.position.x), static_cast<float>(a_mouseMoveEvent.position.y));
+			io.AddMousePosEvent(
+				static_cast<float>(a_mouseMoveEvent.position.x), static_cast<float>(a_mouseMoveEvent.position.y));
 		}
 
 		void processEvent(vob::aoewi::MouseButtonEvent const& a_mouseButtonEvent)
@@ -184,21 +184,26 @@ namespace vob::aoegl
 			io.AddFocusEvent(a_mouseHoverEvent.entered);
 		}
 
-		void processEvent(
-			[[maybe_unused]] vob::aoewi::DisplayModeChangedEvent const& a_displayModeChangedEvent)
-		{}
+		void processEvent([[maybe_unused]] vob::aoewi::DisplayModeChangedEvent const& a_displayModeChangedEvent)
+		{
+		}
 
 		void processEvents(vob::aoewi::IWindow& a_window)
 		{
 			for (auto const& polledEvent : a_window.getPolledEvents())
 			{
-				std::visit([](auto const& a_event) { processEvent(a_event); }, polledEvent);
+				std::visit(
+					[](auto const& a_event)
+					{
+						processEvent(a_event);
+					},
+					polledEvent);
 			}
 		}
 
 		void processGamepad(vob::aoewi::IWindow const& a_window)
 		{
-			constexpr auto k_gamepadIndex = int32_t{ 0 };
+			constexpr auto k_gamepadIndex = int32_t{0};
 			constexpr auto k_navDeadZone = 0.55f;
 
 			if (!a_window.isGamepadPresent(k_gamepadIndex))
@@ -210,13 +215,13 @@ namespace vob::aoegl
 			io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
 
 			auto const isPressed = [&](vob::aoein::Gamepad::Button a_button)
-				{
-					return a_window.isGamepadButtonPressed(k_gamepadIndex, a_button);
-				};
+			{
+				return a_window.isGamepadButtonPressed(k_gamepadIndex, a_button);
+			};
 			auto const addButton = [&](ImGuiKey a_key, vob::aoein::Gamepad::Button a_button)
-				{
-					io.AddKeyEvent(a_key, isPressed(a_button));
-				};
+			{
+				io.AddKeyEvent(a_key, isPressed(a_button));
+			};
 
 			addButton(ImGuiKey_GamepadFaceDown, vob::aoein::Gamepad::Button::A);
 			addButton(ImGuiKey_GamepadFaceRight, vob::aoein::Gamepad::Button::B);
@@ -229,11 +234,10 @@ namespace vob::aoegl
 
 			auto const stickX = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LX);
 			auto const stickY = a_window.getGamepadAxisValue(k_gamepadIndex, vob::aoein::Gamepad::Axis::LY);
-			auto const addDirection = [&](
-				ImGuiKey a_key, vob::aoein::Gamepad::Button a_button, bool a_isStickPushed)
-				{
-					io.AddKeyEvent(a_key, a_isStickPushed || isPressed(a_button));
-				};
+			auto const addDirection = [&](ImGuiKey a_key, vob::aoein::Gamepad::Button a_button, bool a_isStickPushed)
+			{
+				io.AddKeyEvent(a_key, a_isStickPushed || isPressed(a_button));
+			};
 
 			addDirection(ImGuiKey_GamepadDpadLeft, vob::aoein::Gamepad::Button::Left, stickX < -k_navDeadZone);
 			addDirection(ImGuiKey_GamepadDpadRight, vob::aoein::Gamepad::Button::Right, stickX > k_navDeadZone);

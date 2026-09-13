@@ -10,21 +10,22 @@ namespace vob::aoegl
 	template <auto TDeleteQueuePush>
 	class GpuResource
 	{
-	public:
+	  public:
 		GpuResource() = default;
 
 		GpuResource(GpuDeleteQueue& a_deleteQueue, GraphicId const a_id)
-			: m_deleteQueue{ &a_deleteQueue }
-			, m_id{ a_id }
-		{}
+			: m_deleteQueue{&a_deleteQueue}, m_id{a_id}
+		{
+		}
 
 		GpuResource(GpuResource const&) = delete;
 		GpuResource& operator=(GpuResource const&) = delete;
 
 		GpuResource(GpuResource&& a_other) noexcept
-			: m_deleteQueue{ std::exchange(a_other.m_deleteQueue, nullptr) }
-			, m_id{ std::exchange(a_other.m_id, k_invalidId) }
-		{}
+			: m_deleteQueue{std::exchange(a_other.m_deleteQueue, nullptr)},
+			  m_id{std::exchange(a_other.m_id, k_invalidId)}
+		{
+		}
 
 		GpuResource& operator=(GpuResource&& a_other) noexcept
 		{
@@ -47,7 +48,7 @@ namespace vob::aoegl
 			return m_id;
 		}
 
-	private:
+	  private:
 		GpuDeleteQueue* m_deleteQueue = nullptr;
 		GraphicId m_id = k_invalidId;
 

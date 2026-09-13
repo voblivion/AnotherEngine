@@ -12,8 +12,8 @@ namespace vob::aoegl
 			[a_paramsUbo, &a_slot](auto& a_typedValue)
 			{
 				glGetNamedBufferSubData(a_paramsUbo, a_slot.offset, sizeof(a_typedValue), &a_typedValue);
-			}
-			, value);
+			},
+			value);
 
 		return value;
 	}
@@ -30,7 +30,7 @@ namespace vob::aoegl
 			[a_paramsUbo, &a_slot](auto const& a_typedValue)
 			{
 				glNamedBufferSubData(a_paramsUbo, a_slot.offset, sizeof(a_typedValue), &a_typedValue);
-			}
-			, a_value);
+			},
+			a_value);
 	}
 }

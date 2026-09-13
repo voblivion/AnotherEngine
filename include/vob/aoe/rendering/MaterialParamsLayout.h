@@ -32,7 +32,7 @@ namespace vob::aoegl
 	std::string generateMaterialParamsBlockSource(MaterialParamsLayout const& a_layout);
 
 	std::vector<std::byte> packMaterialParams(
-		MaterialParamsLayout const& a_layout
-		, UniformValueMap const& a_uniformDefaults
-		, UniformValueMap const& a_uniformValues);
+		MaterialParamsLayout const& a_layout,
+		UniformValueMap const& a_uniformDefaults,
+		UniformValueMap const& a_uniformValues);
 }

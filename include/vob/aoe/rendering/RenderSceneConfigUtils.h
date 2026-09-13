@@ -11,8 +11,8 @@ namespace vob::aoegl
 {
 	inline int32_t computeFullMipChainLength(glm::ivec2 a_resolution)
 	{
-		return 1 + static_cast<int32_t>(std::floor(std::log2(
-			static_cast<float>(std::max(a_resolution.x, a_resolution.y)))));
+		return 1
+			+ static_cast<int32_t>(std::floor(std::log2(static_cast<float>(std::max(a_resolution.x, a_resolution.y)))));
 	}
 
 	inline int32_t computeBloomMinMipWidth(RenderSceneConfig::Bloom const& a_config)
@@ -25,13 +25,11 @@ namespace vob::aoegl
 		return std::clamp(a_config.spotCount, 0, k_spotLightShadowMapsCapacity);
 	}
 
-	inline glm::ivec2 computeSpotShadowMapResolution(
-		RenderSceneConfig::Shadow const& a_config
-		, int32_t a_slotIndex)
+	inline glm::ivec2 computeSpotShadowMapResolution(RenderSceneConfig::Shadow const& a_config, int32_t a_slotIndex)
 	{
 		auto const bucketSize = std::max(a_config.spotBucketSize, 1);
 		auto const shift = a_slotIndex / bucketSize;
-		return glm::max(a_config.spotMaxResolution >> glm::ivec2{ shift }, a_config.spotMinResolution);
+		return glm::max(a_config.spotMaxResolution >> glm::ivec2{shift}, a_config.spotMinResolution);
 	}
 
 	inline UniformSsaoParams createUniformSsaoParams(RenderSceneConfig::Ssao const& a_config)
@@ -43,8 +41,7 @@ namespace vob::aoegl
 			.falloffStart = a_config.falloffStart,
 			.intensity = a_config.intensity,
 			.maxRadiusScreenFraction = a_config.maxRadiusScreenFraction,
-			.depthTolerance = a_config.depthTolerance
-		};
+			.depthTolerance = a_config.depthTolerance};
 	}
 
 	inline UniformSsrParams createUniformSsrParams(RenderSceneConfig::Ssr const& a_config)
@@ -58,13 +55,10 @@ namespace vob::aoegl
 			.penetrationBlockedRatio = a_config.penetrationBlockedRatio,
 			.penetrationThroughRatio = a_config.penetrationThroughRatio,
 			.debugPenetration = a_config.debugPenetration ? 1 : 0,
-			.isEnabled = a_config.isEnabled ? 1 : 0
-		};
+			.isEnabled = a_config.isEnabled ? 1 : 0};
 	}
 
-	inline UniformBloomParams createUniformBloomParams(
-		RenderSceneConfig::Bloom const& a_config
-		, int32_t a_mipCount)
+	inline UniformBloomParams createUniformBloomParams(RenderSceneConfig::Bloom const& a_config, int32_t a_mipCount)
 	{
 		auto const mipCount = static_cast<float>(a_mipCount);
 		return UniformBloomParams{
@@ -74,8 +68,7 @@ namespace vob::aoegl
 			.useKarisAverage = a_config.useKarisAverage ? 1 : 0,
 			.totalWeight = std::abs(1.0f - a_config.scatter) < 1e-4f
 				? mipCount
-				: (1.0f - std::pow(a_config.scatter, mipCount)) / (1.0f - a_config.scatter)
-		};
+				: (1.0f - std::pow(a_config.scatter, mipCount)) / (1.0f - a_config.scatter)};
 	}
 
 	inline UniformTonemapParams createUniformTonemapParams(RenderSceneConfig::Tonemap const& a_config)
@@ -84,7 +77,6 @@ namespace vob::aoegl
 			.colorFilter = a_config.colorFilter,
 			.exposure = a_config.exposure,
 			.contrast = a_config.contrast,
-			.saturation = a_config.saturation
-		};
+			.saturation = a_config.saturation};
 	}
 }

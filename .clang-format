@@ -7,6 +7,7 @@ TabWidth: 4
 IndentWidth: 4
 ContinuationIndentWidth: 4
 ColumnLimit: 120
+MaxEmptyLinesToKeep: 2
 
 BreakBeforeBraces: Custom
 BraceWrapping:
@@ -42,7 +43,7 @@ DerivePointerAlignment: false
 SpaceBeforeParens: ControlStatements
 SpaceAfterTemplateKeyword: true
 SpaceBeforeCpp11BracedList: false
-Cpp11BracedListStyle: false
+Cpp11BracedListStyle: true
 
 IndentCaseLabels: false
 NamespaceIndentation: All
@@ -52,6 +53,7 @@ SortIncludes: CaseInsensitive
 IncludeBlocks: Preserve
 
 BinPackArguments: false
+BinPackLongBracedList: false
 LambdaBodyIndentation: Signature
 PackConstructorInitializers: NextLineOnly
 AlignOperands: DontAlign
@@ -59,4 +61,5 @@ BinPackParameters: false
 AlignAfterOpenBracket: AlwaysBreak
 AlignTrailingComments: Never
 BreakBeforeBinaryOperators: NonAssignment
+BreakTemplateDeclarations: Yes
 PenaltyReturnTypeOnItsOwnLine: 10000

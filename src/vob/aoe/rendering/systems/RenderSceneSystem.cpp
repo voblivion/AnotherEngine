@@ -65,46 +65,54 @@ namespace vob::aoegl
 		UniformGlobalParams createGlobalParams(aoest::TimeContext const& a_timeCtx)
 		{
 			return UniformGlobalParams{
-				.worldTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - a_timeCtx.worldStartTime).count()
-			};
+				.worldTime =
+					std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - a_timeCtx.worldStartTime)
+						.count()};
 		}
 
 		std::pair<UniformViewParams, glm::dvec3> createViewParams(
 			aoewi::WindowContext const& a_windowCtx,
 			entt::entity a_cameraEntity,
-			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const>> a_cameraEntities)
+			entt::view<
+				entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, CameraComponent const>>
+				a_cameraEntities)
 		{
 			auto const displayResolution = a_windowCtx.window.get().getSize();
 			auto const aspectRatio = static_cast<float>(displayResolution.x) / displayResolution.y;
 
-			auto const [realCameraPosition, rotation, nearClip, farClip, fov] = getCameraProperties(a_cameraEntities, a_cameraEntity);
-			
+			auto const [realCameraPosition, rotation, nearClip, farClip, fov] =
+				getCameraProperties(a_cameraEntities, a_cameraEntity);
+
 			auto const worldOriginPosition = 1024.0 * glm::floor(realCameraPosition / 1024.0);
-			auto const cameraPosition = glm::vec3{ realCameraPosition - worldOriginPosition };
-			
+			auto const cameraPosition = glm::vec3{realCameraPosition - worldOriginPosition};
+
 			auto const viewToWorld = aoest::combine(cameraPosition, rotation);
 			auto const worldToView = glm::inverse(viewToWorld);
 			auto const viewToClip = glm::perspective(fov, aspectRatio, nearClip, farClip);
 			auto const worldToClip = viewToClip * worldToView;
 			auto const clipToView = glm::inverse(viewToClip);
-			
-			return std::make_pair(UniformViewParams{
-				.worldToView = worldToView,
-				.viewToClip = viewToClip,
-				.worldToClip = worldToClip,
-				.clipToView = clipToView,
-				.viewToWorld = viewToWorld,
-				.nearClip = nearClip,
-				.farClip = farClip,
-				.fov = fov,
-				.aspectRatio = aspectRatio
-			}, worldOriginPosition);
+
+			return std::make_pair(
+				UniformViewParams{
+					.worldToView = worldToView,
+					.viewToClip = viewToClip,
+					.worldToClip = worldToClip,
+					.clipToView = clipToView,
+					.viewToWorld = viewToWorld,
+					.nearClip = nearClip,
+					.farClip = farClip,
+					.fov = fov,
+					.aspectRatio = aspectRatio},
+				worldOriginPosition);
 		}
 
 		template <typename TMesh, typename TGetProgram>
 		void sortCulledMeshes(std::vector<TMesh>& a_meshes, TGetProgram a_getProgram)
 		{
-			std::sort(a_meshes.begin(), a_meshes.end(), [a_getProgram](TMesh const& a_lhs, TMesh const& a_rhs)
+			std::sort(
+				a_meshes.begin(),
+				a_meshes.end(),
+				[a_getProgram](TMesh const& a_lhs, TMesh const& a_rhs)
 				{
 					if (a_getProgram(a_lhs) != a_getProgram(a_rhs))
 					{
@@ -123,7 +131,9 @@ namespace vob::aoegl
 			ViewFrustumPlanes const& a_viewFrustumPlanes,
 			glm::vec3 const& a_cameraPosition,
 			glm::vec3 const& a_cameraForward,
-			entt::view<entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>> a_lightEntities,
+			entt::view<
+				entt::get_t<aoest::PositionComponent const, aoest::RotationComponent const, LightComponent const>>
+				a_lightEntities,
 			int32_t a_lightsCapacity,
 			glm::ivec2 const& a_lightClusterResolution,
 			glm::ivec2 const& a_lightClusterTileSize,
@@ -140,7 +150,8 @@ namespace vob::aoegl
 			bool a_isAmbientOcclusionEnabled,
 			float a_ambientOcclusionDepthTolerance,
 			[[maybe_unused]] float a_elapsedTime,
-			mistd::bounded_vector<RenderSceneContext::SpotLightShadowFade, k_spotLightShadowMapsCapacity>& o_spotLightShadowFades,
+			mistd::bounded_vector<RenderSceneContext::SpotLightShadowFade, k_spotLightShadowMapsCapacity>&
+				o_spotLightShadowFades,
 			std::vector<GpuLight>& o_gpuLights)
 		{
 			// TODO: remove magic
@@ -150,7 +161,7 @@ namespace vob::aoegl
 			shadowCasterLights.clear();
 			for (auto const [entity, positionCmp, rotationCmp, lightCmp] : a_lightEntities.each())
 			{
-				auto const position = glm::vec3{ positionCmp.value - a_worldOriginPosition };
+				auto const position = glm::vec3{positionCmp.value - a_worldOriginPosition};
 				auto const isSpot = lightCmp.type == LightType::Spot;
 				auto const halfAngle = std::min(lightCmp.outerAngle, 0.5f * std::numbers::pi_v<float> - 1e-3f);
 
@@ -161,7 +172,7 @@ namespace vob::aoegl
 				if (isSpot)
 				{
 					auto const baseRadius = lightCmp.radius * std::tan(halfAngle);
-					auto const direction = rotationCmp.value * glm::vec3{ 0.0f, 0.0f, -1.0f };
+					auto const direction = rotationCmp.value * glm::vec3{0.0f, 0.0f, -1.0f};
 					if (baseRadius >= lightCmp.radius)
 					{
 						litCenter = position + direction * lightCmp.radius;
@@ -183,15 +194,12 @@ namespace vob::aoegl
 				auto const toLit = litCenter - a_cameraPosition;
 				auto const distanceSquared = std::max(glm::dot(toLit, toLit), 1e-4f);
 				auto const projectedSizeSquared = litRadius * litRadius / distanceSquared;
-				auto const luminance =
-					glm::dot(lightCmp.color, glm::vec3{ 0.299f, 0.587f, 0.114f }) * lightCmp.intensity;
+				auto const luminance = glm::dot(lightCmp.color, glm::vec3{0.299f, 0.587f, 0.114f}) * lightCmp.intensity;
 				// how much of that sphere the cone actually fills, by silhouette area
-				auto const thinness = isSpot
-					? glm::clamp(4.0f * std::tan(halfAngle) / std::numbers::pi_v<float>, 0.0f, 1.0f)
-					: 1.0f;
+				auto const thinness =
+					isSpot ? glm::clamp(4.0f * std::tan(halfAngle) / std::numbers::pi_v<float>, 0.0f, 1.0f) : 1.0f;
 				auto const forwardDistance = glm::dot(toLit, a_cameraForward);
-				auto const visibleFraction = glm::clamp(
-					(forwardDistance + litRadius) / (2.0f * litRadius), 0.0f, 1.0f);
+				auto const visibleFraction = glm::clamp((forwardDistance + litRadius) / (2.0f * litRadius), 0.0f, 1.0f);
 				auto const importance = luminance * projectedSizeSquared * thinness * visibleFraction;
 
 				culledLights.emplace_back(importance, position, rotationCmp.value, entity, &lightCmp);
@@ -201,7 +209,13 @@ namespace vob::aoegl
 					shadowCasterLights.emplace_back(importance, position, rotationCmp.value, entity, &lightCmp);
 				}
 			}
-			std::sort(culledLights.begin(), culledLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
+			std::sort(
+				culledLights.begin(),
+				culledLights.end(),
+				[](auto const& lhs, auto const& rhs)
+				{
+					return lhs.importance > rhs.importance;
+				});
 			auto const lightingParams = UniformLightingParams{
 				.ambientIntensity = 1.0f,
 				.lightCount = std::min(mistd::isize(culledLights), a_lightsCapacity),
@@ -209,24 +223,23 @@ namespace vob::aoegl
 				.lightClusterTileSize = a_lightClusterTileSize,
 				.lightClusterZCount = a_lightClusterZCount,
 				.lightClusterCapacity = a_lightClusterCapacity,
-				.sunColor = glm::vec3{ 1.0f, 0.5f, 0.4f },
+				.sunColor = glm::vec3{1.0f, 0.5f, 0.4f},
 				.sunIntensity = 3.0f,
 				.sunDir = a_sunDir,
 				.isAmbientOcclusionEnabled = a_isAmbientOcclusionEnabled ? 1 : 0,
-				.ambientOcclusionDepthTolerance = a_ambientOcclusionDepthTolerance
-			};
+				.ambientOcclusionDepthTolerance = a_ambientOcclusionDepthTolerance};
 
 			auto shadowParams = UniformShadowParams{};
 
 			auto const sunZ = -glm::normalize(a_sunDir);
-			auto const sunX = glm::normalize(glm::cross(
-				std::abs(sunZ.y) < 0.9f ? glm::vec3{ 0.0f, 1.0f, 0.0f } : glm::vec3{ 0.0f, 0.0f, 1.0f }, sunZ));
+			auto const sunX = glm::normalize(
+				glm::cross(std::abs(sunZ.y) < 0.9f ? glm::vec3{0.0f, 1.0f, 0.0f} : glm::vec3{0.0f, 0.0f, 1.0f}, sunZ));
 			auto const sunY = glm::cross(sunZ, sunX);
-			auto const sunWorldToView = glm::mat4(glm::transpose(glm::mat3{ sunX, sunY, sunZ }));
+			auto const sunWorldToView = glm::mat4(glm::transpose(glm::mat3{sunX, sunY, sunZ}));
 			auto const clipZ = [&a_nearClip, &a_farClip](auto const a_clip)
-				{
-					return (a_nearClip + a_farClip - 2.0f * a_nearClip * a_farClip / a_clip) / (a_farClip - a_nearClip);
-				};
+			{
+				return (a_nearClip + a_farClip - 2.0f * a_nearClip * a_farClip / a_clip) / (a_farClip - a_nearClip);
+			};
 			auto nearZ = clipZ(a_nearClip);
 			for (auto i = 0; i < mistd::isize(a_sunFarClips); ++i)
 			{
@@ -242,9 +255,9 @@ namespace vob::aoegl
 				{
 					for (auto y : {-1.0f, 1.0f})
 					{
-						auto const nearPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{ x, y, nearZ });
-						auto const farPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{ x, y, farZ });
-						for (auto const& point : { nearPoint, farPoint })
+						auto const nearPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{x, y, nearZ});
+						auto const farPoint = aoest::transformPositionSkewed(a_clipToWorld, glm::vec3{x, y, farZ});
+						for (auto const& point : {nearPoint, farPoint})
 						{
 							minX = std::min(minX, glm::dot(point, sunX));
 							maxX = std::max(maxX, glm::dot(point, sunX));
@@ -267,11 +280,7 @@ namespace vob::aoegl
 				auto const sunWorldToClip = sunViewToClip * sunWorldToView;
 
 				shadowParams.sun[i] = GpuSunCascadingShadow{
-					.worldToClip = sunWorldToClip,
-					.maxViewDepth = farClip,
-					.nearClip = minZ,
-					.farClip = maxZ
-				};
+					.worldToClip = sunWorldToClip, .maxViewDepth = farClip, .nearClip = minZ, .farClip = maxZ};
 
 				nearZ = farZ;
 			}
@@ -287,8 +296,16 @@ namespace vob::aoegl
 			static float k_fimi = 0.5f;
 			static float k_fima = 2.0f;
 
-			std::sort(shadowCasterLights.begin(), shadowCasterLights.end(), [](auto const& lhs, auto const& rhs) { return lhs.importance > rhs.importance; });
-			auto const desiredCutImportance = mistd::isize(shadowCasterLights) <= a_spotShadowMapCapacity ? 0.0f : shadowCasterLights[a_spotShadowMapCapacity].importance;
+			std::sort(
+				shadowCasterLights.begin(),
+				shadowCasterLights.end(),
+				[](auto const& lhs, auto const& rhs)
+				{
+					return lhs.importance > rhs.importance;
+				});
+			auto const desiredCutImportance = mistd::isize(shadowCasterLights) <= a_spotShadowMapCapacity
+				? 0.0f
+				: shadowCasterLights[a_spotShadowMapCapacity].importance;
 			auto highestPendingImportance = -1.0f;
 			// A. resident casters move towards their fade target
 			// this makes casters close to being replaced be slightly faded
@@ -298,10 +315,15 @@ namespace vob::aoegl
 				auto it = std::find_if(
 					o_spotLightShadowFades.begin(),
 					o_spotLightShadowFades.end(),
-					[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+					[entity](auto const& spotLightShadowFade)
+					{
+						return spotLightShadowFade.entity == entity;
+					});
 				if (it != o_spotLightShadowFades.end())
 				{
-					auto const r = desiredCutImportance > 0.0f ? std::log2(shadowCasterLights[i].importance / desiredCutImportance) : std::max(k_tk, k_fik);
+					auto const r = desiredCutImportance > 0.0f
+						? std::log2(shadowCasterLights[i].importance / desiredCutImportance)
+						: std::max(k_tk, k_fik);
 					auto const t = glm::smoothstep(0.0f, k_tk, r);
 					auto const v = k_fimi + (k_fima - k_fimi) * glm::smoothstep(0.0f, k_fik, r);
 					if (it->fade < t)
@@ -327,11 +349,13 @@ namespace vob::aoegl
 				auto it = std::find_if(
 					shadowCasterLights.begin(),
 					shadowCasterLights.end(),
-					[entity](auto const& shadowCasterLight) { return shadowCasterLight.entity == entity; });
+					[entity](auto const& shadowCasterLight)
+					{
+						return shadowCasterLight.entity == entity;
+					});
 				if (it == shadowCasterLights.end())
 				{
-					o_spotLightShadowFades[i] =
-						o_spotLightShadowFades[mistd::isize(o_spotLightShadowFades) - 1];
+					o_spotLightShadowFades[i] = o_spotLightShadowFades[mistd::isize(o_spotLightShadowFades) - 1];
 					o_spotLightShadowFades.pop_back();
 				}
 			}
@@ -341,7 +365,10 @@ namespace vob::aoegl
 				auto it = std::find_if(
 					o_spotLightShadowFades.begin(),
 					o_spotLightShadowFades.end(),
-					[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+					[entity](auto const& spotLightShadowFade)
+					{
+						return spotLightShadowFade.entity == entity;
+					});
 				if (it != o_spotLightShadowFades.end())
 				{
 					auto const r = std::log2(highestPendingImportance / shadowCasterLights[i].importance);
@@ -363,7 +390,10 @@ namespace vob::aoegl
 					auto it = std::find_if(
 						o_spotLightShadowFades.begin(),
 						o_spotLightShadowFades.end(),
-						[entity](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == entity; });
+						[entity](auto const& spotLightShadowFade)
+						{
+							return spotLightShadowFade.entity == entity;
+						});
 					if (it != o_spotLightShadowFades.end())
 					{
 						continue;
@@ -392,7 +422,7 @@ namespace vob::aoegl
 					culledLight.lightComponent->radius,
 					culledLight.lightComponent->color,
 					culledLight.lightComponent->intensity,
-					culledLight.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f },
+					culledLight.rotation * glm::vec3{0.0f, 0.0f, -1.0f},
 					isPointLight ? 0 : 1,
 					spotOuterAngleCos,
 					spotInnerAngleCos,
@@ -403,17 +433,22 @@ namespace vob::aoegl
 					auto const it = std::find_if(
 						o_spotLightShadowFades.begin(),
 						o_spotLightShadowFades.end(),
-						[&culledLight](auto const& spotLightShadowFade) { return spotLightShadowFade.entity == culledLight.entity; });
+						[&culledLight](auto const& spotLightShadowFade)
+						{
+							return spotLightShadowFade.entity == culledLight.entity;
+						});
 					if (it != o_spotLightShadowFades.end())
 					{
 						auto const spotLightShadowMapIndex = spotLightShadowMapCount++;
 						o_gpuLights.back().shadowMapIndex = spotLightShadowMapIndex;
 
 						auto const& lightCmp = *culledLight.lightComponent;
-						auto const lightViewToClip = glm::perspective(2.0f * lightCmp.outerAngle, 1.0f, lightCmp.nearClip, lightCmp.radius);
-						auto const lightForward = culledLight.rotation * glm::vec3{ 0.0f, 0.0f, -1.0f };
-						auto const lightUp = culledLight.rotation * glm::vec3{ 0.0f, 1.0f, 0.0f };
-						auto const worldToLightView = glm::lookAt(culledLight.position, culledLight.position + lightForward, lightUp);
+						auto const lightViewToClip =
+							glm::perspective(2.0f * lightCmp.outerAngle, 1.0f, lightCmp.nearClip, lightCmp.radius);
+						auto const lightForward = culledLight.rotation * glm::vec3{0.0f, 0.0f, -1.0f};
+						auto const lightUp = culledLight.rotation * glm::vec3{0.0f, 1.0f, 0.0f};
+						auto const worldToLightView =
+							glm::lookAt(culledLight.position, culledLight.position + lightForward, lightUp);
 						auto const lightViewToWorld = glm::inverse(worldToLightView);
 
 						shadowParams.spotLights[spotLightShadowMapIndex] = GpuSpotLightShadow{
@@ -423,39 +458,34 @@ namespace vob::aoegl
 							.size = lightCmp.size,
 							.fov = 2.0f * lightCmp.outerAngle,
 							.shadowFade = it->fade,
-							.viewToWorld = lightViewToWorld
-						};
+							.viewToWorld = lightViewToWorld};
 					}
 				}
 			}
 
-			return { lightingParams, shadowParams, spotLightShadowMapCount };
+			return {lightingParams, shadowParams, spotLightShadowMapCount};
 		}
 
 		void beginPass(
-			GpuState& a_gpuState
-			, GraphicId a_framebuffer
-			, glm::ivec2 a_resolution
-			, GraphicId a_targetParamsUbo)
+			GpuState& a_gpuState, GraphicId a_framebuffer, glm::ivec2 a_resolution, GraphicId a_targetParamsUbo)
 		{
 			a_gpuState.bindFramebuffer<GpuStateChange::SurelyYes>(a_framebuffer);
-			a_gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{ 0, 0, a_resolution });
+			a_gpuState.setViewport<GpuStateChange::LikelyYes>(glm::ivec4{0, 0, a_resolution});
 
-			auto const targetParams = UniformTargetParams{
-				.resolution = a_resolution,
-				.invResolution = 1.0f / glm::vec2{ a_resolution } };
+			auto const targetParams =
+				UniformTargetParams{.resolution = a_resolution, .invResolution = 1.0f / glm::vec2{a_resolution}};
 			glNamedBufferSubData(a_targetParamsUbo, 0, sizeof(targetParams), &targetParams);
 			a_gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboTarget, a_targetParamsUbo);
 		}
 
 		void captureDebugRenderOutput(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, GraphicId a_texture
-			, GraphicEnum a_sourceTarget
-			, int32_t a_sourceLayer
-			, int32_t a_sourceLevel
-			, DebugType a_type
-			, glm::vec2 a_depthRange)
+			DebugRenderInspectorContext& a_inspectorCtx,
+			GraphicId a_texture,
+			GraphicEnum a_sourceTarget,
+			int32_t a_sourceLayer,
+			int32_t a_sourceLevel,
+			DebugType a_type,
+			glm::vec2 a_depthRange)
 		{
 			auto resolution = glm::ivec2{};
 			auto internalFormat = GraphicInt{};
@@ -463,8 +493,7 @@ namespace vob::aoegl
 			glGetTextureLevelParameteriv(a_texture, a_sourceLevel, GL_TEXTURE_HEIGHT, &resolution.y);
 			glGetTextureLevelParameteriv(a_texture, a_sourceLevel, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
 
-			if (a_inspectorCtx.capturedTexture == k_invalidId
-				|| a_inspectorCtx.capturedResolution != resolution
+			if (a_inspectorCtx.capturedTexture == k_invalidId || a_inspectorCtx.capturedResolution != resolution
 				|| a_inspectorCtx.capturedInternalFormat != static_cast<GraphicEnum>(internalFormat))
 			{
 				GraphicId id;
@@ -472,28 +501,40 @@ namespace vob::aoegl
 				glTextureStorage2D(id, 1, internalFormat, resolution.x, resolution.y);
 				glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 				glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-				a_inspectorCtx.capturedTexture = GpuTexture{ a_inspectorCtx.deleteQueue, id };
+				a_inspectorCtx.capturedTexture = GpuTexture{a_inspectorCtx.deleteQueue, id};
 				a_inspectorCtx.capturedResolution = resolution;
 				a_inspectorCtx.capturedInternalFormat = static_cast<GraphicEnum>(internalFormat);
 			}
 
 			glCopyImageSubData(
-				a_texture, a_sourceTarget, a_sourceLevel, 0, 0, a_sourceLayer
-				, a_inspectorCtx.capturedTexture, GL_TEXTURE_2D, 0, 0, 0, 0
-				, resolution.x, resolution.y, 1);
+				a_texture,
+				a_sourceTarget,
+				a_sourceLevel,
+				0,
+				0,
+				a_sourceLayer,
+				a_inspectorCtx.capturedTexture,
+				GL_TEXTURE_2D,
+				0,
+				0,
+				0,
+				0,
+				resolution.x,
+				resolution.y,
+				1);
 
 			a_inspectorCtx.capturedType = a_type;
 			a_inspectorCtx.capturedDepthRange = a_depthRange;
 		}
 
 		void debugInspectRenderOutputMipChannel(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, std::string_view a_name
-			, GraphicId a_texture
-			, int32_t a_level
-			, int32_t a_channel
-			, DebugType a_type
-			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+			DebugRenderInspectorContext& a_inspectorCtx,
+			std::string_view a_name,
+			GraphicId a_texture,
+			int32_t a_level,
+			int32_t a_channel,
+			DebugType a_type,
+			glm::vec2 a_depthRange = glm::vec2{0.0f})
 		{
 			a_inspectorCtx.names.push_back(a_name);
 			if (a_name != a_inspectorCtx.selectedName)
@@ -505,10 +546,7 @@ namespace vob::aoegl
 			a_inspectorCtx.capturedChannel = a_channel;
 		}
 
-		int32_t debugInspectIndex(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, std::string_view a_name
-			, int32_t a_count)
+		int32_t debugInspectIndex(DebugRenderInspectorContext& a_inspectorCtx, std::string_view a_name, int32_t a_count)
 		{
 			if (a_name != a_inspectorCtx.selectedName || a_count <= 0)
 			{
@@ -520,11 +558,11 @@ namespace vob::aoegl
 		}
 
 		void debugInspectRenderOutput(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, std::string_view a_name
-			, GraphicId a_texture
-			, DebugType a_type
-			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+			DebugRenderInspectorContext& a_inspectorCtx,
+			std::string_view a_name,
+			GraphicId a_texture,
+			DebugType a_type,
+			glm::vec2 a_depthRange = glm::vec2{0.0f})
 		{
 			a_inspectorCtx.names.push_back(a_name);
 			if (a_name != a_inspectorCtx.selectedName)
@@ -537,12 +575,12 @@ namespace vob::aoegl
 		}
 
 		void debugInspectRenderOutputMip(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, std::string_view a_name
-			, GraphicId a_texture
-			, int32_t a_level
-			, DebugType a_type
-			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+			DebugRenderInspectorContext& a_inspectorCtx,
+			std::string_view a_name,
+			GraphicId a_texture,
+			int32_t a_level,
+			DebugType a_type,
+			glm::vec2 a_depthRange = glm::vec2{0.0f})
 		{
 			a_inspectorCtx.names.push_back(a_name);
 			if (a_name != a_inspectorCtx.selectedName)
@@ -554,12 +592,12 @@ namespace vob::aoegl
 		}
 
 		void debugInspectRenderOutputLayer(
-			DebugRenderInspectorContext& a_inspectorCtx
-			, std::string_view a_name
-			, GraphicId a_textureArray
-			, int32_t a_layer
-			, DebugType a_type
-			, glm::vec2 a_depthRange = glm::vec2{ 0.0f })
+			DebugRenderInspectorContext& a_inspectorCtx,
+			std::string_view a_name,
+			GraphicId a_textureArray,
+			int32_t a_layer,
+			DebugType a_type,
+			glm::vec2 a_depthRange = glm::vec2{0.0f})
 		{
 			a_inspectorCtx.names.push_back(a_name);
 			if (a_name != a_inspectorCtx.selectedName)
@@ -572,18 +610,17 @@ namespace vob::aoegl
 		}
 
 		void debugDrawInspectedRenderOutput(
-			GpuState& a_gpuState
-			, RenderSceneContext const& a_renderSceneCtx
-			, DebugRenderInspectorContext const& a_inspectorCtx
-			, GraphicId a_framebuffer
-			, glm::ivec2 a_resolution)
+			GpuState& a_gpuState,
+			RenderSceneContext const& a_renderSceneCtx,
+			DebugRenderInspectorContext const& a_inspectorCtx,
+			GraphicId a_framebuffer,
+			glm::ivec2 a_resolution)
 		{
 			auto const debugParams = UniformDebugParams{
 				.depthRange = a_inspectorCtx.capturedDepthRange,
 				.exposure = a_inspectorCtx.exposure,
 				.channel = a_inspectorCtx.capturedChannel,
-				.type = static_cast<int8_t>(a_inspectorCtx.capturedType)
-			};
+				.type = static_cast<int8_t>(a_inspectorCtx.capturedType)};
 			glNamedBufferSubData(a_renderSceneCtx.targets.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
 
 			a_gpuState.disableDepthTest<GpuStateChange::LikelyNo>();
@@ -591,7 +628,8 @@ namespace vob::aoegl
 			a_gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
 			a_gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboView, a_renderSceneCtx.targets.viewParamsUbo);
 			a_gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboDebug, a_renderSceneCtx.targets.debugParamsUbo);
-			a_gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureDebugSource, a_inspectorCtx.capturedTexture);
+			a_gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureDebugSource, a_inspectorCtx.capturedTexture);
 
 			beginPass(a_gpuState, a_framebuffer, a_resolution, a_renderSceneCtx.targets.targetParamsUbo);
 			a_gpuState.useProgram<GpuStateChange::LikelyYes>(a_renderSceneCtx.targets.debugProgram);
@@ -628,8 +666,9 @@ namespace vob::aoegl
 			prevT = t;
 			auto const d = 60.0f + std::chrono::duration<float>(t - startT).count();
 			auto const a = std::fmod(0.03f * d, 2.0f * std::numbers::pi_v<float>);
-			auto const sunDir = glm::vec3{ glm::rotate(glm::mat4{1.0f}, a, glm::vec3{0.0f, 1.0f, 0.0f})
-				* glm::normalize(glm::vec4{ 0.7f, 0.15f, -1.0f, 0.0f }) };
+			auto const sunDir = glm::vec3{
+				glm::rotate(glm::mat4{1.0f}, a, glm::vec3{0.0f, 1.0f, 0.0f})
+				* glm::normalize(glm::vec4{0.7f, 0.15f, -1.0f, 0.0f})};
 			renderSceneCtx.sunDir = sunDir;
 		}
 
@@ -654,7 +693,13 @@ namespace vob::aoegl
 				}
 				ImGui::EndCombo();
 			}
-			ImGui::SliderFloat("Inspect Exposure", &debugRenderInspectorCtx.exposure, 0.01f, 100.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			ImGui::SliderFloat(
+				"Inspect Exposure",
+				&debugRenderInspectorCtx.exposure,
+				0.01f,
+				100.0f,
+				"%.3f",
+				ImGuiSliderFlags_Logarithmic);
 			if (debugRenderInspectorCtx.selectedIndexCount > 0)
 			{
 				ImGui::InputInt("Inspect Index", &debugRenderInspectorCtx.selectedIndex);
@@ -666,13 +711,19 @@ namespace vob::aoegl
 			ImGui::Checkbox("Enable##ssao", &config.ssao.isEnabled);
 			ssaoChanged |= ImGui::SliderInt("Slice Count##ssao", &config.ssao.sliceCount, 1, 8);
 			ssaoChanged |= ImGui::SliderInt("Step Count##ssao", &config.ssao.stepCount, 1, 16);
-			ssaoChanged |= ImGui::SliderFloat("Radius##ssao", &config.ssao.radius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			ssaoChanged |= ImGui::SliderFloat(
+				"Radius##ssao", &config.ssao.radius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 			ssaoChanged |= ImGui::SliderFloat("Falloff Start##ssao", &config.ssao.falloffStart, 0.0f, 1.0f);
 			ssaoChanged |= ImGui::SliderFloat("Intensity##ssao", &config.ssao.intensity, 0.0f, 4.0f);
 			ssaoChanged |= ImGui::SliderFloat(
 				"Max Radius (screen)##ssao", &config.ssao.maxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
 			ssaoChanged |= ImGui::SliderFloat(
-				"Depth Tolerance##ssao", &config.ssao.depthTolerance, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+				"Depth Tolerance##ssao",
+				&config.ssao.depthTolerance,
+				0.001f,
+				0.5f,
+				"%.3f",
+				ImGuiSliderFlags_Logarithmic);
 
 			if (ssaoChanged)
 			{
@@ -684,7 +735,8 @@ namespace vob::aoegl
 			auto ssrChanged = false;
 			ssrChanged |= ImGui::Checkbox("Enable##ssr", &config.ssr.isEnabled);
 			ssrChanged |= ImGui::SliderInt("Step Count", &config.ssr.stepCount, 4, 256);
-			ssrChanged |= ImGui::SliderFloat("Max Range", &config.ssr.maxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+			ssrChanged |= ImGui::SliderFloat(
+				"Max Range", &config.ssr.maxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
 
 			ssrChanged |= ImGui::Checkbox("Debug Exit Reason##ssr", &config.ssr.debugExitReason);
 
@@ -693,14 +745,26 @@ namespace vob::aoegl
 			ssrChanged |= ImGui::Checkbox("Debug Ray##ssr", &config.ssr.debugRay);
 			if (config.ssr.debugRay)
 			{
-				ssrChanged |= ImGui::SliderInt("Ray Pixel X", &config.ssr.debugRayPixel.x, 0, renderSceneCtx.targets.shadingResolution.x - 1);
-				ssrChanged |= ImGui::SliderInt("Ray Pixel Y", &config.ssr.debugRayPixel.y, 0, renderSceneCtx.targets.shadingResolution.y - 1);
+				ssrChanged |= ImGui::SliderInt(
+					"Ray Pixel X", &config.ssr.debugRayPixel.x, 0, renderSceneCtx.targets.shadingResolution.x - 1);
+				ssrChanged |= ImGui::SliderInt(
+					"Ray Pixel Y", &config.ssr.debugRayPixel.y, 0, renderSceneCtx.targets.shadingResolution.y - 1);
 			}
 
 			ssrChanged |= ImGui::SliderFloat(
-				"Penetration Blocked Below", &config.ssr.penetrationBlockedRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+				"Penetration Blocked Below",
+				&config.ssr.penetrationBlockedRatio,
+				0.0001f,
+				2.0f,
+				"%.4f",
+				ImGuiSliderFlags_Logarithmic);
 			ssrChanged |= ImGui::SliderFloat(
-				"Penetration Through Above", &config.ssr.penetrationThroughRatio, 0.0001f, 2.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+				"Penetration Through Above",
+				&config.ssr.penetrationThroughRatio,
+				0.0001f,
+				2.0f,
+				"%.4f",
+				ImGuiSliderFlags_Logarithmic);
 
 			if (ssrChanged)
 			{
@@ -718,14 +782,15 @@ namespace vob::aoegl
 
 			if (bloomChanged)
 			{
-				auto const bloomParams = createUniformBloomParams(
-					config.bloom, mistd::isize(renderSceneCtx.targets.bloomMips));
+				auto const bloomParams =
+					createUniformBloomParams(config.bloom, mistd::isize(renderSceneCtx.targets.bloomMips));
 				glNamedBufferSubData(renderSceneCtx.targets.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
 			}
 
 			ImGui::SeparatorText("Tonemap");
 			auto tonemapChanged = false;
-			tonemapChanged |= ImGui::SliderFloat("Exposure", &config.tonemap.exposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+			tonemapChanged |= ImGui::SliderFloat(
+				"Exposure", &config.tonemap.exposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 			tonemapChanged |= ImGui::ColorEdit3("Color Filter", &config.tonemap.colorFilter.x);
 			tonemapChanged |= ImGui::SliderFloat("Contrast", &config.tonemap.contrast, 0.0f, 2.0f);
 			tonemapChanged |= ImGui::SliderFloat("Saturation", &config.tonemap.saturation, 0.0f, 2.0f);
@@ -739,14 +804,14 @@ namespace vob::aoegl
 			ImGui::SeparatorText("Shaders");
 			auto& activeShaderIndex = debugProgramCtx.activeShaderIndex;
 			auto const toSmallStr = [](std::string_view a_stringView)
-				{
-					constexpr size_t k_maxSize = 16;
-					auto size = std::min(a_stringView.size(), k_maxSize);
-					std::array<char, k_maxSize + 1> smallStr;
-					std::memcpy(smallStr.data(), a_stringView.data(), size);
-					smallStr[size] = 0;
-					return smallStr;
-				};
+			{
+				constexpr size_t k_maxSize = 16;
+				auto size = std::min(a_stringView.size(), k_maxSize);
+				std::array<char, k_maxSize + 1> smallStr;
+				std::memcpy(smallStr.data(), a_stringView.data(), size);
+				smallStr[size] = 0;
+				return smallStr;
+			};
 
 			activeShaderIndex = std::min(activeShaderIndex, mistd::isize(debugProgramCtx.shaders) - 1);
 
@@ -764,19 +829,20 @@ namespace vob::aoegl
 			}
 
 			auto const recompileWithSkyPartial = [&](auto a_recompile)
+			{
+				tryExportCoreShaders();
+				auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
+					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyPartialSourcePath));
+				if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
 				{
-					tryExportCoreShaders();
-					auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
-						debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyPartialSourcePath));
-					if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
-					{
-						a_recompile(*skyPartialSource);
-					}
-				};
+					a_recompile(*skyPartialSource);
+				}
+			};
 
 			if (ImGui::Button("Recompile Sky Box Program"))
 			{
-				recompileWithSkyPartial([&](std::string_view a_source)
+				recompileWithSkyPartial(
+					[&](std::string_view a_source)
 					{
 						createSkyProgram(a_source, debugProgramCtx.skyBoxProgram);
 					});
@@ -784,7 +850,8 @@ namespace vob::aoegl
 
 			if (ImGui::Button("Recompile Ssr Program"))
 			{
-				recompileWithSkyPartial([&](std::string_view a_source)
+				recompileWithSkyPartial(
+					[&](std::string_view a_source)
 					{
 						createSsrProgram(a_source, debugProgramCtx.ssrProgram);
 					});
@@ -792,7 +859,8 @@ namespace vob::aoegl
 
 			if (ImGui::Button("Recompile Sky Irradiance Program"))
 			{
-				recompileWithSkyPartial([&](std::string_view a_source)
+				recompileWithSkyPartial(
+					[&](std::string_view a_source)
 					{
 						createSkyIrradianceProgram(a_source, debugProgramCtx.skyIrradianceProgram);
 					});
@@ -822,8 +890,8 @@ namespace vob::aoegl
 				auto const& shader = debugProgramCtx.shaders[activeShaderIndex];
 				auto const& shaderDefinition = *shader.shaderDefinition;
 				auto const& sourcePath = shaderDefinition.partialSourcePath;
-				auto const source = debugProgramCtx.stringDatabase.find(
-					debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
+				auto const source =
+					debugProgramCtx.stringDatabase.find(debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
 				auto const gpuShaderPtr = shader.shader.lock();
 				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string())
 					&& gpuShaderPtr != nullptr)
@@ -832,16 +900,16 @@ namespace vob::aoegl
 					auto const& gpuShader = *gpuShaderPtr;
 
 					auto const recompileShading = [&](ModelType a_modelType, GraphicId a_programId)
-						{
-							createShadingProgram(
-								*source
-								, shaderDefinition.defines
-								, paramsLayout
-								, shaderDefinition.shadingPass
-								, a_modelType
-								, shaderDefinition.isAlphaMasked
-								, a_programId);
-						};
+					{
+						createShadingProgram(
+							*source,
+							shaderDefinition.defines,
+							paramsLayout,
+							shaderDefinition.shadingPass,
+							a_modelType,
+							shaderDefinition.isAlphaMasked,
+							a_programId);
+					};
 
 					recompileShading(ModelType::Static, gpuShader.staticProgram);
 					recompileShading(ModelType::Rigged, gpuShader.riggedProgram);
@@ -851,15 +919,15 @@ namespace vob::aoegl
 					if (shaderDefinition.isAlphaMasked)
 					{
 						auto const recompileDepth = [&](ModelType a_modelType, GraphicId a_programId)
-							{
-								createAlphaMaskedDepthProgram(
-									*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
-							};
+						{
+							createAlphaMaskedDepthProgram(
+								*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+						};
 						auto const recompileShadowMap = [&](ModelType a_modelType, GraphicId a_programId)
-							{
-								createAlphaMaskedShadowMapProgram(
-									*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
-							};
+						{
+							createAlphaMaskedShadowMapProgram(
+								*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+						};
 
 						recompileDepth(ModelType::Static, *gpuShader.staticDepthProgram);
 						recompileDepth(ModelType::Rigged, *gpuShader.riggedDepthProgram);
@@ -877,8 +945,7 @@ namespace vob::aoegl
 			{
 				ImGui::SeparatorText("Materials");
 				auto& activeMaterialIndex = debugMaterialCtx.activeMaterialIndex;
-				activeMaterialIndex =
-					std::clamp(activeMaterialIndex, 0, mistd::isize(debugMaterialCtx.materials) - 1);
+				activeMaterialIndex = std::clamp(activeMaterialIndex, 0, mistd::isize(debugMaterialCtx.materials) - 1);
 
 				auto const activeShaderName = debugMaterialCtx.materials[activeMaterialIndex].shaderName;
 				if (ImGui::BeginCombo("Material shader", activeShaderName.c_str()))
@@ -919,8 +986,7 @@ namespace vob::aoegl
 							continue;
 						}
 
-						if (ImGui::Selectable(
-							debugMaterialCtx.materials[i].name.c_str(), i == activeMaterialIndex))
+						if (ImGui::Selectable(debugMaterialCtx.materials[i].name.c_str(), i == activeMaterialIndex))
 						{
 							activeMaterialIndex = i;
 						}
@@ -938,7 +1004,7 @@ namespace vob::aoegl
 					for (auto const& [name, slot] : material->shader->paramsLayout.slots)
 					{
 						auto value = readMaterialParam(material->paramsUbo, slot);
-						auto const nameStr = std::string{ name.view() };
+						auto const nameStr = std::string{name.view()};
 						auto changed = false;
 						switch (slot.variantIndex)
 						{
@@ -990,8 +1056,8 @@ namespace vob::aoegl
 		gpuLights.clear();
 		auto const [lightingParams, shadowParams, spotLightShadowMapCount] = createLightingAndShadowParams(
 			viewFrustumPlanes,
-			glm::vec3{ viewParams.viewToWorld[3] },
-			-glm::vec3{ viewParams.viewToWorld[2] },
+			glm::vec3{viewParams.viewToWorld[3]},
+			-glm::vec3{viewParams.viewToWorld[2]},
 			m_lightEntities.get(a_wdap),
 			config.lighting.maxLightCount,
 			renderSceneCtx.targets.shadingResolution,
@@ -1008,7 +1074,7 @@ namespace vob::aoegl
 			renderSceneCtx.config.get().shadow.sunCascadeFarClips,
 			config.ssao.isEnabled,
 			config.ssao.depthTolerance,
-			std::chrono::duration<float>{ m_timeContext.get(a_wdap).elapsedTime }.count(),
+			std::chrono::duration<float>{m_timeContext.get(a_wdap).elapsedTime}.count(),
 			renderSceneCtx.spotLightShadowFades,
 			gpuLights);
 		{
@@ -1017,7 +1083,8 @@ namespace vob::aoegl
 			glNamedBufferSubData(renderSceneCtx.targets.viewParamsUbo, 0, sizeof(viewParams), &viewParams);
 			glNamedBufferSubData(renderSceneCtx.targets.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
 			glNamedBufferSubData(renderSceneCtx.targets.shadowParamsUbo, 0, sizeof(shadowParams), &shadowParams);
-			glNamedBufferSubData(renderSceneCtx.targets.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
+			glNamedBufferSubData(
+				renderSceneCtx.targets.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
 		}
 
 		// III - Cluster Lights
@@ -1029,12 +1096,18 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboLighting, renderSceneCtx.targets.lightingParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboShadow, renderSceneCtx.targets.shadowParamsUbo);
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLights, renderSceneCtx.targets.lightsSsbo);
-			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLightClusterSizes, renderSceneCtx.targets.lightClusterSizesSsbo);
-			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLightClusterIndices, renderSceneCtx.targets.lightClusterIndicesSsbo);
+			gpuState.bindSsbo<GpuStateChange::SurelyYes>(
+				k_bindingSsboLightClusterSizes, renderSceneCtx.targets.lightClusterSizesSsbo);
+			gpuState.bindSsbo<GpuStateChange::SurelyYes>(
+				k_bindingSsboLightClusterIndices, renderSceneCtx.targets.lightClusterIndicesSsbo);
 
-			auto const lightClusterXYCount = (lightingParams.lightClusterResolution + lightingParams.lightClusterTileSize - 1) / lightingParams.lightClusterTileSize;
-			auto const lightClusterCount = lightClusterXYCount.x * lightClusterXYCount.y * lightingParams.lightClusterZCount;
-			auto const workGroupCount = (lightClusterCount + k_lightClusteringWorkGroupSize - 1) / k_lightClusteringWorkGroupSize;
+			auto const lightClusterXYCount =
+				(lightingParams.lightClusterResolution + lightingParams.lightClusterTileSize - 1)
+				/ lightingParams.lightClusterTileSize;
+			auto const lightClusterCount =
+				lightClusterXYCount.x * lightClusterXYCount.y * lightingParams.lightClusterZCount;
+			auto const workGroupCount =
+				(lightClusterCount + k_lightClusteringWorkGroupSize - 1) / k_lightClusteringWorkGroupSize;
 			glDispatchCompute(static_cast<uint32_t>(workGroupCount), 1, 1);
 		}
 
@@ -1044,7 +1117,8 @@ namespace vob::aoegl
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.skyIrradianceProgram);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.targets.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboLighting, renderSceneCtx.targets.lightingParamsUbo);
-			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboSkyIrradiance, renderSceneCtx.targets.skyIrradianceSsbo);
+			gpuState.bindSsbo<GpuStateChange::SurelyYes>(
+				k_bindingSsboSkyIrradiance, renderSceneCtx.targets.skyIrradianceSsbo);
 
 			glDispatchCompute(1, 1, 1);
 		}
@@ -1052,7 +1126,8 @@ namespace vob::aoegl
 		// IV - Prepare Meshes
 		for (auto const [entity, positionCmp, rotationCmp, modelTransformCmp] : modelEntities.each())
 		{
-			auto const modelParams = UniformModelParams{ .modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value) };
+			auto const modelParams = UniformModelParams{
+				.modelToWorld = aoest::combine(positionCmp.value - worldOriginPosition, rotationCmp.value)};
 			if (modelTransformCmp.prevModelParams != modelParams)
 			{
 				modelTransformCmp.prevModelParams = modelParams;
@@ -1070,11 +1145,11 @@ namespace vob::aoegl
 		};
 
 		auto const drawStaticMesh = [&](auto& staticMesh)
-			{
-				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, staticMesh.modelParamsUbo);
-				glBindVertexArray(staticMesh.vao);
-				glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			};
+		{
+			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, staticMesh.modelParamsUbo);
+			glBindVertexArray(staticMesh.vao);
+			glDrawElements(GL_TRIANGLES, staticMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+		};
 
 		struct CulledRiggedMesh
 		{
@@ -1087,12 +1162,12 @@ namespace vob::aoegl
 		};
 
 		auto const drawRiggedMesh = [&](auto& riggedMesh)
-			{
-				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, riggedMesh.modelParamsUbo);
-				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedMesh.rigParamsUbo);
-				glBindVertexArray(riggedMesh.vao);
-				glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
-			};
+		{
+			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, riggedMesh.modelParamsUbo);
+			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboRig, riggedMesh.rigParamsUbo);
+			glBindVertexArray(riggedMesh.vao);
+			glDrawElements(GL_TRIANGLES, riggedMesh.indexCount, GL_UNSIGNED_INT, nullptr);
+		};
 
 		struct CulledInstancedMesh
 		{
@@ -1126,7 +1201,10 @@ namespace vob::aoegl
 
 			void sort()
 			{
-				auto const getProgram = [](auto const& a_mesh) { return a_mesh.shader.depthProgram; };
+				auto const getProgram = [](auto const& a_mesh)
+				{
+					return a_mesh.shader.depthProgram;
+				};
 				sortCulledMeshes(staticOpaqueMeshes, getProgram);
 				sortCulledMeshes(riggedOpaqueMeshes, getProgram);
 				sortCulledMeshes(instancedOpaqueMeshes, getProgram);
@@ -1138,52 +1216,87 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					staticTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
 				}
 			}
 
-			void addRiggedMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_rigParamsUbo)
+			void addRiggedMesh(
+				ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_rigParamsUbo)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_rigParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					riggedTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_rigParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
 				}
 			}
 
-			void addInstancedMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_instanceTransformsVbo, int32_t a_instanceCount)
+			void addInstancedMesh(
+				ShadedMesh const& a_mesh,
+				ModelTransformComponent const& a_modelTransformCmp,
+				GraphicId a_instanceTransformsVbo,
+				int32_t a_instanceCount)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_instanceTransformsVbo,
+						a_instanceCount,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				case ShadingPass::Translucent:
 					instancedTranslucentMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_instanceTransformsVbo,
+						a_instanceCount,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
 				}
 			}
 		};
-		
+
 		struct CulledShadowMeshes
 		{
 			std::vector<CulledStaticMesh> staticOpaqueMeshes;
@@ -1199,7 +1312,10 @@ namespace vob::aoegl
 
 			void sort()
 			{
-				auto const getProgram = [](auto const& a_mesh) { return a_mesh.shader.shadowMapProgram; };
+				auto const getProgram = [](auto const& a_mesh)
+				{
+					return a_mesh.shader.shadowMapProgram;
+				};
 				sortCulledMeshes(staticOpaqueMeshes, getProgram);
 				sortCulledMeshes(riggedOpaqueMeshes, getProgram);
 				sortCulledMeshes(instancedOpaqueMeshes, getProgram);
@@ -1211,33 +1327,53 @@ namespace vob::aoegl
 				{
 				case ShadingPass::Opaque:
 					staticOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
 				}
 			}
 
-			void addRiggedMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_rigParamsUbo)
+			void addRiggedMesh(
+				ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_rigParamsUbo)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					riggedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_rigParamsUbo, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_rigParamsUbo,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
 				}
 			}
 
-			void addInstancedMesh(ShadedMesh const& a_mesh, ModelTransformComponent const& a_modelTransformCmp, GraphicId a_instanceTransformsVbo, int32_t a_instanceCount)
+			void addInstancedMesh(
+				ShadedMesh const& a_mesh,
+				ModelTransformComponent const& a_modelTransformCmp,
+				GraphicId a_instanceTransformsVbo,
+				int32_t a_instanceCount)
 			{
 				switch (a_mesh.shadingPass)
 				{
 				case ShadingPass::Opaque:
 					instancedOpaqueMeshes.emplace_back(
-						a_mesh.shader, a_mesh.material, a_modelTransformCmp.modelParamsUbo, a_instanceTransformsVbo, a_instanceCount, a_mesh.mesh->vao, a_mesh.mesh->indexCount);
+						a_mesh.shader,
+						a_mesh.material,
+						a_modelTransformCmp.modelParamsUbo,
+						a_instanceTransformsVbo,
+						a_instanceCount,
+						a_mesh.mesh->vao,
+						a_mesh.mesh->indexCount);
 					break;
 				default:
 					break;
@@ -1246,140 +1382,143 @@ namespace vob::aoegl
 		};
 
 		auto const drawInstancedMesh = [&](auto& instancedMesh)
-			{
-				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, instancedMesh.modelParamsUbo);
-				glBindVertexArray(instancedMesh.vao);
-				glBindVertexBuffer(
-					1,
-					instancedMesh.instanceTransformsVbo,
-					0 /* offset */,
-					sizeof(glm::mat4));
-				glDrawElementsInstanced(GL_TRIANGLES, instancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, instancedMesh.instanceCount);
-			};
+		{
+			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboModel, instancedMesh.modelParamsUbo);
+			glBindVertexArray(instancedMesh.vao);
+			glBindVertexBuffer(1, instancedMesh.instanceTransformsVbo, 0 /* offset */, sizeof(glm::mat4));
+			glDrawElementsInstanced(
+				GL_TRIANGLES, instancedMesh.indexCount, GL_UNSIGNED_INT, nullptr, instancedMesh.instanceCount);
+		};
 
 		auto const cullView = [&](auto const& a_viewFrustumPlanes, auto& a_culledMeshes)
+		{
+			a_culledMeshes.clear();
+
+			for (auto const [entity, positionCmp, modelTransformCmp, staticModelCmp] : staticModelEntities.each())
 			{
-				a_culledMeshes.clear();
-
-				for (auto const [entity, positionCmp, modelTransformCmp, staticModelCmp] : staticModelEntities.each())
+				if (testViewFrustumPlanes(
+						a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
 				{
-					if (testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+					for (auto const& mesh : staticModelCmp.meshes)
 					{
-						for (auto const& mesh : staticModelCmp.meshes)
+						a_culledMeshes.addStaticMesh(mesh, modelTransformCmp);
+					}
+				}
+			}
+
+			for (auto const [entity, positionCmp, modelTransformCmp, riggedModelCmp] : riggedModelEntities.each())
+			{
+				if (testViewFrustumPlanes(
+						a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+				{
+					for (auto const& mesh : riggedModelCmp.meshes)
+					{
+						a_culledMeshes.addRiggedMesh(mesh, modelTransformCmp, riggedModelCmp.rigParamsUbo);
+					}
+				}
+			}
+
+			for (auto const [entity, positionCmp, modelTransformCmp, instancedModelsCmp] :
+				 instancedModelsEntities.each())
+			{
+				if (testViewFrustumPlanes(
+						a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
+				{
+					for (auto const& model : instancedModelsCmp.models)
+					{
+						for (auto const& mesh : model.meshes)
 						{
-							a_culledMeshes.addStaticMesh(mesh, modelTransformCmp);
+							a_culledMeshes.addInstancedMesh(
+								mesh, modelTransformCmp, model.instanceTransformsVbo, model.instanceCount);
 						}
 					}
 				}
+			}
 
-				for (auto const [entity, positionCmp, modelTransformCmp, riggedModelCmp] : riggedModelEntities.each())
-				{
-					if (testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
-					{
-						for (auto const& mesh : riggedModelCmp.meshes)
-						{
-							a_culledMeshes.addRiggedMesh(mesh, modelTransformCmp, riggedModelCmp.rigParamsUbo);
-						}
-					}
-				}
-
-				for (auto const [entity, positionCmp, modelTransformCmp, instancedModelsCmp] : instancedModelsEntities.each())
-				{
-					if (testViewFrustumPlanes(a_viewFrustumPlanes, positionCmp.value - worldOriginPosition, modelTransformCmp.boundingRadius))
-					{
-						for (auto const& model : instancedModelsCmp.models)
-						{
-							for (auto const& mesh : model.meshes)
-							{
-								a_culledMeshes.addInstancedMesh(
-									mesh, modelTransformCmp, model.instanceTransformsVbo, model.instanceCount);
-							}
-						}
-					}
-				}
-
-				a_culledMeshes.sort();
-			};
+			a_culledMeshes.sort();
+		};
 
 		auto const drawOpaqueMeshes = [&](auto const& a_culledMeshes, auto a_applyMeshState)
+		{
+			for (auto const& staticMesh : a_culledMeshes.staticOpaqueMeshes)
 			{
-				for (auto const& staticMesh : a_culledMeshes.staticOpaqueMeshes)
-				{
-					a_applyMeshState(staticMesh);
-					drawStaticMesh(staticMesh);
-				}
-				for (auto const& riggedMesh : a_culledMeshes.riggedOpaqueMeshes)
-				{
-					a_applyMeshState(riggedMesh);
-					drawRiggedMesh(riggedMesh);
-				}
-				for (auto const& instancedMesh : a_culledMeshes.instancedOpaqueMeshes)
-				{
-					a_applyMeshState(instancedMesh);
-					drawInstancedMesh(instancedMesh);
-				}
-			};
+				a_applyMeshState(staticMesh);
+				drawStaticMesh(staticMesh);
+			}
+			for (auto const& riggedMesh : a_culledMeshes.riggedOpaqueMeshes)
+			{
+				a_applyMeshState(riggedMesh);
+				drawRiggedMesh(riggedMesh);
+			}
+			for (auto const& instancedMesh : a_culledMeshes.instancedOpaqueMeshes)
+			{
+				a_applyMeshState(instancedMesh);
+				drawInstancedMesh(instancedMesh);
+			}
+		};
 
 		auto const applyFaceCulling = [&](bool a_isTwoSided)
+		{
+			if (a_isTwoSided)
 			{
-				if (a_isTwoSided)
-				{
-					gpuState.disableFaceCulling<GpuStateChange::LikelyNo>();
-				}
-				else
-				{
-					gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
-				}
-			};
+				gpuState.disableFaceCulling<GpuStateChange::LikelyNo>();
+			}
+			else
+			{
+				gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
+			}
+		};
 
 		auto const applyDepthOnlyMaterialParams = [&](auto const& a_mesh, GpuMaterial const*& a_currentMaterial)
+		{
+			if (a_currentMaterial == a_mesh.material.get())
 			{
-				if (a_currentMaterial == a_mesh.material.get())
-				{
-					return;
-				}
-				a_currentMaterial = a_mesh.material.get();
+				return;
+			}
+			a_currentMaterial = a_mesh.material.get();
 
-				if (a_mesh.material == nullptr)
-				{
-					applyFaceCulling(false);
-					return;
-				}
+			if (a_mesh.material == nullptr)
+			{
+				applyFaceCulling(false);
+				return;
+			}
 
-				auto const& material = *a_mesh.material;
-				applyFaceCulling(material.isTwoSided);
+			auto const& material = *a_mesh.material;
+			applyFaceCulling(material.isTwoSided);
 
-				if (!a_mesh.shader.isAlphaMasked)
-				{
-					return;
-				}
+			if (!a_mesh.shader.isAlphaMasked)
+			{
+				return;
+			}
 
-				gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-				for (auto const slotIndex : material.depthOnlyTextureSlotIndices)
-				{
-					gpuState.bindTexture<GpuStateChange::LikelyYes>(
-						k_bindingTextureShadingMaterialBegin + slotIndex, *material.textures[slotIndex].texture);
-				}
-			};
+			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
+			for (auto const slotIndex : material.depthOnlyTextureSlotIndices)
+			{
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(
+					k_bindingTextureShadingMaterialBegin + slotIndex, *material.textures[slotIndex].texture);
+			}
+		};
 
 		static CulledMeshes culledMeshes;
 		cullView(viewFrustumPlanes, culledMeshes);
 
 		auto const cullAndDrawShadowView = [&](auto const& a_viewFrustumPlanes, auto const& a_viewParams)
-			{
-				static CulledShadowMeshes culledShadowMeshes;
-				cullView(a_viewFrustumPlanes, culledShadowMeshes);
+		{
+			static CulledShadowMeshes culledShadowMeshes;
+			cullView(a_viewFrustumPlanes, culledShadowMeshes);
 
-				glNamedBufferSubData(renderSceneCtx.targets.lightViewParamsUbo, 0, sizeof(a_viewParams), &a_viewParams);
-				glClear(GL_DEPTH_BUFFER_BIT);
+			glNamedBufferSubData(renderSceneCtx.targets.lightViewParamsUbo, 0, sizeof(a_viewParams), &a_viewParams);
+			glClear(GL_DEPTH_BUFFER_BIT);
 
-				GpuMaterial const* currentMaterial = nullptr;
-				drawOpaqueMeshes(culledShadowMeshes, [&](auto const& a_mesh)
-					{
-						gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.shadowMapProgram);
-						applyDepthOnlyMaterialParams(a_mesh, currentMaterial);
-					});
-			};
+			GpuMaterial const* currentMaterial = nullptr;
+			drawOpaqueMeshes(
+				culledShadowMeshes,
+				[&](auto const& a_mesh)
+				{
+					gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.shadowMapProgram);
+					applyDepthOnlyMaterialParams(a_mesh, currentMaterial);
+				});
+		};
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -1401,11 +1540,19 @@ namespace vob::aoegl
 
 			// A - Sun CSM
 			{
-				beginPass(gpuState, renderSceneCtx.targets.sunShadowMap.framebuffer, renderSceneCtx.targets.sunShadowMap.resolution, renderSceneCtx.targets.targetParamsUbo);
+				beginPass(
+					gpuState,
+					renderSceneCtx.targets.sunShadowMap.framebuffer,
+					renderSceneCtx.targets.sunShadowMap.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sun CSM");
 				auto const debugSunCsmIndex = std::clamp(
-					debugRenderInspectorCtx.selectedIndex, 0, mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips) - 1);
-				for (int32_t csmIndex = 0; csmIndex < mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips); ++csmIndex)
+					debugRenderInspectorCtx.selectedIndex,
+					0,
+					mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips) - 1);
+				for (int32_t csmIndex = 0;
+					 csmIndex < mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips);
+					 ++csmIndex)
 				{
 					auto const& sunShadowParams = shadowParams.sun[csmIndex];
 					if (csmIndex == debugSunCsmIndex)
@@ -1426,21 +1573,22 @@ namespace vob::aoegl
 						.nearClip = sunShadowParams.nearClip,
 						.farClip = sunShadowParams.farClip,
 						.fov = 0.0f,
-						.aspectRatio = 0.0f
-					};
+						.aspectRatio = 0.0f};
 
 					cullAndDrawShadowView(sunViewFrustumPlanes, sunViewParams);
 				}
 			}
 			auto const sunCsmIndex = debugInspectIndex(
-				debugRenderInspectorCtx, "Sun Shadow Map", mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips));
+				debugRenderInspectorCtx,
+				"Sun Shadow Map",
+				mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips));
 			debugInspectRenderOutputLayer(
-				debugRenderInspectorCtx
-				, "Sun Shadow Map"
-				, renderSceneCtx.targets.sunShadowMapDepthTextureArray
-				, sunCsmIndex
-				, DebugType::DepthTexture
-				, glm::vec2{ debugSunNear, debugSunFar });
+				debugRenderInspectorCtx,
+				"Sun Shadow Map",
+				renderSceneCtx.targets.sunShadowMapDepthTextureArray,
+				sunCsmIndex,
+				DebugType::DepthTexture,
+				glm::vec2{debugSunNear, debugSunFar});
 
 			// B - Spot Lights
 			{
@@ -1456,12 +1604,15 @@ namespace vob::aoegl
 						.nearClip = shadowParams.spotLights[i].nearClip,
 						.farClip = shadowParams.spotLights[i].farClip,
 						.fov = shadowParams.spotLights[i].fov,
-						.aspectRatio = 1.0f
-					};
+						.aspectRatio = 1.0f};
 
 					auto const spotLightViewFrustumPlanes = computeViewFrustumPlanes(spotLightViewParams.worldToClip);
 
-					beginPass(gpuState, spotLightShadowMapTarget.target.framebuffer, spotLightShadowMapTarget.target.resolution, renderSceneCtx.targets.targetParamsUbo);
+					beginPass(
+						gpuState,
+						spotLightShadowMapTarget.target.framebuffer,
+						spotLightShadowMapTarget.target.resolution,
+						renderSceneCtx.targets.targetParamsUbo);
 
 					cullAndDrawShadowView(spotLightViewFrustumPlanes, spotLightViewParams);
 				}
@@ -1469,14 +1620,16 @@ namespace vob::aoegl
 
 			if (spotLightShadowMapCount > 0)
 			{
-				auto const spotLightIndex = debugInspectIndex(
-					debugRenderInspectorCtx, "Spot Shadow Map", spotLightShadowMapCount);
+				auto const spotLightIndex =
+					debugInspectIndex(debugRenderInspectorCtx, "Spot Shadow Map", spotLightShadowMapCount);
 				debugInspectRenderOutput(
-					debugRenderInspectorCtx
-					, "Spot Shadow Map"
-					, renderSceneCtx.targets.spotLightShadowMapTargets[spotLightIndex].depthTexture
-					, DebugType::DepthTexture
-					, glm::vec2{ shadowParams.spotLights[spotLightIndex].nearClip, shadowParams.spotLights[spotLightIndex].farClip });
+					debugRenderInspectorCtx,
+					"Spot Shadow Map",
+					renderSceneCtx.targets.spotLightShadowMapTargets[spotLightIndex].depthTexture,
+					DebugType::DepthTexture,
+					glm::vec2{
+						shadowParams.spotLights[spotLightIndex].nearClip,
+						shadowParams.spotLights[spotLightIndex].farClip});
 			}
 		}
 
@@ -1488,26 +1641,45 @@ namespace vob::aoegl
 			gpuState.setDepthFunc<GpuStateChange::SurelyNo>(GpuDepthFunc::Less);
 			gpuState.setClearDepth<GpuStateChange::SurelyNo>(1.0);
 			gpuState.enableColorWrite<GpuStateChange::SurelyYes>();
-			gpuState.setClearColor<GpuStateChange::SurelyYes>(glm::vec4{ 0.0f, 0.0f, 0.0f, 0.0f });
+			gpuState.setClearColor<GpuStateChange::SurelyYes>(glm::vec4{0.0f, 0.0f, 0.0f, 0.0f});
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
 			gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
 			gpuState.setCullFace<GpuStateChange::LikelyYes>(GpuCullFace::Back);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.targets.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.targets.viewParamsUbo);
 
-			beginPass(gpuState, renderSceneCtx.targets.depthTarget.framebuffer, renderSceneCtx.targets.depthTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
+			beginPass(
+				gpuState,
+				renderSceneCtx.targets.depthTarget.framebuffer,
+				renderSceneCtx.targets.depthTarget.resolution,
+				renderSceneCtx.targets.targetParamsUbo);
 			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 			GpuMaterial const* currentDepthMaterial = nullptr;
-			drawOpaqueMeshes(culledMeshes, [&](auto const& a_mesh)
+			drawOpaqueMeshes(
+				culledMeshes,
+				[&](auto const& a_mesh)
 				{
 					gpuState.useProgram<GpuStateChange::LikelyNo>(a_mesh.shader.depthProgram);
 					applyDepthOnlyMaterialParams(a_mesh, currentDepthMaterial);
 				});
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Geometric Normal", renderSceneCtx.targets.opaqueGeometricNormalTexture, DebugType::DirectionTexture);
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Depth", renderSceneCtx.targets.opaqueDepthTexture, DebugType::DepthTexture, glm::vec2{ viewParams.nearClip, viewParams.farClip });
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Light Clusters", renderSceneCtx.targets.opaqueDepthTexture, DebugType::LightClusters);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Opaque Geometric Normal",
+				renderSceneCtx.targets.opaqueGeometricNormalTexture,
+				DebugType::DirectionTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Opaque Depth",
+				renderSceneCtx.targets.opaqueDepthTexture,
+				DebugType::DepthTexture,
+				glm::vec2{viewParams.nearClip, viewParams.farClip});
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Light Clusters",
+				renderSceneCtx.targets.opaqueDepthTexture,
+				DebugType::LightClusters);
 		}
 
 		// VII - SSAO
@@ -1521,17 +1693,19 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.targets.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.targets.viewParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboSsao, renderSceneCtx.targets.ssaoParamsUbo);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueDepth, renderSceneCtx.targets.opaqueDepthTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsaoOpaqueGeometricNormal, renderSceneCtx.targets.opaqueGeometricNormalTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsaoOpaqueDepth, renderSceneCtx.targets.opaqueDepthTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsaoOpaqueGeometricNormal, renderSceneCtx.targets.opaqueGeometricNormalTexture);
 
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Linear Depth");
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.ssaoDepthProgram);
 				beginPass(
-					gpuState
-					, renderSceneCtx.targets.ssaoDepthTarget.framebuffer
-					, renderSceneCtx.targets.ssaoDepthTarget.resolution
-					, renderSceneCtx.targets.targetParamsUbo);
+					gpuState,
+					renderSceneCtx.targets.ssaoDepthTarget.framebuffer,
+					renderSceneCtx.targets.ssaoDepthTarget.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				glBindVertexArray(renderSceneCtx.targets.postProcessVao);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
@@ -1542,10 +1716,10 @@ namespace vob::aoegl
 					k_bindingTextureSsaoLinearDepth, renderSceneCtx.targets.ssaoLinearDepthTexture);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.ssaoProgram);
 				beginPass(
-					gpuState
-					, renderSceneCtx.targets.ssaoRawTarget.framebuffer
-					, renderSceneCtx.targets.ssaoRawTarget.resolution
-					, renderSceneCtx.targets.targetParamsUbo);
+					gpuState,
+					renderSceneCtx.targets.ssaoRawTarget.framebuffer,
+					renderSceneCtx.targets.ssaoRawTarget.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
 
@@ -1555,16 +1729,24 @@ namespace vob::aoegl
 					k_bindingTextureSsaoRawOcclusion, renderSceneCtx.targets.ssaoRawOcclusionTexture);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.ssaoBlurProgram);
 				beginPass(
-					gpuState
-					, renderSceneCtx.targets.ssaoTarget.framebuffer
-					, renderSceneCtx.targets.ssaoTarget.resolution
-					, renderSceneCtx.targets.targetParamsUbo);
+					gpuState,
+					renderSceneCtx.targets.ssaoTarget.framebuffer,
+					renderSceneCtx.targets.ssaoTarget.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Ambient Occlusion Raw", renderSceneCtx.targets.ssaoRawOcclusionTexture, DebugType::ShadesTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Ambient Occlusion Raw",
+				renderSceneCtx.targets.ssaoRawOcclusionTexture,
+				DebugType::ShadesTexture);
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Ambient Occlusion", renderSceneCtx.targets.ambientOcclusionTexture, DebugType::ShadesTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Ambient Occlusion",
+				renderSceneCtx.targets.ambientOcclusionTexture,
+				DebugType::ShadesTexture);
 		}
 
 		// VIII - Direct Opaque Lighting
@@ -1575,43 +1757,64 @@ namespace vob::aoegl
 			gpuState.setDepthFunc<GpuStateChange::SurelyYes>(GpuDepthFunc::Equal);
 			gpuState.setClearDepth<GpuStateChange::SurelyNo>(1.0);
 			gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
-			gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{ 0.0 });
+			gpuState.setClearColor<GpuStateChange::LikelyYes>(glm::vec4{0.0});
 			gpuState.disableBlend<GpuStateChange::LikelyNo>();
 			gpuState.enableFaceCulling<GpuStateChange::LikelyNo>();
 			gpuState.setCullFace<GpuStateChange::LikelyNo>(GpuCullFace::Back);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.targets.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.targets.viewParamsUbo);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingAmbientOcclusion, renderSceneCtx.targets.ambientOcclusionTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingSsaoLinearDepth, renderSceneCtx.targets.ssaoLinearDepthTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingSunShadowMap, renderSceneCtx.targets.sunShadowMapDepthTextureArray);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureShadingAmbientOcclusion, renderSceneCtx.targets.ambientOcclusionTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureShadingSsaoLinearDepth, renderSceneCtx.targets.ssaoLinearDepthTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureShadingSunShadowMap, renderSceneCtx.targets.sunShadowMapDepthTextureArray);
 			for (int32_t i = 0; i < spotLightShadowMapCount; ++i)
 			{
 				gpuState.bindTexture<GpuStateChange::SurelyYes>(
-					k_bindingTextureShadingSpotLightShadowMapsBegin + i, renderSceneCtx.targets.spotLightShadowMapTargets[i].depthTexture);
+					k_bindingTextureShadingSpotLightShadowMapsBegin + i,
+					renderSceneCtx.targets.spotLightShadowMapTargets[i].depthTexture);
 			}
-			beginPass(gpuState, renderSceneCtx.targets.directOpaqueTarget.framebuffer, renderSceneCtx.targets.directOpaqueTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
+			beginPass(
+				gpuState,
+				renderSceneCtx.targets.directOpaqueTarget.framebuffer,
+				renderSceneCtx.targets.directOpaqueTarget.resolution,
+				renderSceneCtx.targets.targetParamsUbo);
 			glClear(GL_COLOR_BUFFER_BIT);
 			GpuMaterial const* currentMaterial = nullptr;
 			auto const applyMeshShadingParams = [&](auto const& mesh)
+			{
+				gpuState.useProgram<GpuStateChange::LikelyNo>(mesh.shader.program);
+				if (currentMaterial != mesh.material.get() && mesh.material != nullptr)
 				{
-					gpuState.useProgram<GpuStateChange::LikelyNo>(mesh.shader.program);
-					if (currentMaterial != mesh.material.get() && mesh.material != nullptr)
+					auto const& material = *mesh.material;
+					applyFaceCulling(material.isTwoSided);
+					gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
+					for (int32_t i = 0; i < mistd::isize(material.textures); ++i)
 					{
-						auto const& material = *mesh.material;
-						applyFaceCulling(material.isTwoSided);
-						gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboMaterial, material.paramsUbo);
-						for (int32_t i = 0; i < mistd::isize(material.textures); ++i)
-						{
-							gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureShadingMaterialBegin + i, *material.textures[i].texture);
-						}
-						currentMaterial = mesh.material.get();
+						gpuState.bindTexture<GpuStateChange::LikelyYes>(
+							k_bindingTextureShadingMaterialBegin + i, *material.textures[i].texture);
 					}
-				};
+					currentMaterial = mesh.material.get();
+				}
+			};
 			drawOpaqueMeshes(culledMeshes, applyMeshShadingParams);
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Direct Opaque Color", renderSceneCtx.targets.directOpaqueColorTexture, DebugType::ColorTexture);
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Normal", renderSceneCtx.targets.opaqueNormalTexture, DebugType::DirectionTexture);
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Surface", renderSceneCtx.targets.opaqueSurfaceTexture, DebugType::ColorTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Direct Opaque Color",
+				renderSceneCtx.targets.directOpaqueColorTexture,
+				DebugType::ColorTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Opaque Normal",
+				renderSceneCtx.targets.opaqueNormalTexture,
+				DebugType::DirectionTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Opaque Surface",
+				renderSceneCtx.targets.opaqueSurfaceTexture,
+				DebugType::ColorTexture);
 		}
 
 		// IX - SSR
@@ -1639,49 +1842,46 @@ namespace vob::aoegl
 					}
 					else
 					{
-						glTextureParameteri(renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
+						glTextureParameteri(
+							renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
 						glTextureParameteri(renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
 						gpuState.bindTexture<GpuStateChange::SurelyYes>(
 							k_bindingTextureSsrFilterSource, renderSceneCtx.targets.hiZDepthTexture);
 					}
 
 					beginPass(
-						gpuState
-						, mipTarget.framebuffer
-						, mipTarget.resolution
-						, renderSceneCtx.targets.targetParamsUbo);
+						gpuState, mipTarget.framebuffer, mipTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
 				auto const hiZMipLevels = mistd::isize(renderSceneCtx.targets.hiZMipTargets);
 				glTextureParameteri(renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, 0);
-				glTextureParameteri(
-					renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, hiZMipLevels - 1);
+				glTextureParameteri(renderSceneCtx.targets.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, hiZMipLevels - 1);
 
-				auto const inspectedHiZNearLevel = debugInspectIndex(
-					debugRenderInspectorCtx, "Hi-Z Near", hiZMipLevels);
+				auto const inspectedHiZNearLevel =
+					debugInspectIndex(debugRenderInspectorCtx, "Hi-Z Near", hiZMipLevels);
 				debugInspectRenderOutputMipChannel(
-					debugRenderInspectorCtx
-					, "Hi-Z Near"
-					, renderSceneCtx.targets.hiZDepthTexture
-					, inspectedHiZNearLevel
-					, 0
-					, DebugType::DepthTexture
-					, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+					debugRenderInspectorCtx,
+					"Hi-Z Near",
+					renderSceneCtx.targets.hiZDepthTexture,
+					inspectedHiZNearLevel,
+					0,
+					DebugType::DepthTexture,
+					glm::vec2{viewParams.nearClip, viewParams.farClip});
 
-				auto const inspectedHiZFarLevel = debugInspectIndex(
-					debugRenderInspectorCtx, "Hi-Z Far", hiZMipLevels);
+				auto const inspectedHiZFarLevel = debugInspectIndex(debugRenderInspectorCtx, "Hi-Z Far", hiZMipLevels);
 				debugInspectRenderOutputMipChannel(
-					debugRenderInspectorCtx
-					, "Hi-Z Far"
-					, renderSceneCtx.targets.hiZDepthTexture
-					, inspectedHiZFarLevel
-					, 1
-					, DebugType::DepthTexture
-					, glm::vec2{ viewParams.nearClip, viewParams.farClip });
+					debugRenderInspectorCtx,
+					"Hi-Z Far",
+					renderSceneCtx.targets.hiZDepthTexture,
+					inspectedHiZFarLevel,
+					1,
+					DebugType::DepthTexture,
+					glm::vec2{viewParams.nearClip, viewParams.farClip});
 			}
 
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureSsrHiZDepth, renderSceneCtx.targets.hiZDepthTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureSsrHiZDepth, renderSceneCtx.targets.hiZDepthTexture);
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
@@ -1690,15 +1890,24 @@ namespace vob::aoegl
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.targets.viewParamsUbo);
 			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboLighting, renderSceneCtx.targets.lightingParamsUbo);
 			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboSsr, renderSceneCtx.targets.ssrParamsUbo);
-			gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureSsrAmbientOcclusion, renderSceneCtx.targets.ambientOcclusionTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrDirectOpaqueColor, renderSceneCtx.targets.directOpaqueColorTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueSurface, renderSceneCtx.targets.opaqueSurfaceTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueNormal, renderSceneCtx.targets.opaqueNormalTexture);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureSsrOpaqueDepth, renderSceneCtx.targets.opaqueDepthTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyYes>(
+				k_bindingTextureSsrAmbientOcclusion, renderSceneCtx.targets.ambientOcclusionTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrDirectOpaqueColor, renderSceneCtx.targets.directOpaqueColorTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrOpaqueSurface, renderSceneCtx.targets.opaqueSurfaceTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrOpaqueNormal, renderSceneCtx.targets.opaqueNormalTexture);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureSsrOpaqueDepth, renderSceneCtx.targets.opaqueDepthTexture);
 
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Trace");
-				beginPass(gpuState, renderSceneCtx.targets.ssrRawTarget.framebuffer, renderSceneCtx.targets.ssrRawTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
+				beginPass(
+					gpuState,
+					renderSceneCtx.targets.ssrRawTarget.framebuffer,
+					renderSceneCtx.targets.ssrRawTarget.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.ssrProgram);
 				glBindVertexArray(renderSceneCtx.targets.postProcessVao);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -1718,10 +1927,10 @@ namespace vob::aoegl
 				gpuState.bindTexture<GpuStateChange::LikelyYes>(
 					k_bindingTextureSsrFilterOpaqueNormal, renderSceneCtx.targets.opaqueNormalTexture);
 				beginPass(
-					gpuState
-					, renderSceneCtx.targets.ssrMipTargets[0].framebuffer
-					, renderSceneCtx.targets.ssrMipTargets[0].resolution
-					, renderSceneCtx.targets.targetParamsUbo);
+					gpuState,
+					renderSceneCtx.targets.ssrMipTargets[0].framebuffer,
+					renderSceneCtx.targets.ssrMipTargets[0].resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.ssrDownsampleProgram);
@@ -1733,28 +1942,25 @@ namespace vob::aoegl
 					glTextureParameteri(renderSceneCtx.targets.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
 					glTextureParameteri(renderSceneCtx.targets.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
 					beginPass(
-						gpuState
-						, mipTarget.framebuffer
-						, mipTarget.resolution
-						, renderSceneCtx.targets.targetParamsUbo);
+						gpuState, mipTarget.framebuffer, mipTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
 				glTextureParameteri(renderSceneCtx.targets.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, 0);
 				glTextureParameteri(
-					renderSceneCtx.targets.ssrColorTexture
-					, GL_TEXTURE_MAX_LEVEL
-					, mistd::isize(renderSceneCtx.targets.ssrMipTargets) - 1);
+					renderSceneCtx.targets.ssrColorTexture,
+					GL_TEXTURE_MAX_LEVEL,
+					mistd::isize(renderSceneCtx.targets.ssrMipTargets) - 1);
 			}
 
 			auto const inspectedSsrLevel = debugInspectIndex(
 				debugRenderInspectorCtx, "Ssr Color", mistd::isize(renderSceneCtx.targets.ssrMipTargets));
 			debugInspectRenderOutputMip(
-				debugRenderInspectorCtx
-				, "Ssr Color"
-				, renderSceneCtx.targets.ssrColorTexture
-				, inspectedSsrLevel
-				, DebugType::ColorTexture);
+				debugRenderInspectorCtx,
+				"Ssr Color",
+				renderSceneCtx.targets.ssrColorTexture,
+				inspectedSsrLevel,
+				DebugType::ColorTexture);
 		}
 
 		// X - Opaque Composition
@@ -1765,18 +1971,30 @@ namespace vob::aoegl
 			gpuState.enableColorWrite<GpuStateChange::LikelyNo>();
 			gpuState.disableBlend<GpuStateChange::LikelyNo>();
 			gpuState.disableFaceCulling<GpuStateChange::LikelyNo>();
-			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.targets.directOpaqueColorTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.targets.opaqueSurfaceTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(
+				k_bindingTextureOpaqueCompositionDirectOpaqueColor, renderSceneCtx.targets.directOpaqueColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(
+				k_bindingTextureOpaqueCompositionOpaqueSurface, renderSceneCtx.targets.opaqueSurfaceTexture);
 			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboSsr, renderSceneCtx.targets.ssrParamsUbo);
-			gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.targets.ssrColorTexture);
-			gpuState.bindTexture<GpuStateChange::LikelyNo>(k_bindingTextureOpaqueCompositionOpaqueNormal, renderSceneCtx.targets.opaqueNormalTexture);
-			beginPass(gpuState, renderSceneCtx.targets.finalTarget.framebuffer, renderSceneCtx.targets.finalTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
+			gpuState.bindTexture<GpuStateChange::SurelyYes>(
+				k_bindingTextureOpaqueCompositionSsrColor, renderSceneCtx.targets.ssrColorTexture);
+			gpuState.bindTexture<GpuStateChange::LikelyNo>(
+				k_bindingTextureOpaqueCompositionOpaqueNormal, renderSceneCtx.targets.opaqueNormalTexture);
+			beginPass(
+				gpuState,
+				renderSceneCtx.targets.finalTarget.framebuffer,
+				renderSceneCtx.targets.finalTarget.resolution,
+				renderSceneCtx.targets.targetParamsUbo);
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.opaqueCompositionProgram);
 
 			glBindVertexArray(renderSceneCtx.targets.postProcessVao);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Opaque Composition", renderSceneCtx.targets.finalColorTexture, DebugType::ColorTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx,
+				"Opaque Composition",
+				renderSceneCtx.targets.finalColorTexture,
+				DebugType::ColorTexture);
 		}
 
 		// XI - Translucent
@@ -1801,7 +2019,8 @@ namespace vob::aoegl
 			glBindVertexArray(renderSceneCtx.targets.postProcessVao);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
-			debugInspectRenderOutput(debugRenderInspectorCtx, "Sky Box", renderSceneCtx.targets.finalColorTexture, DebugType::ColorTexture);
+			debugInspectRenderOutput(
+				debugRenderInspectorCtx, "Sky Box", renderSceneCtx.targets.finalColorTexture, DebugType::ColorTexture);
 		}
 
 		auto const bloomEnabled = config.bloom.isEnabled && !renderSceneCtx.targets.bloomMips.empty();
@@ -1819,30 +2038,42 @@ namespace vob::aoegl
 				glBindVertexArray(renderSceneCtx.targets.postProcessVao);
 
 				auto const& firstMip = renderSceneCtx.targets.bloomMips[0];
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureBloomSource, renderSceneCtx.targets.finalColorTexture);
-				beginPass(gpuState, firstMip.target.framebuffer, firstMip.target.resolution, renderSceneCtx.targets.targetParamsUbo);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureBloomSource, renderSceneCtx.targets.finalColorTexture);
+				beginPass(
+					gpuState,
+					firstMip.target.framebuffer,
+					firstMip.target.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 
 				auto const karisOff = 0;
 				glNamedBufferSubData(
-					renderSceneCtx.targets.bloomParamsUbo, offsetof(UniformBloomParams, useKarisAverage), sizeof(karisOff), &karisOff);
+					renderSceneCtx.targets.bloomParamsUbo,
+					offsetof(UniformBloomParams, useKarisAverage),
+					sizeof(karisOff),
+					&karisOff);
 
 				for (int32_t mipIndex = 1; mipIndex < mistd::isize(renderSceneCtx.targets.bloomMips); ++mipIndex)
 				{
 					auto const& mip = renderSceneCtx.targets.bloomMips[mipIndex];
 					gpuState.bindTexture<GpuStateChange::SurelyYes>(
 						k_bindingTextureBloomSource, renderSceneCtx.targets.bloomMips[mipIndex - 1].colorTexture);
-					beginPass(gpuState, mip.target.framebuffer, mip.target.resolution, renderSceneCtx.targets.targetParamsUbo);
+					beginPass(
+						gpuState,
+						mip.target.framebuffer,
+						mip.target.resolution,
+						renderSceneCtx.targets.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
 				auto const inspectedMipIndex = debugInspectIndex(
 					debugRenderInspectorCtx, "Bloom Downsample", mistd::isize(renderSceneCtx.targets.bloomMips));
 				debugInspectRenderOutput(
-					debugRenderInspectorCtx
-					, "Bloom Downsample"
-					, renderSceneCtx.targets.bloomMips[inspectedMipIndex].colorTexture
-					, DebugType::ColorTexture);
+					debugRenderInspectorCtx,
+					"Bloom Downsample",
+					renderSceneCtx.targets.bloomMips[inspectedMipIndex].colorTexture,
+					DebugType::ColorTexture);
 			}
 
 			{
@@ -1858,7 +2089,11 @@ namespace vob::aoegl
 					auto const& mip = renderSceneCtx.targets.bloomMips[mipIndex];
 					gpuState.bindTexture<GpuStateChange::SurelyYes>(
 						k_bindingTextureBloomSource, renderSceneCtx.targets.bloomMips[mipIndex + 1].colorTexture);
-					beginPass(gpuState, mip.target.framebuffer, mip.target.resolution, renderSceneCtx.targets.targetParamsUbo);
+					beginPass(
+						gpuState,
+						mip.target.framebuffer,
+						mip.target.resolution,
+						renderSceneCtx.targets.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
@@ -1867,26 +2102,32 @@ namespace vob::aoegl
 				auto const inspectedMipIndex = debugInspectIndex(
 					debugRenderInspectorCtx, "Bloom Upsample", mistd::isize(renderSceneCtx.targets.bloomMips));
 				debugInspectRenderOutput(
-					debugRenderInspectorCtx
-					, "Bloom Upsample"
-					, renderSceneCtx.targets.bloomMips[inspectedMipIndex].colorTexture
-					, DebugType::ColorTexture);
+					debugRenderInspectorCtx,
+					"Bloom Upsample",
+					renderSceneCtx.targets.bloomMips[inspectedMipIndex].colorTexture,
+					DebugType::ColorTexture);
 			}
 
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Combine");
 				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboBloom, renderSceneCtx.targets.bloomParamsUbo);
-				gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineScene, renderSceneCtx.targets.finalColorTexture);
-				gpuState.bindTexture<GpuStateChange::LikelyYes>(k_bindingTextureBloomCombineBloom, renderSceneCtx.targets.bloomMips[0].colorTexture);
-				beginPass(gpuState, renderSceneCtx.targets.bloomCombinedTarget.framebuffer, renderSceneCtx.targets.bloomCombinedTarget.resolution, renderSceneCtx.targets.targetParamsUbo);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(
+					k_bindingTextureBloomCombineScene, renderSceneCtx.targets.finalColorTexture);
+				gpuState.bindTexture<GpuStateChange::LikelyYes>(
+					k_bindingTextureBloomCombineBloom, renderSceneCtx.targets.bloomMips[0].colorTexture);
+				beginPass(
+					gpuState,
+					renderSceneCtx.targets.bloomCombinedTarget.framebuffer,
+					renderSceneCtx.targets.bloomCombinedTarget.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.bloomCombineProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 
 				debugInspectRenderOutput(
-					debugRenderInspectorCtx
-					, "Bloom Combine"
-					, renderSceneCtx.targets.bloomCombinedColorTexture
-					, DebugType::ColorTexture);
+					debugRenderInspectorCtx,
+					"Bloom Combine",
+					renderSceneCtx.targets.bloomCombinedColorTexture,
+					DebugType::ColorTexture);
 			}
 		}
 
@@ -1901,34 +2142,58 @@ namespace vob::aoegl
 			// Tonemap
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Tonemap");
-				gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboTonemap, renderSceneCtx.targets.tonemapParamsUbo);
+				gpuState.bindUbo<GpuStateChange::SurelyYes>(
+					k_bindingUboTonemap, renderSceneCtx.targets.tonemapParamsUbo);
 				gpuState.bindTexture<GpuStateChange::SurelyYes>(
-					k_bindingTextureTonemapSource
-					, bloomEnabled ? renderSceneCtx.targets.bloomCombinedColorTexture : renderSceneCtx.targets.finalColorTexture);
-				beginPass(gpuState, renderSceneCtx.targets.postProcessTargets[0].target.framebuffer, renderSceneCtx.targets.postProcessTargets[0].target.resolution, renderSceneCtx.targets.targetParamsUbo);
+					k_bindingTextureTonemapSource,
+					bloomEnabled ? renderSceneCtx.targets.bloomCombinedColorTexture
+								 : renderSceneCtx.targets.finalColorTexture);
+				beginPass(
+					gpuState,
+					renderSceneCtx.targets.postProcessTargets[0].target.framebuffer,
+					renderSceneCtx.targets.postProcessTargets[0].target.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.tonemapProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 
-				debugInspectRenderOutput(debugRenderInspectorCtx, "Tonemap", renderSceneCtx.targets.postProcessTargets[0].colorTexture, DebugType::ColorTexture);
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx,
+					"Tonemap",
+					renderSceneCtx.targets.postProcessTargets[0].colorTexture,
+					DebugType::ColorTexture);
 			}
 
 			// Anti Aliasing
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Anti Aliasing");
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTextureAntiAliasingSource, renderSceneCtx.targets.postProcessTargets[0].colorTexture);
-				beginPass(gpuState, renderSceneCtx.targets.postProcessTargets[1].target.framebuffer, renderSceneCtx.targets.postProcessTargets[1].target.resolution, renderSceneCtx.targets.targetParamsUbo);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTextureAntiAliasingSource, renderSceneCtx.targets.postProcessTargets[0].colorTexture);
+				beginPass(
+					gpuState,
+					renderSceneCtx.targets.postProcessTargets[1].target.framebuffer,
+					renderSceneCtx.targets.postProcessTargets[1].target.resolution,
+					renderSceneCtx.targets.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.aaProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 
-				debugInspectRenderOutput(debugRenderInspectorCtx, "Anti Aliasing", renderSceneCtx.targets.postProcessTargets[1].colorTexture, DebugType::ColorTexture);
+				debugInspectRenderOutput(
+					debugRenderInspectorCtx,
+					"Anti Aliasing",
+					renderSceneCtx.targets.postProcessTargets[1].colorTexture,
+					DebugType::ColorTexture);
 			}
 
 			// Present
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Present");
 				// TODO: should allow passing ivec4 so I can pass window's desired viewport directly (editor...).
-				gpuState.bindTexture<GpuStateChange::SurelyYes>(k_bindingTexturePresentSource, renderSceneCtx.targets.postProcessTargets[1].colorTexture);
-				beginPass(gpuState, window.getDefaultFramebufferId(), window.getSize(), renderSceneCtx.targets.targetParamsUbo);
+				gpuState.bindTexture<GpuStateChange::SurelyYes>(
+					k_bindingTexturePresentSource, renderSceneCtx.targets.postProcessTargets[1].colorTexture);
+				beginPass(
+					gpuState,
+					window.getDefaultFramebufferId(),
+					window.getSize(),
+					renderSceneCtx.targets.targetParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.presentProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 			}
@@ -1947,7 +2212,8 @@ namespace vob::aoegl
 				worldDebugVertices.clear();
 				for (auto const& debugVertex : debugMeshCtx.vertices)
 				{
-					worldDebugVertices.emplace_back(glm::vec3{ debugVertex.position - worldOriginPosition }, glm::vec4{ debugVertex.color });
+					worldDebugVertices.emplace_back(
+						glm::vec3{debugVertex.position - worldOriginPosition}, glm::vec4{debugVertex.color});
 				}
 
 				glNamedBufferData(
@@ -1970,7 +2236,8 @@ namespace vob::aoegl
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Hud");
 				gpuState.enableBlend<GpuStateChange::SurelyYes>();
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboPostProcess, renderSceneCtx.targets.hudParamsUbo);
+				gpuState.bindUbo<GpuStateChange::LikelyNo>(
+					k_bindingUboPostProcess, renderSceneCtx.targets.hudParamsUbo);
 				gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.targets.hudProgram);
 				glDrawArrays(GL_TRIANGLES, 0, 3);
 				gpuState.disableBlend<GpuStateChange::SurelyYes>();
@@ -1982,11 +2249,7 @@ namespace vob::aoegl
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Debug Inspector");
 			debugDrawInspectedRenderOutput(
-				gpuState
-				, renderSceneCtx
-				, debugRenderInspectorCtx
-				, window.getDefaultFramebufferId()
-				, window.getSize());
+				gpuState, renderSceneCtx, debugRenderInspectorCtx, window.getDefaultFramebufferId(), window.getSize());
 		}
 
 		debugMeshCtx.clear();
