@@ -2,7 +2,7 @@
 
 #include "vob/aoe/rendering/GraphicTypes.h"
 #include "vob/aoe/rendering/RenderSceneConfig.h"
-#include "vob/aoe/rendering/resources/GpuRenderSceneTargets.h"
+#include "vob/aoe/rendering/resources/GpuRenderSceneResources.h"
 #include "vob/aoe/rendering/shaders/defines.h"
 
 #include <vob/misc/std/enum_traits.h>
@@ -31,6 +31,6 @@ namespace vob::aoegl
 		};
 		mistd::bounded_vector<SpotLightShadowFade, k_spotLightShadowMapsCapacity> spotLightShadowFades;
 
-		GpuRenderSceneTargets targets;
+		GpuRenderSceneResources resources;
 	};
 }

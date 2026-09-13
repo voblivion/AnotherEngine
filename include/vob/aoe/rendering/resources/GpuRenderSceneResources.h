@@ -17,7 +17,7 @@ namespace vob::aoegl
 	constexpr int32_t k_ssrMipsCapacity = 16;
 	constexpr int32_t k_hiZMipsCapacity = 16;
 
-	struct GpuRenderSceneTargets
+	struct GpuRenderSceneResources
 	{
 		GpuBuffer globalParamsUbo;
 		GpuBuffer viewParamsUbo;

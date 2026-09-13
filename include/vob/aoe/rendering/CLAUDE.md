@@ -3,7 +3,7 @@
 OpenGL 4.6 forward+ renderer: light clustering, CSM sun shadows + spot shadows, depth pre-pass, opaque g-buffer (normal/surface/geometric-normal/depth), SSAO, SSR, opaque composition, translucent, skybox, anti-aliasing, present, debug geometry, hud, ImGui.
 
 - `GraphicTypes.h` — GL type aliases (`GraphicId`=GLuint, etc), `k_invalidId`.
-- `resources/` — `GpuResource<>` RAII wrappers owning one GL name each (`GpuBuffer`, `GpuTexture`, `GpuFramebuffer`, `GpuVertexArray`, `GpuProgram`, `GpuQuery`); deletion is deferred through `GpuDeleteQueue`, drained once per frame. Composites: `GpuMesh`, `GpuMaterial`, `GpuShader` (shared via `shared_ptr`), `GpuRenderTarget`/`GpuRenderSceneTargets`.
+- `resources/` — `GpuResource<>` RAII wrappers owning one GL name each (`GpuBuffer`, `GpuTexture`, `GpuFramebuffer`, `GpuVertexArray`, `GpuProgram`, `GpuQuery`); deletion is deferred through `GpuDeleteQueue`, drained once per frame. Composites: `GpuMesh`, `GpuMaterial`, `GpuShader` (shared via `shared_ptr`), `GpuRenderTarget`, `GpuRenderSceneResources`.
 - `GpuState.h` — tracked GL state wrapper (avoids redundant `glEnable`/`glBindFramebuffer`/etc calls), templated on expected-change likelihood.
 - `Model.h`, `ShadedMesh.h`, `StaticModelTemplate.h` — in-memory model/mesh representations (shared mesh + material + shading pass), template = mesh+material+lights bundle for spawning instances.
 - `data/` — `ImageData`/`ImageLoader` (image → pixels), `ModelData`/`ModelLoader` (assimp-backed static/rigged mesh+bone loading).
