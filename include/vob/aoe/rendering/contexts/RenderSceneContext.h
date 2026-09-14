@@ -22,6 +22,8 @@ namespace vob::aoegl
 	struct RenderSceneContext
 	{
 		std::reference_wrapper<RenderSceneConfig> config;
+		RenderSceneConfig appliedConfig;
+		glm::ivec2 appliedWindowSize = glm::ivec2{ 0 };
 
 		glm::vec3 sunDir = glm::normalize(glm::vec3{ 0.7f, 0.15f, -1.0f });
 		struct SpotLightShadowFade

@@ -8,8 +8,9 @@ OpenGL 4.6 forward+ renderer: light clustering, CSM sun shadows + spot shadows, 
 - `Model.h`, `ShadedMesh.h`, `StaticModelTemplate.h` — in-memory model/mesh representations (shared mesh + material + shading pass), template = mesh+material+lights bundle for spawning instances.
 - `data/` — `ImageData`/`ImageLoader` (image → pixels), `ModelData`/`ModelLoader` (assimp-backed static/rigged mesh+bone loading).
 - `components/` — `CameraComponent`, `LightComponent`, `StaticModelComponent`/`RiggedModelComponent`, `InstancedModelsComponent`, `ModelTransformComponent` (per-entity model UBO).
-- `contexts/` — `CameraDirectorContext`/`DebugCameraDirectorContext` (active/debug camera), `RenderSceneContext` (all UBOs/framebuffers/textures/programs for the pipeline above), `GpuDeleteQueueContext`, `DebugMeshContext` (line/tri debug draw builder: addLine/addObb/addSphere/etc), `DebugProgramContext` (hot-reloadable shader sources).
-- `systems/` — `RenderSceneSystem` (main draw), `DebugCameraDirectorSystem`, `DebugRenderLightsSystem`, `ReleaseUnusedGpuResourcesSystem` (drains `GpuDeleteQueue`), `PrepareImGuiFrameSystem`/`RenderImGuiFrameSystem`, `SwapBuffersSystem`.
+- `contexts/` — `CameraDirectorContext`/`DebugCameraDirectorContext` (active/debug camera), `RenderSceneContext` (config ref, applied config, GPU resources), `GpuDeleteQueueContext`, `DebugMeshContext` (line/tri debug draw builder: addLine/addObb/addSphere/etc), `DebugProgramContext` (hot-reloadable shader sources).
+- `systems/` — `ApplyRenderSceneConfigSystem` (updates GPU resources to config), `RenderSceneSystem` (main draw), `DebugCameraDirectorSystem`, `DebugRenderLightsSystem`, `ReleaseUnusedGpuResourcesSystem` (drains `GpuDeleteQueue`), `PrepareImGuiFrameSystem`/`RenderImGuiFrameSystem`, `SwapBuffersSystem`.
+- `RenderSceneConfig.h`, `RenderSceneConfigUtils.h`, `RenderSceneResourcesUtils.h/.cpp` — render config, and config → GPU resources.
 - `ModelUtils.h/.cpp`, `ProgramUtils.h/.cpp` — build `Mesh`/`Model` from loaded data; compile/link the various pipeline shader programs.
 - `CameraUtils.h` — camera property extraction, view-frustum plane culling.
 - `Color.h` — `Rgb`/`Rgba` + named color constants.

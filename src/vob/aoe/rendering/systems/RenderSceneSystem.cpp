@@ -674,6 +674,7 @@ namespace vob::aoegl
 
 		// 0 - Prepare Debug
 		auto& config = renderSceneCtx.config.get();
+		auto const& appliedConfig = renderSceneCtx.appliedConfig;
 		auto const isDebugUiDisplayed = m_debugUiCtx.get(a_wdap).isDisplayed;
 		if (isDebugUiDisplayed && ImGui::Begin("Render Debug"))
 		{
@@ -707,17 +708,14 @@ namespace vob::aoegl
 					debugRenderInspectorCtx.selectedIndex, 0, debugRenderInspectorCtx.selectedIndexCount - 1);
 			}
 			ImGui::SeparatorText("SSAO");
-			auto ssaoChanged = false;
 			ImGui::Checkbox("Enable##ssao", &config.ssao.isEnabled);
-			ssaoChanged |= ImGui::SliderInt("Slice Count##ssao", &config.ssao.sliceCount, 1, 8);
-			ssaoChanged |= ImGui::SliderInt("Step Count##ssao", &config.ssao.stepCount, 1, 16);
-			ssaoChanged |= ImGui::SliderFloat(
-				"Radius##ssao", &config.ssao.radius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-			ssaoChanged |= ImGui::SliderFloat("Falloff Start##ssao", &config.ssao.falloffStart, 0.0f, 1.0f);
-			ssaoChanged |= ImGui::SliderFloat("Intensity##ssao", &config.ssao.intensity, 0.0f, 4.0f);
-			ssaoChanged |= ImGui::SliderFloat(
-				"Max Radius (screen)##ssao", &config.ssao.maxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
-			ssaoChanged |= ImGui::SliderFloat(
+			ImGui::SliderInt("Slice Count##ssao", &config.ssao.sliceCount, 1, 8);
+			ImGui::SliderInt("Step Count##ssao", &config.ssao.stepCount, 1, 16);
+			ImGui::SliderFloat("Radius##ssao", &config.ssao.radius, 0.05f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+			ImGui::SliderFloat("Falloff Start##ssao", &config.ssao.falloffStart, 0.0f, 1.0f);
+			ImGui::SliderFloat("Intensity##ssao", &config.ssao.intensity, 0.0f, 4.0f);
+			ImGui::SliderFloat("Max Radius (screen)##ssao", &config.ssao.maxRadiusScreenFraction, 0.01f, 0.5f, "%.3f");
+			ImGui::SliderFloat(
 				"Depth Tolerance##ssao",
 				&config.ssao.depthTolerance,
 				0.001f,
@@ -725,40 +723,32 @@ namespace vob::aoegl
 				"%.3f",
 				ImGuiSliderFlags_Logarithmic);
 
-			if (ssaoChanged)
-			{
-				auto const ssaoParams = createUniformSsaoParams(config.ssao);
-				glNamedBufferSubData(renderSceneCtx.resources.ssaoParamsUbo, 0, sizeof(ssaoParams), &ssaoParams);
-			}
-
 			ImGui::SeparatorText("SSR");
-			auto ssrChanged = false;
-			ssrChanged |= ImGui::Checkbox("Enable##ssr", &config.ssr.isEnabled);
-			ssrChanged |= ImGui::SliderInt("Step Count", &config.ssr.stepCount, 4, 256);
-			ssrChanged |= ImGui::SliderFloat(
-				"Max Range", &config.ssr.maxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+			ImGui::Checkbox("Enable##ssr", &config.ssr.isEnabled);
+			ImGui::SliderInt("Step Count", &config.ssr.stepCount, 4, 256);
+			ImGui::SliderFloat("Max Range", &config.ssr.maxRange, 1.0f, 1000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
 
-			ssrChanged |= ImGui::Checkbox("Debug Exit Reason##ssr", &config.ssr.debugExitReason);
+			ImGui::Checkbox("Debug Exit Reason##ssr", &config.ssr.debugExitReason);
 
-			ssrChanged |= ImGui::Checkbox("Debug Penetration##ssr", &config.ssr.debugPenetration);
+			ImGui::Checkbox("Debug Penetration##ssr", &config.ssr.debugPenetration);
 
-			ssrChanged |= ImGui::Checkbox("Debug Ray##ssr", &config.ssr.debugRay);
+			ImGui::Checkbox("Debug Ray##ssr", &config.ssr.debugRay);
 			if (config.ssr.debugRay)
 			{
-				ssrChanged |= ImGui::SliderInt(
+				ImGui::SliderInt(
 					"Ray Pixel X", &config.ssr.debugRayPixel.x, 0, renderSceneCtx.resources.shadingResolution.x - 1);
-				ssrChanged |= ImGui::SliderInt(
+				ImGui::SliderInt(
 					"Ray Pixel Y", &config.ssr.debugRayPixel.y, 0, renderSceneCtx.resources.shadingResolution.y - 1);
 			}
 
-			ssrChanged |= ImGui::SliderFloat(
+			ImGui::SliderFloat(
 				"Penetration Blocked Below",
 				&config.ssr.penetrationBlockedRatio,
 				0.0001f,
 				2.0f,
 				"%.4f",
 				ImGuiSliderFlags_Logarithmic);
-			ssrChanged |= ImGui::SliderFloat(
+			ImGui::SliderFloat(
 				"Penetration Through Above",
 				&config.ssr.penetrationThroughRatio,
 				0.0001f,
@@ -766,40 +756,19 @@ namespace vob::aoegl
 				"%.4f",
 				ImGuiSliderFlags_Logarithmic);
 
-			if (ssrChanged)
-			{
-				auto const ssrParams = createUniformSsrParams(config.ssr);
-				glNamedBufferSubData(renderSceneCtx.resources.ssrParamsUbo, 0, sizeof(ssrParams), &ssrParams);
-			}
-
 			ImGui::SeparatorText("Bloom");
-			auto bloomChanged = false;
 			ImGui::Checkbox("Enable##bloom", &config.bloom.isEnabled);
-			bloomChanged |= ImGui::SliderFloat("Scatter", &config.bloom.scatter, 0.0f, 3.0f);
-			bloomChanged |= ImGui::SliderFloat("Strength", &config.bloom.strength, 0.0f, 1.0f);
-			bloomChanged |= ImGui::SliderFloat("Filter Radius", &config.bloom.filterRadius, 0.5f, 3.0f);
-			bloomChanged |= ImGui::Checkbox("Karis Average", &config.bloom.useKarisAverage);
-
-			if (bloomChanged)
-			{
-				auto const bloomParams =
-					createUniformBloomParams(config.bloom, mistd::isize(renderSceneCtx.resources.bloomMips));
-				glNamedBufferSubData(renderSceneCtx.resources.bloomParamsUbo, 0, sizeof(bloomParams), &bloomParams);
-			}
+			ImGui::SliderFloat("Scatter", &config.bloom.scatter, 0.0f, 3.0f);
+			ImGui::SliderFloat("Strength", &config.bloom.strength, 0.0f, 1.0f);
+			ImGui::SliderFloat("Filter Radius", &config.bloom.filterRadius, 0.5f, 3.0f);
+			ImGui::Checkbox("Karis Average", &config.bloom.useKarisAverage);
 
 			ImGui::SeparatorText("Tonemap");
-			auto tonemapChanged = false;
-			tonemapChanged |= ImGui::SliderFloat(
+			ImGui::SliderFloat(
 				"Exposure", &config.tonemap.exposure, 0.05f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-			tonemapChanged |= ImGui::ColorEdit3("Color Filter", &config.tonemap.colorFilter.x);
-			tonemapChanged |= ImGui::SliderFloat("Contrast", &config.tonemap.contrast, 0.0f, 2.0f);
-			tonemapChanged |= ImGui::SliderFloat("Saturation", &config.tonemap.saturation, 0.0f, 2.0f);
-
-			if (tonemapChanged)
-			{
-				auto const tonemapParams = createUniformTonemapParams(config.tonemap);
-				glNamedBufferSubData(renderSceneCtx.resources.tonemapParamsUbo, 0, sizeof(tonemapParams), &tonemapParams);
-			}
+			ImGui::ColorEdit3("Color Filter", &config.tonemap.colorFilter.x);
+			ImGui::SliderFloat("Contrast", &config.tonemap.contrast, 0.0f, 2.0f);
+			ImGui::SliderFloat("Saturation", &config.tonemap.saturation, 0.0f, 2.0f);
 
 			ImGui::SeparatorText("Shaders");
 			auto& activeShaderIndex = debugProgramCtx.activeShaderIndex;
@@ -1059,20 +1028,20 @@ namespace vob::aoegl
 			glm::vec3{viewParams.viewToWorld[3]},
 			-glm::vec3{viewParams.viewToWorld[2]},
 			m_lightEntities.get(a_wdap),
-			config.lighting.maxLightCount,
+			appliedConfig.lighting.maxLightCount,
 			renderSceneCtx.resources.shadingResolution,
-			config.lighting.clusterTileSize,
-			config.lighting.clusterZCount,
-			config.lighting.clusterCapacity,
-			computeSpotShadowMapCount(config.shadow),
+			appliedConfig.lighting.clusterTileSize,
+			appliedConfig.lighting.clusterZCount,
+			appliedConfig.lighting.clusterCapacity,
+			computeSpotShadowMapCount(appliedConfig.shadow),
 			worldOriginPosition,
 			glm::inverse(viewParams.worldToClip),
 			viewParams.viewToWorld,
 			viewParams.nearClip,
 			viewParams.farClip,
 			renderSceneCtx.sunDir,
-			renderSceneCtx.config.get().shadow.sunCascadeFarClips,
-			config.ssao.isEnabled,
+			appliedConfig.shadow.sunCascadeFarClips,
+			appliedConfig.ssao.isEnabled,
 			config.ssao.depthTolerance,
 			std::chrono::duration<float>{m_timeContext.get(a_wdap).elapsedTime}.count(),
 			renderSceneCtx.spotLightShadowFades,
@@ -1081,7 +1050,8 @@ namespace vob::aoegl
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Update Buffers");
 			glNamedBufferSubData(renderSceneCtx.resources.globalParamsUbo, 0, sizeof(globalParams), &globalParams);
 			glNamedBufferSubData(renderSceneCtx.resources.viewParamsUbo, 0, sizeof(viewParams), &viewParams);
-			glNamedBufferSubData(renderSceneCtx.resources.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
+			glNamedBufferSubData(
+				renderSceneCtx.resources.lightingParamsUbo, 0, sizeof(lightingParams), &lightingParams);
 			glNamedBufferSubData(renderSceneCtx.resources.shadowParamsUbo, 0, sizeof(shadowParams), &shadowParams);
 			glNamedBufferSubData(
 				renderSceneCtx.resources.lightsSsbo, 0, gpuLights.size() * sizeof(gpuLights[0]), gpuLights.data());
@@ -1093,7 +1063,8 @@ namespace vob::aoegl
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.resources.lightClusteringProgram);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboGlobal, renderSceneCtx.resources.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboView, renderSceneCtx.resources.viewParamsUbo);
-			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
+			gpuState.bindUbo<GpuStateChange::SurelyYes>(
+				k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyYes>(k_bindingUboShadow, renderSceneCtx.resources.shadowParamsUbo);
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(k_bindingSsboLights, renderSceneCtx.resources.lightsSsbo);
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(
@@ -1116,7 +1087,8 @@ namespace vob::aoegl
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Sky Irradiance");
 			gpuState.useProgram<GpuStateChange::SurelyYes>(renderSceneCtx.resources.skyIrradianceProgram);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.resources.globalParamsUbo);
-			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
+			gpuState.bindUbo<GpuStateChange::SurelyNo>(
+				k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
 			gpuState.bindSsbo<GpuStateChange::SurelyYes>(
 				k_bindingSsboSkyIrradiance, renderSceneCtx.resources.skyIrradianceSsbo);
 
@@ -1549,10 +1521,8 @@ namespace vob::aoegl
 				auto const debugSunCsmIndex = std::clamp(
 					debugRenderInspectorCtx.selectedIndex,
 					0,
-					mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips) - 1);
-				for (int32_t csmIndex = 0;
-					 csmIndex < mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips);
-					 ++csmIndex)
+					mistd::isize(appliedConfig.shadow.sunCascadeFarClips) - 1);
+				for (int32_t csmIndex = 0; csmIndex < mistd::isize(appliedConfig.shadow.sunCascadeFarClips); ++csmIndex)
 				{
 					auto const& sunShadowParams = shadowParams.sun[csmIndex];
 					if (csmIndex == debugSunCsmIndex)
@@ -1579,9 +1549,7 @@ namespace vob::aoegl
 				}
 			}
 			auto const sunCsmIndex = debugInspectIndex(
-				debugRenderInspectorCtx,
-				"Sun Shadow Map",
-				mistd::isize(renderSceneCtx.config.get().shadow.sunCascadeFarClips));
+				debugRenderInspectorCtx, "Sun Shadow Map", mistd::isize(appliedConfig.shadow.sunCascadeFarClips));
 			debugInspectRenderOutputLayer(
 				debugRenderInspectorCtx,
 				"Sun Shadow Map",
@@ -1683,7 +1651,7 @@ namespace vob::aoegl
 		}
 
 		// VII - SSAO
-		if (config.ssao.isEnabled)
+		if (appliedConfig.ssao.isEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSAO");
 			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
@@ -1818,7 +1786,7 @@ namespace vob::aoegl
 		}
 
 		// IX - SSR
-		if (config.ssr.isEnabled)
+		if (appliedConfig.ssr.isEnabled)
 		{
 			VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "SSR");
 
@@ -1844,13 +1812,17 @@ namespace vob::aoegl
 					{
 						glTextureParameteri(
 							renderSceneCtx.resources.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
-						glTextureParameteri(renderSceneCtx.resources.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
+						glTextureParameteri(
+							renderSceneCtx.resources.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
 						gpuState.bindTexture<GpuStateChange::SurelyYes>(
 							k_bindingTextureSsrFilterSource, renderSceneCtx.resources.hiZDepthTexture);
 					}
 
 					beginPass(
-						gpuState, mipTarget.framebuffer, mipTarget.resolution, renderSceneCtx.resources.targetParamsUbo);
+						gpuState,
+						mipTarget.framebuffer,
+						mipTarget.resolution,
+						renderSceneCtx.resources.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
@@ -1888,7 +1860,8 @@ namespace vob::aoegl
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboGlobal, renderSceneCtx.resources.globalParamsUbo);
 			gpuState.bindUbo<GpuStateChange::SurelyNo>(k_bindingUboView, renderSceneCtx.resources.viewParamsUbo);
-			gpuState.bindUbo<GpuStateChange::LikelyNo>(k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
+			gpuState.bindUbo<GpuStateChange::LikelyNo>(
+				k_bindingUboLighting, renderSceneCtx.resources.lightingParamsUbo);
 			gpuState.bindUbo<GpuStateChange::LikelyYes>(k_bindingUboSsr, renderSceneCtx.resources.ssrParamsUbo);
 			gpuState.bindTexture<GpuStateChange::LikelyYes>(
 				k_bindingTextureSsrAmbientOcclusion, renderSceneCtx.resources.ambientOcclusionTexture);
@@ -1914,7 +1887,10 @@ namespace vob::aoegl
 			}
 
 			debugInspectRenderOutput(
-				debugRenderInspectorCtx, "Ssr Raw", renderSceneCtx.resources.ssrRawColorTexture, DebugType::ColorTexture);
+				debugRenderInspectorCtx,
+				"Ssr Raw",
+				renderSceneCtx.resources.ssrRawColorTexture,
+				DebugType::ColorTexture);
 
 			{
 				VOB_AOE_GPU_TIMER_SCOPE(renderProfilingCtx.gpuProfiler, "Filter");
@@ -1942,7 +1918,10 @@ namespace vob::aoegl
 					glTextureParameteri(renderSceneCtx.resources.ssrColorTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
 					glTextureParameteri(renderSceneCtx.resources.ssrColorTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
 					beginPass(
-						gpuState, mipTarget.framebuffer, mipTarget.resolution, renderSceneCtx.resources.targetParamsUbo);
+						gpuState,
+						mipTarget.framebuffer,
+						mipTarget.resolution,
+						renderSceneCtx.resources.targetParamsUbo);
 					glDrawArrays(GL_TRIANGLES, 0, 3);
 				}
 
@@ -2020,10 +1999,13 @@ namespace vob::aoegl
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
 			debugInspectRenderOutput(
-				debugRenderInspectorCtx, "Sky Box", renderSceneCtx.resources.finalColorTexture, DebugType::ColorTexture);
+				debugRenderInspectorCtx,
+				"Sky Box",
+				renderSceneCtx.resources.finalColorTexture,
+				DebugType::ColorTexture);
 		}
 
-		auto const bloomEnabled = config.bloom.isEnabled && !renderSceneCtx.resources.bloomMips.empty();
+		auto const bloomEnabled = appliedConfig.bloom.isEnabled && !renderSceneCtx.resources.bloomMips.empty();
 
 		// XII-bis - Bloom
 		if (bloomEnabled)

@@ -44,6 +44,8 @@ namespace vob::aoegl
 			float intensity = 1.0f;
 			float maxRadiusScreenFraction = 0.2f;
 			float depthTolerance = 0.05f;
+
+			bool operator==(Ssao const&) const = default;
 		};
 
 		struct Ssr
@@ -60,6 +62,8 @@ namespace vob::aoegl
 			bool debugRay = false;
 			bool debugPenetration = false;
 			glm::ivec2 debugRayPixel = glm::ivec2{ 0 };
+
+			bool operator==(Ssr const&) const = default;
 		};
 
 		struct Bloom
@@ -71,6 +75,8 @@ namespace vob::aoegl
 			float scatter = 0.5f;
 			float strength = 0.05f;
 			bool useKarisAverage = true;
+
+			bool operator==(Bloom const&) const = default;
 		};
 
 		struct Tonemap
@@ -79,6 +85,8 @@ namespace vob::aoegl
 			float exposure = 1.0f;
 			float contrast = 1.0f;
 			float saturation = 1.0f;
+
+			bool operator==(Tonemap const&) const = default;
 		};
 
 		float renderScale = 1.0f;
