@@ -4,6 +4,8 @@
 
 #include "entt/entt.hpp"
 
+#include <type_traits>
+
 
 namespace vob::aoeng
 {
@@ -95,7 +97,7 @@ namespace vob::aoeng
 
 		decltype(auto) get(EcsWorldDataAccessProvider const& a_wdap) const
 		{
-			return a_wdap.m_registry.storage<TComponent>();
+			return a_wdap.m_registry.storage<std::remove_const_t<TComponent>>();
 		}
 	};
 
