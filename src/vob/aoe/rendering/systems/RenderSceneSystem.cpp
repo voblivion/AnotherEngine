@@ -1814,7 +1814,7 @@ namespace vob::aoegl
 							renderSceneCtx.resources.hiZDepthTexture, GL_TEXTURE_BASE_LEVEL, mipIndex - 1);
 						glTextureParameteri(
 							renderSceneCtx.resources.hiZDepthTexture, GL_TEXTURE_MAX_LEVEL, mipIndex - 1);
-						gpuState.bindTexture<GpuStateChange::SurelyYes>(
+						gpuState.bindTexture<GpuStateChange::LikelyNo>(
 							k_bindingTextureSsrFilterSource, renderSceneCtx.resources.hiZDepthTexture);
 					}
 
@@ -1854,7 +1854,6 @@ namespace vob::aoegl
 
 			gpuState.bindTexture<GpuStateChange::LikelyYes>(
 				k_bindingTextureSsrHiZDepth, renderSceneCtx.resources.hiZDepthTexture);
-			gpuState.disableDepthTest<GpuStateChange::SurelyYes>();
 			gpuState.disableDepthWrite<GpuStateChange::SurelyNo>();
 			gpuState.enableColorWrite<GpuStateChange::SurelyNo>();
 			gpuState.disableBlend<GpuStateChange::SurelyNo>();
