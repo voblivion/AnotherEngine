@@ -1,10 +1,11 @@
 #pragma once
 
-#include <vob/aoe/input/InputBindings.h>
+#include <vob/aoe/input/Inputs.h>
 
 #include <vob/aoe/window/Window.h>
 
 #include <algorithm>
+#include <memory>
 
 
 namespace vob::aoein
@@ -173,13 +174,44 @@ namespace vob::aoein
 		std::shared_ptr<AInputValueBinding> m_down;
 	};
 
+	struct TwoAxesDifferenceInputValueBinding : public AInputValueBinding
+	{
+	public:
+		explicit TwoAxesDifferenceInputValueBinding(
+			std::shared_ptr<AInputValueBinding> a_negative, std::shared_ptr<AInputValueBinding> a_positive)
+			: m_negative{ std::move(a_negative) }
+			, m_positive{ std::move(a_positive) }
+		{
+		}
+
+		float getValue() const override
+		{
+			return 0.5f * (m_positive->getValue() - m_negative->getValue());
+		}
+
+		void processEvent(aoewi::WindowEvent const& a_windowEvent) override;
+
+		void update(aoewi::IWindow const& a_window, float a_dt) override;
+
+	private:
+		std::shared_ptr<AInputValueBinding> m_negative;
+		std::shared_ptr<AInputValueBinding> m_positive;
+	};
+
 	struct GamepadAxisInputValueBinding : public AInputValueBinding
 	{
 	public:
-		explicit GamepadAxisInputValueBinding(int32_t a_gamepadIndex, Gamepad::Axis a_axis, float a_deadZone = 0.0f)
+		explicit GamepadAxisInputValueBinding(
+			int32_t a_gamepadIndex,
+			Gamepad::Axis a_axis,
+			float a_rest = 0.0f,
+			float a_deadZone = 0.0f,
+			bool a_isInverted = false)
 			: m_gamepadIndex{ a_gamepadIndex }
 			, m_axis{ a_axis }
+			, m_rest{ a_rest }
 			, m_deadZone{ a_deadZone }
+			, m_isInverted{ a_isInverted }
 		{
 		}
 
@@ -188,24 +220,14 @@ namespace vob::aoein
 			return m_value;
 		}
 
-		void update(aoewi::IWindow const& a_window, [[maybe_unused]] float a_dt) override
-		{
-			if (a_window.isGamepadPresent(m_gamepadIndex))
-			{
-				m_value = a_window.getGamepadAxisValue(m_gamepadIndex, m_axis);
-				auto const sign = (0.0f < m_value) - (m_value < 0.0f);
-				m_value = sign * (std::max(m_deadZone, std::abs(m_value)) - m_deadZone) / (1.0f - m_deadZone);
-			}
-			else
-			{
-				m_value = 0.0f;
-			}
-		}
+		void update(aoewi::IWindow const& a_window, float a_dt) override;
 
 	private:
 		int32_t m_gamepadIndex = 0;
 		Gamepad::Axis m_axis;
+		float m_rest = 0.0f;
 		float m_deadZone = 0.0f;
+		bool m_isInverted = false;
 		float m_value = 0.0f;
 	};
 
@@ -357,6 +379,28 @@ namespace vob::aoein
 	private:
 		int32_t m_gamepadIndex = 0;
 		Gamepad::Button m_button;
+		bool m_isPressed = false;
+	};
+
+	struct GamepadAxisEventBinding : public AInputEventBinding
+	{
+	public:
+		explicit GamepadAxisEventBinding(
+			int32_t a_gamepadIndex, Gamepad::Axis a_axis, float a_threshold, bool a_isInverted = false)
+			: m_gamepadIndex{ a_gamepadIndex }
+			, m_axis{ a_axis }
+			, m_threshold{ a_threshold }
+			, m_isInverted{ a_isInverted }
+		{
+		}
+
+		bool update(aoewi::IWindow const& a_window, float a_dt) override;
+
+	private:
+		int32_t m_gamepadIndex = 0;
+		Gamepad::Axis m_axis;
+		float m_threshold = 0.0f;
+		bool m_isInverted = false;
 		bool m_isPressed = false;
 	};
 	// TODO
