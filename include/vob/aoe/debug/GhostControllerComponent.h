@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vob/aoe/input/InputBindings.h>
 #include <vob/aoe/input/GameInput.h>
 
 

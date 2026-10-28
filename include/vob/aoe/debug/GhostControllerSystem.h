@@ -4,7 +4,6 @@
 #include "vob/aoe/debug/IsControlledTag.h"
 
 #include "vob/aoe/engine/EcsWorldDataAccess.h"
-#include "vob/aoe/input/InputBindings.h"
 #include "vob/aoe/input/GameInputContext.h"
 #include "vob/aoe/spacetime/PositionComponent.h"
 #include "vob/aoe/spacetime/RotationComponent.h"
