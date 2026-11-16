@@ -23,7 +23,7 @@ namespace vob::aoein
 			auto const sign = static_cast<float>((0.0f < offset) - (offset < 0.0f));
 			auto const range = offset > 0.0f ? 1.0f - m_rest : 1.0f + m_rest;
 			auto const travel = range > 0.0f ? std::abs(offset) / range : 0.0f;
-			m_value = sign * std::max(0.0f, travel - m_deadZone) / (1.0f - m_deadZone);
+			m_value = m_rest + sign * range * std::max(0.0f, travel - m_deadZone) / (1.0f - m_deadZone);
 			if (m_isInverted)
 			{
 				m_value = -m_value;
