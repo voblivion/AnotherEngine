@@ -70,12 +70,12 @@ layout(std430, binding = BINDING_SSBO_LIGHTS) readonly buffer ShaderStorageLight
 
 layout(std430, binding = BINDING_SSBO_LIGHT_CLUSTER_SIZES) buffer ShaderStorageLightClusterSizes
 {
-    int8_t uLightClusterSizes[];
+    int uLightClusterSizes[];
 };
 
 layout(std430, binding = BINDING_SSBO_LIGHT_CLUSTER_INDICES) buffer ShaderStorageLightClusterIndices
 {
-    int16_t uLightClusterIndices[];
+    int uLightClusterIndices[];
 };
 
 layout(std430, binding = BINDING_SSBO_SKY_IRRADIANCE) buffer ShaderStorageSkyIrradiance

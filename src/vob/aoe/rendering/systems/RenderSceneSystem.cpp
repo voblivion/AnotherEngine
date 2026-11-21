@@ -620,7 +620,7 @@ namespace vob::aoegl
 				.depthRange = a_inspectorCtx.capturedDepthRange,
 				.exposure = a_inspectorCtx.exposure,
 				.channel = a_inspectorCtx.capturedChannel,
-				.type = static_cast<int8_t>(a_inspectorCtx.capturedType)};
+				.type = static_cast<int32_t>(a_inspectorCtx.capturedType)};
 			glNamedBufferSubData(a_renderSceneCtx.resources.debugParamsUbo, 0, sizeof(debugParams), &debugParams);
 
 			a_gpuState.disableDepthTest<GpuStateChange::LikelyNo>();

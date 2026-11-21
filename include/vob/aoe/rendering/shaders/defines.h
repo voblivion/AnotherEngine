@@ -266,7 +266,7 @@ struct ALIGN_16 UniformDebugParams
     ubo_vec2 depthRange;
     float exposure;
     int channel;
-    int8_t type;
+    int type;
 };
 
 #ifdef __cplusplus

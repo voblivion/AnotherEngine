@@ -634,9 +634,9 @@ namespace vob::aoegl
 			auto const lightClusterCount = computeLightClusterCount(a_shadingResolution, a_config);
 
 			o_resources.lightClusterSizesSsbo =
-				createBuffer(lightClusterCount * sizeof(int8_t), nullptr, 0, a_deleteQueue);
+				createBuffer(lightClusterCount * sizeof(int32_t), nullptr, 0, a_deleteQueue);
 			o_resources.lightClusterIndicesSsbo =
-				createBuffer(a_config.clusterCapacity * lightClusterCount * sizeof(int16_t), nullptr, 0, a_deleteQueue);
+				createBuffer(a_config.clusterCapacity * lightClusterCount * sizeof(int32_t), nullptr, 0, a_deleteQueue);
 		}
 	}
 

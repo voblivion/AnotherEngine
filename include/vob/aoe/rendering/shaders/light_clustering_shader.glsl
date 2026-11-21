@@ -35,10 +35,10 @@ void main()
         {
             if (lightClusterSize < uLighting.lightClusterCapacity)
             {
-                uLightClusterIndices[clusterIndex * uLighting.lightClusterCapacity + lightClusterSize] = int16_t(i);
+                uLightClusterIndices[clusterIndex * uLighting.lightClusterCapacity + lightClusterSize] = i;
                 lightClusterSize += 1;
             }
         }
     }
-    uLightClusterSizes[clusterIndex] = int8_t(lightClusterSize);
+    uLightClusterSizes[clusterIndex] = lightClusterSize;
 }
