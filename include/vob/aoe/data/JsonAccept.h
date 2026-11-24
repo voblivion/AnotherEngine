@@ -2,6 +2,7 @@
 
 #include <vob/aoe/data/FilesystemUtils.h>
 #include <vob/aoe/data/FilesystemVisitorContext.h>
+#include <vob/aoe/data/SoftPtr.h>
 
 #include <vob/misc/visitor/json_reader.h>
 
@@ -23,6 +24,20 @@ namespace vob::misvi
 		auto const path = aoedt::FilesystemUtils::normalize(rawPath, context.getBasePath());
 		auto const& indexer = context.getIndexer();
 		a_data = context.getMultiDatabase().find<TData>(indexer.getRuntimeId(path));
+		return true;
+	}
+
+	template <typename TData>
+	bool accept(
+		pmr::json_reader<aoedt::FilesystemVisitorContext>& a_visitor
+		, aoedt::SoftPtr<TData>& a_data)
+	{
+		std::string rawPath;
+		a_visitor.visit(rawPath);
+
+		auto const& context = a_visitor.get_context();
+		auto const path = aoedt::FilesystemUtils::normalize(rawPath, context.getBasePath());
+		a_data = aoedt::SoftPtr<TData>{ context.getIndexer().getRuntimeId(path) };
 		return true;
 	}
 }
