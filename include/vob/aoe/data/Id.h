@@ -5,5 +5,5 @@
 
 namespace vob::aoedt
 {
-	using id = std::uint64_t;
+	using Id = std::uint64_t;
 }

@@ -1,5 +1,7 @@
 #include "vob/aoe/rendering/data/ModelLoader.h"
 
+#include "vob/aoe/debug/Check.h"
+
 #include <vob/misc/std/ignorable_assert.h>
 
 #pragma warning( push )
@@ -11,6 +13,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -274,7 +277,9 @@ namespace vob::aoegl
 		Assimp::Importer importer;
 		auto const* scene = importer.ReadFile(
 			a_path.generic_string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
-		if (scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
+		if (!VOB_AOE_CHECK_LOG(
+				scene != nullptr && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE),
+				"Failed to load model: {} ({}).", a_path.generic_string(), importer.GetErrorString()))
 		{
 			ignorable_assert(false && "Invalid model asset");
 			return {};
@@ -288,7 +293,9 @@ namespace vob::aoegl
 		Assimp::Importer importer;
 		auto const* scene = importer.ReadFile(
 			a_path.generic_string(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_PopulateArmatureData);
-		if (scene == nullptr || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
+		if (!VOB_AOE_CHECK_LOG(
+				scene != nullptr && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE),
+				"Failed to load model: {} ({}).", a_path.generic_string(), importer.GetErrorString()))
 		{
 			ignorable_assert(false && "Invalid model asset");
 			return {};

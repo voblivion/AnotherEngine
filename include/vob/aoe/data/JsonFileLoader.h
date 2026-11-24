@@ -1,14 +1,18 @@
 #pragma once
 
+#include "vob/aoe/debug/Check.h"
+
 #include <vob/misc/visitor/json_reader.h>
 
+#include <filesystem>
+#include <format>
 #include <fstream>
 
 
 namespace vob::aoedt
 {
 	template <typename TData>
-	struct default_constructor_factory
+	struct DefaultConstructorFactory
 	{
 		TData operator()() const
 		{
@@ -19,16 +23,16 @@ namespace vob::aoedt
 	template <
 		typename TData
 		, typename TContextFactory
-		, typename TDataFactory = default_constructor_factory<TData>>
-	class json_file_loader
+		, typename TDataFactory = DefaultConstructorFactory<TData>>
+	class JsonFileLoader
 	{
-		using context_type = decltype(
+		using ContextType = decltype(
 			std::declval<TContextFactory const>()(std::declval<std::filesystem::path const&>()));
 
 	public:
-		explicit json_file_loader(
+		explicit JsonFileLoader(
 			misvi::pmr::applicator<
-				false, misvi::pmr::json_reader<context_type>> const& a_applicator,
+				false, misvi::pmr::json_reader<ContextType>> const& a_applicator,
 			TContextFactory a_contextFactory,
 			TDataFactory a_factory = {})
 			: m_factory{ std::forward<TDataFactory>(a_factory) }
@@ -39,20 +43,21 @@ namespace vob::aoedt
 		auto load(std::filesystem::path const& a_path) const
 		{
 			auto file = std::ifstream{ a_path, std::ios::binary | std::ios::in };
+			VOB_AOE_CHECK_LOG(file.is_open(), "Failed to open file: {}.", a_path.generic_string());
 			mistd::pmr::json_value jsonValue;
 			file >> jsonValue;
 			file.close();
 
 			TData data = m_factory();
 			auto context = m_contextFactory(a_path);
-			misvi::pmr::json_reader<context_type> reader{ m_applicator, context };
+			misvi::pmr::json_reader<ContextType> reader{ m_applicator, context };
 			reader.read(jsonValue, data);
 			return data;
 		}
 
 	private:
-		TDataFactory const& m_factory;
-		misvi::pmr::applicator<false, misvi::pmr::json_reader<context_type>> const& m_applicator;
+		TDataFactory m_factory;
+		misvi::pmr::applicator<false, misvi::pmr::json_reader<ContextType>> const& m_applicator;
 		TContextFactory m_contextFactory;
 	};
 }

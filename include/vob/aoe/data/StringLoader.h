@@ -6,7 +6,7 @@
 
 namespace vob::aoedt
 {
-	class string_loader
+	class StringLoader
 	{
 	public:
 		std::pmr::string load(std::istream& a_stream) const

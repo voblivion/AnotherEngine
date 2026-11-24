@@ -4,10 +4,10 @@
 #include "vob/aoe/rendering/resources/GpuShader.h"
 #include "vob/aoe/rendering/ShaderDefinition.h"
 
-#include <vob/aoe/data/filesystem_database.h>
-#include "vob/aoe/data/id.h"
-#include <vob/aoe/data/single_file_loader.h>
-#include <vob/aoe/data/string_loader.h>
+#include <vob/aoe/data/FilesystemDatabase.h>
+#include "vob/aoe/data/Id.h"
+#include <vob/aoe/data/SingleFileLoader.h>
+#include <vob/aoe/data/StringLoader.h>
 
 #include <filesystem>
 #include <memory>
@@ -32,8 +32,12 @@ namespace vob::aoegl
 			std::filesystem::path sourcePath;
 		};
 
-		aoedt::filesystem_indexer filesystemIndexer;
-		aoedt::filesystem_database<aoedt::single_file_loader<aoedt::string_loader>> stringDatabase{ filesystemIndexer };
+		explicit DebugProgramContext(std::filesystem::path a_dataPath)
+			: filesystemIndexer{ std::move(a_dataPath) }
+		{}
+
+		aoedt::FilesystemIndexer filesystemIndexer;
+		aoedt::FilesystemDatabase<aoedt::SingleFileLoader<aoedt::StringLoader>> stringDatabase{ filesystemIndexer };
 		std::vector<Shader> shaders;
 		int32_t activeShaderIndex = 0;
 		GraphicId ssaoProgram;

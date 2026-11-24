@@ -801,7 +801,7 @@ namespace vob::aoegl
 			{
 				tryExportCoreShaders();
 				auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
-					debugProgramCtx.filesystemIndexer.get_runtime_id(debugProgramCtx.skyPartialSourcePath));
+					debugProgramCtx.filesystemIndexer.getRuntimeId(debugProgramCtx.skyPartialSourcePath));
 				if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
 				{
 					a_recompile(*skyPartialSource);
@@ -860,7 +860,7 @@ namespace vob::aoegl
 				auto const& shaderDefinition = *shader.shaderDefinition;
 				auto const& sourcePath = shaderDefinition.partialSourcePath;
 				auto const source =
-					debugProgramCtx.stringDatabase.find(debugProgramCtx.filesystemIndexer.get_runtime_id(sourcePath));
+					debugProgramCtx.stringDatabase.find(debugProgramCtx.filesystemIndexer.getRuntimeId(sourcePath));
 				auto const gpuShaderPtr = shader.shader.lock();
 				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string())
 					&& gpuShaderPtr != nullptr)
