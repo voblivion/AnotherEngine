@@ -2,8 +2,8 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
-#include "core/math_utils.glsl"
+#include "bindings.glsl"
+#include "math_utils.glsl"
 
 layout(local_size_x = SKY_IRRADIANCE_SAMPLE_COUNT) in;
 

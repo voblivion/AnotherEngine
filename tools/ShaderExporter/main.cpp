@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <system_error>
 
 
 // Only supports filtering out:
@@ -145,6 +146,22 @@ int main(int a_argc, char** a_argv)
 		}
 		else
 		{
+			auto targetPath = targetDir / sourcePathRelative;
+			if (sourcePath.extension() != ".h" && sourcePath.extension() != ".glsl")
+			{
+				auto error = std::error_code{};
+				std::filesystem::copy_file(sourcePath, targetPath, std::filesystem::copy_options::overwrite_existing, error);
+				if (error)
+				{
+					std::cerr << "Failed to copy " << sourcePath << " to " << targetPath << "." << std::endl;
+				}
+				else
+				{
+					std::cout << "Successfully copied " << targetPath << "." << std::endl;
+				}
+				continue;
+			}
+
 			auto sourceFile = std::ifstream(sourcePath);
 			if (!sourceFile.is_open())
 			{
@@ -152,7 +169,6 @@ int main(int a_argc, char** a_argv)
 				continue;
 			}
 
-			auto targetPath = targetDir / sourcePathRelative;
 			targetPath.replace_extension(".glsl");
 			auto targetFile = std::ofstream(targetPath);
 			if (!targetFile.is_open())

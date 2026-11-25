@@ -1,7 +1,7 @@
 #version 450 core
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
+#include "bindings.glsl"
 
 layout(location = 0) in vec3 aPosition;
 #if USE_SHADING || USE_NORMAL

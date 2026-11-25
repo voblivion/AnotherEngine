@@ -24,8 +24,8 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_anti_aliasing.glsl"
-#include "core/math_utils.glsl"
+#include "bindings_anti_aliasing.glsl"
+#include "math_utils.glsl"
 
 
 in vec2 vUv;

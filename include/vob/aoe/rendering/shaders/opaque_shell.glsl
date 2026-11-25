@@ -2,8 +2,8 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
-#include "core/shading_outputs.glsl"
+#include "bindings.glsl"
+#include "shading_outputs.glsl"
 
 in vec3 vPosition;
 in vec2 vUv;

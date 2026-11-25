@@ -2,8 +2,8 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_ssr.glsl"
-#include "core/light_utils.glsl"
+#include "bindings_ssr.glsl"
+#include "light_utils.glsl"
 
 in vec2 vUv;
 out vec4 oSsrColor;

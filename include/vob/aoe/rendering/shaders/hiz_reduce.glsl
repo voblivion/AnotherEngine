@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_ssr_filter.glsl"
+#include "bindings_ssr_filter.glsl"
 
 
 out vec2 oDepth;

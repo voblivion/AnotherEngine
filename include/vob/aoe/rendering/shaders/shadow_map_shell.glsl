@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings.glsl"
+#include "bindings.glsl"
 
 #if USE_UV
 in vec2 vUv;

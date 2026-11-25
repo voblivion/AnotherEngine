@@ -2,9 +2,9 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_debug.glsl"
-#include "core/light_utils.glsl"
-#include "core/math_utils.glsl"
+#include "bindings_debug.glsl"
+#include "light_utils.glsl"
+#include "math_utils.glsl"
 
 in vec2 vUv;
 out vec4 oColor;

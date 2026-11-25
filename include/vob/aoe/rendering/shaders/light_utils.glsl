@@ -1,7 +1,7 @@
 #ifndef VOB_AOEGL_CORE_LIGHT_UTILS_GLSL
 #define VOB_AOEGL_CORE_LIGHT_UTILS_GLSL
 
-#include "core/math_utils.glsl"
+#include "math_utils.glsl"
 
 vec3 uEvaluateSkyIrradiance(vec3 normal)
 {

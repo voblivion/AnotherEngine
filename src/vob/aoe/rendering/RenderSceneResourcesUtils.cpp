@@ -164,7 +164,8 @@ namespace vob::aoegl
 		}
 
 		void createInvariantResources(
-			RenderSceneProgramSources const& a_programSources,
+			CoreShaderSources const& a_coreShaderSources,
+			std::string_view a_skyPartialSource,
 			GpuDeleteQueue& a_deleteQueue,
 			GpuRenderSceneResources& o_resources)
 		{
@@ -196,29 +197,39 @@ namespace vob::aoegl
 			o_resources.skyIrradianceSsbo =
 				createBuffer(k_skyIrradianceCoefficientCount * sizeof(glm::vec4), nullptr, 0, a_deleteQueue);
 
-			o_resources.lightClusteringProgram = GpuProgram{a_deleteQueue, createLightClusteringProgram()};
-			o_resources.ssaoDepthProgram = GpuProgram{a_deleteQueue, createSsaoDepthProgram()};
-			o_resources.ssaoProgram = GpuProgram{a_deleteQueue, createSsaoProgram()};
-			o_resources.ssaoBlurProgram = GpuProgram{a_deleteQueue, createSsaoBlurProgram()};
-			o_resources.ssrProgram = GpuProgram{a_deleteQueue, createSsrProgram(a_programSources.skyPartial)};
-			o_resources.hiZReduceProgram = GpuProgram{a_deleteQueue, createHiZReduceProgram()};
-			o_resources.ssrPrefilterProgram = GpuProgram{a_deleteQueue, createSsrPrefilterProgram()};
-			o_resources.ssrDownsampleProgram = GpuProgram{a_deleteQueue, createSsrDownsampleProgram()};
-			o_resources.opaqueCompositionProgram = GpuProgram{a_deleteQueue, createOpaqueCompositionProgram()};
-			o_resources.skyBoxProgram = GpuProgram{a_deleteQueue, createSkyProgram(a_programSources.skyPartial)};
+			o_resources.lightClusteringProgram =
+				GpuProgram{a_deleteQueue, createLightClusteringProgram(a_coreShaderSources)};
+			o_resources.ssaoDepthProgram = GpuProgram{a_deleteQueue, createSsaoDepthProgram(a_coreShaderSources)};
+			o_resources.ssaoProgram = GpuProgram{a_deleteQueue, createSsaoProgram(a_coreShaderSources)};
+			o_resources.ssaoBlurProgram = GpuProgram{a_deleteQueue, createSsaoBlurProgram(a_coreShaderSources)};
+			o_resources.ssrProgram =
+				GpuProgram{a_deleteQueue, createSsrProgram(a_coreShaderSources, a_skyPartialSource)};
+			o_resources.hiZReduceProgram = GpuProgram{a_deleteQueue, createHiZReduceProgram(a_coreShaderSources)};
+			o_resources.ssrPrefilterProgram =
+				GpuProgram{a_deleteQueue, createSsrPrefilterProgram(a_coreShaderSources)};
+			o_resources.ssrDownsampleProgram =
+				GpuProgram{a_deleteQueue, createSsrDownsampleProgram(a_coreShaderSources)};
+			o_resources.opaqueCompositionProgram =
+				GpuProgram{a_deleteQueue, createOpaqueCompositionProgram(a_coreShaderSources)};
+			o_resources.skyBoxProgram =
+				GpuProgram{a_deleteQueue, createSkyProgram(a_coreShaderSources, a_skyPartialSource)};
 			o_resources.skyIrradianceProgram =
-				GpuProgram{a_deleteQueue, createSkyIrradianceProgram(a_programSources.skyPartial)};
-			o_resources.debugProgram = GpuProgram{a_deleteQueue, createDebugProgram()};
-			o_resources.debugGeometryProgram = GpuProgram{a_deleteQueue, createDebugGeometryProgram()};
-			o_resources.bloomDownsampleProgram =
-				GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.bloomDownsample)};
-			o_resources.bloomUpsampleProgram =
-				GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.bloomUpsample)};
-			o_resources.bloomCombineProgram =
-				GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.bloomCombine)};
-			o_resources.tonemapProgram = GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.tonemap)};
-			o_resources.aaProgram = GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.antiAliasing)};
-			o_resources.presentProgram = GpuProgram{a_deleteQueue, createQuadProgram(a_programSources.present)};
+				GpuProgram{a_deleteQueue, createSkyIrradianceProgram(a_coreShaderSources, a_skyPartialSource)};
+			o_resources.debugProgram = GpuProgram{a_deleteQueue, createDebugProgram(a_coreShaderSources)};
+			o_resources.debugGeometryProgram =
+				GpuProgram{a_deleteQueue, createDebugGeometryProgram(a_coreShaderSources)};
+			o_resources.bloomDownsampleProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.bloomDownsample->source)};
+			o_resources.bloomUpsampleProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.bloomUpsample->source)};
+			o_resources.bloomCombineProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.bloomCombine->source)};
+			o_resources.tonemapProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.tonemap->source)};
+			o_resources.aaProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.fxaa->source)};
+			o_resources.presentProgram = GpuProgram{
+				a_deleteQueue, createQuadProgram(a_coreShaderSources, a_coreShaderSources.present->source)};
 
 			o_resources.postProcessVao = createVertexArray(a_deleteQueue);
 
@@ -643,14 +654,15 @@ namespace vob::aoegl
 	GpuRenderSceneResources createGpuRenderSceneResources(
 		RenderSceneConfig const& a_config,
 		glm::ivec2 const a_windowSize,
-		RenderSceneProgramSources const& a_programSources,
+		CoreShaderSources const& a_coreShaderSources,
+		std::string_view a_skyPartialSource,
 		GpuDeleteQueue& a_deleteQueue)
 	{
 		auto resources = GpuRenderSceneResources{};
 
 		auto const shadingResolution = computeScaledResolution(a_windowSize, a_config.renderScale);
 
-		createInvariantResources(a_programSources, a_deleteQueue, resources);
+		createInvariantResources(a_coreShaderSources, a_skyPartialSource, a_deleteQueue, resources);
 		updateSsaoParamsUbo(a_config.ssao, resources);
 		updateSsrParamsUbo(a_config.ssr, resources);
 		updateTonemapParamsUbo(a_config.tonemap, resources);

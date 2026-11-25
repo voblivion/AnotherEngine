@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_bloom_combine.glsl"
+#include "bindings_bloom_combine.glsl"
 
 
 in vec2 vUv;

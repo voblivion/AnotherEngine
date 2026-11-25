@@ -1,7 +1,7 @@
-#include "core/bindings.glsl"
+#include "bindings.glsl"
 
 #if USE_SHADING
-#include "core/shading_utils.glsl"
+#include "shading_utils.glsl"
 
 OpaqueOutputs getOpaqueOutputs()
 {

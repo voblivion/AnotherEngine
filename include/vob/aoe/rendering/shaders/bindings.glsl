@@ -1,7 +1,7 @@
 #ifndef VOB_AOEGL_CORE_BINDINGS_GLSL
 #define VOB_AOEGL_CORE_BINDINGS_GLSL
 
-#include "core/defines.glsl"
+#include "defines.glsl"
 
 layout(std140, binding = BINDING_UBO_GLOBAL) uniform GlobalParams
 {

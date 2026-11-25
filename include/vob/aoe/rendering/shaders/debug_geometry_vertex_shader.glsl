@@ -5,7 +5,7 @@
 layout (location = 0) in vec3 aPosition;
 layout (location = 1) in vec4 aColor;
 
-#include "core/bindings.glsl"
+#include "bindings.glsl"
 
 out vec4 vColor;
 

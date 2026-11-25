@@ -2,8 +2,8 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_ssr_filter.glsl"
-#include "core/math_utils.glsl"
+#include "bindings_ssr_filter.glsl"
+#include "math_utils.glsl"
 
 
 in vec2 vUv;

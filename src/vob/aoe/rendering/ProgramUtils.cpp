@@ -6,11 +6,8 @@
 #include <vob/misc/std/ignorable_assert.h>
 
 #include <filesystem>
-#include <fstream>
 #include <optional>
-#include <regex>
 #include <span>
-#include <sstream>
 
 #define AOEGL_DEBUG 1
 #if !defined(NDEBUG) || defined(AOEGL_DEBUG)
@@ -174,23 +171,6 @@ namespace vob::aoegl
 			return programId;
 		}
 
-		std::string readFile(std::string const& a_fileName)
-		{
-			std::ifstream file(a_fileName);
-			if (!file.is_open())
-			{
-#if !defined(NDEBUG) || defined(AOEGL_DEBUG)
-				std::cerr << a_fileName << std::endl;
-#endif
-				ignorable_assert(false && "File not found.");
-				return {};
-			}
-
-			std::stringstream buffer;
-			buffer << file.rdbuf();
-			return buffer.str();
-		}
-
 		void setDefines(std::string& a_source, std::span<std::string const> a_defines)
 		{
 			if (a_defines.empty())
@@ -218,54 +198,15 @@ namespace vob::aoegl
 			auto const versionEnd = a_source.find("\n", versionBegin);
 			a_source.insert(versionEnd + 1, definesSource);
 		}
-
-		void processIncludes(std::string& a_source)
-		{
-			auto const includeRegex = std::regex(R"(#include\s*["<](.*?)[">])");
-			auto match = std::smatch{};
-			auto searchStart(a_source.cbegin());
-
-			while (std::regex_search(searchStart, a_source.cend(), match, includeRegex))
-			{
-				auto const includedFileName = std::string{VOB_AOEGL_SHADER_DIR} + match[1].str();
-				auto const includedFileContent = readFile(includedFileName);
-
-				auto const matchPos = match.position(0) + (searchStart - a_source.cbegin());
-				a_source.replace(matchPos, match.length(0), includedFileContent);
-
-				searchStart = a_source.cbegin() + matchPos;
-			}
-
-			return;
-		}
-
-		std::string createVertexGeometryShaderSource(bool a_useRig, bool a_useShading)
-		{
-			std::vector<std::string> defines;
-			if (a_useRig)
-			{
-				defines.emplace_back("USE_RIG 1");
-			}
-			if (a_useShading)
-			{
-				defines.emplace_back("USE_SHADING 1");
-			}
-
-			auto source = readFile(VOB_AOEGL_SHADER_DIR "core/geometry_vertex_shader.glsl");
-			setDefines(source, defines);
-			processIncludes(source);
-			return source;
-		}
 	}
 
-	GraphicId createLightClusteringProgram(GraphicId a_optionalProgramId)
+	GraphicId createLightClusteringProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/light_clustering_shader.glsl");
-		processIncludes(computeShaderSource);
-		return createComputeProgram(computeShaderSource, a_optionalProgramId);
+		return createComputeProgram(a_coreShaderSources.lightClusteringShader->source, a_optionalProgramId);
 	}
 
 	GraphicId createGeometryProgram(
+		CoreShaderSources const& a_coreShaderSources,
 		std::string_view a_fragmentShaderSource,
 		ModelType a_modelType,
 		bool a_useShading,
@@ -299,17 +240,16 @@ namespace vob::aoegl
 			defines.emplace_back("USE_NORMAL 1");
 		}
 
-		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/geometry_vertex_shader.glsl");
+		auto vertexShaderSource = a_coreShaderSources.geometryVertexShader->source;
 		setDefines(vertexShaderSource, defines);
-		processIncludes(vertexShaderSource);
 
 		auto fragmentShaderSource = std::string{a_fragmentShaderSource};
 		setDefines(fragmentShaderSource, defines);
-		processIncludes(fragmentShaderSource);
 		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
 	}
 
 	GraphicId createShadingProgram(
+		CoreShaderSources const& a_coreShaderSources,
 		std::string_view a_partialSource,
 		std::span<std::string const> a_defines,
 		MaterialParamsLayout const& a_paramsLayout,
@@ -318,19 +258,19 @@ namespace vob::aoegl
 		bool a_isAlphaMasked,
 		GraphicId a_optionalProgramId)
 	{
-		auto const shellPath = [a_shadingPass]
+		auto const& shellSource = [&a_coreShaderSources, a_shadingPass]() -> std::string const&
 		{
 			switch (a_shadingPass)
 			{
 			case ShadingPass::Opaque:
-				return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+				return a_coreShaderSources.opaqueShell->source;
 			default:
 				ignorable_assert(false && "No shell for this shading pass yet.");
-				return VOB_AOEGL_SHADER_DIR "core/opaque_shell.glsl";
+				return a_coreShaderSources.opaqueShell->source;
 			}
 		}();
 
-		auto fragmentShaderSource = readFile(shellPath);
+		auto fragmentShaderSource = shellSource;
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += generateMaterialParamsBlockSource(a_paramsLayout);
 		fragmentShaderSource += '\n';
@@ -343,6 +283,7 @@ namespace vob::aoegl
 		}
 
 		return createGeometryProgram(
+			a_coreShaderSources,
 			fragmentShaderSource,
 			a_modelType,
 			true /* use shading */,
@@ -355,7 +296,8 @@ namespace vob::aoegl
 	namespace
 	{
 		GraphicId createAlphaMaskedGeometryProgram(
-			char const* a_shellPath,
+			CoreShaderSources const& a_coreShaderSources,
+			std::string_view a_shellSource,
 			std::string_view a_partialSource,
 			std::span<std::string const> a_defines,
 			MaterialParamsLayout const& a_paramsLayout,
@@ -363,7 +305,7 @@ namespace vob::aoegl
 			bool a_useNormal,
 			GraphicId a_optionalProgramId)
 		{
-			auto fragmentShaderSource = readFile(a_shellPath);
+			auto fragmentShaderSource = std::string{a_shellSource};
 			fragmentShaderSource += '\n';
 			fragmentShaderSource += generateMaterialParamsBlockSource(a_paramsLayout);
 			fragmentShaderSource += '\n';
@@ -373,6 +315,7 @@ namespace vob::aoegl
 			defines.emplace_back("USE_ALPHA_MASK 1");
 
 			return createGeometryProgram(
+				a_coreShaderSources,
 				fragmentShaderSource,
 				a_modelType,
 				false /* use shading */,
@@ -383,11 +326,12 @@ namespace vob::aoegl
 		}
 	}
 
-	GraphicId createDepthProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
+	GraphicId createDepthProgram(
+		CoreShaderSources const& a_coreShaderSources, ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource,
+			a_coreShaderSources,
+			a_coreShaderSources.depthShell->source,
 			a_modelType,
 			false /* use shading */,
 			false /* use uv */,
@@ -397,6 +341,7 @@ namespace vob::aoegl
 	}
 
 	GraphicId createAlphaMaskedDepthProgram(
+		CoreShaderSources const& a_coreShaderSources,
 		std::string_view a_partialSource,
 		std::span<std::string const> a_defines,
 		MaterialParamsLayout const& a_paramsLayout,
@@ -404,7 +349,8 @@ namespace vob::aoegl
 		GraphicId a_optionalProgramId)
 	{
 		return createAlphaMaskedGeometryProgram(
-			VOB_AOEGL_SHADER_DIR "core/depth_shell.glsl",
+			a_coreShaderSources,
+			a_coreShaderSources.depthShell->source,
 			a_partialSource,
 			a_defines,
 			a_paramsLayout,
@@ -413,11 +359,12 @@ namespace vob::aoegl
 			a_optionalProgramId);
 	}
 
-	GraphicId createShadowMapProgram(ModelType a_modelType, GraphicId a_optionalProgramId)
+	GraphicId createShadowMapProgram(
+		CoreShaderSources const& a_coreShaderSources, ModelType a_modelType, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl");
 		return createGeometryProgram(
-			fragmentShaderSource,
+			a_coreShaderSources,
+			a_coreShaderSources.shadowMapShell->source,
 			a_modelType,
 			false /* use shading */,
 			false /* use uv */,
@@ -427,6 +374,7 @@ namespace vob::aoegl
 	}
 
 	GraphicId createAlphaMaskedShadowMapProgram(
+		CoreShaderSources const& a_coreShaderSources,
 		std::string_view a_partialSource,
 		std::span<std::string const> a_defines,
 		MaterialParamsLayout const& a_paramsLayout,
@@ -434,7 +382,8 @@ namespace vob::aoegl
 		GraphicId a_optionalProgramId)
 	{
 		return createAlphaMaskedGeometryProgram(
-			VOB_AOEGL_SHADER_DIR "core/shadow_map_shell.glsl",
+			a_coreShaderSources,
+			a_coreShaderSources.shadowMapShell->source,
 			a_partialSource,
 			a_defines,
 			a_paramsLayout,
@@ -443,97 +392,101 @@ namespace vob::aoegl
 			a_optionalProgramId);
 	}
 
-	GraphicId createQuadProgram(std::string_view a_fragmentShaderSource, GraphicId a_optionalProgramId)
+	GraphicId createQuadProgram(
+		CoreShaderSources const& a_coreShaderSources,
+		std::string_view a_fragmentShaderSource,
+		GraphicId a_optionalProgramId)
 	{
-		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/quad_vertex_shader.glsl");
-
-		auto fragmentShaderSource = std::string{a_fragmentShaderSource};
-		processIncludes(fragmentShaderSource);
-
-		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
+		return createProgram(
+			a_coreShaderSources.quadVertexShader->source, a_fragmentShaderSource, a_optionalProgramId);
 	}
 
-	GraphicId createSsaoDepthProgram(GraphicId a_optionalProgramId)
+	GraphicId createSsaoDepthProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_depth_fragment_shader.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.ssaoDepthFragmentShader->source, a_optionalProgramId);
 	}
 
-	GraphicId createSsaoProgram(GraphicId a_optionalProgramId)
+	GraphicId createSsaoProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_fragment_shader.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.ssaoFragmentShader->source, a_optionalProgramId);
 	}
 
-	GraphicId createSsaoBlurProgram(GraphicId a_optionalProgramId)
+	GraphicId createSsaoBlurProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssao_blur_fragment_shader.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.ssaoBlurFragmentShader->source, a_optionalProgramId);
 	}
 
-	GraphicId createSkyProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId)
+	GraphicId createSkyProgram(
+		CoreShaderSources const& a_coreShaderSources,
+		std::string_view a_skyPartialSource,
+		GraphicId a_optionalProgramId)
 	{
-		auto fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/sky_shell.glsl");
+		auto fragmentShaderSource = a_coreShaderSources.skyShell->source;
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_skyPartialSource;
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(a_coreShaderSources, fragmentShaderSource, a_optionalProgramId);
 	}
 
-	GraphicId createSkyIrradianceProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId)
+	GraphicId createSkyIrradianceProgram(
+		CoreShaderSources const& a_coreShaderSources,
+		std::string_view a_skyPartialSource,
+		GraphicId a_optionalProgramId)
 	{
-		auto computeShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/sky_irradiance_shader.glsl");
+		auto computeShaderSource = a_coreShaderSources.skyIrradianceShader->source;
 		computeShaderSource += '\n';
 		computeShaderSource += a_skyPartialSource;
-		processIncludes(computeShaderSource);
 		return createComputeProgram(computeShaderSource, a_optionalProgramId);
 	}
 
-	GraphicId createSsrProgram(std::string_view a_skyPartialSource, GraphicId a_optionalProgramId)
+	GraphicId createSsrProgram(
+		CoreShaderSources const& a_coreShaderSources,
+		std::string_view a_skyPartialSource,
+		GraphicId a_optionalProgramId)
 	{
-		auto fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssr_fragment_shader.glsl");
+		auto fragmentShaderSource = a_coreShaderSources.ssrFragmentShader->source;
 		fragmentShaderSource += '\n';
 		fragmentShaderSource += a_skyPartialSource;
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(a_coreShaderSources, fragmentShaderSource, a_optionalProgramId);
 	}
 
-	GraphicId createHiZReduceProgram(GraphicId a_optionalProgramId)
+	GraphicId createHiZReduceProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/hiz_reduce.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(a_coreShaderSources, a_coreShaderSources.hizReduce->source, a_optionalProgramId);
 	}
 
-	GraphicId createSsrPrefilterProgram(GraphicId a_optionalProgramId)
+	GraphicId createSsrPrefilterProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssr_prefilter.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.ssrPrefilter->source, a_optionalProgramId);
 	}
 
-	GraphicId createSsrDownsampleProgram(GraphicId a_optionalProgramId)
+	GraphicId createSsrDownsampleProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/ssr_downsample.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.ssrDownsample->source, a_optionalProgramId);
 	}
 
-	GraphicId createOpaqueCompositionProgram(GraphicId a_optionalProgramId)
+	GraphicId createOpaqueCompositionProgram(
+		CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/opaque_composition_fragment_shader.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.opaqueCompositionFragmentShader->source, a_optionalProgramId);
 	}
 
-	GraphicId createDebugProgram(GraphicId a_optionalProgramId)
+	GraphicId createDebugProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto const fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_fragment_shader.glsl");
-		return createQuadProgram(fragmentShaderSource, a_optionalProgramId);
+		return createQuadProgram(
+			a_coreShaderSources, a_coreShaderSources.debugFragmentShader->source, a_optionalProgramId);
 	}
 
-	GraphicId createDebugGeometryProgram(GraphicId a_optionalProgramId)
+	GraphicId createDebugGeometryProgram(CoreShaderSources const& a_coreShaderSources, GraphicId a_optionalProgramId)
 	{
-		auto vertexShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_geometry_vertex_shader.glsl");
-		processIncludes(vertexShaderSource);
-
-		auto fragmentShaderSource = readFile(VOB_AOEGL_SHADER_DIR "core/debug_geometry_fragment_shader.glsl");
-		processIncludes(fragmentShaderSource);
-
-		return createProgram(vertexShaderSource, fragmentShaderSource, a_optionalProgramId);
+		return createProgram(
+			a_coreShaderSources.debugGeometryVertexShader->source,
+			a_coreShaderSources.debugGeometryFragmentShader->source,
+			a_optionalProgramId);
 	}
 }

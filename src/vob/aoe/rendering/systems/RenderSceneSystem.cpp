@@ -784,54 +784,68 @@ namespace vob::aoegl
 
 			activeShaderIndex = std::min(activeShaderIndex, mistd::isize(debugProgramCtx.shaders) - 1);
 
+			auto const loadCoreShaderSources = [&]
+			{
+				tryExportCoreShaders();
+				auto const coreShaderSources = debugProgramCtx.coreShaderSourcesDatabase.find(
+					debugProgramCtx.filesystemIndexer.getRuntimeId(debugProgramCtx.coreShaderSourcesPath));
+				VOB_AOE_CHECK_LOG(coreShaderSources != nullptr, "Core shader sources not found.");
+				return coreShaderSources;
+			};
 
 			if (ImGui::Button("Recompile Ssao Program"))
 			{
-				tryExportCoreShaders();
-				createSsaoProgram(debugProgramCtx.ssaoProgram);
+				if (auto const coreShaderSources = loadCoreShaderSources())
+				{
+					createSsaoProgram(*coreShaderSources, debugProgramCtx.ssaoProgram);
+				}
 			}
 
 			if (ImGui::Button("Recompile Opaque Composition Program"))
 			{
-				tryExportCoreShaders();
-				createOpaqueCompositionProgram(debugProgramCtx.opaqueCompositionProgram);
+				if (auto const coreShaderSources = loadCoreShaderSources())
+				{
+					createOpaqueCompositionProgram(*coreShaderSources, debugProgramCtx.opaqueCompositionProgram);
+				}
 			}
 
 			auto const recompileWithSkyPartial = [&](auto a_recompile)
 			{
-				tryExportCoreShaders();
-				auto const skyPartialSource = debugProgramCtx.stringDatabase.find(
+				auto const coreShaderSources = loadCoreShaderSources();
+				auto const skyPartialSource = debugProgramCtx.shaderSourceDatabase.find(
 					debugProgramCtx.filesystemIndexer.getRuntimeId(debugProgramCtx.skyPartialSourcePath));
-				if (VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
+				if (coreShaderSources != nullptr
+					&& VOB_AOE_CHECK_LOG(skyPartialSource != nullptr, "Sky partial source not found."))
 				{
-					a_recompile(*skyPartialSource);
+					a_recompile(*coreShaderSources, skyPartialSource->source);
 				}
 			};
 
 			if (ImGui::Button("Recompile Sky Box Program"))
 			{
 				recompileWithSkyPartial(
-					[&](std::string_view a_source)
+					[&](CoreShaderSources const& a_coreShaderSources, std::string_view a_source)
 					{
-						createSkyProgram(a_source, debugProgramCtx.skyBoxProgram);
+						createSkyProgram(a_coreShaderSources, a_source, debugProgramCtx.skyBoxProgram);
 					});
 			}
 
 			if (ImGui::Button("Recompile Ssr Program"))
 			{
 				recompileWithSkyPartial(
-					[&](std::string_view a_source)
+					[&](CoreShaderSources const& a_coreShaderSources, std::string_view a_source)
 					{
-						createSsrProgram(a_source, debugProgramCtx.ssrProgram);
+						createSsrProgram(a_coreShaderSources, a_source, debugProgramCtx.ssrProgram);
 					});
 			}
 
 			if (ImGui::Button("Recompile Sky Irradiance Program"))
 			{
 				recompileWithSkyPartial(
-					[&](std::string_view a_source)
+					[&](CoreShaderSources const& a_coreShaderSources, std::string_view a_source)
 					{
-						createSkyIrradianceProgram(a_source, debugProgramCtx.skyIrradianceProgram);
+						createSkyIrradianceProgram(
+							a_coreShaderSources, a_source, debugProgramCtx.skyIrradianceProgram);
 					});
 			}
 
@@ -855,14 +869,15 @@ namespace vob::aoegl
 			}
 			if (ImGui::Button("Recompile Shader"))
 			{
-				tryExportCoreShaders();
+				auto const coreShaderSources = loadCoreShaderSources();
 				auto const& shader = debugProgramCtx.shaders[activeShaderIndex];
 				auto const& shaderDefinition = *shader.shaderDefinition;
 				auto const& sourcePath = shaderDefinition.partialSourcePath;
-				auto const source =
-					debugProgramCtx.stringDatabase.find(debugProgramCtx.filesystemIndexer.getRuntimeId(sourcePath));
+				auto const source = debugProgramCtx.shaderSourceDatabase.find(
+					debugProgramCtx.filesystemIndexer.getRuntimeId(sourcePath));
 				auto const gpuShaderPtr = shader.shader.lock();
-				if (VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string())
+				if (coreShaderSources != nullptr
+					&& VOB_AOE_CHECK_LOG(source != nullptr, "Shader source not found: {}.", sourcePath.string())
 					&& gpuShaderPtr != nullptr)
 				{
 					auto const paramsLayout = computeMaterialParamsLayout(shaderDefinition.uniformDefaults);
@@ -871,7 +886,8 @@ namespace vob::aoegl
 					auto const recompileShading = [&](ModelType a_modelType, GraphicId a_programId)
 					{
 						createShadingProgram(
-							*source,
+							*coreShaderSources,
+							source->source,
 							shaderDefinition.defines,
 							paramsLayout,
 							shaderDefinition.shadingPass,
@@ -890,12 +906,22 @@ namespace vob::aoegl
 						auto const recompileDepth = [&](ModelType a_modelType, GraphicId a_programId)
 						{
 							createAlphaMaskedDepthProgram(
-								*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+								*coreShaderSources,
+								source->source,
+								shaderDefinition.defines,
+								paramsLayout,
+								a_modelType,
+								a_programId);
 						};
 						auto const recompileShadowMap = [&](ModelType a_modelType, GraphicId a_programId)
 						{
 							createAlphaMaskedShadowMapProgram(
-								*source, shaderDefinition.defines, paramsLayout, a_modelType, a_programId);
+								*coreShaderSources,
+								source->source,
+								shaderDefinition.defines,
+								paramsLayout,
+								a_modelType,
+								a_programId);
 						};
 
 						recompileDepth(ModelType::Static, *gpuShader.staticDepthProgram);

@@ -2,7 +2,7 @@
 
 #extension GL_NV_gpu_shader5 : enable
 
-#include "core/bindings_tonemap.glsl"
+#include "bindings_tonemap.glsl"
 
 
 in vec2 vUv;
