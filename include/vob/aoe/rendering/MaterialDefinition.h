@@ -7,6 +7,7 @@
 
 #include "vob/misc/std/bounded_vector.h"
 
+#include <vob/misc/visitor/accept.h>
 #include <vob/misc/visitor/name_value_pair.h>
 
 #include <glm/glm.hpp>
