@@ -30,6 +30,12 @@ namespace vob::aoegl
 			ImageFormatInfo{GL_COMPRESSED_RG_RGTC2, 0, 0},
 			ImageFormatInfo{GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT, 0, 0},
 			ImageFormatInfo{GL_COMPRESSED_RGBA_BPTC_UNORM, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM, 0}};
+
+		GraphicInt toGraphicSwizzle(TextureSettings::Swizzle a_swizzle)
+		{
+			constexpr auto k_swizzles = std::array<GraphicInt, 6>{ GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA, GL_ZERO, GL_ONE };
+			return k_swizzles[static_cast<size_t>(a_swizzle)];
+		}
 	}
 
 	GpuTexture createTexture(
@@ -128,10 +134,10 @@ namespace vob::aoegl
 			glTextureParameterf(id, GL_TEXTURE_MAX_ANISOTROPY, a_maxAnisotropy);
 		}
 
-		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_R, static_cast<GraphicInt>(a_settings.swizzle[0]));
-		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_G, static_cast<GraphicInt>(a_settings.swizzle[1]));
-		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_B, static_cast<GraphicInt>(a_settings.swizzle[2]));
-		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_A, static_cast<GraphicInt>(a_settings.swizzle[3]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_R, toGraphicSwizzle(a_settings.swizzle[0]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_G, toGraphicSwizzle(a_settings.swizzle[1]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_B, toGraphicSwizzle(a_settings.swizzle[2]));
+		glTextureParameteri(id, GL_TEXTURE_SWIZZLE_A, toGraphicSwizzle(a_settings.swizzle[3]));
 
 		return GpuTexture{a_deleteQueue, id};
 	}

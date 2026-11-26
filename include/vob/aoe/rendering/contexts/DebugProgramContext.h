@@ -34,6 +34,7 @@ namespace vob::aoegl
 		{
 			std::weak_ptr<GpuShader> shader;
 			std::shared_ptr<ShaderDefinition const> shaderDefinition;
+			std::filesystem::path partialSourcePath;
 		};
 
 		struct PostProcessProgram

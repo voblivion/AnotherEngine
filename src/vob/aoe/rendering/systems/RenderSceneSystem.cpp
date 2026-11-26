@@ -872,7 +872,7 @@ namespace vob::aoegl
 				auto const coreShaderSources = loadCoreShaderSources();
 				auto const& shader = debugProgramCtx.shaders[activeShaderIndex];
 				auto const& shaderDefinition = *shader.shaderDefinition;
-				auto const& sourcePath = shaderDefinition.partialSourcePath;
+				auto const& sourcePath = shader.partialSourcePath;
 				auto const source = debugProgramCtx.shaderSourceDatabase.find(
 					debugProgramCtx.filesystemIndexer.getRuntimeId(sourcePath));
 				auto const gpuShaderPtr = shader.shader.lock();
