@@ -40,10 +40,14 @@ namespace vob::aoedt
 			, m_contextFactory{ std::forward<TContextFactory>(a_contextFactory) }
 		{}
 
-		auto load(std::filesystem::path const& a_path) const
+		TData load(std::filesystem::path const& a_path) const
 		{
 			auto file = std::ifstream{ a_path, std::ios::binary | std::ios::in };
-			VOB_AOE_CHECK_LOG(file.is_open(), "Failed to open file: {}.", a_path.generic_string());
+			if (!VOB_AOE_CHECK_LOG(file.is_open(), "Failed to open file: {}.", a_path.generic_string()))
+			{
+				return m_factory();
+			}
+
 			mistd::pmr::json_value jsonValue;
 			file >> jsonValue;
 			file.close();

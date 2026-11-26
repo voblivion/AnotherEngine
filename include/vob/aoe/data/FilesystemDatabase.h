@@ -79,7 +79,7 @@ namespace vob::aoedt
 			}
 
 			// TODO allocate_shared
-			return std::make_shared<DataType>(m_loader.load(m_indexer.getDataPath() / *filePath));
+			return std::make_shared<DataType>(m_loader.load(*filePath));
 		}
 	};
 }

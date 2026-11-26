@@ -6,7 +6,10 @@
 #include <vob/aoe/data/FilesystemIndexer.h>
 
 #include <filesystem>
+#include <set>
 #include <string>
+#include <typeindex>
+#include <utility>
 
 
 namespace vob::aoegl
@@ -18,6 +21,10 @@ namespace vob::aoegl
 			aoedt::FilesystemIndexer const& a_indexer, aoedt::Database<std::pmr::string> const& a_stringDatabase);
 
 		ShaderSource load(std::filesystem::path const& a_path) const;
+
+		void collectDependencies(
+			std::filesystem::path const& a_path,
+			std::set<std::pair<std::type_index, std::filesystem::path>>& o_dependencies) const;
 
 	private:
 		aoedt::FilesystemIndexer const& m_indexer;

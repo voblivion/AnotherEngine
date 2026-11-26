@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vob/aoe/data/DependencyCollectingVisitorContext.h>
 #include <vob/aoe/data/FilesystemUtils.h>
 #include <vob/aoe/data/FilesystemVisitorContext.h>
 #include <vob/aoe/data/SoftPtr.h>
@@ -38,6 +39,34 @@ namespace vob::misvi
 		auto const& context = a_visitor.get_context();
 		auto const path = aoedt::FilesystemUtils::normalize(rawPath, context.getBasePath());
 		a_data = aoedt::SoftPtr<TData>{ context.getIndexer().getRuntimeId(path) };
+		return true;
+	}
+
+	template <typename TData>
+	bool accept(
+		pmr::json_reader<aoedt::DependencyCollectingVisitorContext>& a_visitor
+		, std::shared_ptr<TData const>&)
+	{
+		std::string rawPath;
+		a_visitor.visit(rawPath);
+
+		auto& context = a_visitor.get_context();
+		context.getMultiDependencyCollector().collectDependencies<TData>(
+			aoedt::FilesystemUtils::normalize(rawPath, context.getBasePath()), context.getDependencies());
+		return true;
+	}
+
+	template <typename TData>
+	bool accept(
+		pmr::json_reader<aoedt::DependencyCollectingVisitorContext>& a_visitor
+		, aoedt::SoftPtr<TData>&)
+	{
+		std::string rawPath;
+		a_visitor.visit(rawPath);
+
+		auto& context = a_visitor.get_context();
+		context.getMultiDependencyCollector().collectDependencies<TData>(
+			aoedt::FilesystemUtils::normalize(rawPath, context.getBasePath()), context.getDependencies());
 		return true;
 	}
 }

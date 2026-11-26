@@ -43,8 +43,7 @@ namespace vob::aoegl
 			std::filesystem::path sourcePath;
 		};
 
-		explicit DebugProgramContext(std::filesystem::path a_dataPath)
-			: filesystemIndexer{ std::move(a_dataPath) }
+		DebugProgramContext()
 		{
 			multiDatabase.registerDatabase(shaderSourceDatabase);
 		}

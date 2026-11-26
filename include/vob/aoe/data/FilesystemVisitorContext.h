@@ -67,8 +67,7 @@ namespace vob::aoedt
 
 		auto operator()(std::filesystem::path const& a_filePath) const
 		{
-			return FilesystemVisitorContext{
-				m_factory, m_indexer, m_multiDatabase, a_filePath.lexically_relative(m_indexer.getDataPath()) };
+			return FilesystemVisitorContext{ m_factory, m_indexer, m_multiDatabase, a_filePath };
 		}
 
 	private:
