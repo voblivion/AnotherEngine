@@ -15,7 +15,7 @@ C++23 game engine: EnTT ECS, OpenGL 4.6 renderer. Namespaces `vob::aoe*`.
 - `input/` — device input to logical game input. See `include/vob/aoe/input/CLAUDE.md`.
 - `core/` — legacy, mid-migration. See `include/vob/aoe/core/CLAUDE.md`.
 - `ecs/` — component-set/archetype scaffolding for data-driven entity spawning.
-- `data/` — filesystem-backed database/loader system (json, string, multi-database).
+- `data/` — filesystem-backed databases/loaders (json, string, multi-database), keyed by absolute path. References: `shared_ptr<T const>` (hard), `SoftPtr<T>` (lazy); JSON references are relative to the referencing file. Dependency collection: `MultiDependencyCollector` + per-type collectors (`JsonDependencyCollector`, loaders' `collectDependencies`); unregistered types are leaves.
 - `window/` — window/context abstraction (GLFW-backed).
 - `debug/` — assert/check macros, debug naming, ghost (free-fly) controller, `DebugUiContext`/`DebugUiSystem` (visibility flag debug systems check before submitting ImGui panels).
 - `editor/` — in-viewport gizmos (translate/rotate).
